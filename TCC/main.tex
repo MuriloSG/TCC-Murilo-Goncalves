@@ -1,0 +1,546 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Modelo para Projeto de trabalho de conclusão de curso
+% Bacharelado em Sistemas de Informação - IFNMG - Campus Salinas
+% Version 2 (1º semestre 2021)
+%
+% Modelo adaptado de:
+% Frits Wenneker (http://www.howtotex.com)
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+% Texto adaptado de: http://www.fea.usp.br/media/fck/File/Roteiro_para_projeto_pesquisa.pdf
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[
+	% -- opções da classe memoir --
+	12pt,				% tamanho da fonte
+	%openright,			% capítulos começam em pág ímpar (insere página vazia caso preciso)
+	twoside,			% para impressão em recto e verso. Oposto a oneside
+	a4paper,			% tamanho do papel.
+	% -- opções da classe abntex2 --
+	chapter=TITLE,		% títulos de capítulos convertidos em letras maiúsculas
+	section=TITLE,		% títulos de seções convertidos em letras maiúsculas
+	subsection=TITLE,	% títulos de subseções convertidos em letras maiúsculas
+	subsubsection=TITLE,% títulos de subsubseções convertidos em letras maiúsculas
+	% -- opções do pacote babel --
+	english,			% idioma adicional para hifenização
+	french,				% idioma adicional para hifenização
+	spanish,			% idioma adicional para hifenização
+	brazil,				% o último idioma é o principal do documento
+	]{abntex2}
+% ---------------------------------
+% PACOTES
+% ---------------------------------
+\renewcommand{\thesection}{\arabic{section}}
+\usepackage{lmodern}			% Usa a fonte Latin Modern
+\usepackage[T1]{fontenc}		% Selecao de codigos de fonte.
+\usepackage[utf8]{inputenc}		% Codificacao do documento (conversão automática dos acentos)
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{color}				% Controle das cores
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{microtype} 			% para melhorias de justificação
+\usepackage{multirow}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage[table]{xcolor}
+\usepackage{multirow}           % Merge rows and columns in tables
+\usepackage{longtable}          % Large tables
+\usepackage{fancyvrb}           % Codes and Outputs commands
+\usepackage{listings}           % Codes and Outputs commands
+\usepackage{pdflscape}
+\usepackage{float}
+\usepackage{subfig}             % Subfigures
+\usepackage{latexsym}           % Extra symbols of Latex
+\usepackage{booktabs}
+\usepackage{enumerate}
+\usepackage{acronym}
+\usepackage[portuguese, ruled, linesnumbered]{algorithm2e}
+\usepackage[noend]{algpseudocode}
+\usepackage{url}
+\let\realurl\url
+\renewcommand{\url}[1]{\realurl{#1}\wlog{URLX #1}}
+\usepackage{lipsum}				% To generate dummy text
+% ---------------------------------
+% Pacotes de citações
+% ---------------------------------
+\usepackage[brazilian,hyperpageref]{backref}% Paginas com as citações na bibl
+\usepackage[alf,bibjustif]{abntex2cite}	% Citações padrão ABNT
+% ---------------------------------
+% Configurações do pacote backref
+% Usado sem a opção hyperpageref de backref
+\renewcommand{\backrefpagesname}{Citado na(s) página(s):~}
+% Texto padrão antes do número das páginas
+\renewcommand{\backref}{}
+% Define os textos da citação
+\renewcommand*{\backrefalt}[4]{
+	\ifcase #1 %
+		Nenhuma citação no texto.%
+	\or
+		Citado na página #2.%
+	\else
+		Citado #1 vezes nas páginas #2.%
+	\fi}%
+% ---------------------------------
+% Configurações de aparência do PDF final
+% ---------------------------------
+% alterando o aspecto da cor azul
+\definecolor{blue}{RGB}{41,5,195}
+% informações do PDF
+\makeatletter
+\hypersetup{
+     	%pagebackref=true,
+		pdftitle={\@title},
+		pdfauthor={\@author},
+    	pdfsubject={\imprimirpreambulo},
+	    pdfcreator={LaTeX with abnTeX2},
+		pdfkeywords={abnt}{latex}{abntex}{abntex2}{projeto de pesquisa},
+		colorlinks=true,       		% false: boxed links; true: colored links
+    	linkcolor=blue,          	% color of internal links
+    	citecolor=blue,        		% color of links to bibliography
+    	filecolor=magenta,      		% color of file links
+		urlcolor=blue,
+		bookmarksdepth=4
+}
+\makeatother
+% ---------------------------------
+% Espaçamentos entre linhas e parágrafos
+% ---------------------------------
+% O tamanho do parágrafo é dado por:
+\setlength{\parindent}{1.3cm}
+% Controle do espaçamento entre um parágrafo e outro:
+\setlength{\parskip}{0.2cm}  % tente também \onelineskip
+% ---------------------------------
+%	SEÇÃO DE TÍTULO
+% ---------------------------------
+\newcommand{\horrule}[1]{\rule{\linewidth}{#1}}
+\title{
+\normalfont \normalsize
+\textsc{Instituto Federal do Norte de Minas Gerais - Campus Salinas\\
+        Bacharelado em Sistemas de Informação\\
+        }
+\horrule{2pt} \\[0.4cm]
+\huge
+        Sistema Web para Agendamento de Espaços Físicos no IFNMG -- Salinas \\
+\horrule{2pt} \\[25pt]
+}
+\author{Aluno: Murilo Santos Gonçalves \\
+[3mm]Orientador: Arthur Farias Porto\\
+[3mm]Coorientadora: Jessica Gloria\\
+}
+\date{\normalsize\today}
+% ---------------------------------
+% Início do documento
+% ---------------------------------
+\begin{document}
+% Seleciona o idioma do documento (conforme pacotes do babel)
+\selectlanguage{brazil}
+% Retira espaço extra obsoleto entre as frases.
+\frenchspacing
+% Imprimi a seção de títulos
+\maketitle
+%---------------------------------
+% SEÇÃO DE INTRODUÇÃO
+%---------------------------------
+\section{Introdução}
+\label{Introducao}
+A organização dos espaços físicos num campus universitário pode aparentar simplicidade, mas revela-se complexa na prática. Quando laboratórios e salas especiais são compartilhados por vários docentes sem um sistema de agendamento adequado, surgem conflitos de horário e a tarefa de controlar quem usa o quê e quando recai sobre servidores que já têm outras atribuições.
+No IFNMG -- Campus Salinas, esse problema tem contorno específico. O sistema utilizado para agendamentos exigia que todos os horários já ocupados fossem cadastrados manualmente antes de qualquer reserva, um processo que precisava ser refeito a cada troca de semestre, uma vez que as atividades dos espaços variam significativamente ao longo do período letivo. Além do retrabalho contínuo, os docentes não tinham autonomia para consultar disponibilidade ou solicitar reservas sem intermediação, e não havia registro consolidado sobre como os laboratórios eram utilizados. O controle, assim, permanece descentralizado e dependente de um cadastro manual sala por sala, refeito a cada início de semestre, sem que a instituição disponha de um mapa consolidado da utilização dos ambientes do campus que permita acompanhar a ocupação dos espaços ao longo do tempo.
+\citeonline{cruz2023gestao}, em estudo realizado no IFNMG Campus Almenara, identificaram que ``não existe um planejamento oficial permanente nesses espaços, a gestão do uso ocorre apenas através da reserva de espaço com antecedência'', e que não foram identificados métodos de gestão do desempenho dos laboratórios nem formas de medir a utilização eficiente desses espaços.
+Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. A proposta visa permitir que docentes consultem a disponibilidade e realizem solicitações de reserva de forma autônoma, enquanto o servidor responsável pelos agendamentos acessa ferramentas de aprovação, recebe notificações por e-mail e gera relatórios sobre o uso dos espaços.
+A pesquisa é de natureza aplicada, pois resulta em um produto para um problema identificado num contexto real. É descritiva quanto aos objetivos, e os procedimentos incluem pesquisa bibliográfica, estudo de caso e prototipagem do sistema. Espera-se que o sistema contribua para a otimização do uso dos espaços físicos, a redução de conflitos de agendamento e a melhoria na gestão institucional do campus.
+%---------------------------------
+% SEÇÃO DE OBJETIVOS
+%---------------------------------
+\subsection{Objetivo Geral}
+\label{sec:objetivoGeral}
+Desenvolver um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. O sistema deve substituir o processo manual de agendamento por uma solução digital que importe as planilhas de horários institucionais já existentes, mecanismo pelo qual ocorre a integração com o sistema de horários adotado pelo campus, conduzido pelo administrador e passível de ser reexecutado a qualquer momento do semestre para refletir alterações de ensalamento, sem que o sistema mantenha consulta contínua em tempo real a sistemas externos. A partir dessa importação, o sistema deverá identificar automaticamente os espaços disponíveis e permitir aos docentes solicitar reservas de forma autônoma. Ao servidor responsável pela gestão dos agendamentos, o sistema disponibilizará ferramentas de aprovação de solicitações, notificação automática por e-mail e geração de relatórios sobre a utilização dos espaços.
+\subsection{Objetivos Específicos}
+\label{sec:objetivosEspecificos}
+Os objetivos específicos a seguir compõem as etapas que, em conjunto, viabilizam o alcance do objetivo geral.
+\begin{itemize}
+    \item Diagnosticar o problema de gestão de espaços físicos no IFNMG -- Campus Salinas, por meio do levantamento do processo atual de agendamento e da identificação das necessidades dos perfis de usuários envolvidos;
+    \item Especificar os requisitos funcionais e não funcionais do sistema, contemplando os módulos de gestão de usuários e acesso, gerenciamento de espaços físicos com importação de planilhas de horários institucionais, agendamento e reservas, notificações automáticas e geração de relatórios de uso;
+    \item Modelar a arquitetura e os processos do sistema por meio de diagramas UML --- abrangendo casos de uso, classes e sequência ---, de modo a representar a estrutura e o comportamento da solução ao longo das etapas de especificação e de implementação do trabalho;
+    \item Planejar a implementação do sistema web, definindo as tecnologias e a arquitetura técnica a serem adotadas, com base nos requisitos especificados.
+\end{itemize}
+\subsection{Estrutura do Trabalho}
+Este trabalho está estruturado da seguinte forma: no Capítulo 2 é apresentada a revisão bibliográfica, que abrange o contexto institucional, a fundamentação tecnológica e os trabalhos relacionados; no Capítulo 3, a metodologia utilizada na condução da pesquisa; no Capítulo 4, o cronograma de execução das etapas previstas; e, por fim, as referências bibliográficas consultadas.
+%---------------------------------
+% SEÇÃO DE REVISÃO
+%---------------------------------
+\section{Revisão Bibliográfica}
+\label{sec:revbib}
+
+Este capítulo apresenta o referencial teórico que embasa o problema e a solução propostos. A primeira parte situa o leitor no contexto institucional em que o problema ocorre: o IFNMG -- Campus Salinas, a forma como instituições de ensino lidam com a gestão de espaços físicos e o processo de agendamento atualmente em uso no campus. A segunda parte reúne os conceitos técnicos que fundamentam o desenvolvimento do sistema web proposto, cobrindo engenharia de software, modelagem com UML, banco de dados, controle de acesso, arquitetura web e usabilidade. A terceira parte apresenta os trabalhos relacionados, descrevendo iniciativas semelhantes já documentadas na literatura e identificando em que pontos o presente trabalho se distingue delas.
+
+%-----------------------------------
+\subsection{Contexto Institucional}
+\label{sec:contexto}
+
+Esta seção descreve o IFNMG -- Campus Salinas e o funcionamento dos seus espaços físicos, apresenta o que a literatura registra sobre gestão de espaços em ambientes acadêmicos e descreve o processo de agendamento vigente no campus.
+
+%-----------------------------------
+\subsubsection{O IFNMG e o Campus Salinas}
+\label{sec:ifnmg}
+
+O Instituto Federal de Educação, Ciência e Tecnologia do Norte de Minas Gerais (IFNMG) é uma autarquia federal criada pela Lei n.º 11.892, de 29 de dezembro de 2008, que reorganizou a Rede Federal de Educação Profissional, Científica e Tecnológica no Brasil. Conforme seu Plano de Desenvolvimento Institucional, o IFNMG tem por missão promover educação profissional, científica e tecnológica por meio do ensino, da pesquisa e da extensão, com vistas à formação humana integral e ao desenvolvimento regional \cite{ifnmg2024pdi}.
+
+O Campus Salinas integra a rede do IFNMG e oferta cursos em diferentes níveis e modalidades, entre eles o Bacharelado em Sistemas de Informação, no âmbito do qual este trabalho está inserido. Para o funcionamento dessas atividades acadêmicas, o campus dispõe de laboratórios de informática e outras salas especiais cujo uso é compartilhado por diferentes turmas e docentes ao longo do período letivo, o que exige mecanismos de organização e controle sobre a ocupação desses espaços.
+
+A natureza dos institutos federais agrava esse desafio. Ao contrário de instituições que ofertam um único tipo de curso, os IFs atendem simultaneamente a turmas de educação técnica integrada ao ensino médio, cursos técnicos subsequentes e cursos de nível superior, todos com horários distintos e, em muitos casos, disputando os mesmos laboratórios. Um laboratório de informática, por exemplo, pode ser utilizado em horários diferentes para aulas de disciplinas técnicas, para disciplinas do bacharelado e para atividades de extensão, o que torna a gestão manual da disponibilidade um trabalho de complexidade operacional \cite{ifnmg2024pdi}.
+
+%-----------------------------------
+\subsubsection{A Gestão de Espaços em Instituições de Ensino}
+\label{sec:gestao}
+
+A gestão dos espaços físicos em instituições de ensino inclui o planejamento do uso, o controle de disponibilidade, o registro de ocupações e o acompanhamento de como os recursos são efetivamente utilizados. Quando esses mecanismos não existem ou são precários, o resultado é a subutilização dos espaços e a dificuldade de responder a demandas concretas dos usuários.
+
+\citeonline{cruz2023gestao}, em pesquisa realizada no IFNMG Campus Almenara, investigaram a gestão de laboratórios educacionais e identificaram que ``não existe um planejamento oficial permanente nesses espaços, a gestão do uso ocorre apenas através da reserva de espaço com antecedência''. Os autores também constataram que não foram identificados métodos de gestão do desempenho dos laboratórios nem formas de medir a utilização eficiente desses espaços, o que evidencia que a ausência de ferramentas adequadas de gestão não é uma particularidade de um único campus.
+
+Problema semelhante foi documentado por \citeonline{nascimento2020reservas} na Universidade Estadual do Piauí, Campus Parnaíba, onde as reservas de recursos físicos eram registradas manualmente pelos servidores por meio de uma agenda digital. A demanda tornava o processo oneroso para a equipe administrativa, o que motivou o desenvolvimento de um sistema web para controlar as solicitações. Os resultados do trabalho apontaram satisfação positiva dos usuários com a solução desenvolvida. Esse resultado demonstra que sistemas digitais de reserva são viáveis e bem recebidos em ambientes acadêmicos.
+
+O que os dois trabalhos revelam, em conjunto, é que a ausência de sistemas adequados para gestão de espaços em instituições de ensino não é um problema isolado. Trata-se de uma lacuna recorrente em campi públicos brasileiros, onde o processo manual se sustenta pela força de hábito e pela ausência de alternativas, mas produz retrabalho, limita a autonomia dos usuários e não gera dados que possam subsidiar o planejamento institucional.
+
+%-----------------------------------
+\subsubsection{O Processo de Agendamento no Campus Salinas}
+\label{sec:processo}
+
+No IFNMG -- Campus Salinas, o processo de agendamento de espaços físicos apresenta limitações que motivam a proposta deste trabalho. Conforme relatado por \citeonline{gloria2025entrevista}, o sistema em uso exige que todos os horários já ocupados sejam cadastrados manualmente antes de qualquer reserva poder ser realizada, e esse cadastro precisa ser refeito a cada troca de semestre, uma vez que as atividades variam significativamente ao longo do período letivo.
+
+Além do retrabalho periódico, os docentes não têm acesso direto às informações de disponibilidade nem autonomia para solicitar reservas sem passar por um servidor responsável. Não há, tampouco, registro consolidado sobre a frequência e os padrões de uso dos laboratórios, limitando a capacidade de planejamento da equipe administrativa \cite{gloria2025entrevista}. Esse conjunto de restrições é o problema que o sistema proposto busca resolver.
+
+A integração com o sistema de horários adotado pelo campus é o ponto de partida dessa solução. Em vez de exigir o cadastro manual sala por sala, o sistema importa as planilhas institucionais de horários já produzidas pelo setor responsável pela elaboração da grade, lê os dados e identifica automaticamente os horários ocupados pelas aulas regulares, marcando-os como indisponíveis para reserva. Esse mecanismo é o que torna viável, do ponto de vista operacional, substituir o processo atual: o gargalo deixa de ser o cadastro repetido a cada semestre e passa a ser uma operação de importação realizada pelo administrador.
+
+Como o ensalamento pode sofrer alterações ao longo do semestre, entre remanejamentos de turmas, substituições de docentes, atividades extraordinárias e ajustes pontuais na grade, o sistema precisa lidar com a manutenção contínua da ocupação institucional. Para isso, o administrador poderá reimportar a planilha atualizada ou editar pontualmente os horários ocupados a partir da semana em que a alteração passa a valer, mantendo a base de disponibilidade consistente até o fim do período letivo. Cabe deixar explícito, contudo, que o sistema não consulta sistemas externos em tempo real: a atualização da ocupação institucional ocorre mediante ação administrativa, por importação ou edição, conduzida pelo responsável, preservando a autonomia da aplicação em relação à infraestrutura de horários do campus e evitando dependência de integrações automáticas com sistemas de terceiros.
+
+Do ponto de vista da gestão, a ausência de dados históricos sobre o uso dos laboratórios impede a tomada de decisões com base em evidências. Sem saber quais espaços são mais demandados, em quais turnos, e quais ficam ociosos com frequência, a administração do campus não tem como planejar a alocação de recursos nem identificar gargalos na oferta de espaços. A questão extrapola, portanto, a simples reserva de ambientes: falta à instituição um mapa consolidado da utilização dos espaços do campus, capaz de tornar visível a ocupação real ao longo do semestre e de subsidiar decisões de planejamento que hoje são tomadas sem respaldo em dados. O processo atual concentra toda a responsabilidade de controle em um único ponto, o servidor que gerencia os agendamentos, situação que representa um risco operacional quando esse servidor está ausente ou sobrecarregado.
+
+\citeonline{gloria2025entrevista} identificou ainda duas necessidades que o processo atual não atende. A primeira é a comunicação automática: no momento em que uma reserva é solicitada, o responsável pelo espaço precisa ser notificado de imediato, sem depender de contato manual. A segunda é a transparência sobre o que está agendado: docentes e demais membros da comunidade acadêmica precisam poder consultar os agendamentos de forma autônoma, sem precisar acionar a equipe administrativa. Essas duas necessidades orientam diretamente a especificação dos requisitos do sistema, em especial o módulo de notificações por e-mail e o perfil de Visualizador, que permite acesso público de consulta sem permissões de edição.
+
+%-----------------------------------
+\subsection{Fundamentação Tecnológica}
+\label{sec:fundtec}
+
+Esta seção apresenta os conceitos técnicos que embasam o desenvolvimento do sistema proposto, organizados da especificação e modelagem do software até os aspectos de interface com o usuário, com passagem por banco de dados, controle de acesso e arquitetura web.
+
+%-----------------------------------
+\subsubsection{Engenharia de Software}
+\label{sec:engsw}
+
+\citeonline{sommerville2018} define software como programas de computador e documentação associada, que pode ser desenvolvido para um cliente específico ou para o mercado em geral. A engenharia de software é a disciplina que se ocupa de todos os aspectos da produção de software, desde a especificação inicial do sistema até as necessidades de manutenção após a sua implantação.
+
+Um conceito central dessa disciplina é a especificação de requisitos. \citeonline{sommerville2018} distingue os requisitos funcionais dos não funcionais: os primeiros descrevem as funções que o sistema deve executar e como deve se comportar em situações específicas; os segundos estabelecem restrições ao sistema, como desempenho, segurança e disponibilidade. Para o sistema proposto neste trabalho, a especificação dos dois tipos de requisitos é um dos objetivos do TCC 1 e ponto de partida para a modelagem e o planejamento da implementação.
+
+\citeonline{pressman2016} acrescentam que o processo de desenvolvimento de software envolve um conjunto estruturado de atividades, independente do domínio da aplicação. O levantamento e a análise de requisitos ocupam posição anterior à solução de qualquer problema técnico, pois é por meio deles que a equipe de desenvolvimento compreende o que o sistema precisa fazer antes de decidir como fazê-lo.
+
+\citeonline{sommerville2018} também descreve atributos que um sistema de software profissional precisa apresentar para ser considerado de boa qualidade: manutenibilidade, ou seja, a capacidade de evoluir para atender a necessidades futuras; confiabilidade e segurança, que inclui comportamento correto e proteção contra falhas e acessos indevidos; eficiência, que diz respeito ao uso criterioso dos recursos de hardware; e aceitabilidade, que significa ser compreensível e compatível com o que os usuários esperam. No contexto deste trabalho, todos esses atributos são relevantes: o sistema precisa ser seguro para proteger os dados de agendamento, eficiente para responder rapidamente às consultas de disponibilidade, fácil de entender para os docentes e projetado de forma que possa ser mantido e evoluído ao longo do tempo.
+
+%-----------------------------------
+\subsubsection{Modelagem de Sistemas com UML}
+\label{sec:uml}
+
+A \textit{Unified Modeling Language} (UML) é uma linguagem de modelagem padronizada para especificar, visualizar e documentar sistemas de software orientados a objetos \cite{bezerra2007}. \citeonline{bezerra2007} esclarece que a UML não é uma metodologia de desenvolvimento, mas uma notação que pode ser adotada em conjunto com diferentes processos. Ela oferece um conjunto de diagramas que representam aspectos distintos do sistema, como a sua estrutura estática e o seu comportamento dinâmico.
+
+Três desses diagramas têm relação direta com os objetivos deste trabalho. O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista de quem interage com ele, identificando os atores envolvidos e as ações que cada um pode realizar. O diagrama de classes representa as entidades do domínio, seus atributos e os relacionamentos entre elas. O diagrama de sequência mostra a troca de mensagens entre objetos ao longo do tempo para a realização de um processo \cite{larman2007}.
+
+No contexto do sistema proposto, cada um desses diagramas cumpre um papel específico. O diagrama de casos de uso representará os três atores do sistema (Administrador, Docente e Visualizador) e as funcionalidades que cada um pode acessar, como consultar disponibilidade, solicitar reserva ou aprovar solicitações. O diagrama de classes modelará as entidades principais, como \textit{EspaçoFísico}, \textit{Reserva}, \textit{Usuário} e \textit{Horário}, e os relacionamentos entre elas. O diagrama de sequência ilustrará o fluxo de interações em operações como a solicitação e a aprovação de uma reserva, permitindo visualizar a lógica de funcionamento antes da implementação.
+
+\citeonline{larman2007} destaca que a modelagem com UML permite registrar e comunicar decisões de projeto de forma visual antes de qualquer implementação, o que facilita o alinhamento entre desenvolvedores e demais partes envolvidas.
+%-----------------------------------
+\subsubsection{Banco de Dados Relacional}
+\label{sec:bd}
+
+Um banco de dados é uma coleção organizada de dados inter-relacionados, gerenciada por um sistema que permite armazená-los, recuperá-los e manipulá-los com eficiência \cite{heuser2009}. \citeonline{heuser2009} apresenta o modelo entidade-relacionamento como a principal ferramenta para o projeto conceitual de bancos de dados, por permitir representar as entidades do domínio e os vínculos entre elas antes de definir como os dados serão fisicamente armazenados.
+
+O modelo relacional organiza os dados em tabelas formadas por linhas e colunas, onde cada tabela representa uma entidade e cada linha, um registro dessa entidade. A integridade dos dados é assegurada por restrições como chaves primárias e estrangeiras, que garantem a unicidade dos registros e os vínculos entre tabelas \cite{silberschatz2012}. \citeonline{heuser2009} também descreve o processo de normalização, pelo qual o esquema relacional é reorganizado para eliminar redundâncias e anomalias de atualização. Um banco de dados normalizado garante que cada informação seja armazenada em um único lugar, reduzindo o risco de inconsistências quando os dados precisam ser modificados.
+
+\citeonline{silberschatz2012} definem um sistema gerenciador de banco de dados (SGBD) como um conjunto de programas que permite criar, manter e acessar um banco de dados. Os autores também descrevem a linguagem SQL (\textit{Structured Query Language}) como o padrão para definir esquemas, inserir dados e realizar consultas em bancos de dados relacionais. A SQL combina uma linguagem de definição de dados, para criar e alterar tabelas e restrições, com uma linguagem de manipulação de dados, para inserir, atualizar, remover e consultar registros. Para o sistema proposto, o uso de um SGBD relacional é adequado porque os dados a serem gerenciados (espaços físicos, horários, usuários, solicitações de reserva) têm estrutura bem definida e mantêm entre si relacionamentos que o modelo relacional representa com precisão.
+
+%-----------------------------------
+\subsubsection{Controle de Acesso Baseado em Papéis}
+\label{sec:rbac}
+
+O controle de acesso define quais usuários têm permissão para executar quais operações em um sistema. Entre os modelos existentes, o \textit{Role-Based Access Control} (RBAC) proposto por \citeonline{sandhu1996rbac} é amplamente adotado em sistemas de informação institucionais.
+
+No modelo RBAC, os direitos de acesso são associados a papéis, e os usuários adquirem esses direitos ao serem atribuídos a um ou mais papéis. \citeonline{sandhu1996rbac} descrevem que essa abordagem simplifica a administração, pois as permissões são definidas no nível do papel e não para cada usuário individualmente. Quando as responsabilidades de um usuário mudam, basta alterar a sua atribuição de papéis, sem necessidade de revisar cada permissão específica.
+
+\citeonline{sandhu1996rbac} definem quatro modelos de referência que compõem a família RBAC. O RBAC0, o modelo base, define os elementos fundamentais: usuários, papéis, permissões e sessões, onde uma sessão corresponde a um período de atividade de um usuário dentro de um subconjunto dos seus papéis. O RBAC1 estende o modelo base com hierarquias de papéis, permitindo que papéis mais abrangentes herdem as permissões de papéis subordinados. O RBAC2 acrescenta restrições ao RBAC0, incluindo o conceito de separação de obrigações, pelo qual um usuário não pode acumular simultaneamente papéis conflitantes. O RBAC3 combina hierarquias e restrições, reunindo as características dos modelos anteriores. Para os fins deste trabalho, o modelo base (RBAC0) com a definição de três papéis sem hierarquia entre eles é suficiente para atender aos requisitos de controle de acesso identificados.
+
+O sistema proposto neste trabalho adota esse modelo com dois papéis autenticados: Administrador, responsável pela gestão geral do sistema e dos usuários; e Docente, que pode consultar disponibilidade e solicitar reservas. A consulta pública de disponibilidade é acessível sem autenticação, por meio de uma rota aberta, exibindo apenas os horários livres e ocupados sem expor dados pessoais de docentes ou detalhes de reservas individuais. Essa definição orienta diretamente a especificação dos requisitos funcionais e a modelagem do sistema.
+
+%-----------------------------------
+\subsubsection{Desenvolvimento Web e Arquitetura de Software}
+\label{sec:web}
+
+Um sistema web é uma aplicação de software acessada por meio de um navegador, que utiliza a infraestrutura da internet para a comunicação entre clientes e servidores. \citeonline{tanenbaum2011} descrevem a \textit{World Wide Web} como um sistema de documentos interconectados distribuídos pela internet, baseado no protocolo HTTP para a troca de informações. Esse modelo de comunicação é a base sobre a qual sistemas web são construídos.
+
+Do ponto de vista arquitetural, \citeonline{laudon2014} descrevem que sistemas de informação baseados na web se organizam tipicamente em três camadas: a de apresentação, responsável pela interface com o usuário no navegador; a de aplicação, onde ficam as regras de negócio; e a de dados, onde as informações são armazenadas. Essa separação em camadas facilita a manutenção e permite que cada parte do sistema seja modificada sem afetar diretamente as demais.
+
+\citeonline{tanenbaum2011} descrevem o protocolo HTTP como uma especificação sem estado (\textit{stateless}), o que significa que cada requisição do cliente ao servidor é tratada de forma independente, sem que o servidor retenha informações sobre interações anteriores. Essa característica simplifica a arquitetura dos servidores web, mas exige que o estado da aplicação, como a sessão do usuário autenticado, seja gerenciado explicitamente pela camada de aplicação, por meio de mecanismos como \textit{tokens} de autenticação.
+
+\citeonline{laudon2014} também apontam que sistemas web têm a vantagem de não exigir instalação de software no dispositivo do usuário: basta um navegador com acesso à internet para que o sistema esteja disponível. Isso reduz os custos de implantação, elimina problemas de compatibilidade entre sistemas operacionais e centraliza a manutenção no servidor, onde atualizações passam a valer imediatamente para todos os usuários. No caso do sistema proposto, essa característica é relevante porque os docentes do campus utilizam dispositivos variados e não dependem de nenhuma configuração específica para acessar a plataforma de reservas.
+
+Para o sistema proposto, a arquitetura em três camadas é adequada porque isola a interface utilizada pelos docentes da lógica que controla as reservas e da base de dados onde os registros são mantidos. Na prática, essa separação é implementada por meio de um \textit{framework} web, que fornece a estrutura de código e os mecanismos de comunicação entre as camadas, reduzindo o trabalho de infraestrutura e permitindo que o desenvolvimento se concentre nas regras de negócio da aplicação. O padrão arquitetural adotado pelo \textit{framework} escolhido para este sistema é detalhado na seção a seguir.
+
+%-----------------------------------
+\subsubsection{Padrões Arquiteturais para Aplicações Web: MVC e MTV}
+\label{sec:mvc_mtv}
+
+O padrão \textit{Model-View-Controller} (MVC) é uma abordagem arquitetural consolidada para organizar o código de aplicações interativas em três componentes com responsabilidades bem delimitadas. O \textit{Model} gerencia os dados e as regras de negócio da aplicação. A \textit{View} é responsável pela apresentação das informações ao usuário. O \textit{Controller} recebe as ações do usuário, processa as entradas e coordena a interação entre \textit{Model} e \textit{View} \cite{djangodocs}. Essa separação permite que cada componente seja desenvolvido e testado de forma independente.
+
+O \textit{framework} Django adota uma variação desse padrão denominada MTV (\textit{Model-Template-View}), que redistribui as responsabilidades de forma distinta. O \textit{Model} cumpre a mesma função do MVC: representa as entidades de dados e encapsula as regras de negócio associadas ao banco de dados. O \textit{Template} substitui a \textit{View} do MVC e se ocupa exclusivamente da renderização da interface, gerando o HTML entregue ao navegador. A \textit{View} do MTV, por sua vez, assume o papel que no MVC pertenceria ao \textit{Controller}: ela recebe a requisição HTTP, aciona os \textit{Models} necessários e seleciona o \textit{Template} adequado para compor a resposta \cite{treinaweb2023mtv}.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Arquitetura MTV do Django}
+    \includegraphics[width=0.85\textwidth]{Figuras/mvt-django.png}
+    \caption*{Fonte: \cite{treinaweb2023mtv}}
+    \label{fig:mtv}
+\end{figure}
+
+A diferença mais relevante entre os dois padrões está na forma como o roteamento de requisições é gerenciado. No MVC clássico, o \textit{Controller} é o ponto de entrada das requisições do cliente. No MTV do Django, esse papel é desempenhado pelo próprio mecanismo de roteamento de URLs do \textit{framework}, que mapeia cada endereço recebido para a \textit{View} correspondente por meio do arquivo \texttt{urls.py}, antes mesmo de qualquer lógica da aplicação ser acionada \cite{djangodocs}.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Comparação entre as arquiteturas MVC e MTV}
+    \includegraphics[width=0.85\textwidth]{Figuras/mvcVSmvt.png}
+    \caption*{Fonte: \cite{djangodocs}}
+    \label{fig:mvc-vs-mtv}
+\end{figure}
+
+O fluxo de uma requisição no Django percorre essas camadas de forma sequencial: o cliente envia uma requisição HTTP, o roteador de URLs identifica a \textit{View} responsável, a \textit{View} acessa os \textit{Models} para obter ou persistir dados e, em seguida, seleciona o \textit{Template} adequado para gerar a resposta enviada de volta ao cliente \cite{silva2023mtv}.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Fluxo de requisição na arquitetura MTV do Django}
+    \includegraphics[width=0.85\textwidth]{Figuras/arquitetura.png}
+    \caption*{Fonte: \cite{silva2023mtv}}
+    \label{fig:fluxo-mtv}
+\end{figure}
+
+Essa organização em camadas sustenta a escolha do Django como \textit{framework} para o sistema proposto. A separação clara entre dados (\textit{Model}), lógica de controle (\textit{View}) e apresentação (\textit{Template}) permite que cada parte do sistema seja mantida e evoluída de forma independente, o que é especialmente relevante em um projeto de TCC cujo desenvolvimento continuará no semestre seguinte.
+
+%-----------------------------------
+\subsubsection{Usabilidade e Interface do Usuário}
+\label{sec:usab}
+
+Usabilidade é a medida em que um produto pode ser usado por pessoas específicas para atingir objetivos específicos com eficácia, eficiência e satisfação num determinado contexto \cite{nielsen1993}. \citeonline{nielsen1993} descreve cinco atributos que compõem a usabilidade de um sistema: facilidade de aprendizado, eficiência de uso, facilidade de memorização, baixa taxa de erros e satisfação subjetiva do usuário. Um sistema com boa usabilidade permite que o usuário realize suas tarefas sem depender de treinamento extensivo nem de suporte constante.
+
+Para orientar o projeto de interfaces, \citeonline{nielsen1994} propôs dez heurísticas de usabilidade que se tornaram referência na área: (1) visibilidade do estado do sistema, mantendo o usuário informado sobre o que está acontecendo; (2) correspondência entre o sistema e o mundo real, usando linguagem e convenções familiares ao usuário; (3) controle e liberdade do usuário, permitindo desfazer ações e sair de estados indesejados; (4) consistência e padrões, seguindo convenções da plataforma para que o usuário não precise aprender novos significados; (5) prevenção de erros, projetando para evitar que erros ocorram; (6) reconhecimento em vez de memorização, tornando objetos e opções visíveis para reduzir a carga de memória do usuário; (7) flexibilidade e eficiência de uso, permitindo que usuários experientes realizem tarefas mais rapidamente; (8) estética e design minimalista, evitando informações irrelevantes que competem com o conteúdo principal; (9) ajuda para reconhecer, diagnosticar e recuperar erros, exibindo mensagens claras sobre o que deu errado e como corrigir; e (10) ajuda e documentação, oferecendo suporte quando necessário, de forma fácil de buscar e orientada à tarefa.
+
+Algumas dessas heurísticas têm peso particular no sistema proposto. A visibilidade do estado do sistema é importante porque o docente precisa saber, a qualquer momento, se a sua solicitação de reserva está pendente, aprovada ou rejeitada. A correspondência com o mundo real orienta o uso de termos como ``laboratório'', ``reserva'' e ``disponível'' em vez de jargões técnicos. A prevenção de erros, por sua vez, inclui mecanismos como a verificação automática de conflitos de horário antes de permitir a solicitação.
+
+No contexto deste trabalho, usabilidade é relevante porque o sistema será utilizado por docentes com familiaridade tecnológica variada. Um sistema que exija treinamento extensivo ou que gere dúvidas frequentes tende a ser abandonado, o que comprometeria o próprio objetivo de substituir o processo manual de agendamento.
+%-----------------------------------
+\subsubsection{Testes de Software}
+\label{sec:testes}
+
+Testes de software são atividades planejadas com o objetivo de verificar se um sistema se comporta conforme o esperado e identificar defeitos antes que o produto chegue ao usuário final. \citeonline{sommerville2018} define teste como um processo de validação e verificação que busca demonstrar que o software atende aos seus requisitos e identificar situações em que ele se comporta de forma incorreta ou inesperada. \citeonline{pressman2016} complementam essa perspectiva ao afirmar que testar é executar um programa com a intenção explícita de encontrar erros, distinguindo o processo de testes de outras atividades de garantia de qualidade por seu caráter sistematicamente verificativo: um teste bem-sucedido é aquele que revela um defeito até então desconhecido.
+
+Os testes unitários são a forma mais elementar de teste de software e têm como foco verificar o comportamento de unidades individuais de código de forma isolada, antes de integrá-las ao restante do sistema. \citeonline{myers2011} definem teste unitário como o processo de testar subprogramas, funções ou métodos de maneira independente, de modo que, quando uma unidade falha, a localização do defeito seja imediata, sem a necessidade de investigar interações entre múltiplos componentes. \citeonline{pressman2016} acrescentam que os testes unitários devem cobrir as estruturas de controle internas de cada componente, as condições de contorno, os caminhos independentes de execução e o tratamento de erros.
+
+No contexto de sistemas web com regras de negócio definidas, os testes unitários têm papel direto na validação da lógica da aplicação. Regras como a verificação de conflito de horário antes de confirmar uma reserva, a validação de permissões por perfil de usuário ou o processamento de dados importados de planilhas institucionais são comportamentos que podem ser verificados de forma isolada, independentemente da interface ou do banco de dados. \citeonline{sommerville2018} observa que os testes unitários são especialmente eficazes para validar componentes que implementam regras de negócio, pois permitem verificar cada condição individualmente e com precisão. À medida que as unidades validadas são combinadas, os testes de integração verificam se os componentes interagem corretamente entre si \cite{pressman2016}.
+
+%-----------------------------------
+\subsection{Trabalhos Relacionados}
+\label{sec:trabrel}
+
+Esta seção apresenta trabalhos que trataram de problemas semelhantes ao abordado nesta pesquisa, seja pelo diagnóstico da gestão de espaços em instituições federais de ensino, seja pelo desenvolvimento de sistemas de reserva em ambientes acadêmicos. A análise desses trabalhos permite situar a presente proposta em relação ao que já foi produzido e identificar os aspectos que a diferenciam.
+
+%-----------------------------------
+\subsubsection{Gestão de Laboratórios no IFNMG Campus Almenara}
+\label{sec:relcaio1}
+
+\citeonline{cruz2023gestao} conduziram uma pesquisa de campo no IFNMG Campus Almenara com o objetivo de analisar a utilização dos espaços e equipamentos dos laboratórios educacionais daquela unidade. O estudo adotou abordagem qualitativa e quantitativa, com coleta de dados por meio de questionários aplicados a servidores e docentes do campus. Os resultados revelaram que a gestão dos laboratórios ocorre de forma informal, baseada exclusivamente em reservas pontuais feitas com antecedência, sem planejamento oficial permanente e sem qualquer mecanismo para medir o desempenho ou a eficiência no uso desses espaços.
+
+O trabalho de \citeonline{cruz2023gestao} contribui para a presente pesquisa ao documentar, em um campus do próprio IFNMG, a mesma ausência de ferramentas de gestão identificada no Campus Salinas. A semelhança entre os dois contextos reforça que o problema não é localizado e que a carência de soluções tecnológicas adequadas é uma realidade institucional mais ampla. No entanto, o trabalho desses autores se limita ao diagnóstico: não propõe nem desenvolve qualquer solução de software para o problema identificado. O presente trabalho avança nessa direção ao propor um sistema que automatiza o controle de disponibilidade e registra o histórico de uso dos espaços.
+
+%-----------------------------------
+\subsubsection{Sistema Web de Reservas na UESPI -- Parnaíba}
+\label{sec:relcaio2}
+
+\citeonline{nascimento2020reservas} desenvolveram um sistema web para controlar pedidos de reservas de recursos físicos na Universidade Estadual do Piauí, Campus Parnaíba. O contexto era semelhante ao do presente trabalho: as reservas de espaços e equipamentos eram registradas manualmente por servidores em uma agenda digital, e a demanda tornava o processo oneroso e sujeito a falhas. A solução desenvolvida pelos autores automatizou o controle das solicitações, disponibilizou a interface para os usuários da instituição e obteve avaliação positiva quanto à satisfação dos usuários com o sistema.
+
+O trabalho de \citeonline{nascimento2020reservas} demonstra que o desenvolvimento de sistemas web de reserva em instituições de ensino é viável e resulta em ganhos concretos para a gestão. A presente proposta compartilha o mesmo problema central, mas apresenta características que a diferenciam. A principal delas é a importação de planilhas de horários institucionais já existentes: em vez de exigir que todos os horários ocupados sejam cadastrados manualmente antes de qualquer reserva, o sistema proposto processa as planilhas de grade horária do campus para identificar automaticamente os espaços disponíveis em cada período, com possibilidade de reimportação ou ajuste pontual ao longo do semestre sempre que houver alterações de ensalamento. Além disso, o sistema proposto contempla três perfis de acesso distintos baseados no modelo RBAC, notificações automáticas por e-mail no fluxo de aprovação de reservas e a geração de relatórios sobre a utilização dos espaços, funcionalidades que ampliam o escopo em relação ao trabalho referenciado.
+
+%---------------------------------
+% SEÇÃO DE METODOLOGIA
+%---------------------------------
+\section{Metodologia}
+\label{sec:metodologia}
+
+A condução desta pesquisa obedece a um conjunto de procedimentos que vai do diagnóstico do problema à definição da arquitetura técnica do sistema proposto. As seções a seguir descrevem o enquadramento metodológico adotado, as etapas percorridas, a forma de coleta e análise dos dados, a abordagem de modelagem e as decisões de projeto que orientarão a implementação no TCC 2.
+
+%-----------------------------------
+\subsection{Tipo de Pesquisa}
+\label{sec:tipopesquisa}
+
+Quanto à natureza, esta pesquisa é aplicada. Sua finalidade é produzir um artefato de software para um problema concreto identificado num contexto institucional real, não ampliar o conhecimento teórico de forma genérica. \citeonline{gil2008} distingue a pesquisa aplicada da pesquisa básica precisamente por esse critério: a primeira é motivada pela necessidade de resolver problemas práticos e seus resultados têm aplicação imediata.
+
+Quanto aos objetivos, a pesquisa é descritiva. O ponto de partida é a caracterização do processo atual de agendamento de espaços físicos no IFNMG -- Campus Salinas: como ele funciona, onde falha e o que os usuários envolvidos precisam que mude. \citeonline{gil2008} define a pesquisa descritiva como aquela que busca descrever as características de determinado fenômeno e estabelecer relações entre suas variáveis, sem que o pesquisador interfira nos fatos observados.
+
+Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinação com pesquisa bibliográfica. O estudo de caso é adequado porque a investigação recai sobre um ambiente específico, o Campus Salinas, com histórico, atores e restrições próprios que precisam ser compreendidos antes de qualquer proposta de solução. \citeonline{yin2015} define o estudo de caso como uma investigação empírica que examina um fenômeno contemporâneo em profundidade e em seu contexto real, sendo especialmente indicado quando os limites entre o fenômeno e o contexto não são claramente separáveis. A pesquisa bibliográfica, por sua vez, dá sustentação às decisões de projeto, de modelagem e de escolha tecnológica, com base no que a literatura já consolidou sobre engenharia de software, controle de acesso e desenvolvimento web.
+
+%-----------------------------------
+\subsection{Procedimentos Metodológicos}
+\label{sec:procedimentos}
+
+O desenvolvimento da pesquisa seguiu quatro etapas encadeadas, cada uma condicionada pelos resultados da anterior.
+
+A primeira foi o diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a profissional responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos perfis de usuários envolvidos: Administrador, Docente e Visualizador. Essa etapa produziu o insumo necessário para a especificação dos requisitos.
+
+A segunda etapa foi o levantamento e a análise de requisitos. Com base nos dados coletados nas entrevistas e no referencial teórico consultado, foram especificados os requisitos funcionais e não funcionais do sistema. \citeonline{pressman2016} descrevem a engenharia de requisitos como um processo contínuo de identificação, análise, especificação e validação das necessidades dos envolvidos, e ressaltam que a qualidade dessa etapa determina a qualidade do que será desenvolvido depois.
+
+A terceira etapa foi a modelagem do sistema. Com os requisitos definidos, foram elaborados os diagramas UML que representam a estrutura estática e o comportamento dinâmico da solução proposta, conforme detalhado na Seção~\ref{sec:modelagem}.
+
+A quarta etapa, ainda no escopo deste trabalho, corresponde ao planejamento da implementação. Foram definidas as tecnologias a serem adotadas, a arquitetura técnica e as decisões de projeto que orientarão o desenvolvimento no TCC 2, conforme descrito na Seção~\ref{sec:implementacao}. O sistema não foi implementado nesta fase do trabalho; o que se apresenta é o planejamento que fundamenta a implementação futura.
+
+%-----------------------------------
+\subsection{Coleta de Dados}
+\label{sec:coleta}
+
+Os dados desta pesquisa são primários, coletados diretamente junto à fonte por meio de um levantamento iterativo de requisitos, conduzido na forma de conversas semiestruturadas, interações técnicas informais, trocas de mensagens e discussões recorrentes sobre o processo de agendamento, além de validações contínuas da proposta ao longo do desenvolvimento. \citeonline{gil2008} aponta a entrevista como uma das técnicas de coleta de dados mais utilizadas nas ciências sociais por permitir que o entrevistador obtenha informações sobre fatos, opiniões, percepções e necessidades de forma direta, com abertura para explorar aspectos não previstos no roteiro inicial. Neste trabalho, essa característica foi estendida para um formato iterativo, em que o diálogo com a fonte se prolongou para além de sessões pontuais.
+
+As interações foram conduzidas com \citeonline{gloria2025entrevista}, professora do IFNMG -- Campus Salinas e coorientadora deste trabalho, que responde pela gestão dos agendamentos de espaços físicos no campus. Como marcos desse processo, foram realizadas três sessões mais estruturadas ao longo da pesquisa: em julho de 2025, novembro de 2025 e abril de 2026 \cite{gloria2025entrevista}. Cada sessão cumpriu objetivos distintos. A primeira, em julho de 2025, teve como foco o mapeamento do processo atual de agendamento: como as reservas são feitas, quem as gerencia, quais conflitos ocorrem com mais frequência e que informações os usuários precisam acessar. A segunda, em novembro de 2025, foi dedicada à validação dos requisitos preliminares levantados: as informações coletadas inicialmente foram apresentadas de forma estruturada para que a coorientadora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira, em abril de 2026, serviu para confirmar os requisitos finais e verificar aspectos que surgiram durante a modelagem e ainda careciam de esclarecimento. Entre essas sessões, manteve-se interação técnica informal contínua -- por mensagens e reuniões breves -- para esclarecer dúvidas pontuais sobre o funcionamento do processo e validar decisões de modelagem à medida que surgiam.
+
+A opção por esse formato semiestruturado e iterativo se justifica metodologicamente porque o roteiro funcionou como guia, sem impedir que temas relevantes surgidos no decorrer das conversas fossem explorados em profundidade, e porque permitiu que a compreensão do processo se refinasse de forma incremental, acompanhando o avanço da modelagem. Esse formato é mais adequado do que questionários fechados ou entrevistas rigidamente estruturadas quando o objetivo é compreender um processo operacional concreto, com suas particularidades e exceções, cujas nuances só emergem na medida em que a proposta de solução se concretiza.
+
+%-----------------------------------
+\subsection{Levantamento e Análise de Requisitos}
+\label{sec:requisitos}
+
+A especificação de requisitos foi elaborada a partir das informações coletadas nas entrevistas e do referencial bibliográfico consultado, e organizada em duas categorias: requisitos funcionais e requisitos não funcionais.
+
+Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, as funções e os serviços que ele precisa oferecer a cada perfil de usuário \cite{sommerville2018}. Para a especificação dessas funções, foram considerados os três perfis identificados no diagnóstico. O perfil Administrador concentra as funções de gestão: cadastro e manutenção de espaços físicos, gerenciamento de usuários, importação das planilhas de horários institucionais e atualização periódica dos horários ocupados, aprovação ou rejeição de solicitações de reserva e geração de relatórios sobre a utilização dos espaços. O perfil Docente pode consultar a disponibilidade dos espaços e submeter solicitações de reserva, recebendo notificação automática sobre o resultado. A consulta de disponibilidade é acessível publicamente, sem necessidade de autenticação, exibindo apenas os horários livres e ocupados de cada espaço. Os requisitos funcionais foram agrupados por módulo: gestão de usuários e controle de acesso; gerenciamento de espaços físicos com importação de planilhas; agendamento e reservas; notificações automáticas por e-mail; e geração de relatórios de uso.
+
+Os requisitos não funcionais estabelecem as restrições de qualidade que o sistema precisa satisfazer, independentemente das funcionalidades que oferece \cite{sommerville2018}. Para defini-los, foram adotados como referência os atributos de qualidade descritos por \citeonline{sommerville2018}: segurança, que implica controlar o acesso de acordo com os papéis definidos e proteger os dados dos usuários contra acessos indevidos; desempenho, que envolve tempo de resposta adequado nas consultas de disponibilidade, mesmo em picos de uso; manutenibilidade, que orienta decisões de projeto para facilitar a evolução do sistema após a implantação; e aceitabilidade, traduzida em requisitos de usabilidade compatíveis com o perfil tecnológico dos docentes do campus. \citeonline{pressman2016} reforçam que os requisitos não funcionais condicionam a arquitetura do sistema e devem ser considerados desde o início do projeto, não como ajustes posteriores.
+
+Para sistematizar a especificação descrita nos parágrafos anteriores, os requisitos funcionais e não funcionais foram consolidados em forma tabular. A Tabela~\ref{tab:rf} apresenta os requisitos funcionais, identificados pelo prefixo RF, e a Tabela~\ref{tab:rnf} apresenta os requisitos não funcionais, identificados pelo prefixo RNF.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Requisitos funcionais do sistema}
+	\begin{tabular}{@{}p{1.8cm}p{12cm}@{}}
+	\hline
+		\textbf{Código} & \textbf{Descrição} \\ \hline
+		RF01 & Importar planilhas de horários institucionais para identificar automaticamente os espaços e horários ocupados \\
+		RF02 & Atualizar periodicamente os horários ocupados ao longo do semestre, por reimportação ou edição pontual realizada pelo administrador \\
+		RF03 & Cadastrar e manter o registro dos espaços físicos do campus \\
+		RF04 & Gerenciar usuários e seus perfis de acesso (Administrador, Docente e Visualizador) \\
+		RF05 & Consultar a disponibilidade dos espaços físicos \\
+		RF06 & Submeter solicitações de reserva de espaços físicos \\
+		RF07 & Aprovar ou rejeitar solicitações de reserva \\
+		RF08 & Cancelar reservas já registradas \\
+		RF09 & Notificar automaticamente o administrador, por e-mail, quando uma nova solicitação de reserva for submetida \\
+		RF10 & Notificar automaticamente o docente, por e-mail, sobre o resultado da análise da sua solicitação \\
+		RF11 & Disponibilizar acesso público de consulta à disponibilidade dos espaços, sem autenticação e sem expor dados pessoais de docentes ou detalhes de reservas individuais \\
+		RF12 & Gerar relatórios sobre a utilização dos espaços físicos \\ \hline
+	\end{tabular}
+	\label{tab:rf}
+\end{table}
+
+\begin{table}[!htb]
+	\centering
+	\caption{Requisitos não funcionais do sistema}
+	\begin{tabular}{@{}p{1.8cm}p{12cm}@{}}
+	\hline
+		\textbf{Código} & \textbf{Descrição} \\ \hline
+		RNF01 & O sistema deve controlar o acesso com base em papéis, conforme o modelo RBAC, restringindo cada funcionalidade ao perfil correspondente \\
+		RNF02 & O sistema deve proteger os dados dos usuários contra acessos indevidos, incluindo proteções contra CSRF, XSS e injeção de SQL \\
+		RNF03 & O sistema deve apresentar tempo de resposta adequado nas consultas de disponibilidade, mesmo em períodos de pico de uso \\
+		RNF04 & O sistema deve ser acessível por meio de navegador web, sem exigir instalação de software nos dispositivos dos usuários \\
+		RNF05 & O sistema deve apresentar usabilidade compatível com o perfil tecnológico dos docentes do campus e manter consistência visual entre suas telas, dispensando treinamento extensivo \\
+		RNF06 & O sistema deve ser manutenível, de modo a permitir sua evolução após a implantação, com separação clara entre as camadas de dados, lógica e apresentação \\
+		RNF07 & O sistema deve operar de forma autônoma em relação à infraestrutura de horários do campus, sem depender de consultas em tempo real a sistemas externos \\ \hline
+	\end{tabular}
+	\label{tab:rnf}
+\end{table}
+
+%-----------------------------------
+\subsection{Modelagem do Sistema}
+\label{sec:modelagem}
+
+A modelagem adotou a \textit{Unified Modeling Language} (UML) para representar, de forma padronizada, a estrutura e o comportamento da solução antes da implementação. Conforme \citeonline{bezerra2007}, a UML não é uma metodologia de desenvolvimento, mas uma notação que pode ser usada com diferentes processos; ela oferece um conjunto de diagramas que cobrem aspectos distintos do sistema. Foram produzidos três tipos de diagramas, selecionados em função dos objetivos do trabalho.
+
+O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista dos atores que interagem com ele. Para cada um dos três perfis (Administrador, Docente e Visualizador) foram associados os casos de uso correspondentes aos seus privilégios de acesso, com base no modelo RBAC descrito na Seção~\ref{sec:rbac}. O Administrador concentra as operações de gestão: cadastrar usuários, gerenciar espaços físicos, definir horários, aprovar ou reprovar reservas, importar planilhas de horários institucionais e atualizar periodicamente os horários ocupados, e gerar relatórios de uso. O Docente pode visualizar a agenda, solicitar reservas e cancelar reservas já registradas. A consulta de disponibilidade é acessível por qualquer usuário sem autenticação, por meio de rota pública, sem permissão para solicitar ou alterar qualquer dado. O diagrama completo é apresentado na Figura~\ref{fig:casos_uso}.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Diagrama de Casos de Uso do Sistema de Agendamento}
+    \includegraphics[width=0.95\textwidth]{Figuras/casos_de_uso}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:casos_uso}
+\end{figure}
+
+As entidades centrais do domínio são \textit{EspaçoFísico}, \textit{Horário}, \textit{Solicitação}, \textit{Reserva} e \textit{Usuário}. Os relacionamentos entre essas entidades, como a associação entre \textit{Usuário} e \textit{Reserva} ou entre \textit{EspaçoFísico} e \textit{Horário}, definem as regras de integridade que orientam a estrutura do banco de dados. \citeonline{larman2007} destaca que o diagrama de classes é o artefato de modelagem mais diretamente relacionado à estrutura do código, uma vez que suas entidades correspondem às classes que materializam o domínio na solução desenvolvida.
+
+O diagrama de sequência ilustra como os objetos do sistema interagem ao longo do tempo para realizar uma operação. \citeonline{larman2007} aponta que esse artefato é útil para antecipar pontos de decisão e exceções no fluxo de execução, articulando a lógica das operações de solicitação e aprovação de reservas com as classes que compõem o domínio.
+
+%-----------------------------------
+\subsection{Planejamento da Implementação}
+\label{sec:implementacao}
+
+O sistema será desenvolvido como uma aplicação web, com arquitetura e tecnologias definidas a seguir. A escolha de cada componente foi orientada pelos requisitos especificados e pela necessidade de produzir uma solução manutenível, segura e acessível a partir de qualquer navegador, sem instalação de software nos dispositivos dos usuários.
+
+A linguagem de programação adotada é o Python, e o \textit{framework} web escolhido é o Django. O Django opera segundo o princípio \textit{batteries included}: disponibiliza nativamente os componentes mais comuns no desenvolvimento web, como ORM, sistema de autenticação, roteamento de URLs, mecanismo de \textit{templates} e envio de e-mails, sem dependência de bibliotecas externas para essas funções \cite{djangodocs}. Outro princípio central do \textit{framework} é o \textit{Don't Repeat Yourself} (DRY), que orienta o reaproveitamento de código e a centralização de lógicas que, se duplicadas, aumentariam o custo de manutenção ao longo do tempo \cite{djangodocs}.
+
+O Django adota o padrão arquitetural MTV (\textit{Model-Template-View}), cuja estrutura e comparação com o padrão MVC estão detalhadas na Seção~\ref{sec:mvc_mtv}. Nessa arquitetura, o \textit{Model} define a estrutura dos dados, o \textit{Template} gera as páginas HTML entregues ao navegador e a \textit{View} processa as requisições HTTP, aciona os \textit{models} necessários e determina qual \textit{template} renderizar como resposta \cite{djangodocs}. A adoção desse padrão no sistema proposto garante separação clara entre as camadas de dados, lógica e apresentação, facilitando a manutenção e a evolução do código ao longo do TCC 2.
+
+O roteamento de URLs é configurado no arquivo \texttt{urls.py}, que associa cada padrão de endereço a uma \textit{view} específica por meio da função \texttt{path()}. Quando uma requisição chega ao servidor, o \textit{framework} percorre a lista de padrões registrados até encontrar o primeiro que corresponda à URL solicitada e delega o processamento à \textit{view} associada. Esse mecanismo é independente da estrutura de diretórios da aplicação, o que permite organizar as URLs de forma legível e separada da lógica de negócio \cite{djangodocs}.
+
+Cada \textit{model} do Django é uma classe Python que herda de \texttt{django.db.models.Model}. Cada atributo da classe representa uma coluna da tabela correspondente no banco de dados, e o tipo do campo, como \texttt{CharField}, \texttt{DateTimeField} ou \texttt{BooleanField}, determina o tipo de dado armazenado e as validações aplicadas \cite{djangodocs}. Relacionamentos entre entidades são representados por campos específicos: \texttt{ForeignKey} para associações muitos-para-um e \texttt{ManyToManyField} para associações muitos-para-muitos. O ORM traduz as operações sobre esses objetos Python em comandos SQL compatíveis com o banco de dados configurado \cite{djangodocs}.
+
+As mudanças nos \textit{models} são controladas pelo sistema de \textit{migrations}. O comando \texttt{makemigrations} gera um arquivo descrevendo as alterações a serem aplicadas no banco; o comando \texttt{migrate} as aplica de forma incremental e rastreável, mantendo um histórico completo de todas as versões do esquema \cite{djangodocs}. Para o sistema proposto, esse mecanismo garante que mudanças nos modelos de dados ao longo do desenvolvimento sejam aplicadas de forma controlada, sem risco de perda de dados já persistidos.
+
+O sistema de \textit{templates} do Django utiliza a \textit{Django Template Language} (DTL), que insere dados dinâmicos nas páginas HTML por meio de variáveis e \textit{tags} de controle. A herança de \textit{templates}, obtida com as \textit{tags} \texttt{\{\% extends \%\}} e \texttt{\{\% block \%\}}, permite que um \textit{template} base defina a estrutura comum a todas as páginas, como cabeçalho, menu e rodapé, e que os demais \textit{templates} sobrescrevam apenas os blocos de conteúdo específicos \cite{djangodocs}. Esse recurso elimina duplicação de HTML e garante consistência visual em toda a aplicação.
+
+O Django oferece proteções de segurança ativas por padrão. A proteção contra \textit{Cross-Site Request Forgery} (CSRF) é implementada por um \textit{middleware} que exige um \textit{token} válido em todas as requisições que modificam dados no servidor; a \textit{tag} \texttt{\{\% csrf\_token \%\}} insere esse \textit{token} automaticamente nos formulários. A proteção contra \textit{Cross-Site Scripting} (XSS) é garantida pelo sistema de \textit{templates}, que escapa automaticamente todo conteúdo dinâmico antes de inseri-lo no HTML. A proteção contra injeção de SQL é inerente ao ORM, que parametriza internamente as consultas geradas, de modo que dados fornecidos pelo usuário nunca são interpolados diretamente no SQL \cite{djangodocs}. Essas proteções são relevantes para o sistema proposto porque a plataforma receberá dados de usuários com diferentes níveis de acesso, e a integridade das reservas depende de que operações não autorizadas sejam bloqueadas.
+
+Para a camada de dados, será utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. O Django oferece suporte nativo e robusto ao PostgreSQL, incluindo recursos como busca textual avançada e suporte a transações com alto nível de integridade \cite{djangodocs}. O acesso ao banco será feito exclusivamente por meio do ORM, mantendo consistência entre o código Python e o esquema relacional ao longo de todo o ciclo de desenvolvimento.
+
+A camada de apresentação será construída com os \textit{templates} do Django combinados ao Tailwind CSS, um \textit{framework} de estilos utilitário que aplica formatação visual diretamente nas classes HTML, dispensando folhas de estilo separadas, agilizando o desenvolvimento da interface e garantindo consistência visual entre as telas por meio do conjunto padronizado de utilitários. Essa abordagem reduz o custo de manutenção da interface e permite ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}.
+
+Para a autenticação dos usuários, será utilizada a biblioteca \textit{django-allauth}, que estende o sistema de autenticação nativo do Django com suporte a fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso baseado em papéis, fundamentado no modelo RBAC descrito na Seção~\ref{sec:rbac}, será implementado sobre esse mecanismo, associando cada usuário a um dos três perfis definidos e condicionando o acesso a cada funcionalidade ao papel atribuído \cite{djangodocs}.
+
+As notificações automáticas serão enviadas por meio do módulo de e-mail nativo do Django, configurado com o protocolo SMTP e o serviço Gmail como servidor de envio. O \textit{framework} disponibiliza a função \texttt{send\_mail()} e a classe \texttt{EmailMessage} para o envio programático de mensagens \cite{djangodocs}. Ao receber uma solicitação de reserva, o sistema notificará o administrador; após a decisão de aprovação ou rejeição, o docente receberá a confirmação correspondente, sem necessidade de contato manual entre as partes.
+%---------------------------------
+% SEÇÃO DE CRONOGRAMA
+%---------------------------------
+\section{Cronograma}
+\label{sec:cronograma}
+
+O cronograma a seguir organiza as etapas de implementação do sistema ao longo do segundo semestre de 2026, compreendido entre 3 de agosto e 15 de dezembro. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precedem o desenvolvimento das funcionalidades, que por sua vez antecedem os testes e os ajustes finais.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Cronograma de implementação -- 2º semestre de 2026}
+	\resizebox{\textwidth}{!}{
+		\begin{tabular}{@{}lccccc@{}}
+		\hline
+			\multicolumn{1}{c}{\multirow{2}{*}{\textbf{Etapa}}} & \multicolumn{5}{c}{\textbf{Meses}} \\
+			\multicolumn{1}{c}{} &
+			\multicolumn{1}{c}{Ago} &
+			\multicolumn{1}{c}{Set} &
+			\multicolumn{1}{c}{Out} &
+			\multicolumn{1}{c}{Nov} &
+			\multicolumn{1}{c}{Dez} \\ \hline
+			Configuração do ambiente e estrutura do projeto & X &   &   &   &   \\
+			Implementação dos \textit{Models} e banco de dados & X & X &   &   &   \\
+			Desenvolvimento das \textit{Views} e roteamento de URLs &   & X &   &   &   \\
+			Implementação dos \textit{Templates} e interface &   & X & X &   &   \\
+			Autenticação e controle de acesso (RBAC) &   &   & X &   &   \\
+			Módulo de importação de planilhas de horários &   &   & X & X &   \\
+			Módulo de notificações automáticas por e-mail &   &   &   & X &   \\
+			Geração de relatórios de uso &   &   &   & X &   \\
+			Testes unitários e de integração &   &   &   & X & X \\
+			Ajustes finais e escrita do TCC 2 &   &   &   &   & X \\
+			Defesa &   &   &   &   & X \\ \hline
+		\end{tabular}
+	}
+	\label{tab:cronograma}
+\end{table}
+% ----------------------------------------------------------
+% Referências bibliográficas
+% ----------------------------------------------------------
+\clearpage
+\bibliography{referencias}
+\end{document}

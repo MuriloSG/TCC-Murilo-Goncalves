@@ -8,6 +8,8 @@
 
 <!-- Tailwind (CDN) -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   tailwind.config = {
     theme: {
@@ -50,23 +52,71 @@
   @keyframes pop { from{opacity:0; transform: scale(.97) translateY(6px);} to{opacity:1; transform:none;} }
   .seg-btn[aria-pressed="true"]{ background:#231F20; color:#fff; }
 
+  /* padronização de todos os selects (sem aparência nativa) */
+  select{
+    -webkit-appearance:none; -moz-appearance:none; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239AA1A6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right .7rem center; background-size:1rem;
+    padding-right:2.25rem !important;
+  }
+  select::-ms-expand{ display:none; }
+
   /* ===== Agenda (calendário) ===== */
-  .cal-hour{ position:absolute; right:8px; transform:translateY(-50%); font-size:11px; font-weight:600; color:#9AA1A6; }
-  .cal-day:last-child{ } /* placeholder */
-  .cal-line{ position:absolute; left:0; right:0; border-top:1px solid #ECEEEF; }
-  .cal-ev{ left:4px; right:4px; padding:5px 8px; border-left:3px solid; border-radius:7px; overflow:hidden;
-           box-shadow:0 1px 1.5px rgba(35,31,32,.06); display:flex; flex-direction:column; gap:1px; }
-  .cal-ev-title{ font-size:11.5px; font-weight:700; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .cal-ev-sub{ font-size:10px; line-height:1.2; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .cal-ev-time{ font-size:9.5px; font-weight:600; opacity:.6; margin-top:auto; }
-  .cal-ev-aula{ background:#ECEEEF; border-color:#9AA1A6; color:#4B5358; }
-  .cal-ev-aprov{ background:#EAF7EC; border-color:#2D9E3F; color:#175E23; }
-  .cal-ev-pend{ background:#FBF1E2; border-color:#C9821C; color:#8A5A12; }
-  .cal-free{ border-radius:7px; cursor:pointer; transition:background .1s, box-shadow .1s; }
-  .cal-free:hover{ background:#EAF7EC; box-shadow:inset 0 0 0 1.5px #A9D7AE; }
-  .cal-free-label{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:4px;
-                   font-size:11px; font-weight:600; color:#1E7A2E; opacity:0; transition:opacity .1s; }
+  .cal-headrow{ background:#FBFCFC; }
+  .cal-headday{ padding:.55rem 0; }
+  .cal-headday .wd{ font-size:11px; font-weight:700; letter-spacing:.05em; color:#9AA1A6; text-transform:uppercase; }
+  .cal-headday .dn{ display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; margin-top:2px;
+    font-size:18px; font-weight:800; color:#231F20; line-height:1; border-radius:10px; }
+  .cal-hour{ position:absolute; right:10px; transform:translateY(-50%); font-size:10.5px; font-weight:600; color:#B6BCC0; letter-spacing:.02em; }
+  .cal-day{ transition:background .12s; }
+  .cal-day:hover{ background:#FAFBFC; }
+  .cal-day.alt{ background:#FCFDFD; }
+  .cal-day.alt:hover{ background:#F7F9F9; }
+  .cal-line{ position:absolute; left:0; right:0; border-top:1px solid #EEF0F1; }
+  .cal-ev{ left:5px; right:5px; padding:6px 9px; border-left:4px solid; border-radius:9px; overflow:hidden;
+           box-shadow:0 1px 2px rgba(35,31,32,.05), 0 2px 6px rgba(35,31,32,.04);
+           display:flex; flex-direction:column; gap:1px; transition:transform .1s, box-shadow .1s; }
+  .cal-ev:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(35,31,32,.15); z-index:6; }
+  .cal-ev-title{ font-size:11.5px; font-weight:700; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cal-ev-sub{ font-size:10px; line-height:1.2; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cal-ev-time{ font-size:9.5px; font-weight:700; opacity:.6; letter-spacing:.02em; }
+  .cal-ev-aula{ background:#F1F3F4; border-color:#AEB4B8; color:#4B5358; }
+  .cal-ev-aprov{ background:#E7F6EB; border-color:#2D9E3F; color:#175E23; }
+  .cal-ev-pend{ background:#FBF1DF; border-color:#C9821C; color:#8A5A12; }
+  .cal-free{ border-radius:8px; cursor:pointer; transition:background .12s, box-shadow .12s; }
+  .cal-free:hover{ background:#EDF8EF; box-shadow:inset 0 0 0 1.5px #A9D7AE; }
+  .cal-free-label{ position:absolute; inset:4px; display:flex; align-items:center; justify-content:center; gap:4px;
+                   font-size:11px; font-weight:700; color:#1E7A2E; opacity:0; transition:opacity .1s;
+                   background:rgba(255,255,255,.55); border-radius:7px; }
   .cal-free:hover .cal-free-label{ opacity:1; }
+  .cal-ev-edit{ position:relative; }
+  .cal-ev-edit:hover{ box-shadow:0 6px 16px rgba(35,31,32,.15), inset 0 0 0 2px #2D9E3F; }
+  .cal-ev-pencil{ position:absolute; top:5px; right:5px; width:18px; height:18px; border-radius:6px; background:rgba(255,255,255,.8); display:flex; align-items:center; justify-content:center; color:#1E7A2E; opacity:0; transition:opacity .1s; }
+  .cal-ev-edit:hover .cal-ev-pencil{ opacity:1; }
+
+  /* ===== Dropdown customizado (padronizado em todos os navegadores) ===== */
+  .dd{ position:relative; display:inline-block; }
+  .dd-btn{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+    background:#fff; border:1px solid #CBD0D3; border-radius:.5rem; padding:.55rem .75rem;
+    font-size:.875rem; font-weight:600; color:#231F20; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+  .dd-btn:hover{ border-color:#A9D7AE; }
+  .dd.open .dd-btn{ border-color:#2D9E3F; box-shadow:0 0 0 2px rgba(45,158,63,.25); }
+  .dd-active .dd-btn{ border-color:#2D9E3F; color:#1E7A2E; }
+  .dd-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dd-chev{ flex:none; color:#9AA1A6; transition:transform .15s; }
+  .dd.open .dd-chev{ transform:rotate(180deg); }
+  .dd-panel{ position:fixed; z-index:200; display:none; background:#fff; border:1px solid #E0E3E5;
+    border-radius:.75rem; box-shadow:0 12px 32px rgba(35,31,32,.20); padding:.3rem; max-height:288px; overflow-y:auto; }
+  .dd-panel.dd-open{ display:block; animation:ddpop .12s ease both; }
+  @keyframes ddpop{ from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;} }
+  .dd-opt{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:.75rem; text-align:left;
+    padding:.5rem .6rem; border-radius:.5rem; font-size:.875rem; color:#363B3F; cursor:pointer; white-space:nowrap; }
+  .dd-opt:hover{ background:#F5F6F7; }
+  .dd-opt[aria-selected="true"]{ background:#EAF7EC; color:#1E7A2E; font-weight:700; }
+  .dd-opt[disabled]{ opacity:.4; cursor:not-allowed; }
+  .dd-opt[disabled]:hover{ background:transparent; }
+  .dd-check{ flex:none; color:#2D9E3F; opacity:0; }
+  .dd-opt[aria-selected="true"] .dd-check{ opacity:1; }
 </style>
 </head>
 <body class="font-sans antialiased min-h-screen">
@@ -137,6 +187,12 @@ const I = {
   sheet:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
   swap:'<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
   chevron:'<path d="m6 9 6 6 6-6"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  alert:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  arrowRight:'<path d="M5 12h14M12 5l7 7-7 7"/>',
+  sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  cap:'<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 2.5 9 2.5 12 0v-5"/>',
 };
 function icon(name, cls='w-5 h-5'){ return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[name]||''}</svg>`; }
 
@@ -160,6 +216,10 @@ let state = {
   semana: 'Semana de 08–12/jun/2026',
   planilhaImportada: true,        // RF01 — começa importada para demonstrar a grade
   notifOpen: false,               // painel de notificações aberto
+  editGrade: false,               // modo de ajustes manuais na importação
+  ultimaImport: { arquivo:'horarios_2026-1.xlsx', data:'02/06/2026 09:14', vigencia:'Semana de 08/06/2026' },
+  imp: null,                      // estado do assistente de importação
+  relFiltro: { espaco:'all', tipo:'all', dia:'all' }, // filtros dos relatórios
 };
 
 const espacos = [
@@ -178,6 +238,13 @@ let usuarios = [
   { id:'u4', nome:'Carlos Henrique Lima', email:'carlos.lima@ifnmg.edu.br', perfil:'Docente', dep:'Matemática', ativo:true },
   { id:'u5', nome:'Ana Beatriz Souza', email:'ana.souza@ifnmg.edu.br', perfil:'Docente', dep:'Redes de Computadores', ativo:true },
   { id:'u6', nome:'Roberto Dias', email:'roberto.dias@ifnmg.edu.br', perfil:'Docente', dep:'Física', ativo:false },
+];
+
+let turmas = [
+  { id:'t1', nome:'SI 1º P', curso:'Bacharelado em Sistemas de Informação', periodo:'1º período', turno:'Noite', alunos:38, ativo:true },
+  { id:'t3', nome:'SI 3º P', curso:'Bacharelado em Sistemas de Informação', periodo:'3º período', turno:'Noite', alunos:31, ativo:true },
+  { id:'t5', nome:'SI 5º P', curso:'Bacharelado em Sistemas de Informação', periodo:'5º período', turno:'Noite', alunos:27, ativo:true },
+  { id:'t7', nome:'SI 7º P', curso:'Bacharelado em Sistemas de Informação', periodo:'7º período', turno:'Noite', alunos:22, ativo:true },
 ];
 
 /* Ocupação por AULAS regulares (lida da planilha importada) — RF01.
@@ -291,6 +358,118 @@ function openModal(html, width='max-w-lg'){
 function closeModal(){ const r=document.getElementById('modal-root'); r.classList.add('hidden'); r.innerHTML=''; }
 window.closeModal = closeModal;
 
+/* ---------- Dropdown customizado (substitui <select> em todos os navegadores) ---------- */
+const _attr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+function ddField(value, options, onChange, opts={}){
+  const { id='', cls='' } = opts;
+  const norm = options.map(o=>Array.isArray(o)?{v:String(o[0]),l:o[1],d:!!o[2]}:{v:String(o.v),l:o.l,d:!!o.d});
+  const cur = norm.find(o=>o.v===String(value));
+  const label = cur?cur.l:(value||'Selecione');
+  const oc = onChange?` data-onchange="${_attr(onChange)}"`:'';
+  return `<div class="dd ${cls}" data-value="${_attr(value)}"${oc}>
+    ${id?`<input type="hidden" id="${id}" value="${_attr(value)}">`:''}
+    <button type="button" class="dd-btn" onclick="DD.toggle(this)" aria-haspopup="listbox">
+      <span class="dd-label">${label}</span><span class="dd-chev">${icon('chevron','w-4 h-4')}</span>
+    </button>
+    <div class="dd-panel" role="listbox">
+      ${norm.map(o=>`<button type="button" class="dd-opt" role="option" aria-selected="${o.v===String(value)}" ${o.d?'disabled':`data-value="${_attr(o.v)}" onclick="DD.pick(this)"`}>
+        <span class="dd-opt-label">${o.l}</span><span class="dd-check">${icon('check','w-4 h-4')}</span></button>`).join('')}
+    </div>
+  </div>`;
+}
+const DD = {
+  open:null, panel:null,
+  toggle(btn){
+    const dd=btn.closest('.dd');
+    if(DD.open===dd){ DD.close(); return; }
+    DD.close();
+    const panel=dd.querySelector('.dd-panel') || dd._panel;
+    dd._panel=panel; panel._dd=dd;
+    document.body.appendChild(panel);   // portal: fora de ancestrais com transform
+    panel.classList.add('dd-open'); dd.classList.add('open');
+    DD.open=dd; DD.panel=panel;
+    const r=btn.getBoundingClientRect();
+    panel.style.minWidth=r.width+'px';
+    panel.style.left=Math.max(8, Math.min(r.left, window.innerWidth - Math.max(r.width,200) - 8))+'px';
+    const ph=panel.offsetHeight; let top=r.bottom+4;
+    if(top+ph > window.innerHeight-8) top=Math.max(8, r.top-ph-4);
+    panel.style.top=top+'px';
+  },
+  close(){
+    if(DD.panel){ DD.panel.classList.remove('dd-open'); if(DD.open) DD.open.appendChild(DD.panel); }
+    if(DD.open){ DD.open.classList.remove('open'); }
+    DD.open=null; DD.panel=null;
+  },
+  pick(opt){
+    const panel=opt.closest('.dd-panel'); const dd=panel._dd; const v=opt.dataset.value;
+    dd.dataset.value=v;
+    dd.querySelector('.dd-label').textContent=opt.querySelector('.dd-opt-label').textContent;
+    const hid=dd.querySelector('input[type=hidden]'); if(hid) hid.value=v;
+    panel.querySelectorAll('.dd-opt').forEach(o=>o.setAttribute('aria-selected', String(o===opt)));
+    DD.close();
+    const ex=dd.getAttribute('data-onchange');
+    if(ex){ try{ (0,eval)(ex.split('$V').join(JSON.stringify(v))); }catch(e){ console.error(e); } }
+  }
+};
+window.DD=DD; window.ddField=ddField;
+document.addEventListener('click', e=>{ if(DD.open && !e.target.closest('.dd') && !e.target.closest('.dd-panel')) DD.close(); });
+window.addEventListener('scroll', ()=>DD.close(), true);
+window.addEventListener('resize', ()=>DD.close());
+
+/* ---------- Perfil do usuário ---------- */
+function openPerfil(){
+  const u = state.user; if(!u) return;
+  const ini = u.nome.split(' ').map(s=>s[0]).slice(0,2).join('');
+  const isAdmin = u.perfil==='Administrador';
+  const minhas = reservas.filter(r=>r.docente===u.id);
+  const stat = (v,l)=>`<div class="bg-if-slate-50 ring-1 ring-if-slate-200 rounded-xl p-3 text-center"><div class="text-xl font-extrabold">${v}</div><div class="text-[11px] text-if-slate-500 mt-0.5">${l}</div></div>`;
+  const row = (ic,label,val)=>`<div class="flex items-start gap-3 px-6 py-3 border-b border-if-slate-100 last:border-0">
+    <span class="flex-none w-8 h-8 rounded-lg bg-if-slate-50 text-if-slate-500 flex items-center justify-center">${icon(ic,'w-4 h-4')}</span>
+    <div class="min-w-0"><div class="text-[11px] font-bold uppercase tracking-wide text-if-slate-400">${label}</div><div class="text-sm font-semibold text-if-ink break-words">${val}</div></div>
+  </div>`;
+  openModal(`
+    <div class="px-6 py-6 border-b border-if-slate-100 flex items-center gap-4">
+      <div class="w-16 h-16 rounded-full ${isAdmin?'bg-if-red-50 text-if-red-700 ring-if-red-100':'bg-if-green-50 text-if-green-700 ring-if-green-100'} ring-2 flex items-center justify-center text-xl font-extrabold">${ini}</div>
+      <div class="flex-1 min-w-0">
+        <h3 class="font-bold text-lg leading-tight truncate">${u.nome}</h3>
+        <div class="mt-1.5"><span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${isAdmin?'bg-if-red-50 text-if-red-700 ring-1 ring-red-200':'bg-if-green-50 text-if-green-700 ring-1 ring-if-green-200'}">${icon('shield','w-3.5 h-3.5')}${u.perfil}</span></div>
+      </div>
+      <button onclick="closeModal()" class="text-if-slate-400 hover:text-if-ink flex-none self-start">${icon('x')}</button>
+    </div>
+    ${!isAdmin?`<div class="grid grid-cols-3 gap-3 p-5 pb-2">
+      ${stat(minhas.length,'Reservas')}
+      ${stat(minhas.filter(r=>r.status==='aprovada').length,'Aprovadas')}
+      ${stat(minhas.filter(r=>r.status==='pendente').length,'Pendentes')}
+    </div>`:''}
+    <div>
+      ${row('mail','E-mail institucional',u.email)}
+      ${row('building','Departamento',u.dep)}
+      ${row('shield','Perfil de acesso (RBAC)',u.perfil)}
+      ${row('check','Situação',u.ativo?'Ativo':'Inativo')}
+    </div>
+    <div class="px-6 py-4 border-t border-if-slate-100 flex items-center justify-between gap-2 bg-if-slate-50">
+      <span class="text-xs text-if-slate-400">Sessão de demonstração</span>
+      <button onclick="confirmarSair()" class="inline-flex items-center gap-1.5 text-sm font-semibold text-if-red ring-1 ring-red-200 hover:bg-if-red-50 px-3.5 py-2 rounded-lg">${icon('logout','w-4 h-4')} Sair</button>
+    </div>
+  `,'max-w-md');
+}
+window.openPerfil = openPerfil;
+
+/* ---------- Confirmação de saída ---------- */
+function confirmarSair(){
+  openModal(`
+    <div class="p-6">
+      <div class="w-12 h-12 rounded-xl bg-if-red-50 text-if-red flex items-center justify-center mb-4">${icon('logout')}</div>
+      <h3 class="font-bold text-lg">Sair do sistema?</h3>
+      <p class="text-if-slate-600 text-sm mt-1">Você voltará para a consulta pública e precisará entrar novamente para gerenciar reservas.</p>
+    </div>
+    <div class="px-6 py-4 border-t border-if-slate-100 flex justify-end gap-2 bg-if-slate-50">
+      <button onclick="closeModal()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-if-slate-600 hover:bg-if-slate-100">Cancelar</button>
+      <button onclick="closeModal();setRole('public')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-if-red hover:bg-if-red-600">${icon('logout','w-4 h-4')} Sair</button>
+    </div>`,'max-w-md');
+}
+window.confirmarSair = confirmarSair;
+
 /* ---------- Notificações (RF09 / RF10) ---------- */
 const NOTIF_META = {
   inbox: ['inbox','bg-if-amber-50 text-if-amber'],
@@ -349,6 +528,7 @@ const NAV = {
     { v:'solicitacoes', icon:'inbox', label:'Solicitações', badge:()=>reservas.filter(r=>r.status==='pendente').length },
     { v:'espacos', icon:'building', label:'Espaços físicos' },
     { v:'usuarios', icon:'users', label:'Usuários' },
+    { v:'turmas', icon:'cap', label:'Turmas' },
     { v:'importar', icon:'upload', label:'Importar horários' },
     { v:'relatorios', icon:'chart', label:'Relatórios' },
   ]
@@ -368,6 +548,7 @@ function setRole(role){
 window.setRole = setRole;
 
 function render(){
+  if(window.DD && DD.panel){ DD.panel.classList.remove('dd-open'); DD.panel.remove(); DD.open=null; DD.panel=null; }
   const app = document.getElementById('app');
   if(state.role==='public'){ app.innerHTML = layoutPublic(); afterRender(); return; }
   app.innerHTML = layoutApp();
@@ -375,7 +556,11 @@ function render(){
 }
 
 function afterRender(){
-  // ativa render de relatórios (barras) se necessário — já vem inline
+  if(state.role==='admin' && state.view==='relatorios'){
+    // canvases já estão no DOM; desenha assim que o Chart.js (CDN) estiver pronto
+    if(window.Chart) initRelatorioCharts();
+    else setTimeout(()=>{ if(window.Chart && state.view==='relatorios') initRelatorioCharts(); }, 350);
+  } else if(window.destroyCharts){ destroyCharts(); }
 }
 
 /* ============================ PUBLIC LAYOUT ============================ */
@@ -472,14 +657,14 @@ function layoutApp(){
               ${state.notifOpen?notifPanel():''}
             </div>
             <div class="h-8 w-px bg-if-slate-200 hidden sm:block"></div>
-            <div class="flex items-center gap-2.5">
+            <button onclick="openPerfil()" class="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-if-slate-50" title="Ver perfil">
               <div class="w-9 h-9 rounded-full bg-if-green-50 text-if-green-700 ring-1 ring-if-green-100 flex items-center justify-center font-bold text-sm">${(state.user?.nome||'?').split(' ').map(s=>s[0]).slice(0,2).join('')}</div>
-              <div class="hidden sm:block leading-tight">
+              <div class="hidden sm:block leading-tight text-left">
                 <div class="text-sm font-semibold">${state.user?.nome||''}</div>
                 <div class="text-xs text-if-slate-500">${state.role==='admin'?'Administrador':'Docente'}</div>
               </div>
-            </div>
-            <button onclick="setRole('public')" class="ml-1 inline-flex items-center gap-1.5 text-sm text-if-slate-500 hover:text-if-red px-2.5 py-2 rounded-lg hover:bg-if-red-50" title="Sair">${icon('logout','w-4 h-4')}<span class="hidden sm:inline">Sair</span></button>
+            </button>
+            <button onclick="confirmarSair()" class="ml-1 inline-flex items-center gap-1.5 text-sm text-if-slate-500 hover:text-if-red px-2.5 py-2 rounded-lg hover:bg-if-red-50" title="Sair">${icon('logout','w-4 h-4')}<span class="hidden sm:inline">Sair</span></button>
           </div>
         </div>
         <div class="lg:hidden px-4 pb-3">${roleSwitcher()}</div>
@@ -509,6 +694,7 @@ function viewContent(){
     case 'solicitacoes': return adminSolicitacoes();
     case 'espacos': return adminEspacos();
     case 'usuarios': return adminUsuarios();
+    case 'turmas': return adminTurmas();
     case 'importar': return adminImportar();
     case 'relatorios': return adminRelatorios();
     default: return docDashboard();
@@ -528,12 +714,7 @@ function espacoTabs(){
   const e = espacos.find(x=>x.id===state.espacoSel) || espacos[0];
   return `<div class="mb-4 flex items-center gap-2 flex-wrap">
     <span class="text-sm font-semibold text-if-slate-600">Espaço</span>
-    <div class="relative">
-      <select onchange="selEspaco(this.value)" class="appearance-none bg-white ring-1 ring-if-slate-300 rounded-lg pl-3 pr-10 py-2.5 text-sm font-semibold text-if-ink focus:ring-2 focus:ring-if-green outline-none cursor-pointer min-w-[240px]">
-        ${espacos.map(x=>`<option value="${x.id}" ${state.espacoSel===x.id?'selected':''}>${x.nome} · ${x.bloco}</option>`).join('')}
-      </select>
-      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-if-slate-400">${icon('chevron','w-4 h-4')}</span>
-    </div>
+    ${ddField(state.espacoSel, espacos.map(x=>[x.id, `${x.nome} · ${x.bloco}`]), 'selEspaco($V)', {cls:'min-w-[240px]'})}
     <span class="text-xs text-if-slate-400 hidden sm:inline">${e.tipo} · ${e.cap} lugares</span>
   </div>`;
 }
@@ -544,9 +725,53 @@ function findReserva(esp,dia,slot){
   return reservas.find(r=>r.espaco===esp && r.dia===dia && r.slot===slot && (r.status==='aprovada'||r.status==='pendente'));
 }
 
+const DIA_FULL = { Seg:'Segunda-feira', Ter:'Terça-feira', Qua:'Quarta-feira', Qui:'Quinta-feira', Sex:'Sexta-feira' };
+const DIA_DATA = { Seg:'08/06/2026', Ter:'09/06/2026', Qua:'10/06/2026', Qui:'11/06/2026', Sex:'12/06/2026' };
+
+/* detalhes de um evento do calendário (aula ou reserva) — clique abre modal */
+function openEventoDetalhe(espacoId, dia, startSlot, endSlot, st){
+  const e = espacos.find(x=>x.id===espacoId)||{};
+  const horario = `${startSlot} às ${SLOT_TIMES[endSlot]}`;
+  const row = (ic,label,val)=>`<div class="flex items-start gap-3 px-6 py-3 border-b border-if-slate-100 last:border-0">
+    <span class="flex-none w-8 h-8 rounded-lg bg-if-slate-50 text-if-slate-500 flex items-center justify-center">${icon(ic,'w-4 h-4')}</span>
+    <div class="min-w-0"><div class="text-[11px] font-bold uppercase tracking-wide text-if-slate-400">${label}</div><div class="text-sm font-semibold text-if-ink">${val}</div></div>
+  </div>`;
+  let head, badgeHtml, rows, icHead, clHead;
+  if(st==='aula'){
+    const a = ocupacaoAulas[`${espacoId}|${dia}|${startSlot}`]||{};
+    head = a.disc; icHead='building'; clHead='bg-if-slate-100 text-if-slate-600';
+    badgeHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-if-slate-100 text-if-slate-600 ring-1 ring-if-slate-200">Aula regular · grade institucional</span>`;
+    rows = row('building','Espaço',`${e.nome} · ${e.bloco}`)
+         + row('calendar','Data',`${DIA_FULL[dia]}, ${DIA_DATA[dia]}`)
+         + row('clock','Horário',horario)
+         + row('users','Professor',a.prof||'—')
+         + row('users','Turma',a.turma||'—');
+  } else {
+    const r = findReserva(espacoId,dia,startSlot)||{};
+    head = r.titulo||'Reserva'; icHead='calendar';
+    clHead = st==='aprovada'?'bg-if-green-50 text-if-green-700':'bg-if-amber-50 text-if-amber';
+    badgeHtml = badge(r.status||st);
+    rows = row('building','Espaço',`${e.nome} · ${e.bloco}`)
+         + row('calendar','Data',`${DIA_FULL[dia]}, ${DIA_DATA[dia]}`)
+         + row('clock','Horário',horario)
+         + row('users','Solicitante',userNome(r.docente))
+         + (r.criada?row('clock','Solicitada em',r.criada):'')
+         + (r.motivo?row('x','Motivo',r.motivo):'');
+  }
+  openModal(`
+    <div class="px-6 py-5 border-b border-if-slate-100 flex items-start gap-3">
+      <span class="flex-none w-11 h-11 rounded-xl ${clHead} flex items-center justify-center">${icon(icHead)}</span>
+      <div class="flex-1 min-w-0"><h3 class="font-bold text-lg leading-tight">${head}</h3><div class="mt-1.5">${badgeHtml}</div></div>
+      <button onclick="closeModal()" class="text-if-slate-400 hover:text-if-ink flex-none">${icon('x')}</button>
+    </div>
+    <div>${rows}</div>
+  `,'max-w-md');
+}
+window.openEventoDetalhe = openEventoDetalhe;
+
 /* Agenda semanal estilo calendário (reaproveitada por público, docente e admin) */
 function gradeSemanal(espacoId, opts={}){
-  const { publico=false, importMode=false } = opts;
+  const { publico=false, importMode=false, editavel=false } = opts;
   const e = espacos.find(x=>x.id===espacoId);
   const START=13*60, END=22*60+50, PX=1.0, OFF=10; // eixo 13:00 → 22:50 (turno tarde/noite)
   const totalPx=(END-START)*PX + OFF + 6;
@@ -555,54 +780,88 @@ function gradeSemanal(espacoId, opts={}){
 
   // cabeçalho dos dias
   const dayHead = DIAS.map(d=>`
-    <div class="text-center py-2 border-l border-if-slate-100">
-      <div class="text-[11px] font-semibold uppercase tracking-wide text-if-slate-500">${d}</div>
-      <div class="text-xl font-bold text-if-ink leading-tight">${DIA_NUM[d]}</div>
+    <div class="cal-headday text-center border-l border-if-slate-100">
+      <div class="wd">${d}</div>
+      <div class="dn">${DIA_NUM[d]}</div>
     </div>`).join('');
 
   // linhas de hora (fundo) reutilizadas em cada coluna
   const hourLines = hours.map(h=>`<div class="cal-line" style="top:${y(h*60)}px"></div>`).join('');
 
-  // coluna de um dia, com seus eventos
-  const dayCol = (dia)=>{
-    const events = SLOTS.map(slot=>{
-      const top=y(toMin(slot));
-      const h=(toMin(SLOT_TIMES[slot])-toMin(slot))*PX;
+  // chave de agrupamento de um período ocupado (mesma aula/reserva)
+  const ocupKey = (dia, slot)=>{
+    const st = cellStatus(espacoId,dia,slot);
+    if(st==='aula'){ const a=ocupacaoAulas[`${espacoId}|${dia}|${slot}`]; return 'aula|'+a.disc+'|'+a.turma+'|'+a.prof; }
+    if(st==='aprovada'||st==='pendente'){ const r=findReserva(espacoId,dia,slot); return 'res|'+(r?r.id:st); }
+    return null;
+  };
+
+  // bloco livre (um período), clicável conforme o contexto
+  const freeBlock = (dia, slot)=>{
+    if(publico) return '';
+    let onClick='', lbl='';
+    if(importMode){
+      if(!editavel) return '';                     // pré-visualização: não interage
+      onClick=`onclick="openAulaEditor('add','${espacoId}','${dia}','${slot}','${slot}')"`; lbl='Adicionar aula';
+    } else if(state.role==='docente'){
+      onClick=`onclick="abrirNovaReserva('${espacoId}','${dia}','${slot}')"`; lbl='Reservar';
+    } else return '';
+    const pos=`top:${y(toMin(slot))}px;height:${(toMin(SLOT_TIMES[slot])-toMin(slot))*PX}px;left:4px;right:4px`;
+    return `<div ${onClick} class="cal-free group absolute" style="${pos}" title="${slot}–${SLOT_TIMES[slot]} livre">
+      <span class="cal-free-label">${icon('plus','w-3.5 h-3.5')} ${lbl}</span></div>`;
+  };
+
+  // bloco ocupado (agrupando os períodos contíguos de startSlot..endSlot)
+  const eventBlock = (dia, startSlot, endSlot, st)=>{
+    const top=y(toMin(startSlot));
+    const h=(toMin(SLOT_TIMES[endSlot])-toMin(startSlot))*PX - 2;
+    const timeLbl=`${startSlot}–${SLOT_TIMES[endSlot]}`;
+    const pos=`top:${top}px;height:${h}px;left:4px;right:4px`;
+    let cls, title, sub, tip;
+    const r=findReserva(espacoId,dia,startSlot);
+    if(st==='aula'){
+      const a=ocupacaoAulas[`${espacoId}|${dia}|${startSlot}`];
+      cls='cal-ev-aula'; title=a.disc; sub=`${a.prof} · ${a.turma}`;
+      tip=`${timeLbl} · ${a.disc} · Prof. ${a.prof} · ${a.turma}`;
+    } else if(st==='aprovada'){
+      cls='cal-ev-aprov'; title=publico?'Reservado':(r?r.titulo:'Reservado'); sub=publico?'':'Reserva aprovada';
+      tip=publico?`${timeLbl} · Reservado`:`${timeLbl} · ${title}${r?(' · '+userNome(r.docente)):''}`;
+    } else {
+      cls='cal-ev-pend'; title=publico?'Ocupado':(r?r.titulo:'Pendente'); sub=publico?'':'Aguardando aprovação';
+      tip=publico?`${timeLbl} · Ocupado`:`${timeLbl} · ${title}${r?(' · '+userNome(r.docente)):''}`;
+    }
+    const editando = importMode && editavel && st==='aula';
+    const click = editando
+      ? `onclick="openAulaEditor('edit','${espacoId}','${dia}','${startSlot}','${endSlot}')" style="${pos};cursor:pointer"`
+      : `onclick="openEventoDetalhe('${espacoId}','${dia}','${startSlot}','${endSlot}','${st}')" style="${pos};cursor:pointer"`;
+    const mostraHora = startSlot!==endSlot; // só em blocos que abrangem vários períodos
+    return `<div ${click} class="cal-ev ${cls} absolute ${editando?'cal-ev-edit':''}" title="${editando?'Clique para editar · ':''}${tip}">
+      ${editando?`<span class="cal-ev-pencil">${icon('edit','w-3 h-3')}</span>`:''}
+      ${mostraHora?`<div class="cal-ev-time">${timeLbl}</div>`:''}
+      <div class="cal-ev-title">${title}</div>
+      ${sub?`<div class="cal-ev-sub">${sub}</div>`:''}
+    </div>`;
+  };
+
+  // coluna de um dia: varre os períodos, mesclando contíguos iguais
+  const dayCol = (dia, idx)=>{
+    const parts=[];
+    let i=0;
+    while(i<SLOTS.length){
+      const slot=SLOTS[i];
       const st=cellStatus(espacoId,dia,slot);
-      const timeLbl=`${slot}–${SLOT_TIMES[slot]}`;
-      const pos=`top:${top}px;height:${h}px;left:4px;right:4px`;
-
-      if(st==='livre'){
-        if(publico) return '';
-        const onClick = importMode
-          ? `onclick="toggleCelula('${espacoId}','${dia}','${slot}')"`
-          : (state.role==='docente' ? `onclick="abrirNovaReserva('${espacoId}','${dia}','${slot}')"` : '');
-        if(!onClick) return '';
-        const lbl = importMode ? 'Marcar aula' : 'Reservar';
-        return `<div ${onClick} class="cal-free group absolute" style="${pos}" title="${timeLbl} livre">
-          <span class="cal-free-label">${icon('plus','w-3.5 h-3.5')} ${lbl}</span></div>`;
+      if(st==='livre'){ parts.push(freeBlock(dia,slot)); i++; continue; }
+      const k=ocupKey(dia,slot);
+      let j=i;
+      // mescla períodos seguidos do mesmo evento, inclusive através de intervalos curtos (≤25 min)
+      while(j+1<SLOTS.length){
+        const gap = toMin(SLOTS[j+1]) - toMin(SLOT_TIMES[SLOTS[j]]);
+        if(gap<=25 && ocupKey(dia,SLOTS[j+1])===k){ j++; } else break;
       }
-
-      let cls, title, sub, tip;
-      const r=findReserva(espacoId,dia,slot);
-      if(st==='aula'){
-        const a=ocupacaoAulas[`${espacoId}|${dia}|${slot}`];
-        cls='cal-ev-aula'; title=a.disc; sub=`${a.prof} · ${a.turma}`;
-        tip=`${timeLbl} · ${a.disc} · Prof. ${a.prof} · ${a.turma}`;
-      } else if(st==='aprovada'){
-        cls='cal-ev-aprov'; title=publico?'Reservado':(r?r.titulo:'Reservado'); sub=publico?'':'Reserva aprovada';
-        tip=publico?`${timeLbl} · Reservado`:`${timeLbl} · ${title}${r?(' · '+userNome(r.docente)):''}`;
-      } else {
-        cls='cal-ev-pend'; title=publico?'Ocupado':(r?r.titulo:'Pendente'); sub=publico?'':'Aguardando aprovação';
-        tip=publico?`${timeLbl} · Ocupado`:`${timeLbl} · ${title}${r?(' · '+userNome(r.docente)):''}`;
-      }
-      const clickImport=(importMode && st==='aula')?`onclick="toggleCelula('${espacoId}','${dia}','${slot}')" style="${pos};cursor:pointer"`:`style="${pos}"`;
-      return `<div ${clickImport} class="cal-ev ${cls} absolute" title="${tip}">
-        <div class="cal-ev-title">${title}</div>
-        ${sub?`<div class="cal-ev-sub">${sub}</div>`:''}
-      </div>`;
-    }).join('');
-    return `<div class="cal-day relative border-l border-if-slate-100" style="height:${totalPx}px">${hourLines}${events}</div>`;
+      parts.push(eventBlock(dia, slot, SLOTS[j], st));
+      i=j+1;
+    }
+    return `<div class="cal-day ${idx%2?'alt':''} relative border-l border-if-slate-100" style="height:${totalPx}px">${hourLines}${parts.join('')}</div>`;
   };
 
   return card(`
@@ -622,7 +881,7 @@ function gradeSemanal(espacoId, opts={}){
     <div class="overflow-x-auto">
       <div style="min-width:740px">
         <!-- cabeçalho -->
-        <div class="grid sticky top-0 bg-white z-10 border-b border-if-slate-100" style="grid-template-columns:56px repeat(5,1fr)">
+        <div class="cal-headrow grid sticky top-0 z-10 border-b border-if-slate-200" style="grid-template-columns:56px repeat(5,1fr)">
           <div></div>${dayHead}
         </div>
         <!-- corpo -->
@@ -630,7 +889,7 @@ function gradeSemanal(espacoId, opts={}){
           <div class="relative" style="height:${totalPx}px">
             ${hours.map(h=>`<div class="cal-hour" style="top:${y(h*60)}px">${String(h).padStart(2,'0')}:00</div>`).join('')}
           </div>
-          ${DIAS.map(dayCol).join('')}
+          ${DIAS.map((d,i)=>dayCol(d,i)).join('')}
         </div>
       </div>
     </div>
@@ -724,22 +983,16 @@ function renderNovaReservaModal(){
     <div class="p-6 space-y-4">
       <div>
         <label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Espaço</label>
-        <select onchange="updForm('espacoId',this.value)" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none">
-          ${espacos.map(e=>`<option value="${e.id}" ${e.id===f.espacoId?'selected':''}>${e.nome}</option>`).join('')}
-        </select>
+        ${ddField(f.espacoId, espacos.map(e=>[e.id,e.nome]), "updForm('espacoId',$V)", {cls:'w-full'})}
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Dia</label>
-          <select onchange="updForm('dia',this.value)" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none">
-            ${DIAS.map(d=>`<option ${d===f.dia?'selected':''}>${d}</option>`).join('')}
-          </select>
+          ${ddField(f.dia, DIAS.map(d=>[d,d]), "updForm('dia',$V)", {cls:'w-full'})}
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Horário</label>
-          <select onchange="updForm('slot',this.value)" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none">
-            ${SLOTS.map(s=>`<option ${s===f.slot?'selected':''}>${s} (${turno(s)})</option>`).join('')}
-          </select>
+          ${ddField(f.slot, SLOTS.map(s=>[s,`${s} (${turno(s)})`]), "updForm('slot',$V)", {cls:'w-full'})}
         </div>
       </div>
       <div>
@@ -958,9 +1211,7 @@ function formEspaco(id){
         <input id="esp-nome" value="${e.nome}" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Tipo</label>
-          <select id="esp-tipo" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none">
-            ${['Laboratório','Auditório','Sala especial','Sala de aula'].map(t=>`<option ${t===e.tipo?'selected':''}>${t}</option>`).join('')}
-          </select></div>
+          ${ddField(e.tipo||'Laboratório', ['Laboratório','Auditório','Sala especial','Sala de aula'].map(t=>[t,t]), '', {id:'esp-tipo', cls:'w-full'})}</div>
         <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Bloco</label>
           <input id="esp-bloco" value="${e.bloco}" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
       </div>
@@ -1034,9 +1285,7 @@ function formUsuario(id){
         <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Departamento</label>
           <input id="us-dep" value="${u.dep}" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
         <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Perfil (RBAC)</label>
-          <select id="us-perfil" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none">
-            ${['Docente','Administrador'].map(p=>`<option ${p===u.perfil?'selected':''}>${p}</option>`).join('')}
-          </select></div>
+          ${ddField(u.perfil||'Docente', ['Docente','Administrador'].map(p=>[p,p]), '', {id:'us-perfil', cls:'w-full'})}</div>
       </div>
     </div>
     <div class="px-6 py-4 border-t border-if-slate-100 flex justify-end gap-2 bg-if-slate-50">
@@ -1065,126 +1314,526 @@ window.delUsuario = delUsuario;
 function confDelUsuario(id){ const i=usuarios.findIndex(u=>u.id===id); const n=usuarios[i].nome; usuarios.splice(i,1); closeModal(); toast('Usuário removido',n+' foi excluído.','warn'); render(); }
 window.confDelUsuario = confDelUsuario;
 
-/* ---------- Importar planilha de horários (RF01/RF02) ---------- */
-function adminImportar(){
+/* ---------- Turmas (cadastro) ---------- */
+function turmaAulas(t){ return Object.values(ocupacaoAulas).filter(v=>v.turma===t.nome).length; }
+function adminTurmas(){
   return `
-    ${pageHead('Importar planilha de horários','O sistema lê a grade institucional e marca automaticamente os horários ocupados pelas aulas.')}
-    <div class="grid lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-1 space-y-6">
-        ${card(`
-          <div class="p-6">
-            <div class="flex items-center gap-2 mb-4"><span class="w-9 h-9 rounded-lg bg-if-green-50 text-if-green-700 flex items-center justify-center">${icon('sheet')}</span><h2 class="font-bold">Nova importação</h2></div>
-            <div onclick="simularUpload()" class="cursor-pointer border-2 border-dashed border-if-slate-300 hover:border-if-green rounded-xl p-6 text-center transition">
-              <div class="w-12 h-12 mx-auto rounded-xl bg-if-slate-50 text-if-slate-400 flex items-center justify-center mb-3">${icon('upload','w-6 h-6')}</div>
-              <div class="text-sm font-semibold">Arraste a planilha ou clique</div>
-              <div class="text-xs text-if-slate-500 mt-1">Arquivos .xlsx ou .csv da grade do setor de ensalamento</div>
-            </div>
-            <button onclick="simularUpload()" class="mt-4 w-full inline-flex items-center justify-center gap-2 ${state.planilhaImportada?'bg-white ring-1 ring-if-slate-300 text-if-ink hover:bg-if-slate-50':'bg-if-green text-white hover:bg-if-green-600'} text-sm font-semibold px-4 py-2.5 rounded-lg">${icon(state.planilhaImportada?'refresh':'upload','w-4 h-4')} ${state.planilhaImportada?'Reimportar grade':'Importar grade'}</button>
-          </div>`)}
-        ${card(`<div class="p-5">
-          <div class="text-xs font-bold uppercase tracking-wide text-if-slate-400 mb-3">Última importação</div>
-          ${state.planilhaImportada?`
-            <div class="flex items-center gap-3"><span class="w-9 h-9 rounded-lg bg-if-green-50 text-if-green-700 flex items-center justify-center">${icon('check')}</span>
-            <div><div class="text-sm font-semibold">horarios_2026-1.xlsx</div><div class="text-xs text-if-slate-500">Importado em 02/06/2026 · ${Object.keys(ocupacaoAulas).length} horários ocupados</div></div></div>`:`
-            <div class="text-sm text-if-slate-400">Nenhuma planilha importada.</div>`}
-          <div class="mt-4 rounded-lg bg-if-slate-50 ring-1 ring-if-slate-200 p-3 text-xs text-if-slate-500 flex gap-2">${icon('shield','w-4 h-4 text-if-green flex-none')} <span>A atualização acontece apenas por ação do administrador. O sistema não consulta serviços externos em tempo real (RNF07).</span></div>
-        </div>`)}
+    ${pageHead('Turmas','Cadastro das turmas do campus, usadas na grade de horários e nas reservas.', `<button onclick="formTurma()" class="inline-flex items-center gap-2 bg-if-green hover:bg-if-green-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">${icon('plus','w-4 h-4')} Nova turma</button>`)}
+    ${card(`<div class="overflow-x-auto"><table class="w-full min-w-[720px]">
+      <thead><tr class="text-left text-xs font-bold uppercase tracking-wide text-if-slate-400">
+        <th class="px-5 py-3">Turma</th><th class="px-5 py-3">Curso</th><th class="px-5 py-3">Período</th><th class="px-5 py-3">Turno</th><th class="px-5 py-3">Alunos</th><th class="px-5 py-3">Aulas/semana</th><th class="px-5 py-3 text-right">Ações</th>
+      </tr></thead><tbody>
+      ${turmas.map(t=>`<tr class="border-t border-if-slate-100 hover:bg-if-slate-50/60">
+        <td class="px-5 py-3"><div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-lg bg-if-green-50 text-if-green-700 flex items-center justify-center">${icon('cap','w-4 h-4')}</span>
+          <div><div class="font-semibold text-sm">${t.nome}</div><div class="text-xs text-if-slate-500">${t.ativo?'Ativa':'Inativa'}</div></div></div></td>
+        <td class="px-5 py-3 text-sm text-if-slate-600">${t.curso}</td>
+        <td class="px-5 py-3 text-sm text-if-slate-600">${t.periodo}</td>
+        <td class="px-5 py-3"><span class="text-xs font-semibold text-if-slate-600 bg-if-slate-50 ring-1 ring-if-slate-200 px-2 py-0.5 rounded-full">${t.turno}</span></td>
+        <td class="px-5 py-3 text-sm text-if-slate-600">${t.alunos}</td>
+        <td class="px-5 py-3 text-sm font-bold text-if-green-700">${turmaAulas(t)}</td>
+        <td class="px-5 py-3 text-right whitespace-nowrap">
+          <button onclick="formTurma('${t.id}')" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-if-slate-500 hover:bg-if-slate-100" title="Editar">${icon('edit','w-4 h-4')}</button>
+          <button onclick="delTurma('${t.id}')" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-if-red hover:bg-if-red-50" title="Remover">${icon('trash','w-4 h-4')}</button>
+        </td>
+      </tr>`).join('')||`<tr><td colspan="7" class="p-10 text-center text-if-slate-400 text-sm">Nenhuma turma cadastrada.</td></tr>`}
+      </tbody></table></div>`)}`;
+}
+function formTurma(id){
+  const t = id?turmas.find(x=>x.id===id):{nome:'',curso:'Bacharelado em Sistemas de Informação',periodo:'1º período',turno:'Noite',alunos:''};
+  openModal(`
+    <div class="px-6 py-4 border-b border-if-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-lg flex items-center gap-2">${icon('cap','w-5 h-5 text-if-green')} ${id?'Editar turma':'Nova turma'}</h3>
+      <button onclick="closeModal()" class="text-if-slate-400 hover:text-if-ink">${icon('x')}</button></div>
+    <div class="p-6 space-y-4">
+      <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Identificação da turma</label>
+        <input id="tr-nome" value="${t.nome}" placeholder="Ex.: SI 1º P" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
+      <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Curso</label>
+        <input id="tr-curso" value="${t.curso}" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
+      <div class="grid grid-cols-3 gap-3">
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Período</label>
+          ${ddField(t.periodo||'1º período', ['1º período','2º período','3º período','4º período','5º período','6º período','7º período','8º período'].map(p=>[p,p]), '', {id:'tr-periodo', cls:'w-full'})}</div>
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Turno</label>
+          ${ddField(t.turno||'Noite', ['Manhã','Tarde','Noite','Integral'].map(p=>[p,p]), '', {id:'tr-turno', cls:'w-full'})}</div>
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Alunos</label>
+          <input id="tr-alunos" type="number" value="${t.alunos}" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
       </div>
-      <div class="lg:col-span-2">
-        ${card(`<div class="px-5 py-4 border-b border-if-slate-100 flex items-center justify-between flex-wrap gap-2">
-          <h2 class="font-bold">Pré-visualização da ocupação</h2>
-          <div class="relative">
-            <select onchange="selEspaco(this.value)" class="appearance-none bg-white ring-1 ring-if-slate-300 rounded-lg pl-3 pr-9 py-2 text-sm font-semibold text-if-ink focus:ring-2 focus:ring-if-green outline-none cursor-pointer">
-              ${espacos.map(x=>`<option value="${x.id}" ${state.espacoSel===x.id?'selected':''}>${x.nome}</option>`).join('')}
-            </select>
-            <span class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-if-slate-400">${icon('chevron','w-4 h-4')}</span>
+    </div>
+    <div class="px-6 py-4 border-t border-if-slate-100 flex justify-end gap-2 bg-if-slate-50">
+      <button onclick="closeModal()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-if-slate-600 hover:bg-if-slate-100">Cancelar</button>
+      <button onclick="salvarTurma('${id||''}')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-if-green hover:bg-if-green-600">${icon('check','w-4 h-4')} Salvar</button>
+    </div>`);
+}
+window.formTurma = formTurma;
+function salvarTurma(id){
+  const get=x=>document.getElementById(x).value;
+  const obj={ nome:get('tr-nome').trim()||'Turma sem nome', curso:get('tr-curso'), periodo:get('tr-periodo'), turno:get('tr-turno'), alunos:+get('tr-alunos')||0, ativo:true };
+  if(id){ Object.assign(turmas.find(t=>t.id===id),obj); toast('Turma atualizada',obj.nome+' foi salva.','ok'); }
+  else { obj.id=uid('t'); turmas.push(obj); toast('Turma cadastrada',obj.nome+' adicionada.','ok'); }
+  closeModal(); render();
+}
+window.salvarTurma = salvarTurma;
+function delTurma(id){
+  const t=turmas.find(x=>x.id===id);
+  openModal(`<div class="p-6"><div class="w-12 h-12 rounded-xl bg-if-red-50 text-if-red flex items-center justify-center mb-4">${icon('trash')}</div>
+    <h3 class="font-bold text-lg">Remover a turma “${t.nome}”?</h3><p class="text-if-slate-600 text-sm mt-1">A turma deixará de aparecer no cadastro de aulas e reservas.</p></div>
+    <div class="px-6 py-4 border-t border-if-slate-100 flex justify-end gap-2 bg-if-slate-50">
+    <button onclick="closeModal()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-if-slate-600 hover:bg-if-slate-100">Voltar</button>
+    <button onclick="confDelTurma('${id}')" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-if-red hover:bg-if-red-600">Remover</button></div>`,'max-w-md');
+}
+window.delTurma = delTurma;
+function confDelTurma(id){ const i=turmas.findIndex(t=>t.id===id); const n=turmas[i].nome; turmas.splice(i,1); closeModal(); toast('Turma removida',n+' foi excluída.','warn'); render(); }
+window.confDelTurma = confDelTurma;
+
+/* ---------- Importar planilha de horários (RF01/RF02) ---------- */
+/* estatísticas da grade importada */
+function gradeStats(){
+  const vals = Object.values(ocupacaoAulas);
+  const espSet=new Set(), turSet=new Set(), profSet=new Set();
+  Object.keys(ocupacaoAulas).forEach(k=>espSet.add(k.split('|')[0]));
+  vals.forEach(v=>{ if(v.turma) turSet.add(v.turma); if(v.prof) profSet.add(v.prof); });
+  return { periodos:vals.length, espacos:espSet.size, turmas:turSet.size, profs:profSet.size };
+}
+
+function adminImportar(){
+  const s = gradeStats();
+  const edit = state.editGrade;
+  const statChip=(v,l,ic)=>`<div class="flex items-center gap-2.5 bg-if-slate-50 ring-1 ring-if-slate-200 rounded-xl px-3 py-2.5">
+    <span class="w-8 h-8 rounded-lg bg-white text-if-green-700 ring-1 ring-if-slate-200 flex items-center justify-center">${icon(ic,'w-4 h-4')}</span>
+    <div><div class="text-base font-extrabold leading-none">${v}</div><div class="text-[11px] text-if-slate-500">${l}</div></div></div>`;
+
+  return `
+    ${pageHead('Importar grade de horários','Atualize a ocupação dos espaços a partir da planilha do ensalamento (RF01) ou faça ajustes pontuais (RF02).',
+      `<button onclick="openImportWizard()" class="inline-flex items-center gap-2 bg-if-green hover:bg-if-green-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">${icon(state.planilhaImportada?'refresh':'upload','w-4 h-4')} ${state.planilhaImportada?'Reimportar grade':'Importar grade'}</button>`)}
+
+    <!-- Painel de status da importação -->
+    ${card(`<div class="p-5 flex flex-col lg:flex-row lg:items-center gap-5">
+      <div class="flex items-center gap-3 flex-none">
+        <span class="w-12 h-12 rounded-xl ${state.planilhaImportada?'bg-if-green-50 text-if-green-700':'bg-if-amber-50 text-if-amber'} flex items-center justify-center">${icon(state.planilhaImportada?'check':'alert','w-6 h-6')}</span>
+        <div>
+          <div class="font-bold leading-tight">${state.planilhaImportada?state.ultimaImport.arquivo:'Nenhuma grade importada'}</div>
+          <div class="text-xs text-if-slate-500 mt-0.5">${state.planilhaImportada?`Importado em ${state.ultimaImport.data} · vigência: ${state.ultimaImport.vigencia}`:'Importe a planilha para começar.'}</div>
+        </div>
+      </div>
+      <div class="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        ${statChip(s.periodos,'Períodos ocupados','clock')}
+        ${statChip(s.espacos,'Espaços com aula','building')}
+        ${statChip(s.turmas,'Turmas','users')}
+        ${statChip(s.profs,'Professores','users')}
+      </div>
+    </div>`)}
+
+    <div class="mt-4 rounded-xl bg-if-slate-50 ring-1 ring-if-slate-200 p-3 text-xs text-if-slate-500 flex gap-2 items-start">
+      ${icon('shield','w-4 h-4 text-if-green flex-none mt-0.5')}
+      <span>A atualização ocorre apenas por ação do administrador — por importação ou ajuste manual. O sistema não consulta serviços externos em tempo real (RNF07).</span>
+    </div>
+
+    <!-- Grade + ajustes manuais -->
+    <div class="mt-6">
+      ${card(`
+        <div class="px-5 py-4 border-b border-if-slate-100 flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-3">
+            <h2 class="font-bold">${edit?'Ajustes manuais':'Ocupação importada'}</h2>
+            ${ddField(state.espacoSel, espacos.map(x=>[x.id,x.nome]), 'selEspaco($V)')}
           </div>
-        </div><div class="p-1">${gradeSemanal(state.espacoSel,{importMode:true}).replace('bg-white rounded-2xl ring-1 ring-if-slate-200 shadow-card','')}</div>`)}
-      </div>
+          <div class="flex items-center gap-2">
+            ${edit?`<button onclick="openAulaEditor('add','${state.espacoSel}','Seg','13:20','13:20')" class="inline-flex items-center gap-1.5 text-sm font-semibold text-if-green-700 ring-1 ring-if-green-200 hover:bg-if-green-50 px-3 py-2 rounded-lg">${icon('plus','w-4 h-4')} Adicionar aula</button>`:''}
+            <button onclick="toggleEditGrade()" class="inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-2 rounded-lg ${edit?'bg-if-ink text-white hover:bg-if-slate-700':'bg-white ring-1 ring-if-slate-300 text-if-ink hover:bg-if-slate-50'}">${icon(edit?'check':'sliders','w-4 h-4')} ${edit?'Concluir ajustes':'Ajustar manualmente'}</button>
+          </div>
+        </div>
+        ${edit?`<div class="px-5 py-2.5 bg-if-green-50 border-b border-if-green-100 text-xs text-if-green-800 flex items-center gap-2">${icon('edit','w-4 h-4')} Modo de edição ativo — clique num <strong>horário livre</strong> para adicionar uma aula, ou numa <strong>aula</strong> para editar/remover.</div>`:''}
+        <div class="p-1">${gradeSemanal(state.espacoSel,{importMode:true, editavel:edit}).replace('bg-white rounded-2xl ring-1 ring-if-slate-200 shadow-card','')}</div>
+      `)}
     </div>`;
 }
-function simularUpload(){
-  toast('Processando planilha','Lendo a grade de horários institucional…','ok');
-  setTimeout(()=>{ state.planilhaImportada=true; toast('Importação concluída',Object.keys(ocupacaoAulas).length+' horários de aulas marcados como ocupados. (RF01)','ok'); render(); },900);
+
+function toggleEditGrade(){ state.editGrade=!state.editGrade; render(); if(state.editGrade) toast('Modo de ajustes ativado','Clique nas células da grade para adicionar, editar ou remover aulas. (RF02)','ok'); }
+window.toggleEditGrade = toggleEditGrade;
+
+/* ---------- Assistente de importação (passo a passo) ---------- */
+function openImportWizard(){ state.imp = { step:1, file:null, vigencia:'Semana de 08/06/2026' }; renderImportWizard(); }
+window.openImportWizard = openImportWizard;
+function impSet(k,v){ if(state.imp){ state.imp[k]=v; renderImportWizard(); } }
+window.impSet = impSet;
+function impSelecionarArquivo(){ state.imp.file = { nome:'horarios_2026-1.xlsx', tam:'182 KB' }; renderImportWizard(); }
+window.impSelecionarArquivo = impSelecionarArquivo;
+function impAnalisar(){
+  toast('Analisando planilha','Lendo a grade e identificando a ocupação…','ok');
+  state.imp.step = 99; renderImportWizard(); // estado "analisando"
+  setTimeout(()=>{ if(state.imp){ state.imp.step=2; renderImportWizard(); } }, 1100);
 }
-window.simularUpload = simularUpload;
-function toggleCelula(espacoId,dia,slot){
-  const k=`${espacoId}|${dia}|${slot}`;
-  if(ocupacaoAulas[k]){ delete ocupacaoAulas[k]; toast('Horário liberado','Célula marcada como livre (edição pontual). (RF02)','ok'); }
-  else { ocupacaoAulas[k]={disc:'Ajuste manual',turma:'—'}; toast('Horário ocupado','Célula marcada como aula. (RF02)','ok'); }
+window.impAnalisar = impAnalisar;
+function impConfirmar(){
+  state.planilhaImportada = true;
+  state.ultimaImport = { arquivo: state.imp.file.nome, data:'08/06/2026 09:20', vigencia: state.imp.vigencia };
+  state.imp.step = 3; renderImportWizard();
+}
+window.impConfirmar = impConfirmar;
+
+function renderImportWizard(){
+  const imp = state.imp; if(!imp) return;
+  const stepDot=(n,l)=>{ const done=imp.step>n||(imp.step===3); const act=imp.step===n;
+    return `<div class="flex items-center gap-2">
+      <span class="w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center ${act?'bg-if-green text-white':done?'bg-if-green-100 text-if-green-700':'bg-if-slate-100 text-if-slate-400'}">${done&&!act?icon('check','w-3.5 h-3.5'):n}</span>
+      <span class="text-xs font-semibold ${act?'text-if-ink':'text-if-slate-400'} hidden sm:inline">${l}</span></div>`; };
+  const stepper = `<div class="flex items-center gap-2 sm:gap-3">
+    ${stepDot(1,'Arquivo')}<div class="flex-1 h-px bg-if-slate-200 min-w-[16px]"></div>${stepDot(2,'Revisão')}<div class="flex-1 h-px bg-if-slate-200 min-w-[16px]"></div>${stepDot(3,'Concluído')}</div>`;
+
+  let body='';
+  const s = gradeStats();
+  if(imp.step===1){
+    body = `
+      <div onclick="impSelecionarArquivo()" class="cursor-pointer border-2 border-dashed ${imp.file?'border-if-green bg-if-green-50/40':'border-if-slate-300 hover:border-if-green'} rounded-xl p-7 text-center transition">
+        <div class="w-12 h-12 mx-auto rounded-xl ${imp.file?'bg-if-green-100 text-if-green-700':'bg-if-slate-50 text-if-slate-400'} flex items-center justify-center mb-3">${icon(imp.file?'file':'upload','w-6 h-6')}</div>
+        ${imp.file?`<div class="text-sm font-semibold">${imp.file.nome}</div><div class="text-xs text-if-slate-500 mt-0.5">${imp.file.tam} · pronto para analisar</div>`
+                  :`<div class="text-sm font-semibold">Arraste a planilha aqui ou clique para selecionar</div><div class="text-xs text-if-slate-500 mt-1">.xlsx ou .csv exportado pelo setor de ensalamento</div>`}
+      </div>
+      ${imp.file?`<button onclick="impSelecionarArquivo()" class="mt-2 text-xs font-semibold text-if-green-700 hover:underline">Trocar arquivo</button>`:''}
+      <div class="mt-4 rounded-lg bg-if-slate-50 ring-1 ring-if-slate-200 p-3 text-xs text-if-slate-500 flex gap-2"><span class="text-if-green flex-none">${icon('shield','w-4 h-4')}</span> Os dados atuais só serão substituídos depois que você confirmar, na etapa de revisão.</div>`;
+  } else if(imp.step===99){
+    body = `<div class="py-12 flex flex-col items-center gap-4 text-center">
+      <div class="w-12 h-12 rounded-full border-4 border-if-green-100 border-t-if-green animate-spin"></div>
+      <div class="text-sm font-semibold">Analisando “${imp.file.nome}”…</div>
+      <div class="text-xs text-if-slate-500">Identificando aulas, salas e turmas.</div></div>`;
+  } else if(imp.step===2){
+    const exemplos = Object.entries(ocupacaoAulas).slice(0,4).map(([k,v])=>{ const [esp,dia,slot]=k.split('|');
+      return `<div class="flex items-center gap-2 px-3 py-2 border-b border-if-slate-100 last:border-0 text-xs">
+        <span class="w-6 h-6 rounded bg-if-slate-100 text-if-slate-500 flex items-center justify-center flex-none">${icon('building','w-3.5 h-3.5')}</span>
+        <span class="font-semibold truncate flex-1">${v.disc}</span><span class="text-if-slate-400 flex-none">${espacoNome(esp).replace('Lab. de ','')} · ${dia} ${slot}</span></div>`;}).join('');
+    const box=(v,l)=>`<div class="bg-if-slate-50 ring-1 ring-if-slate-200 rounded-xl p-3 text-center"><div class="text-lg font-extrabold">${v}</div><div class="text-[11px] text-if-slate-500">${l}</div></div>`;
+    body = `
+      <div class="flex items-center gap-2 text-sm font-semibold text-if-green-700 mb-3">${icon('check','w-5 h-5')} Análise concluída, nenhum conflito encontrado.</div>
+      <div class="grid grid-cols-4 gap-2 mb-4">${box(s.periodos,'Períodos')}${box(s.espacos,'Espaços')}${box(s.turmas,'Turmas')}${box(s.profs,'Profes.')}</div>
+      <div class="text-[11px] font-bold uppercase tracking-wide text-if-slate-400 mb-1.5">Amostra do que será importado</div>
+      <div class="ring-1 ring-if-slate-200 rounded-lg overflow-hidden mb-4">${exemplos}<div class="px-3 py-2 text-[11px] text-if-slate-400 bg-if-slate-50">+ ${Math.max(0,s.periodos-4)} outros períodos</div></div>
+      <label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Vigência (a partir de quando vale) — RF02</label>
+      ${ddField(imp.vigencia, ['Semana de 08/06/2026','Semana de 15/06/2026','Início do semestre (retroativo)'].map(o=>[o,o]), "impSet('vigencia',$V)", {cls:'w-full'})}
+      <div class="mt-3 rounded-lg bg-if-amber-50 ring-1 ring-amber-200 p-3 text-xs text-if-amber flex gap-2"><span class="flex-none">${icon('alert','w-4 h-4')}</span> Ao confirmar, a ocupação por aulas será substituída pela nova grade a partir da vigência escolhida.</div>`;
+  } else {
+    body = `<div class="py-8 flex flex-col items-center gap-3 text-center">
+      <div class="w-14 h-14 rounded-full bg-if-green-50 text-if-green-700 flex items-center justify-center">${icon('check','w-7 h-7')}</div>
+      <div class="text-lg font-bold">Importação concluída</div>
+      <div class="text-sm text-if-slate-500 max-w-xs">${s.periodos} períodos de aula foram marcados como ocupados, com vigência a partir de <strong>${imp.vigencia}</strong>. (RF01)</div></div>`;
+  }
+
+  let footer='';
+  if(imp.step===1) footer = `<button onclick="closeModal()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-if-slate-600 hover:bg-if-slate-100">Cancelar</button>
+    <button ${imp.file?'':'disabled'} onclick="impAnalisar()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white ${imp.file?'bg-if-green hover:bg-if-green-600':'bg-if-slate-300 cursor-not-allowed'}">Analisar arquivo ${icon('arrowRight','w-4 h-4')}</button>`;
+  else if(imp.step===2) footer = `<button onclick="impSet('step',1)" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-if-slate-600 hover:bg-if-slate-100">Voltar</button>
+    <button onclick="impConfirmar()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-if-green hover:bg-if-green-600">${icon('check','w-4 h-4')} Confirmar importação</button>`;
+  else if(imp.step===3) footer = `<button onclick="closeModal();render()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-if-green hover:bg-if-green-600">${icon('eye','w-4 h-4')} Ver grade importada</button>`;
+
+  openModal(`
+    <div class="px-6 py-4 border-b border-if-slate-100 flex items-center justify-between gap-4">
+      <h3 class="font-bold text-lg flex items-center gap-2">${icon('sheet','w-5 h-5 text-if-green')} Importar grade</h3>
+      <button onclick="closeModal()" class="text-if-slate-400 hover:text-if-ink">${icon('x')}</button>
+    </div>
+    <div class="px-6 py-3 border-b border-if-slate-100 bg-if-slate-50">${stepper}</div>
+    <div class="p-6">${body}</div>
+    ${footer?`<div class="px-6 py-4 border-t border-if-slate-100 flex justify-end gap-2 bg-if-slate-50">${footer}</div>`:''}
+  `,'max-w-lg');
+}
+
+/* ---------- Editor de aula (ajuste manual) — RF02 ---------- */
+function openAulaEditor(mode, espacoId, dia, startSlot, endSlot){
+  const a = mode==='edit' ? (ocupacaoAulas[`${espacoId}|${dia}|${startSlot}`]||{}) : {};
+  state.aulaForm = { mode, espacoId, dia, startSlot, endSlot, origDia:dia, origStart:startSlot, origEnd:endSlot, disc:a.disc||'', prof:a.prof||'', turma:a.turma||(turmas[0]?turmas[0].nome:'') };
+  renderAulaEditor();
+}
+window.openAulaEditor = openAulaEditor;
+function aulaSet(k,v){ if(state.aulaForm){ state.aulaForm[k]=v; if(k==='startSlot'||k==='endSlot') renderAulaEditor(); } }
+window.aulaSet = aulaSet;
+
+function renderAulaEditor(){
+  const f = state.aulaForm; if(!f) return;
+  const e = espacos.find(x=>x.id===f.espacoId)||{};
+  // garante endSlot >= startSlot
+  const si = SLOTS.indexOf(f.startSlot), ei = SLOTS.indexOf(f.endSlot);
+  const validRange = ei>=si;
+  const slotOpts = (onlyFrom)=>SLOTS.map((s,idx)=>[s, `${s}–${SLOT_TIMES[s]}`, onlyFrom!=null&&idx<onlyFrom]);
+  const podeSalvar = f.disc.trim() && validRange;
+  openModal(`
+    <div class="px-6 py-4 border-b border-if-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-lg flex items-center gap-2">${icon(f.mode==='edit'?'edit':'plus','w-5 h-5 text-if-green')} ${f.mode==='edit'?'Editar aula':'Adicionar aula'}</h3>
+      <button onclick="closeModal()" class="text-if-slate-400 hover:text-if-ink">${icon('x')}</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="rounded-lg bg-if-slate-50 ring-1 ring-if-slate-200 px-3 py-2 text-xs text-if-slate-500 flex items-center gap-2">${icon('building','w-4 h-4 text-if-slate-400')} ${e.nome} · ${e.bloco}</div>
+      <div class="grid grid-cols-3 gap-3">
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Dia</label>
+          ${ddField(f.dia, DIAS.map(d=>[d,d]), "aulaSet('dia',$V)", {cls:'w-full'})}</div>
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Início</label>
+          ${ddField(f.startSlot, slotOpts(), "aulaSet('startSlot',$V)", {cls:'w-full'})}</div>
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Fim</label>
+          ${ddField(f.endSlot, slotOpts(si), "aulaSet('endSlot',$V)", {cls:'w-full'})}</div>
+      </div>
+      ${!validRange?`<div class="text-xs text-if-red-700 flex items-center gap-1.5">${icon('alert','w-4 h-4')} O fim deve ser igual ou depois do início.</div>`:''}
+      <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Disciplina</label>
+        <input id="aula-disc" value="${f.disc}" oninput="state.aulaForm.disc=this.value" placeholder="Ex.: Banco de Dados" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Professor</label>
+          <input id="aula-prof" value="${f.prof}" oninput="state.aulaForm.prof=this.value" placeholder="Ex.: Patrícia Lucas" class="w-full rounded-lg ring-1 ring-if-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-if-green outline-none" /></div>
+        <div><label class="block text-xs font-bold uppercase tracking-wide text-if-slate-500 mb-1.5">Turma</label>
+          ${ddField(f.turma, [...turmas.map(t=>[t.nome,t.nome]),['Outra','Outra']], 'state.aulaForm.turma=$V', {cls:'w-full'})}</div>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-if-slate-100 flex items-center ${f.mode==='edit'?'justify-between':'justify-end'} gap-2 bg-if-slate-50">
+      ${f.mode==='edit'?`<button onclick="removerAula()" class="inline-flex items-center gap-1.5 text-sm font-semibold text-if-red ring-1 ring-red-200 hover:bg-if-red-50 px-3.5 py-2 rounded-lg">${icon('trash','w-4 h-4')} Remover</button>`:''}
+      <div class="flex gap-2">
+        <button onclick="closeModal()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-if-slate-600 hover:bg-if-slate-100">Cancelar</button>
+        <button ${podeSalvar?'':'disabled'} onclick="salvarAula()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white ${podeSalvar?'bg-if-green hover:bg-if-green-600':'bg-if-slate-300 cursor-not-allowed'}">${icon('check','w-4 h-4')} Salvar</button>
+      </div>
+    </div>
+  `,'max-w-lg');
+}
+
+function aulaSlotsRange(startSlot, endSlot){ const a=SLOTS.indexOf(startSlot), b=SLOTS.indexOf(endSlot); return SLOTS.slice(a, b+1); }
+function salvarAula(){
+  const f=state.aulaForm; if(!f) return;
+  const disc=(document.getElementById('aula-disc')?.value||f.disc).trim();
+  const prof=(document.getElementById('aula-prof')?.value||f.prof).trim()||'—';
+  if(!disc) return;
+  // ao editar, remove os períodos antigos do bloco original (dia/horário podem ter mudado)
+  if(f.mode==='edit'){ aulaSlotsRange(f.origStart, f.origEnd).forEach(s=>{ delete ocupacaoAulas[`${f.espacoId}|${f.origDia}|${s}`]; }); }
+  aulaSlotsRange(f.startSlot, f.endSlot).forEach(s=>{ ocupacaoAulas[`${f.espacoId}|${f.dia}|${s}`]={disc, prof, turma:f.turma}; });
+  closeModal();
+  toast(f.mode==='edit'?'Aula atualizada':'Aula adicionada', `${disc} · ${f.dia} ${f.startSlot}–${SLOT_TIMES[f.endSlot]} (RF02)`,'ok');
   render();
 }
-window.toggleCelula = toggleCelula;
+window.salvarAula = salvarAula;
+function removerAula(){
+  const f=state.aulaForm; if(!f) return;
+  aulaSlotsRange(f.startSlot, f.endSlot).forEach(s=>{ delete ocupacaoAulas[`${f.espacoId}|${f.dia}|${s}`]; });
+  closeModal();
+  toast('Aula removida','Horário liberado na grade. (RF02)','warn');
+  render();
+}
+window.removerAula = removerAula;
 
-/* ---------- Relatórios (RF12) ---------- */
+/* ---------- Relatórios (RF12) — Chart.js + drilldown em modal ---------- */
+
+/* lista unificada de ocupações (aulas + reservas ativas) */
+function ocupacoesList(){
+  const out=[];
+  Object.entries(ocupacaoAulas).forEach(([k,v])=>{ const [esp,dia,slot]=k.split('|'); out.push({tipo:'aula',esp,dia,slot,titulo:v.disc,prof:v.prof,turma:v.turma}); });
+  reservas.filter(r=>r.status==='aprovada'||r.status==='pendente').forEach(r=>out.push({tipo:'reserva',esp:r.espaco,dia:r.dia,slot:r.slot,titulo:r.titulo,docente:userNome(r.docente),status:r.status}));
+  return out;
+}
+const PALETA = ['#2D9E3F','#268A37','#C9821C','#CF171F','#4B5358','#6B7378','#A9D7AE'];
+
+/* modal de detalhes (drilldown) com paginação */
+let _detalhe = null;
+function openDetalhe(titulo, sub, itens){ _detalhe = { titulo, sub, itens, page:1, perPage:6 }; renderDetalhe(); }
+function detalhePage(p){ if(!_detalhe) return; _detalhe.page = p; renderDetalhe(); }
+window.openDetalhe = openDetalhe; window.detalhePage = detalhePage;
+
+function renderDetalhe(){
+  const { titulo, sub, itens, perPage } = _detalhe;
+  const total = itens.length;
+  const pages = Math.max(1, Math.ceil(total/perPage));
+  const page = Math.min(Math.max(1,_detalhe.page), pages);
+  _detalhe.page = page;
+  const slice = itens.slice((page-1)*perPage, page*perPage);
+
+  const rows = total ? slice.map(o=>{
+    const isA = o.tipo==='aula';
+    const cl = isA?'bg-if-slate-100 text-if-slate-600':(o.status==='aprovada'?'bg-if-green-50 text-if-green-700':'bg-if-amber-50 text-if-amber');
+    const right = isA ? `<span class="text-[11px] font-medium text-if-slate-500 bg-if-slate-50 ring-1 ring-if-slate-200 px-2 py-0.5 rounded-full">${o.turma}</span>` : badge(o.status);
+    return `<div class="flex items-center gap-3 px-5 py-3 border-b border-if-slate-100 last:border-0">
+      <span class="flex-none w-9 h-9 rounded-lg flex items-center justify-center ${cl}">${icon(isA?'building':'calendar','w-4 h-4')}</span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold truncate">${o.titulo}</div>
+        <div class="text-xs text-if-slate-500 truncate">${espacoNome(o.esp)} · ${o.dia} ${o.slot}–${SLOT_TIMES[o.slot]} · ${isA?o.prof:o.docente}</div>
+      </div>
+      <div class="flex-none">${right}</div>
+    </div>`;
+  }).join('') : `<div class="px-5 py-12 text-center text-sm text-if-slate-400 flex flex-col items-center gap-2">${icon('search','w-8 h-8 text-if-slate-200')} Nenhum registro para este filtro.</div>`;
+
+  const ini = total ? (page-1)*perPage+1 : 0;
+  const fim = Math.min(page*perPage, total);
+  const footer = pages>1 ? `
+    <div class="px-5 py-3 border-t border-if-slate-100 bg-if-slate-50 flex items-center justify-between">
+      <span class="text-xs font-semibold text-if-slate-500">${ini}–${fim} de ${total}</span>
+      <div class="flex items-center gap-1">
+        <button ${page<=1?'disabled':''} onclick="detalhePage(${page-1})" class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${page<=1?'text-if-slate-300 cursor-not-allowed':'text-if-slate-600 hover:bg-if-slate-100'}">${icon('chevron','w-4 h-4 rotate-90')} Anterior</button>
+        <span class="text-xs font-semibold text-if-slate-500 px-2">${page}/${pages}</span>
+        <button ${page>=pages?'disabled':''} onclick="detalhePage(${page+1})" class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${page>=pages?'text-if-slate-300 cursor-not-allowed':'text-if-slate-600 hover:bg-if-slate-100'}">Próxima ${icon('chevron','w-4 h-4 -rotate-90')}</button>
+      </div>
+    </div>` : `<div class="px-6 py-3 border-t border-if-slate-100 bg-if-slate-50 text-xs font-semibold text-if-slate-500">${total} registro(s)</div>`;
+
+  openModal(`
+    <div class="px-6 py-4 border-b border-if-slate-100 flex items-center justify-between">
+      <div><h3 class="font-bold text-lg">${titulo}</h3>${sub?`<p class="text-xs text-if-slate-500 mt-0.5">${sub}</p>`:''}</div>
+      <button onclick="closeModal()" class="text-if-slate-400 hover:text-if-ink">${icon('x')}</button>
+    </div>
+    <div class="min-h-[280px]">${rows}</div>
+    ${footer}
+  `,'max-w-lg');
+}
+
+/* ---- Filtros dos relatórios (funcionais) ---- */
+function relF(){ return state.relFiltro || (state.relFiltro={espaco:'all',tipo:'all',dia:'all'}); }
+function ocFiltrada(){
+  const f=relF();
+  return ocupacoesList().filter(o=>
+    (f.espaco==='all'||o.esp===f.espaco) &&
+    (f.tipo==='all'||o.tipo===f.tipo) &&
+    (f.dia==='all'||o.dia===f.dia));
+}
+function reservasFiltradas(){
+  const f=relF();
+  return reservas.filter(r=>
+    (f.espaco==='all'||r.espaco===f.espaco) &&
+    (f.dia==='all'||r.dia===f.dia) &&
+    (f.tipo==='all'||f.tipo==='reserva'));
+}
+function relFiltroAtivos(){ const f=relF(); return (f.espaco!=='all')+(f.tipo!=='all')+(f.dia!=='all'); }
+function setRelFiltro(k,v){ relF()[k]=v; render(); }
+function limparRelFiltro(){ state.relFiltro={espaco:'all',tipo:'all',dia:'all'}; render(); }
+window.setRelFiltro=setRelFiltro; window.limparRelFiltro=limparRelFiltro;
+function relFiltroSubtitulo(){ const f=relF(); const p=[];
+  if(f.espaco!=='all') p.push(espacoNome(f.espaco));
+  if(f.tipo!=='all') p.push(f.tipo==='aula'?'apenas aulas':'apenas reservas');
+  if(f.dia!=='all') p.push(({Seg:'Segunda',Ter:'Terça',Qua:'Quarta',Qui:'Quinta',Sex:'Sexta'})[f.dia]);
+  return p.length?('Filtro: '+p.join(' · ')):''; }
+
+/* drilldowns chamados pelos cliques (gráficos, KPIs, tabela) — respeitam os filtros */
+function drillEspaco(espId){ const e=espacos.find(x=>x.id===espId)||{}; openDetalhe(e.nome||'Espaço', relFiltroSubtitulo()||'Aulas e reservas no espaço', ocFiltrada().filter(o=>o.esp===espId)); }
+function drillTurno(t){ openDetalhe('Turno: '+t, relFiltroSubtitulo()||'Aulas e reservas no período', ocFiltrada().filter(o=>turno(o.slot)===t)); }
+function drillDia(d){ openDetalhe(({Seg:'Segunda',Ter:'Terça',Qua:'Quarta',Qui:'Quinta',Sex:'Sexta'})[d]||d, relFiltroSubtitulo()||'Aulas e reservas no dia', ocFiltrada().filter(o=>o.dia===d)); }
+function drillStatus(st){ const lbl={aprovada:'Aprovadas',pendente:'Pendentes',rejeitada:'Rejeitadas',cancelada:'Canceladas'}[st];
+  const itens=reservasFiltradas().filter(r=>r.status===st).map(r=>({tipo:'reserva',esp:r.espaco,dia:r.dia,slot:r.slot,titulo:r.titulo,docente:userNome(r.docente),status:r.status}));
+  openDetalhe('Reservas '+lbl.toLowerCase(), relFiltroSubtitulo()||('Solicitações '+lbl.toLowerCase()), itens); }
+window.drillEspaco=drillEspaco; window.drillTurno=drillTurno; window.drillDia=drillDia; window.drillStatus=drillStatus;
+
 function adminRelatorios(){
-  // uso por espaço
-  const porEspaco = espacos.map(e=>{ let c=0; DIAS.forEach(d=>SLOTS.forEach(s=>{ if(cellStatus(e.id,d,s)!=='livre') c++; })); return {nome:e.nome, val:c}; });
-  const maxE = Math.max(...porEspaco.map(x=>x.val),1);
-  // uso por turno
-  const turnos={'Manhã':0,'Tarde':0,'Noite':0};
-  espacos.forEach(e=>DIAS.forEach(d=>SLOTS.forEach(s=>{ if(cellStatus(e.id,d,s)!=='livre') turnos[turno(s)]++; })));
-  const maxT=Math.max(...Object.values(turnos),1);
-  // status das reservas
-  const stcount={aprovada:0,pendente:0,rejeitada:0,cancelada:0};
-  reservas.forEach(r=>stcount[r.status]!==undefined&&stcount[r.status]++);
-  const totalR=reservas.length||1;
+  const f = relF();
+  const oc = ocFiltrada();
+  const totalAulas = oc.filter(o=>o.tipo==='aula').length;
+  const totalResv = reservasFiltradas().filter(r=>r.status!=='cancelada').length;
+  const nEsp = f.espaco==='all'?espacos.length:1;
+  const nDia = f.dia==='all'?DIAS.length:1;
+  const totalSlots = Math.max(1, nEsp*nDia*SLOTS.length);
+  const taxa = Math.min(100, Math.round(oc.length/totalSlots*100));
+  const porEspaco = espacos.map(e=>({ id:e.id, nome:e.nome, val:oc.filter(o=>o.esp===e.id).length })).sort((a,b)=>b.val-a.val);
+  const top = porEspaco.find(x=>x.val>0);
+  const ativos = relFiltroAtivos();
+
+  const fsel=(key,label,opcoes)=>`<span class="inline-flex items-center gap-1.5">
+      <span class="text-xs font-semibold text-if-slate-500">${label}</span>
+      ${ddField(f[key], opcoes, `setRelFiltro('${key}',$V)`, {cls: f[key]!=='all'?'dd-active':''})}
+    </span>`;
 
   return `
-    ${pageHead('Relatórios de utilização','Como os espaços foram usados ao longo do semestre, para apoiar o planejamento.', `<button onclick="exportarRel()" class="inline-flex items-center gap-2 bg-white ring-1 ring-if-slate-300 text-if-ink text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-if-slate-50">${icon('download','w-4 h-4')} Exportar PDF</button>`)}
-    <div class="flex flex-wrap gap-2 mb-6">
-      ${['1º semestre 2026','Maio/2026','Junho/2026'].map((p,i)=>`<button class="px-3 py-1.5 rounded-lg text-sm font-semibold ${i===0?'bg-if-ink text-white':'bg-white ring-1 ring-if-slate-200 text-if-slate-600 hover:bg-if-slate-50'}">${p}</button>`).join('')}
-      <span class="ml-auto inline-flex items-center gap-1.5 text-xs text-if-slate-500 bg-if-slate-50 ring-1 ring-if-slate-200 px-3 py-1.5 rounded-lg">${icon('filter','w-3.5 h-3.5')} Filtros aplicados</span>
+    ${pageHead('Relatórios de utilização','Filtre e clique em qualquer barra, fatia ou linha para ver os detalhes.', `<button onclick="exportarRel()" class="inline-flex items-center gap-2 bg-white ring-1 ring-if-slate-300 text-if-ink text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-if-slate-50">${icon('download','w-4 h-4')} Exportar PDF</button>`)}
+
+    <div class="bg-white rounded-xl ring-1 ring-if-slate-200 shadow-card p-3 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-if-slate-400 pr-1">${icon('filter','w-4 h-4')} Filtros</span>
+      ${fsel('espaco','Espaço',[['all','Todos'],...espacos.map(e=>[e.id,e.nome])])}
+      ${fsel('tipo','Tipo',[['all','Aulas e reservas'],['aula','Apenas aulas'],['reserva','Apenas reservas']])}
+      ${fsel('dia','Dia',[['all','Todos'],...DIAS.map(d=>[d,({Seg:'Segunda',Ter:'Terça',Qua:'Quarta',Qui:'Quinta',Sex:'Sexta'})[d]])])}
+      <span class="inline-flex items-center gap-1 text-[11px] font-medium text-if-slate-500 bg-if-slate-50 ring-1 ring-if-slate-200 px-2 py-1 rounded-full">1º semestre 2026</span>
+      ${ativos?`<button onclick="limparRelFiltro()" class="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-if-red hover:bg-if-red-50 px-2.5 py-1.5 rounded-lg">${icon('x','w-3.5 h-3.5')} Limpar filtros (${ativos})</button>`:''}
+    </div>
+
+    <!-- KPIs clicáveis -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      ${kpiRel(totalAulas,'Aulas na grade','sheet',"openDetalhe('Aulas na grade', relFiltroSubtitulo()||'Aulas no recorte atual', ocFiltrada().filter(o=>o.tipo==='aula'))")}
+      ${kpiRel(totalResv,'Reservas ativas','calendar',"openDetalhe('Reservas ativas', relFiltroSubtitulo()||'Reservas no recorte atual', ocFiltrada().filter(o=>o.tipo==='reserva'))")}
+      ${kpiRel(taxa+'%','Taxa de ocupação','chart',"openDetalhe('Ocupação', relFiltroSubtitulo()||'Horários ocupados no recorte', ocFiltrada())")}
+      ${kpiRel(top?top.nome.replace('Lab. de ','').replace('Laboratório de ',''):'—','Espaço mais usado','building',"drillEspaco('"+(top?top.id:'')+"')")}
     </div>
 
     <div class="grid lg:grid-cols-2 gap-6 mb-6">
-      ${card(`<div class="px-5 py-4 border-b border-if-slate-100"><h2 class="font-bold">Horas/slots ocupados por espaço</h2></div>
-        <div class="p-5 space-y-4">${porEspaco.map(x=>`
-          <div><div class="flex justify-between text-sm mb-1.5"><span class="font-medium text-if-slate-600 truncate pr-2">${x.nome}</span><span class="font-bold">${x.val}</span></div>
-          <div class="h-3 rounded-full bg-if-slate-100 overflow-hidden"><div class="h-full bg-if-green rounded-full" style="width:${x.val/maxE*100}%"></div></div></div>`).join('')}</div>`)}
-
-      ${card(`<div class="px-5 py-4 border-b border-if-slate-100"><h2 class="font-bold">Ocupação por turno</h2></div>
-        <div class="p-5">
-          <div class="flex items-end justify-around gap-6" style="height:200px">
-            ${Object.entries(turnos).map(([t,v])=>`
-              <div class="flex flex-col items-center justify-end gap-2 flex-1 h-full">
-                <div class="text-sm font-bold">${v}</div>
-                <div class="w-full rounded-t-lg bg-if-green" style="height:${Math.max(v/maxT*150,6)}px"></div>
-                <div class="text-xs font-semibold text-if-slate-500">${t}</div>
-              </div>`).join('')}
-          </div>
-        </div>`)}
+      ${card(`<div class="px-5 py-4 border-b border-if-slate-100 flex items-center justify-between"><h2 class="font-bold">Ocupação por espaço</h2><span class="text-xs text-if-slate-400">clique nas barras</span></div>
+        <div class="p-5"><div style="height:260px"><canvas id="chEspaco"></canvas></div></div>`)}
+      ${card(`<div class="px-5 py-4 border-b border-if-slate-100 flex items-center justify-between"><h2 class="font-bold">Status das reservas</h2><span class="text-xs text-if-slate-400">clique nas fatias</span></div>
+        <div class="p-5"><div style="height:260px"><canvas id="chStatus"></canvas></div></div>`)}
     </div>
 
-    <div class="grid lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2">
-        ${card(`<div class="px-5 py-4 border-b border-if-slate-100"><h2 class="font-bold">Espaços mais demandados</h2></div>
-        <div class="overflow-x-auto"><table class="w-full min-w-[480px]">
-          <thead><tr class="text-left text-xs font-bold uppercase tracking-wide text-if-slate-400"><th class="px-5 py-3">#</th><th class="px-5 py-3">Espaço</th><th class="px-5 py-3">Slots ocupados</th><th class="px-5 py-3">Utilização</th></tr></thead>
-          <tbody>${[...porEspaco].sort((a,b)=>b.val-a.val).map((x,i)=>`
-            <tr class="border-t border-if-slate-100"><td class="px-5 py-3 font-bold text-if-slate-400">${i+1}</td>
+    <div class="grid lg:grid-cols-2 gap-6 mb-6">
+      ${card(`<div class="px-5 py-4 border-b border-if-slate-100 flex items-center justify-between"><h2 class="font-bold">Ocupação por turno</h2><span class="text-xs text-if-slate-400">clique nas barras</span></div>
+        <div class="p-5"><div style="height:260px"><canvas id="chTurno"></canvas></div></div>`)}
+      ${card(`<div class="px-5 py-4 border-b border-if-slate-100 flex items-center justify-between"><h2 class="font-bold">Distribuição semanal</h2><span class="text-xs text-if-slate-400">aulas × reservas</span></div>
+        <div class="p-5"><div style="height:260px"><canvas id="chSemana"></canvas></div></div>`)}
+    </div>
+
+    ${card(`<div class="px-5 py-4 border-b border-if-slate-100"><h2 class="font-bold">Espaços mais demandados</h2></div>
+      <div class="overflow-x-auto"><table class="w-full min-w-[480px]">
+        <thead><tr class="text-left text-xs font-bold uppercase tracking-wide text-if-slate-400"><th class="px-5 py-3">#</th><th class="px-5 py-3">Espaço</th><th class="px-5 py-3">Ocupações</th><th class="px-5 py-3">Utilização</th><th class="px-5 py-3"></th></tr></thead>
+        <tbody>${porEspaco.map((x,i)=>`
+          <tr onclick="drillEspaco('${x.id}')" class="border-t border-if-slate-100 hover:bg-if-slate-50 cursor-pointer">
+            <td class="px-5 py-3 font-bold text-if-slate-400">${i+1}</td>
             <td class="px-5 py-3 font-semibold text-sm">${x.nome}</td>
             <td class="px-5 py-3 text-sm text-if-slate-600">${x.val}</td>
-            <td class="px-5 py-3 text-sm font-bold text-if-green-700">${Math.round(x.val/(DIAS.length*SLOTS.length)*100)}%</td></tr>`).join('')}</tbody>
-        </table></div>`)}
-      </div>
-      <div>
-        ${card(`<div class="px-5 py-4 border-b border-if-slate-100"><h2 class="font-bold">Status das reservas</h2></div>
-          <div class="p-5">
-            <div class="flex h-4 rounded-full overflow-hidden ring-1 ring-if-slate-200 mb-4">
-              <div style="width:${stcount.aprovada/totalR*100}%" class="bg-if-green"></div>
-              <div style="width:${stcount.pendente/totalR*100}%" class="bg-if-amber"></div>
-              <div style="width:${stcount.rejeitada/totalR*100}%" class="bg-if-red"></div>
-              <div style="width:${stcount.cancelada/totalR*100}%" class="bg-if-slate-300"></div>
-            </div>
-            <div class="space-y-2.5 text-sm">
-              ${[['aprovada','Aprovadas','bg-if-green'],['pendente','Pendentes','bg-if-amber'],['rejeitada','Rejeitadas','bg-if-red'],['cancelada','Canceladas','bg-if-slate-300']].map(([k,l,c])=>`
-                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-if-slate-600"><span class="w-3 h-3 rounded ${c}"></span>${l}</span><span class="font-bold">${stcount[k]}</span></div>`).join('')}
-            </div>
-          </div>`)}
-      </div>
-    </div>`;
+            <td class="px-5 py-3 text-sm font-bold text-if-green-700">${Math.min(100,Math.round(x.val/(nDia*SLOTS.length)*100))}%</td>
+            <td class="px-5 py-3 text-right text-if-slate-400">${icon('chevron','w-4 h-4 inline -rotate-90')}</td></tr>`).join('')}</tbody>
+      </table></div>`)}`;
 }
+
+function kpiRel(value, label, ic, onclick){
+  return `<button onclick="${onclick}" class="text-left bg-white rounded-2xl ring-1 ring-if-slate-200 shadow-card p-5 flex items-center gap-4 hover:ring-if-green-200 hover:shadow-pop transition">
+    <span class="w-12 h-12 rounded-xl bg-if-green-50 text-if-green-700 flex items-center justify-center flex-none">${icon(ic,'w-6 h-6')}</span>
+    <div class="min-w-0"><div class="text-xl font-extrabold leading-none truncate">${value}</div><div class="text-sm text-if-slate-500 mt-1">${label}</div></div>
+  </button>`;
+}
+
+/* instâncias Chart.js (destruídas a cada re-render) */
+window._charts = {};
+function destroyCharts(){ Object.values(window._charts).forEach(c=>{ try{c.destroy();}catch(e){} }); window._charts={}; }
+
+function initRelatorioCharts(){
+  if(!window.Chart) return;
+  destroyCharts();
+  Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+  Chart.defaults.color = '#6B7378';
+  const oc = ocFiltrada();
+
+  // 1) Ocupação por espaço (barras)
+  const esp = espacos.map(e=>({id:e.id,nome:e.nome,val:oc.filter(o=>o.esp===e.id).length}));
+  const cEsp=document.getElementById('chEspaco');
+  if(cEsp) window._charts.esp = new Chart(cEsp,{ type:'bar',
+    data:{ labels:esp.map(e=>e.nome.replace('Lab. de ','').replace('Laboratório de ','')),
+      datasets:[{ data:esp.map(e=>e.val), backgroundColor:'#2D9E3F', borderRadius:6, maxBarThickness:46 }] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#ECEEEF'}},x:{grid:{display:false}}},
+      onClick:(e,el)=>{ if(el.length) drillEspaco(esp[el[0].index].id); },
+      onHover:(e,el)=>{ e.native.target.style.cursor = el.length?'pointer':'default'; } } });
+
+  // 2) Status das reservas (rosca)
+  const stKeys=['aprovada','pendente','rejeitada','cancelada'];
+  const stLabels=['Aprovadas','Pendentes','Rejeitadas','Canceladas'];
+  const stData=stKeys.map(k=>reservasFiltradas().filter(r=>r.status===k).length);
+  const cSt=document.getElementById('chStatus');
+  if(cSt) window._charts.st = new Chart(cSt,{ type:'doughnut',
+    data:{ labels:stLabels, datasets:[{ data:stData, backgroundColor:['#2D9E3F','#C9821C','#CF171F','#CBD0D3'], borderWidth:2, borderColor:'#fff' }] },
+    options:{ maintainAspectRatio:false, cutout:'60%', plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:14}}},
+      onClick:(e,el)=>{ if(el.length) drillStatus(stKeys[el[0].index]); },
+      onHover:(e,el)=>{ e.native.target.style.cursor = el.length?'pointer':'default'; } } });
+
+  // 3) Ocupação por turno (barras)
+  const turnosArr=['Tarde','Noite'];
+  const tData=turnosArr.map(t=>oc.filter(o=>turno(o.slot)===t).length);
+  const cT=document.getElementById('chTurno');
+  if(cT) window._charts.t = new Chart(cT,{ type:'bar',
+    data:{ labels:turnosArr, datasets:[{ data:tData, backgroundColor:['#268A37','#1E7A2E'], borderRadius:6, maxBarThickness:80 }] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#ECEEEF'}},x:{grid:{display:false}}},
+      onClick:(e,el)=>{ if(el.length) drillTurno(turnosArr[el[0].index]); },
+      onHover:(e,el)=>{ e.native.target.style.cursor = el.length?'pointer':'default'; } } });
+
+  // 4) Distribuição semanal (barras empilhadas: aulas × reservas)
+  const aulasDia=DIAS.map(d=>oc.filter(o=>o.dia===d && o.tipo==='aula').length);
+  const resvDia=DIAS.map(d=>oc.filter(o=>o.dia===d && o.tipo==='reserva').length);
+  const cS=document.getElementById('chSemana');
+  if(cS) window._charts.s = new Chart(cS,{ type:'bar',
+    data:{ labels:DIAS, datasets:[
+      { label:'Aulas', data:aulasDia, backgroundColor:'#CBD0D3', borderRadius:4, stack:'a' },
+      { label:'Reservas', data:resvDia, backgroundColor:'#2D9E3F', borderRadius:4, stack:'a' } ] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:14}}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{precision:0},grid:{color:'#ECEEEF'}}},
+      onClick:(e,el)=>{ if(el.length) drillDia(DIAS[el[0].index]); },
+      onHover:(e,el)=>{ e.native.target.style.cursor = el.length?'pointer':'default'; } } });
+}
+
 function exportarRel(){ toast('Relatório gerado','Exportação de uso dos espaços pronta para download. (RF12)','ok'); }
 window.exportarRel = exportarRel;
 

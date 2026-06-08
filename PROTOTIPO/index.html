@@ -50,6 +50,7 @@
   @keyframes toastIn { from{ opacity:0; transform: translateX(20px);} to{opacity:1;transform:none;} }
   .modal-card{ animation: pop .2s ease both; }
   @keyframes pop { from{opacity:0; transform: scale(.97) translateY(6px);} to{opacity:1; transform:none;} }
+  @keyframes drawerIn { from{ transform: translateX(-100%);} to{ transform: translateX(0);} }
   .seg-btn[aria-pressed="true"]{ background:#231F20; color:#fff; }
 
   /* padronização de todos os selects (sem aparência nativa) */
@@ -193,6 +194,7 @@ const I = {
   arrowRight:'<path d="M5 12h14M12 5l7 7-7 7"/>',
   sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
   cap:'<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 2.5 9 2.5 12 0v-5"/>',
+  menu:'<path d="M3 12h18M3 6h18M3 18h18"/>',
 };
 function icon(name, cls='w-5 h-5'){ return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[name]||''}</svg>`; }
 
@@ -220,6 +222,7 @@ let state = {
   ultimaImport: { arquivo:'horarios_2026-1.xlsx', data:'02/06/2026 09:14', vigencia:'Semana de 08/06/2026' },
   imp: null,                      // estado do assistente de importação
   relFiltro: { espaco:'all', tipo:'all', dia:'all' }, // filtros dos relatórios
+  sidebarOpen: false,             // drawer da sidebar no mobile
 };
 
 const espacos = [
@@ -535,11 +538,13 @@ const NAV = {
 };
 
 /* ============================ RENDER ROOT ============================ */
-function go(view){ state.view = view; state.notifOpen=false; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+function go(view){ state.view = view; state.notifOpen=false; state.sidebarOpen=false; render(); window.scrollTo({top:0,behavior:'smooth'}); }
 window.go = go;
+function toggleSidebar(){ state.sidebarOpen=!state.sidebarOpen; render(); }
+window.toggleSidebar = toggleSidebar;
 
 function setRole(role){
-  state.role = role; state.notifOpen=false;
+  state.role = role; state.notifOpen=false; state.sidebarOpen=false;
   if(role==='public'){ state.user=null; state.view='public'; }
   if(role==='docente'){ state.user = usuarios.find(u=>u.id==='u3'); state.view='docente'; }
   if(role==='admin'){ state.user = usuarios.find(u=>u.id==='u2'); state.view='admin'; }
@@ -621,11 +626,11 @@ function layoutApp(){
     </button>`;
   }).join('');
 
-  return `
-  <div class="flex min-h-[calc(100vh-6px)]">
-    <!-- Sidebar -->
-    <aside class="hidden lg:flex w-64 flex-col bg-white border-r border-if-slate-200 sticky top-0 h-screen">
-      <div class="px-4 h-16 flex items-center border-b border-if-slate-100">${logoFull(.92)}</div>
+  const sidebarInner = (mobile=false)=>`
+      <div class="px-4 h-16 flex items-center justify-between border-b border-if-slate-100">
+        ${logoFull(.92)}
+        ${mobile?`<button onclick="toggleSidebar()" class="lg:hidden w-9 h-9 rounded-lg hover:bg-if-slate-50 flex items-center justify-center text-if-slate-500">${icon('x')}</button>`:''}
+      </div>
       <div class="px-3 py-2 mt-1">
         <div class="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-if-slate-400">${state.role==='admin'?'Administração':'Área do docente'}</div>
       </div>
@@ -636,15 +641,29 @@ function layoutApp(){
           <div class="text-sm font-semibold mt-1">${state.role==='admin'?'Administrador':'Docente'}</div>
           <div class="text-xs text-if-slate-500">Controle por papéis (RBAC)</div>
         </div>
-      </div>
-    </aside>
+      </div>`;
+
+  return `
+  <div class="flex min-h-[calc(100vh-6px)]">
+    <!-- Sidebar (desktop) -->
+    <aside class="hidden lg:flex w-64 flex-col bg-white border-r border-if-slate-200 sticky top-0 h-screen">${sidebarInner(false)}</aside>
+
+    <!-- Sidebar (drawer mobile) -->
+    ${state.sidebarOpen?`
+    <div class="lg:hidden fixed inset-0 z-[90]">
+      <div class="absolute inset-0 bg-if-ink/40 backdrop-blur-[1px]" onclick="toggleSidebar()"></div>
+      <aside class="absolute left-0 top-0 h-full w-72 max-w-[82vw] bg-white border-r border-if-slate-200 flex flex-col shadow-pop" style="animation:drawerIn .2s ease both">${sidebarInner(true)}</aside>
+    </div>`:''}
 
     <!-- Main -->
     <div class="flex-1 min-w-0 flex flex-col">
       <!-- Topbar -->
       <header class="bg-white border-b border-if-slate-200 sticky top-0 z-30">
         <div class="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div class="lg:hidden">${logoFull(.85)}</div>
+          <div class="flex items-center gap-2 lg:hidden">
+            <button onclick="toggleSidebar()" class="w-10 h-10 -ml-1.5 rounded-lg hover:bg-if-slate-50 flex items-center justify-center text-if-slate-600" title="Menu" aria-label="Abrir menu">${icon('menu')}</button>
+            ${logoFull(.85)}
+          </div>
           <div class="hidden lg:block">
             ${roleSwitcher()}
           </div>

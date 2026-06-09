@@ -2,21 +2,95 @@
 % REFERÊNCIAS BIBLIOGRÁFICAS - TCC
 % Sistema Web para Agendamento de Espaços Físicos no IFNMG – Salinas
 % Murilo Santos Gonçalves
+%
+% Organização: as referências estão agrupadas por tema, seguindo a
+% ordem em que os assuntos aparecem no texto (contexto institucional,
+% trabalhos relacionados, fundamentação tecnológica e metodologia).
+% A ordenação final na seção de Referências é feita automaticamente
+% pelo abntex2cite (alfabética por autor).
 % ============================================================
 
+
 % ============================================================
-% ENGENHARIA DE SOFTWARE E REQUISITOS
+% CONTEXTO INSTITUCIONAL
 % ============================================================
 
-@book{myers2011,
-	author    = {Myers, Glenford J. and Sandler, Corey and Badgett, Tom},
-	title     = {The Art of Software Testing},
-	edition   = {3},
-	publisher = {Wiley},
-	address   = {Hoboken},
-	year      = {2011},
-	isbn      = {9781118031964}
+@misc{ifnmg2024pdi,
+	author       = {{Instituto Federal do Norte de Minas Gerais}},
+	title        = {Plano de Desenvolvimento Institucional 2024--2028},
+	year         = {2024},
+	howpublished = {IFNMG},
+	address      = {Montes Claros},
+	url          = {https://www.ifnmg.edu.br/pdi},
+	note         = {Acesso em: abr. 2025}
 }
+
+@misc{gloria2025entrevista,
+	author       = {Gloria, Jessica},
+	title        = {Entrevistas sobre o processo de gestão de espaços físicos no {IFNMG} -- {C}ampus {S}alinas},
+	howpublished = {Entrevistas concedidas a Murilo Santos Gonçalves},
+	address      = {Salinas},
+	year         = {2026},
+	note         = {Realizadas em jul. 2025, nov. 2025 e abr. 2026}
+}
+
+
+% ============================================================
+% TRABALHOS RELACIONADOS
+% ============================================================
+
+% --- Gestão de laboratórios e espaços em instituições de ensino ---
+
+@article{cruz2023gestao,
+	author  = {Cruz, Indira Nonato and Barroso, Deivson Vinícius},
+	title   = {Gestão de laboratórios educacionais: análise da utilização de espaços e equipamentos do {IFNMG} {C}ampus {A}lmenara/{MG}},
+	journal = {RECITAL -- Revista de Educação, Ciência e Tecnologia de Almenara},
+	volume  = {5},
+	number  = {1},
+	year    = {2023},
+	doi     = {10.46636/recital.v5i1.270},
+	url     = {https://recital.almenara.ifnmg.edu.br/index.php/recital/article/download/270/151},
+	note    = {Acesso em: abr. 2025}
+}
+
+% --- Sistemas de reserva em instituições de ensino superior ---
+
+@article{nascimento2020reservas,
+	author  = {Nascimento, Tiego Alves do and Rios, Eyder Franco Sousa and Baluz, Rodrigo Augusto Rocha Souza},
+	title   = {Sistema {W}eb para {C}ontrole dos {P}edidos de {R}eservas de {R}ecursos em {I}nstituições de {E}nsino {S}uperior},
+	journal = {Revista Eletrônica de Iniciação Científica em Computação},
+	volume  = {18},
+	year    = {2020},
+	url     = {https://journals-sol.sbc.org.br/index.php/reic/article/view/1721},
+	note    = {Acesso em: abr. 2025}
+}
+
+% --- Soluções de mercado para reserva de espaços ---
+
+@misc{skedda2025,
+	author       = {{Skedda}},
+	title        = {Skedda: Space Booking and Scheduling Software},
+	year         = {2025},
+	howpublished = {Skedda},
+	url          = {https://www.skedda.com},
+	note         = {Acesso em: 4 jun. 2026}
+}
+
+@misc{microsoft2025bookings,
+	author       = {{Microsoft}},
+	title        = {Microsoft Bookings},
+	year         = {2025},
+	howpublished = {Microsoft},
+	url          = {https://www.microsoft.com/microsoft-365/business/scheduling-and-booking-app},
+	note         = {Acesso em: 4 jun. 2026}
+}
+
+
+% ============================================================
+% FUNDAMENTAÇÃO TECNOLÓGICA
+% ============================================================
+
+% --- Engenharia de software, requisitos e testes ---
 
 @book{sommerville2018,
 	author    = {Sommerville, Ian},
@@ -38,9 +112,17 @@
 	isbn      = {9788580555349}
 }
 
-% ============================================================
-% MODELAGEM DE SISTEMAS COM UML
-% ============================================================
+@book{myers2011,
+	author    = {Myers, Glenford J. and Sandler, Corey and Badgett, Tom},
+	title     = {The Art of Software Testing},
+	edition   = {3},
+	publisher = {Wiley},
+	address   = {Hoboken},
+	year      = {2011},
+	isbn      = {9781118031964}
+}
+
+% --- Modelagem de sistemas com UML ---
 
 @book{bezerra2007,
 	author    = {Bezerra, Eduardo},
@@ -62,10 +144,7 @@
 	isbn      = {9788560031528}
 }
 
-
-% ============================================================
-% BANCO DE DADOS
-% ============================================================
+% --- Banco de dados ---
 
 @book{heuser2009,
 	author    = {Heuser, Carlos Alberto},
@@ -87,119 +166,16 @@
 	isbn      = {9788535245356}
 }
 
-
-% ============================================================
-% USABILIDADE E EXPERIÊNCIA DO USUÁRIO
-% ============================================================
-
-@misc{nielsen1994,
-	author       = {Nielsen, Jakob},
-	title        = {10 Usability Heuristics for User Interface Design},
-	year         = {1994},
-	howpublished = {Nielsen Norman Group},
-	url          = {https://www.nngroup.com/articles/ten-usability-heuristics/},
-	note         = {Acesso em: 2025}
-}
-
-@book{nielsen1993,
-	author    = {Nielsen, Jakob},
-	title     = {Usability Engineering},
-	publisher = {Academic Press},
-	address   = {Boston},
-	year      = {1993},
-	isbn      = {9780125184069}
-}
-
-
-% ============================================================
-% ENTREVISTAS E COMUNICAÇÕES PESSOAIS
-% ============================================================
-
-@misc{gloria2025entrevista,
-	author       = {Gloria, Jessica},
-	title        = {Entrevistas sobre o processo de gestão de espaços físicos no {IFNMG} -- {C}ampus {S}alinas},
-	howpublished = {Entrevistas concedidas a Murilo Santos Gonçalves},
-	address      = {Salinas},
-	year         = {2025},
-	note         = {Realizadas em jul. 2025, nov. 2025 e abr. 2026}
-}
-
-
-% ============================================================
-% DOCUMENTOS INSTITUCIONAIS
-% ============================================================
-
-@misc{ifnmg2024pdi,
-	author       = {{Instituto Federal do Norte de Minas Gerais}},
-	title        = {Plano de Desenvolvimento Institucional 2024--2028},
+@misc{postgresql2024,
+	author       = {{The PostgreSQL Global Development Group}},
+	title        = {PostgreSQL Documentation},
 	year         = {2024},
-	howpublished = {IFNMG},
-	address      = {Montes Claros},
-	url          = {https://www.ifnmg.edu.br/pdi},
-	note         = {Acesso em: abr. 2025}
+	howpublished = {The PostgreSQL Global Development Group},
+	url          = {https://www.postgresql.org/docs/},
+	note         = {Acesso em: 4 jun. 2026}
 }
 
-
-% ============================================================
-% GESTÃO DE LABORATÓRIOS E ESPAÇOS EM INSTITUIÇÕES DE ENSINO
-% ============================================================
-
-@article{cruz2023gestao,
-	author  = {Cruz, Indira Nonato and Barroso, Deivson Vinícius},
-	title   = {Gestão de laboratórios educacionais: análise da utilização de espaços e equipamentos do {IFNMG} {C}ampus {A}lmenara/{MG}},
-	journal = {RECITAL -- Revista de Educação, Ciência e Tecnologia de Almenara},
-	volume  = {5},
-	number  = {1},
-	year    = {2023},
-	doi     = {10.46636/recital.v5i1.270},
-	url     = {https://recital.almenara.ifnmg.edu.br/index.php/recital/article/download/270/151},
-	note    = {Acesso em: abr. 2025}
-}
-
-
-% ============================================================
-% TRABALHOS CORRELATOS — SISTEMAS DE RESERVA EM IES
-% ============================================================
-
-@article{nascimento2020reservas,
-	author  = {Nascimento, Tiego Alves do and Rios, Eyder Franco Sousa and Baluz, Rodrigo Augusto Rocha Souza},
-	title   = {Sistema {W}eb para {C}ontrole dos {P}edidos de {R}eservas de {R}ecursos em {I}nstituições de {E}nsino {S}uperior},
-	journal = {Revista Eletrônica de Iniciação Científica em Computação},
-	volume  = {18},
-	year    = {2020},
-	url     = {https://journals-sol.sbc.org.br/index.php/reic/article/view/1721},
-	note    = {Acesso em: abr. 2025}
-}
-
-
-% ============================================================
-% SISTEMAS DE INFORMAÇÃO E DESENVOLVIMENTO WEB
-% ============================================================
-
-@book{laudon2014,
-	author    = {Laudon, Kenneth C. and Laudon, Jane P.},
-	title     = {Sistemas de Informação Gerenciais},
-	edition   = {11},
-	publisher = {Pearson},
-	address   = {São Paulo},
-	year      = {2014},
-	isbn      = {9788543004792}
-}
-
-@book{tanenbaum2011,
-	author    = {Tanenbaum, Andrew S. and Wetherall, David J.},
-	title     = {Redes de Computadores},
-	edition   = {5},
-	publisher = {Pearson},
-	address   = {São Paulo},
-	year      = {2011},
-	isbn      = {9788576059240}
-}
-
-
-% ============================================================
-% SEGURANÇA E CONTROLE DE ACESSO
-% ============================================================
+% --- Segurança e controle de acesso ---
 
 @article{sandhu1996rbac,
 	author  = {Sandhu, Ravi S. and Coyne, Edward J. and Feinstein, Hal L. and Youman, Charles E.},
@@ -212,35 +188,29 @@
 	doi     = {10.1109/2.485845}
 }
 
+% --- Desenvolvimento web e sistemas de informação ---
 
-% ============================================================
-% METODOLOGIA DE PESQUISA
-% ============================================================
-
-@book{gil2008,
-	author    = {Gil, Antonio Carlos},
-	title     = {Métodos e Técnicas de Pesquisa Social},
-	edition   = {6},
-	publisher = {Atlas},
-	address   = {São Paulo},
-	year      = {2008},
-	isbn      = {9788522451425}
-}
-
-@book{yin2015,
-	author    = {Yin, Robert K.},
-	title     = {Estudo de Caso: Planejamento e Métodos},
+@book{tanenbaum2011,
+	author    = {Tanenbaum, Andrew S. and Wetherall, David J.},
+	title     = {Redes de Computadores},
 	edition   = {5},
-	publisher = {Bookman},
-	address   = {Porto Alegre},
-	year      = {2015},
-	isbn      = {9788582602324}
+	publisher = {Pearson},
+	address   = {São Paulo},
+	year      = {2011},
+	isbn      = {9788576059240}
 }
 
+@book{laudon2014,
+	author    = {Laudon, Kenneth C. and Laudon, Jane P.},
+	title     = {Sistemas de Informação Gerenciais},
+	edition   = {11},
+	publisher = {Pearson},
+	address   = {São Paulo},
+	year      = {2014},
+	isbn      = {9788543004792}
+}
 
-% ============================================================
-% TECNOLOGIAS — DJANGO / MTV
-% ============================================================
+% --- Framework Django e padrão MTV ---
 
 @misc{djangodocs,
 	author       = {{Django Software Foundation}},
@@ -276,4 +246,49 @@
 	howpublished = {Medium},
 	url          = {https://diandrasilva.medium.com/como-funciona-a-arquitetura-mtv-django-86af916f1f63},
 	note         = {Acesso em: abr. 2025}
+}
+
+% --- Usabilidade e experiência do usuário ---
+
+@book{nielsen1993,
+	author    = {Nielsen, Jakob},
+	title     = {Usability Engineering},
+	publisher = {Academic Press},
+	address   = {Boston},
+	year      = {1993},
+	isbn      = {9780125184069}
+}
+
+@misc{nielsen1994,
+	author       = {Nielsen, Jakob},
+	title        = {10 Usability Heuristics for User Interface Design},
+	year         = {1994},
+	howpublished = {Nielsen Norman Group},
+	url          = {https://www.nngroup.com/articles/ten-usability-heuristics/},
+	note         = {Acesso em: abr. 2025}
+}
+
+
+% ============================================================
+% METODOLOGIA DE PESQUISA
+% ============================================================
+
+@book{gil2008,
+	author    = {Gil, Antonio Carlos},
+	title     = {Métodos e Técnicas de Pesquisa Social},
+	edition   = {6},
+	publisher = {Atlas},
+	address   = {São Paulo},
+	year      = {2008},
+	isbn      = {9788522451425}
+}
+
+@book{yin2015,
+	author    = {Yin, Robert K.},
+	title     = {Estudo de Caso: Planejamento e Métodos},
+	edition   = {5},
+	publisher = {Bookman},
+	address   = {Porto Alegre},
+	year      = {2015},
+	isbn      = {9788582602324}
 }

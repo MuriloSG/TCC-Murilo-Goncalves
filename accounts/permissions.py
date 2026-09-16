@@ -1,9 +1,3 @@
-"""Catalog of the permission codes defined by the accounts app.
-
-The database records are created only by data migrations, which write the
-codes literally. ``accounts/tests/test_catalog.py`` keeps both in sync.
-"""
-
 USER_VIEW = 'USUARIO.VISUALIZAR'
 USER_CREATE = 'USUARIO.CRIAR'
 USER_EDIT = 'USUARIO.EDITAR'
@@ -16,8 +10,6 @@ ROLE_EDIT = 'PERFIL.EDITAR'
 ROLE_CHANGE_PERMISSIONS = 'PERFIL.ALTERAR_PERMISSOES'
 ROLE_DELETE = 'PERFIL.EXCLUIR'
 
-# Permissions a user must hold, all of them, to count as administrative
-# capability (D10).
 ADMINISTRATIVE_CAPABILITY = frozenset({
     USER_VIEW,
     USER_CREATE,
@@ -26,8 +18,6 @@ ADMINISTRATIVE_CAPABILITY = frozenset({
     USER_CHANGE_STATUS,
 })
 
-# Permissions held only by an active superadmin and never granted to a role
-# (D21).
 SUPERADMIN_RESERVED_PERMISSIONS = frozenset({
     ROLE_VIEW,
     ROLE_CREATE,

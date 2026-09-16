@@ -58,8 +58,6 @@ class PermissionConstantsTests(SimpleTestCase):
 
 
 class InitialCatalogTests(TestCase):
-    """State left by migration 0002, before any change made by the superadmin."""
-
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))

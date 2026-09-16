@@ -1,16 +1,65 @@
+from contextlib import contextmanager
+
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models.functions import Lower
+
+from accounts.permissions import (
+    ADMINISTRATIVE_CAPABILITY,
+    SUPERADMIN_RESERVED_PERMISSIONS,
+)
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
 PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
 
 
-class UserManager(BaseUserManager):
+class AdministrativeContinuityViolation(ValidationError):
+    def __init__(self, message=None):
+        super().__init__(
+            message
+            or 'Operação recusada: o sistema ficaria sem nenhum usuário ativo '
+            'com capacidade administrativa.',
+            code='administrative_continuity',
+        )
+
+
+@contextmanager
+def administrative_continuity():
+    with transaction.atomic():
+        list(
+            User.objects.filter(is_active=True)
+            .order_by('pk')
+            .select_for_update()
+            .values_list('pk', flat=True)
+        )
+        yield
+        if not User.objects.with_administrative_capability().exists():
+            raise AdministrativeContinuityViolation()
+
+
+class UserQuerySet(models.QuerySet):
+    def with_administrative_capability(self):
+        return (
+            self.filter(is_active=True)
+            .annotate(
+                administrative_permission_count=models.Count(
+                    'roles__permissions',
+                    filter=models.Q(roles__permissions__code__in=ADMINISTRATIVE_CAPABILITY),
+                    distinct=True,
+                ),
+            )
+            .filter(
+                models.Q(is_superadmin=True)
+                | models.Q(administrative_permission_count=len(ADMINISTRATIVE_CAPABILITY)),
+            )
+        )
+
+
+class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
     @classmethod
     def normalize_email(cls, email):
-        """Strip surrounding whitespace and lowercase the whole address."""
         return (email or '').strip().lower()
 
 
@@ -50,6 +99,78 @@ class User(AbstractBaseUser):
     def clean(self):
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email)
+
+    def effective_permissions(self):
+        if not self.is_active or self.pk is None:
+            return frozenset()
+        if not hasattr(self, '_effective_permissions_cache'):
+            if self.is_superadmin:
+                codes = Permission.objects.values_list('code', flat=True)
+            else:
+                codes = (
+                    Permission.objects.filter(roles__users=self)
+                    .exclude(code__in=SUPERADMIN_RESERVED_PERMISSIONS)
+                    .values_list('code', flat=True)
+                    .distinct()
+                )
+            self._effective_permissions_cache = frozenset(codes)
+        return self._effective_permissions_cache
+
+    def has_perm(self, perm, obj=None):
+        if not self.is_active:
+            return False
+        if self.is_superadmin:
+            return True
+        return perm in self.effective_permissions()
+
+    def has_perms(self, perm_list, obj=None):
+        return all(self.has_perm(perm, obj) for perm in perm_list)
+
+    def has_module_perms(self, app_label):
+        if not self.is_active:
+            return False
+        if self.is_superadmin:
+            return True
+        prefix = f'{app_label}.'
+        return any(code.startswith(prefix) for code in self.effective_permissions())
+
+    def has_administrative_capability(self):
+        return self.has_perms(ADMINISTRATIVE_CAPABILITY)
+
+    def deactivate(self):
+        self._apply_guarded(is_active=False)
+
+    def reactivate(self):
+        self._apply(is_active=True)
+
+    def set_superadmin(self, value):
+        if value:
+            self._apply(is_superadmin=True)
+        else:
+            self._apply_guarded(is_superadmin=False)
+
+    def _apply(self, **values):
+        previous = {field: getattr(self, field) for field in values}
+        for field, value in values.items():
+            setattr(self, field, value)
+        try:
+            self.save(update_fields=list(values))
+        except BaseException:
+            for field, value in previous.items():
+                setattr(self, field, value)
+            raise
+        finally:
+            self.__dict__.pop('_effective_permissions_cache', None)
+
+    def _apply_guarded(self, **values):
+        previous = {field: getattr(self, field) for field in values}
+        try:
+            with administrative_continuity():
+                self._apply(**values)
+        except BaseException:
+            for field, value in previous.items():
+                setattr(self, field, value)
+            raise
 
 
 class Role(models.Model):
@@ -154,7 +275,6 @@ class UserRole(models.Model):
                 fields=['user', 'role'],
                 name='user_role_unique',
             ),
-            # In this version each user has at most one role (D6).
             models.UniqueConstraint(
                 fields=['user'],
                 name='user_role_one_per_user',

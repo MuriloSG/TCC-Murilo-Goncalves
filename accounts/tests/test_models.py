@@ -93,7 +93,7 @@ class RoleTests(TestCase):
         self.assertEqual(role.description, '')
 
     def test_valid_codes(self):
-        for code in ('DOCENTE', 'COORDENACAO_GERAL', 'A_B_C'):
+        for code in ('COORDENACAO', 'COORDENACAO_GERAL', 'A_B_C'):
             with self.subTest(code=code):
                 Role(code=code, name=code.title()).full_clean()
 
@@ -132,9 +132,10 @@ class RoleTests(TestCase):
 
     def test_database_rejects_name_differing_only_in_case(self):
         Role.objects.create(code='COORDENACAO', name='Coordenação')
+        count = Role.objects.count()
         with self.assertRaises(IntegrityError), transaction.atomic():
             Role.objects.create(code='COORDENACAO_GERAL', name='coordenação')
-        self.assertEqual(Role.objects.count(), 1)
+        self.assertEqual(Role.objects.count(), count)
 
 
 class PermissionTests(TestCase):
@@ -161,17 +162,17 @@ class PermissionTests(TestCase):
                     Permission.objects.create(code=code, description='Teste')
 
     def test_database_rejects_duplicate_code(self):
-        Permission.objects.create(code='USUARIO.CRIAR', description='Cadastrar usuário')
+        Permission.objects.create(code='TESTE.CRIAR', description='Criar teste')
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Permission.objects.create(code='USUARIO.CRIAR', description='Outra')
+            Permission.objects.create(code='TESTE.CRIAR', description='Outra')
 
 
 class UserRoleTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create(email='maria@ifnmg.edu.br', name='Maria')
-        cls.teacher = Role.objects.create(code='DOCENTE', name='Docente')
-        cls.administrator = Role.objects.create(code='ADMINISTRADOR', name='Administrador')
+        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
 
     def test_link_reachable_from_both_sides(self):
         UserRole.objects.create(user=self.user, role=self.teacher)
@@ -218,7 +219,7 @@ class RolePermissionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.role = Role.objects.create(code='COORDENACAO', name='Coordenação')
-        cls.permission = Permission.objects.create(code='USUARIO.VISUALIZAR', description='Listar usuários')
+        cls.permission = Permission.objects.create(code='TESTE.VISUALIZAR', description='Consultar teste')
 
     def test_grant_reachable_from_both_sides(self):
         RolePermission.objects.create(role=self.role, permission=self.permission)
@@ -233,11 +234,11 @@ class RolePermissionTests(TestCase):
     def test_deleting_role_removes_grants(self):
         RolePermission.objects.create(role=self.role, permission=self.permission)
         self.role.delete()
-        self.assertFalse(RolePermission.objects.exists())
+        self.assertFalse(RolePermission.objects.filter(permission=self.permission).exists())
         self.assertTrue(Permission.objects.filter(pk=self.permission.pk).exists())
 
     def test_deleting_permission_removes_grants(self):
         RolePermission.objects.create(role=self.role, permission=self.permission)
         self.permission.delete()
-        self.assertFalse(RolePermission.objects.exists())
+        self.assertFalse(RolePermission.objects.filter(role=self.role).exists())
         self.assertTrue(Role.objects.filter(pk=self.role.pk).exists())

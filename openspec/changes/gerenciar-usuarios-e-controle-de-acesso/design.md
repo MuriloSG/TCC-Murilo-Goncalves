@@ -4,9 +4,9 @@ A Change `configurar-ambiente-desenvolvimento` deixou um projeto Django 5.2 no p
 
 A proposal aprovada fixa as seguintes decisões:
 
-- modelos próprios `Usuario`, `Perfil` e `Permissao`, sem `Group` e `Permission` do Django;
-- `Usuario ↔ Perfil` N:N, com exatamente um perfil por usuário nesta versão;
-- `Perfil ↔ Permissao` N:N;
+- modelos próprios `User`, `Role` e `Permission`, sem `auth.Group` e `auth.Permission` do Django;
+- `User ↔ Role` N:N, com exatamente um perfil por usuário nesta versão;
+- `Role ↔ Permission` N:N;
 - perfis do sistema `ADMINISTRADOR` e `DOCENTE`, criados pela carga e protegidos contra exclusão, e perfis personalizados criados pelo Superadmin;
 - gestão de perfis (criar, editar, definir permissões e excluir) exclusiva do Superadmin;
 - permissões no padrão `RECURSO.ACAO`, definidas pelo sistema, sem cadastro pela interface;
@@ -40,7 +40,7 @@ Interessados: o autor do TCC, os orientadores, os futuros administradores do sis
 **Goals:**
 
 - Identidade por e-mail com um modelo de usuário próprio, definido antes de qualquer migration que dependa do usuário.
-- **Um único ponto de decisão de acesso** (`Usuario.has_perm`), usado por views e templates, que considera, nesta ordem, usuário ativo, superadmin e permissões dos perfis.
+- **Um único ponto de decisão de acesso** (`User.has_perm`), usado por views e templates, que considera, nesta ordem, usuário ativo, superadmin e permissões dos perfis.
 - Invariantes (exatamente um perfil, continuidade administrativa) garantidas na camada de Model, qualquer que seja a origem da operação.
 - Catálogo de permissões versionado por migrations e conferido por testes contra as constantes do código.
 - Login, logout e recuperação de senha com django-allauth, usando o mesmo fluxo de recuperação para a criação inicial da senha.
@@ -66,19 +66,19 @@ Interessados: o autor do TCC, os orientadores, os futuros administradores do sis
 
 ## Decisions
 
-### D1. Arquitetura geral: uma app `contas`
+### D1. Arquitetura geral: uma app `accounts`
 
-Identidade, perfis, permissões e autenticação ficam numa única app, `contas`, criada na raiz do projeto ao lado de `config/`.
+Identidade, perfis, permissões e autenticação ficam numa única app, `accounts`, criada na raiz do projeto ao lado de `config/`.
 
 ```text
-contas/
-  models.py          Usuario, Perfil, Permissao, UsuarioPerfil, PerfilPermissao e os managers de Usuario e Perfil
-  permissoes.py      catálogo de códigos (constantes), conjunto da capacidade administrativa e conjunto das permissões reservadas
+accounts/
+  models.py          User, Role, Permission, UserRole, RolePermission e os managers de User e Role
+  permissions.py     catálogo de códigos (constantes), conjunto da capacidade administrativa e conjunto das permissões reservadas
   adapters.py        adapter do allauth (cadastro público fechado)
   forms.py
   views.py           autenticação, gestão de usuários e gestão de perfis
   urls.py
-  management/commands/   criar_superadmin e alterar_superadmin (D16)
+  management/commands/   create_superadmin e set_superadmin (D16)
   migrations/        0001 (esquema) e 0002 (perfis do sistema, permissões iniciais e concessões iniciais)
   templates/         templates da app, sobrescritas do allauth (account/) e 403.html
   tests/
@@ -93,95 +93,95 @@ Requisição
   → View
       ├─ PermissionRequiredMixin → request.user.has_perm("USUARIO.CRIAR")   pode executar?
       ├─ Form                                                                 a entrada é válida?
-      └─ métodos do Usuario / manager (transação)                            a operação respeita as regras?
+      └─ métodos do User / manager (transação)                               a operação respeita as regras?
              → ORM → PostgreSQL
   → Template   (perms.USUARIO.CRIAR só mostra ou esconde elementos)
 ```
 
 Alternativas consideradas:
-- **Duas apps (`usuarios` e `controle_acesso`):** `Usuario` referencia `Perfil`, e a regra de continuidade usa os dois lados, o que criaria dependência circular entre as apps sem benefício.
+- **Duas apps (`users` e `access_control`):** `User` referencia `Role`, e a regra de continuidade usa os dois lados, o que criaria dependência circular entre as apps sem benefício.
 - **Camada de "services" separada dos models:** a Constitution (P2) atribui ao Model o encapsulamento das regras de negócio. Os métodos do model e do manager bastam para esta Change.
 
-### D2. Modelo `Usuario`
+### D2. Modelo `User`
 
-O `Usuario` herda de `AbstractBaseUser` e **não** usa `PermissionsMixin`.
+O `User` herda de `AbstractBaseUser` e **não** usa `PermissionsMixin`.
 
 | Campo | Tipo | Regras |
 |---|---|---|
 | `id` | `BigAutoField` | padrão do projeto |
 | `email` | `EmailField` | obrigatório; gravado normalizado (sem espaços nas pontas, em minúsculas); único sem diferenciar maiúsculas de minúsculas; `USERNAME_FIELD` e `EMAIL_FIELD` |
-| `nome` | `CharField` | obrigatório; `REQUIRED_FIELDS` |
+| `name` | `CharField` | obrigatório; `REQUIRED_FIELDS` |
 | `password` | herdado | hash; *unusable* até o usuário definir a senha |
 | `last_login` | herdado | preenchido no login |
 | `is_active` | `BooleanField` | padrão `True` |
 | `is_superadmin` | `BooleanField` | padrão `False` |
-| `criado_em` | `DateTimeField` | preenchido na criação |
-| `perfis` | M2M para `Perfil` via `UsuarioPerfil` | exatamente um nesta versão (D6) |
+| `created_at` | `DateTimeField` | preenchido na criação |
+| `roles` | M2M para `Role` via `UserRole` | exatamente um nesta versão (D6) |
 
 - **Unicidade do e-mail:** o manager normaliza o e-mail, e o banco tem uma `UniqueConstraint` sobre `Lower("email")`. A normalização mantém o dado limpo. A restrição no banco protege contra gravações que não passem pelo manager e contra concorrência.
-- **Sem `PermissionsMixin`:** ele adicionaria `is_superuser`, `groups` e `user_permissions`, ligados a `Group` e `Permission` do Django, justamente o que foi descartado. Sem ele, **o campo `is_superuser` não existe**, e isso garante estruturalmente que a regra de superadmin não depende dele. O comando `createsuperuser` do Django também deixa de ser suportado (substituído por D16).
-- **Nomes:** os campos que o Django e o allauth esperam ficam com o nome do framework (`email`, `password`, `last_login`, `is_active`). `is_superadmin` segue a decisão da proposal. Os demais campos ficam em português.
+- **Sem `PermissionsMixin`:** ele adicionaria `is_superuser`, `groups` e `user_permissions`, ligados a `auth.Group` e `auth.Permission` do Django, justamente o que foi descartado. Sem ele, **o campo `is_superuser` não existe**, e isso garante estruturalmente que a regra de superadmin não depende dele. O comando `createsuperuser` do Django também deixa de ser suportado (substituído por D16).
+- **Nomes:** os identificadores do código (apps, classes, campos, métodos, constantes, exceções, comandos e arquivos) ficam em inglês, e os campos que o Django e o allauth esperam mantêm o nome do framework (`email`, `password`, `last_login`, `is_active`). O que o usuário vê (rótulos, mensagens, rotas e templates) fica em português, assim como os códigos gravados como dados (códigos de perfil e de permissão, D3 e D4).
 - **Comportamento no model** (detalhado nas decisões seguintes):
-  - autorização: `has_perm`, `has_perms`, `has_module_perms`, `permissoes_efetivas` (D7);
-  - capacidade administrativa: `tem_capacidade_administrativa` (D10);
-  - operações: `desativar`, `reativar`, `alterar_perfil`, `alterar_superadmin`, `alterar_dados` (D10, D11, D13, D16);
-  - acesso ao perfil único: `perfil`;
-  - cadastro: manager `cadastrar` (D12).
+  - autorização: `has_perm`, `has_perms`, `has_module_perms`, `effective_permissions` (D7);
+  - capacidade administrativa: `has_administrative_capability` (D10);
+  - operações: `deactivate`, `reactivate`, `change_role`, `set_superadmin`, `update_details` (D10, D11, D13, D16);
+  - acesso ao perfil único: `role`;
+  - cadastro: manager `register` (D12).
 
 Alternativas consideradas:
 - **`AbstractUser`:** traz `username`, `first_name`/`last_name`, `is_staff`, `is_superuser` e os grupos do Django. Tudo isso contradiz as decisões da proposal.
 - **Campo `citext` do PostgreSQL:** exige a extensão e `django.contrib.postgres` só para isso. A restrição sobre `Lower("email")` resolve.
 - **Só normalizar na aplicação:** não protege contra gravação direta nem contra duas criações simultâneas.
 
-### D3. Modelo `Perfil`
+### D3. Modelo `Role`
 
 | Campo | Tipo | Regras |
 |---|---|---|
 | `id` | `BigAutoField` | |
-| `codigo` | `CharField` | obrigatório; informado na criação; único; maiúsculas e `_` (`^[A-Z]+(_[A-Z]+)*$`, via `CheckConstraint`); imutável depois de criado |
-| `nome` | `CharField` | obrigatório; nome de exibição ("Administrador", "Docente"); gravado sem espaços nas pontas; único sem diferenciar maiúsculas de minúsculas (`UniqueConstraint` sobre `Lower("nome")`) |
-| `descricao` | `TextField` | opcional |
-| `sistema` | `BooleanField` | padrão `False`; `True` só para os perfis criados pela carga (D9); nunca alterado pela interface |
-| `permissoes` | M2M para `Permissao` via `PerfilPermissao` | nunca inclui permissão reservada (D21) |
+| `code` | `CharField` | obrigatório; informado na criação; único; maiúsculas e `_` (`^[A-Z]+(_[A-Z]+)*$`, via `CheckConstraint`); imutável depois de criado |
+| `name` | `CharField` | obrigatório; nome de exibição ("Administrador", "Docente"); gravado sem espaços nas pontas; único sem diferenciar maiúsculas de minúsculas (`UniqueConstraint` sobre `Lower("name")`) |
+| `description` | `TextField` | opcional |
+| `is_system` | `BooleanField` | padrão `False`; `True` só para os perfis criados pela carga (D9); nunca alterado pela interface |
+| `permissions` | M2M para `Permission` via `RolePermission` | nunca inclui permissão reservada (D21) |
 
 Há dois tipos de perfil:
-- **Perfis do sistema** (`sistema = True`): `ADMINISTRADOR` e `DOCENTE`, criados pela migration de carga (D9). **Não podem ser excluídos.** O Superadmin pode alterar nome, descrição e permissões deles.
-- **Perfis personalizados** (`sistema = False`): criados pelo Superadmin pela interface (D22). Podem ser editados e, se não tiverem usuários vinculados, excluídos.
+- **Perfis do sistema** (`is_system = True`): `ADMINISTRADOR` e `DOCENTE`, criados pela migration de carga (D9). **Não podem ser excluídos.** O Superadmin pode alterar nome, descrição e permissões deles.
+- **Perfis personalizados** (`is_system = False`): criados pelo Superadmin pela interface (D22). Podem ser editados e, se não tiverem usuários vinculados, excluídos.
 
 Regras:
 - **Criação, edição, definição de permissões e exclusão** são operações do model, feitas pela interface de gestão de perfis (D22) e protegidas pelas permissões `PERFIL.*` (D21). As migrations criam só os perfis do sistema.
-- **Código imutável:** o `codigo` é informado na criação e nenhuma operação o altera depois. O formulário de edição não o aceita e um valor enviado é ignorado. O formato é garantido pelo banco, e a unicidade também. Como o formato só admite maiúsculas, a unicidade simples já não diferencia maiúsculas de minúsculas. O código informado fora do formato é recusado, sem conversão automática.
+- **Código imutável:** o `code` é informado na criação e nenhuma operação o altera depois. O formulário de edição não o aceita e um valor enviado é ignorado. O formato é garantido pelo banco, e a unicidade também. Como o formato só admite maiúsculas, a unicidade simples já não diferencia maiúsculas de minúsculas. O código informado fora do formato é recusado, sem conversão automática.
 - **Nome único:** a unicidade sem diferenciar maiúsculas de minúsculas fica no banco, pelo mesmo motivo do e-mail do usuário (D2): protege contra gravação direta e contra concorrência.
-- **`sistema`:** só a migration de carga o grava como `True`. Os formulários não declaram esse campo, e a criação pela interface sempre grava `False`.
-- **O `codigo` só é usado** na migration de carga, nas migrations futuras que concedem configuração padrão aos perfis do sistema (D9), e na exibição. Nenhuma view, template ou regra de autorização compara `codigo`, `nome` ou `sistema`.
-- **O `sistema` só é lido** pela regra de exclusão (D22), pelas migrations e na exibição. Não participa de nenhuma decisão de acesso.
+- **`is_system`:** só a migration de carga o grava como `True`. Os formulários não declaram esse campo, e a criação pela interface sempre grava `False`.
+- **O `code` só é usado** na migration de carga, nas migrations futuras que concedem configuração padrão aos perfis do sistema (D9), e na exibição. Nenhuma view, template ou regra de autorização compara `code`, `name` ou `is_system`.
+- **O `is_system` só é lido** pela regra de exclusão (D22), pelas migrations e na exibição. Não participa de nenhuma decisão de acesso.
 - Um perfil com usuários vinculados, ativos ou inativos, não pode ser excluído: a operação recusa (D22) e, como segunda barreira, o vínculo usa `on_delete=PROTECT` (D5).
 
 Alternativas consideradas:
-- **Proteger os perfis padrão pelo `codigo` (lista fixa no código):** faria a regra de negócio comparar códigos de perfil, que este design reserva à carga e à exibição. A marca `sistema` deixa a proteção explícita no dado.
-- **Permitir excluir todos os perfis:** `criar_superadmin` (D16) e as migrations futuras (D9) precisariam tratar a ausência de `ADMINISTRADOR` e `DOCENTE`, e os papéis descritos no TCC poderiam deixar de existir numa instalação.
-- **Gerar o `codigo` a partir do nome:** o código ficaria dependente de um texto editável e poderia colidir de forma pouco previsível. O Superadmin informa o código e ele não muda mais.
+- **Proteger os perfis padrão pelo `code` (lista fixa no código):** faria a regra de negócio comparar códigos de perfil, que este design reserva à carga e à exibição. A marca `is_system` deixa a proteção explícita no dado.
+- **Permitir excluir todos os perfis:** `create_superadmin` (D16) e as migrations futuras (D9) precisariam tratar a ausência de `ADMINISTRADOR` e `DOCENTE`, e os papéis descritos no TCC poderiam deixar de existir numa instalação.
+- **Gerar o `code` a partir do nome:** o código ficaria dependente de um texto editável e poderia colidir de forma pouco previsível. O Superadmin informa o código e ele não muda mais.
 
-### D4. Modelo `Permissao` e formato do código
+### D4. Modelo `Permission` e formato do código
 
 | Campo | Tipo | Regras |
 |---|---|---|
 | `id` | `BigAutoField` | |
-| `codigo` | `CharField` | único; formato `RECURSO.ACAO` validado por `CheckConstraint` (`^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$`) |
-| `descricao` | `CharField` | texto legível para exibição |
+| `code` | `CharField` | único; formato `RECURSO.ACAO` validado por `CheckConstraint` (`^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$`) |
+| `description` | `CharField` | texto legível para exibição |
 
 Convenções do código:
 - `RECURSO`: substantivo no singular, em português, sem acento (`USUARIO`, `PERFIL`, futuramente `ESPACO`, `RESERVA`).
 - `ACAO`: verbo no infinitivo, em português, podendo ter complemento (`VISUALIZAR`, `CRIAR`, `EDITAR`, `ALTERAR_PERFIL`, `ALTERAR_PERMISSOES`).
 - Exatamente dois níveis separados por ponto.
 - Quando uma ação tiver escopo por dono, o escopo fica no código (`RESERVA.CANCELAR_PROPRIA`, `RESERVA.CANCELAR_QUALQUER`). Isso é uma convenção para Changes futuras e não tem uso nesta.
-- `recurso` e `acao` são **derivados** do `codigo` por propriedades, não colunas.
+- `resource` e `action` são **derivados** do `code` por propriedades, não colunas.
 
-O português segue a linguagem do domínio e dos models (`Usuario`, `Perfil`, `Permissao`), o que evita códigos mistos como `USUARIO.CREATE`.
+Os códigos são dados exibidos e usados nas migrations de carga, e não identificadores do código Python. Por isso ficam em português, na linguagem do domínio, e cada código inteiro fica num idioma só, o que evita códigos mistos como `USUARIO.CREATE`. As constantes que os referenciam no código têm nomes em inglês (D8).
 
 Alternativas consideradas:
-- **Colunas `recurso` e `acao` separadas:** duplicam o `codigo` (DRY) e abrem espaço para inconsistência.
-- **Códigos em inglês:** misturariam idiomas com os nomes das entidades.
+- **Colunas `resource` e `action` separadas:** duplicam o `code` (DRY) e abrem espaço para inconsistência.
+- **Códigos em inglês:** afastariam os dados exibidos e as specs da linguagem do domínio, usada nos nomes e nas descrições dos perfis e das permissões.
 
 ### D5. Tabelas intermediárias explícitas
 
@@ -189,91 +189,91 @@ As duas relações N:N usam models intermediários explícitos:
 
 | Model | Campos | Restrições | `on_delete` |
 |---|---|---|---|
-| `UsuarioPerfil` | `usuario`, `perfil` | único (`usuario`, `perfil`); único (`usuario`) nesta versão (D6) | `usuario`: `CASCADE`; `perfil`: `PROTECT` |
-| `PerfilPermissao` | `perfil`, `permissao` | único (`perfil`, `permissao`) | `perfil`: `CASCADE`; `permissao`: `CASCADE` |
+| `UserRole` | `user`, `role` | único (`user`, `role`); único (`user`) nesta versão (D6) | `user`: `CASCADE`; `role`: `PROTECT` |
+| `RolePermission` | `role`, `permission` | único (`role`, `permission`) | `role`: `CASCADE`; `permission`: `CASCADE` |
 
 ```mermaid
 erDiagram
-    USUARIO ||--o{ USUARIO_PERFIL : "recebe"
-    PERFIL ||--o{ USUARIO_PERFIL : "é atribuído em"
-    PERFIL ||--o{ PERFIL_PERMISSAO : "concede"
-    PERMISSAO ||--o{ PERFIL_PERMISSAO : "é concedida em"
+    USER ||--o{ USER_ROLE : "recebe"
+    ROLE ||--o{ USER_ROLE : "é atribuído em"
+    ROLE ||--o{ ROLE_PERMISSION : "concede"
+    PERMISSION ||--o{ ROLE_PERMISSION : "é concedida em"
 
-    USUARIO {
+    USER {
         bigint id PK
         string email UK
-        string nome
+        string name
         string password
         datetime last_login
         boolean is_active
         boolean is_superadmin
-        datetime criado_em
+        datetime created_at
     }
-    PERFIL {
+    ROLE {
         bigint id PK
-        string codigo UK
-        string nome UK
-        text descricao
-        boolean sistema
+        string code UK
+        string name UK
+        text description
+        boolean is_system
     }
-    PERMISSAO {
+    PERMISSION {
         bigint id PK
-        string codigo UK
-        string descricao
+        string code UK
+        string description
     }
-    USUARIO_PERFIL {
+    USER_ROLE {
         bigint id PK
-        bigint usuario_id FK
-        bigint perfil_id FK
+        bigint user_id FK
+        bigint role_id FK
     }
-    PERFIL_PERMISSAO {
+    ROLE_PERMISSION {
         bigint id PK
-        bigint perfil_id FK
-        bigint permissao_id FK
+        bigint role_id FK
+        bigint permission_id FK
     }
 ```
 
-- `permissao` com `CASCADE`: quando uma permissão sai do catálogo por migration, os vínculos com os perfis saem junto e não ficam registros órfãos.
-- `perfil` com `CASCADE` em `PerfilPermissao`: quando o Superadmin exclui um perfil personalizado sem usuários (D22), as concessões dele saem junto.
-- `perfil` com `PROTECT` em `UsuarioPerfil`: agora existe exclusão de perfil pela interface. A operação já recusa perfis com usuários vinculados, e o `PROTECT` é a garantia no banco, inclusive quando a exclusão concorre com um cadastro ou uma troca de perfil para o mesmo perfil.
-- `usuario` com `CASCADE`: não há exclusão física pela interface. Se ela acontecer fora dela (shell), o vínculo não fica órfão.
+- `permission` com `CASCADE`: quando uma permissão sai do catálogo por migration, os vínculos com os perfis saem junto e não ficam registros órfãos.
+- `role` com `CASCADE` em `RolePermission`: quando o Superadmin exclui um perfil personalizado sem usuários (D22), as concessões dele saem junto.
+- `role` com `PROTECT` em `UserRole`: agora existe exclusão de perfil pela interface. A operação já recusa perfis com usuários vinculados, e o `PROTECT` é a garantia no banco, inclusive quando a exclusão concorre com um cadastro ou uma troca de perfil para o mesmo perfil.
+- `user` com `CASCADE`: não há exclusão física pela interface. Se ela acontecer fora dela (shell), o vínculo não fica órfão.
 
 Alternativa considerada:
-- **M2M automático do Django:** não permite a restrição de unicidade por `usuario` (D6) nem o `PROTECT` no perfil. Também não deixa as tabelas do modelo conceitual explícitas para o diagrama de classes.
+- **M2M automático do Django:** não permite a restrição de unicidade por `user` (D6) nem o `PROTECT` no perfil. Também não deixa as tabelas do modelo conceitual explícitas para o diagrama de classes.
 
 ### D6. Exatamente um perfil por usuário
 
 A regra "exatamente um" é dividida em duas garantias:
 
-- **No máximo um:** `UniqueConstraint` sobre `UsuarioPerfil.usuario`. É garantida pelo banco.
+- **No máximo um:** `UniqueConstraint` sobre `UserRole.user`. É garantida pelo banco.
 - **Pelo menos um:**
-  - o cadastro (`Usuario.objects.cadastrar`) exige um perfil e cria o usuário e o vínculo na mesma transação;
-  - `alterar_perfil` troca o vínculo numa transação;
+  - o cadastro (`User.objects.register`) exige um perfil e cria o usuário e o vínculo na mesma transação;
+  - `change_role` troca o vínculo numa transação;
   - nenhuma operação remove o perfil sem colocar outro no lugar;
   - a exclusão de perfil só acontece quando nenhum usuário está vinculado a ele (D22).
 
-A propriedade `perfil` do usuário devolve o único perfil vinculado.
+A propriedade `role` do usuário devolve o único perfil vinculado.
 
-Para liberar vários perfis no futuro: uma migration remove a restrição sobre `usuario`, e a propriedade `perfil` e os formulários são revistos. O cálculo das permissões efetivas (D7) já usa a união e não muda.
+Para liberar vários perfis no futuro: uma migration remove a restrição sobre `user`, e a propriedade `role` e os formulários são revistos. O cálculo das permissões efetivas (D7) já usa a união e não muda.
 
 Alternativas consideradas:
-- **Chave estrangeira `perfil` no `Usuario`:** contradiz o N:N decidido e exigiria mudar o esquema quando os vários perfis fossem liberados.
+- **Chave estrangeira `role` no `User`:** contradiz o N:N decidido e exigiria mudar o esquema quando os vários perfis fossem liberados.
 - **Trigger no banco para "pelo menos um":** exigiria SQL escrito à mão, contra P3.
 
 ### D7. Permissões efetivas e participação do `is_superadmin`
 
-A decisão de acesso fica em `Usuario.has_perm(codigo)` e segue esta ordem:
+A decisão de acesso fica em `User.has_perm(code)` e segue esta ordem:
 
 1. **Não autenticado** (`AnonymousUser`): sem permissão. O `AnonymousUser` do Django consulta os backends, e o do allauth, derivado do `ModelBackend`, devolve falso para quem não está ativo.
 2. **`is_active = False`:** sem permissão, **inclusive para superadmin**.
 3. **`is_superadmin = True`:** qualquer permissão é concedida.
-4. **Caso contrário:** a permissão é concedida se o código estiver na **união das permissões de todos os perfis** do usuário e **não** pertencer a `PERMISSOES_RESERVADAS_SUPERADMIN` (D21).
+4. **Caso contrário:** a permissão é concedida se o código estiver na **união das permissões de todos os perfis** do usuário e **não** pertencer a `SUPERADMIN_RESERVED_PERMISSIONS` (D21).
 
 Detalhes:
-- `permissoes_efetivas()` devolve o conjunto de códigos. É vazio para inativos. Para o superadmin ativo, é todo o catálogo presente no banco, incluindo as permissões reservadas (usado só para exibição). Para os demais, a união calculada numa consulta só, sem as permissões reservadas.
+- `effective_permissions()` devolve o conjunto de códigos. É vazio para inativos. Para o superadmin ativo, é todo o catálogo presente no banco, incluindo as permissões reservadas (usado só para exibição). Para os demais, a união calculada numa consulta só, sem as permissões reservadas.
 - **Permissões reservadas no passo 4:** a exclusão das reservadas é defesa em profundidade. As operações do model já impedem concedê-las a um perfil (D21). Se uma gravação direta (shell) conceder uma delas, ela continua sem efeito para quem não é superadmin. A regra compara só o código da permissão com um conjunto do catálogo, e não consulta perfil nem `is_superadmin`.
 - **O resultado fica guardado na instância do usuário.** Como o `AuthenticationMiddleware` carrega o usuário a cada requisição, qualquer alteração de perfil, de permissões de um perfil (inclusive feita pelo Superadmin na gestão de perfis, D22), de superadmin ou de situação vale **a partir da próxima requisição**, sem precisar de logout. Uma alteração das permissões de um perfil vale para todos os usuários vinculados a ele.
-- `has_perms(lista)` concede se todas forem concedidas. `has_module_perms(recurso)` concede se houver alguma permissão efetiva do recurso, o que permite `{% if perms.USUARIO %}` nos templates.
+- `has_perms(perm_list)` concede se todas forem concedidas. `has_module_perms(resource)` concede se houver alguma permissão efetiva do recurso, o que permite `{% if perms.USUARIO %}` nos templates.
 - **O `is_superadmin` só é lido** dentro dos métodos de autorização e da regra de continuidade (D10). Views e templates nunca o consultam para decidir acesso.
 - O superadmin continua tendo exatamente um perfil (D6). O perfil só deixa de ser relevante para as decisões de acesso enquanto ele for superadmin ativo.
 
@@ -285,8 +285,8 @@ Alternativas consideradas:
 
 O catálogo existe em dois lugares, com papéis diferentes:
 
-- **Código (`contas/permissoes.py`):** constantes com os códigos, o conjunto `CAPACIDADE_ADMINISTRATIVA` (D10) e o conjunto `PERMISSOES_RESERVADAS_SUPERADMIN` (D21). Views e regras referenciam permissões **sempre pelas constantes**, nunca por texto solto, para evitar erro de digitação silencioso. Cada módulo futuro terá o seu próprio módulo de constantes.
-- **Banco (`Permissao`):** registros criados **somente por migrations de dados**, na app do módulo dono das permissões e na Change que o introduz. A mesma migration pode conceder uma configuração padrão **somente aos perfis do sistema** (D9).
+- **Código (`accounts/permissions.py`):** constantes com os códigos, o conjunto `ADMINISTRATIVE_CAPABILITY` (D10) e o conjunto `SUPERADMIN_RESERVED_PERMISSIONS` (D21). Views e regras referenciam permissões **sempre pelas constantes**, nunca por texto solto, para evitar erro de digitação silencioso. Cada módulo futuro terá o seu próprio módulo de constantes.
+- **Banco (`Permission`):** registros criados **somente por migrations de dados**, na app do módulo dono das permissões e na Change que o introduz. A mesma migration pode conceder uma configuração padrão **somente aos perfis do sistema** (D9).
 
 Regras:
 - Não existe tela, formulário ou comando para criar, editar ou excluir permissões. O Superadmin **não cria permissões**: ele só define quais permissões existentes cada perfil concede (D22).
@@ -323,18 +323,18 @@ Alternativas consideradas:
 
 A migration de dados `0002`, que depende da `0001` com o esquema:
 
-1. cria os perfis `ADMINISTRADOR` ("Administrador") e `DOCENTE` ("Docente"), com `sistema = True`;
+1. cria os perfis `ADMINISTRADOR` ("Administrador") e `DOCENTE` ("Docente"), com `is_system = True`;
 2. cria as dez permissões de D8 (cinco de `USUARIO` e cinco de `PERFIL`);
 3. concede ao `ADMINISTRADOR` as cinco permissões de `USUARIO`;
 4. não concede nada ao `DOCENTE`;
 5. não concede nenhuma permissão `PERFIL.*` a nenhum perfil.
 
-- A migration é **idempotente**: busca pelo `codigo` antes de criar, então pode rodar de novo sem duplicar.
+- A migration é **idempotente**: busca pelo `code` antes de criar, então pode rodar de novo sem duplicar.
 - Ela é **reversível** num banco sem uso: o caminho de volta remove os registros criados. Se já houver usuários vinculados aos perfis do sistema, a reversão falha pelo `PROTECT` (D5), o que é aceitável porque o rollback previsto recria o banco (Migration Plan).
 
 **Regras para as migrations de módulos futuros:**
 - criam as permissões do módulo no catálogo (D8);
-- **podem** conceder uma configuração padrão dessas permissões **somente aos perfis do sistema**, localizados pelo `codigo` e filtrados por `sistema = True`. Esse é o uso permitido do código do perfil (D3);
+- **podem** conceder uma configuração padrão dessas permissões **somente aos perfis do sistema**, localizados pelo `code` e filtrados por `is_system = True`. Esse é o uso permitido do código do perfil (D3);
 - a concessão padrão acontece **uma única vez**, quando a migration é aplicada. Ela não é reaplicada em `migrate` posteriores nem por sinal automático, então não desfaz as alterações que o Superadmin fizer depois nos perfis do sistema;
 - a concessão padrão só **acrescenta** as permissões novas do próprio módulo, sem retirar nem alterar concessões existentes, o que evita que uma migration retire capacidade administrativa (D10);
 - **nunca** concedem permissões a perfis personalizados. O Superadmin decide se e quando esses perfis recebem as permissões novas (D22);
@@ -348,7 +348,7 @@ Não cria nenhum usuário. O primeiro superadmin vem do comando de D16.
 
 **Invariante:** deve existir sempre pelo menos um usuário ativo com capacidade administrativa para gerenciar usuários.
 
-**Capacidade administrativa:** usuário com `is_active = True` e (`is_superadmin = True` **ou** perfis que concedam **todas** as permissões de `CAPACIDADE_ADMINISTRATIVA`). Nesta Change, esse conjunto são as cinco permissões de `USUARIO` (D8).
+**Capacidade administrativa:** usuário com `is_active = True` e (`is_superadmin = True` **ou** perfis que concedam **todas** as permissões de `ADMINISTRATIVE_CAPABILITY`). Nesta Change, esse conjunto são as cinco permissões de `USUARIO` (D8).
 - O conjunto é uma lista explícita, e não "todo `USUARIO.*`", para que permissões de usuário acrescentadas no futuro não mudem a regra sem uma decisão.
 - O conjunto **não inclui** as permissões `PERFIL.*`. Como elas não podem ser concedidas a perfis (D21), incluí-las faria só o superadmin ter capacidade, e a invariante passaria a exigir um superadmin ativo, o que não foi decidido.
 - A capacidade pelo perfil é avaliada com as permissões que o perfil concede **no momento da avaliação**. Como o Superadmin pode alterar as permissões de qualquer perfil (D22), inclusive do `ADMINISTRADOR`, ter o perfil `ADMINISTRADOR` não garante capacidade.
@@ -357,19 +357,19 @@ Não cria nenhum usuário. O primeiro superadmin vem do comando de D16.
 - **Não existe a regra de sempre haver um superadmin ativo.** Enquanto não houver superadmin ativo, a gestão de perfis fica indisponível pela interface, mas a gestão de usuários continua garantida pela invariante (ver Risks).
 
 **Operações verificadas:** as quatro que podem retirar capacidade:
-- `Usuario.desativar`;
-- `Usuario.alterar_superadmin(False)`;
-- `Usuario.alterar_perfil`;
-- `Perfil.alterar_permissoes`, quando o novo conjunto **retira** do perfil alguma permissão de `CAPACIDADE_ADMINISTRATIVA`. A alteração afeta todos os usuários vinculados ao perfil de uma vez (D22).
+- `User.deactivate`;
+- `User.set_superadmin(False)`;
+- `User.change_role`;
+- `Role.set_permissions`, quando o novo conjunto **retira** do perfil alguma permissão de `ADMINISTRATIVE_CAPABILITY`. A alteração afeta todos os usuários vinculados ao perfil de uma vez (D22).
 
-Não são verificadas, porque não retiram capacidade: reativar, cadastrar, editar nome ou e-mail de usuário, criar perfil, editar nome ou descrição de perfil, acrescentar permissões a um perfil, retirar de um perfil permissões fora de `CAPACIDADE_ADMINISTRATIVA` e excluir perfil (só é possível sem usuários vinculados, D22).
+Não são verificadas, porque não retiram capacidade: reativar, cadastrar, editar nome ou e-mail de usuário, criar perfil, editar nome ou descrição de perfil, acrescentar permissões a um perfil, retirar de um perfil permissões fora de `ADMINISTRATIVE_CAPABILITY` e excluir perfil (só é possível sem usuários vinculados, D22).
 
 **Algoritmo de cada operação verificada:**
 1. abre uma transação;
 2. bloqueia as linhas dos usuários ativos (`select_for_update`, ordenadas por `pk` para evitar *deadlock*);
 3. aplica a alteração;
 4. conta os usuários com capacidade administrativa;
-5. se a contagem for zero, lança a exceção de domínio `ContinuidadeAdministrativaViolada`, e a transação é desfeita;
+5. se a contagem for zero, lança a exceção de domínio `AdministrativeContinuityViolation`, e a transação é desfeita;
 6. a exceção deriva de `ValidationError`: a view a mostra como mensagem de erro, e nada é alterado.
 
 Por que "aplicar e depois contar": a mesma verificação serve às quatro operações sem simular o efeito de cada uma. A contagem vê o estado real dentro da transação, com perfis e permissões já atualizados.
@@ -384,10 +384,10 @@ Alternativas consideradas:
 
 Limites conhecidos:
 - A invariante é garantida pelas operações do model, e não por restrição no banco. `save()` ou `update()` diretos (shell) a contornam. A interface e os comandos usam só as operações, e não há `/admin` (D17).
-- Uma migration que remova do catálogo uma permissão de `CAPACIDADE_ADMINISTRATIVA` poderia quebrar a capacidade. Isso exige mudar as constantes e passa pelo teste de consistência (D8). As migrations de configuração padrão só acrescentam permissões (D9).
-- O teste de que o `ADMINISTRADOR` concede todo o conjunto `CAPACIDADE_ADMINISTRATIVA` vale **só para o estado da carga**. Em execução, a garantia vem das operações verificadas acima.
+- Uma migration que remova do catálogo uma permissão de `ADMINISTRATIVE_CAPABILITY` poderia quebrar a capacidade. Isso exige mudar as constantes e passa pelo teste de consistência (D8). As migrations de configuração padrão só acrescentam permissões (D9).
+- O teste de que o `ADMINISTRADOR` concede todo o conjunto `ADMINISTRATIVE_CAPABILITY` vale **só para o estado da carga**. Em execução, a garantia vem das operações verificadas acima.
 
-### D11. Integração do django-allauth com o `Usuario`
+### D11. Integração do django-allauth com o `User`
 
 - **Apps e middleware:** `allauth` e `allauth.account` em `INSTALLED_APPS`, e `allauth.account.middleware.AccountMiddleware` no `MIDDLEWARE`. Se a versão fixada exigir `django.contrib.sites`, ele é configurado junto.
 - **Backend:** `AUTHENTICATION_BACKENDS` só com o backend do allauth. Ele autentica por e-mail e, por derivar do `ModelBackend`, recusa usuários inativos tanto no login quanto ao recarregar o usuário da sessão.
@@ -401,13 +401,13 @@ Limites conhecidos:
   - prevenção de enumeração e limites de tentativas (login e recuperação) com os padrões do allauth.
 - **Cadastro público fechado:** um adapter próprio (`ACCOUNT_ADAPTER`) responde que o cadastro não está aberto.
 - **Rotas expostas:** só as views do allauth que esta Change usa (login, logout e as quatro etapas da recuperação de senha: solicitação, aviso de envio, redefinição pelo link e conclusão) são ligadas às URLs, **em vez de incluir `allauth.urls` inteiro**. O pacote completo expõe cadastro, troca e definição de senha, e principalmente a gestão de e-mails, que permitiria ao usuário adicionar e-mails secundários. O adapter fechado continua como segunda barreira.
-- **`EmailAddress` do allauth:** o `Usuario.email` é a única fonte do e-mail de login. O allauth mantém a tabela `EmailAddress`, e registros antigos poderiam continuar autenticando um e-mail já trocado. Por isso a operação `alterar_dados` sincroniza esses registros na mesma transação (atualiza ou remove os do usuário). Um teste de integração garante que, depois da troca, o e-mail antigo não autentica.
+- **`EmailAddress` do allauth:** o `User.email` é a única fonte do e-mail de login. O allauth mantém a tabela `EmailAddress`, e registros antigos poderiam continuar autenticando um e-mail já trocado. Por isso a operação `update_details` sincroniza esses registros na mesma transação (atualiza ou remove os do usuário). Um teste de integração garante que, depois da troca, o e-mail antigo não autentica.
 - **Usuário inativo tentando login:** é recusado pelo backend. A mensagem exibida (genérica ou "conta desativada", o padrão do allauth quando as credenciais estão corretas) fica para a spec, e um teste fixa o comportamento.
 - **Sessões:** `django.contrib.sessions` com armazenamento no banco.
   - o login troca a chave da sessão (proteção contra *session fixation*);
   - a troca de senha invalida as sessões existentes pelo *session auth hash* do Django;
   - a desativação faz a próxima requisição virar anônima.
-- **Templates do allauth:** sobrescritos em `contas/templates/account/`, em português e na base visual do projeto.
+- **Templates do allauth:** sobrescritos em `accounts/templates/account/`, em português e na base visual do projeto.
 
 Alternativa considerada:
 - **`LoginView`/`LogoutView` do Django sem allauth:** mais simples, mas contraria a escolha do TCC (3.3.1) e exigiria implementar à mão o limite de tentativas e a prevenção de enumeração.
@@ -434,7 +434,7 @@ Não existem view, rota, token nem template de link próprios da aplicação.
 6. As solicitações seguem o limite de tentativas padrão do allauth.
 
 **Criação inicial, disparada pelo cadastro:**
-1. Um usuário com `USUARIO.CRIAR` envia nome, e-mail e perfil. `Usuario.objects.cadastrar` cria, numa transação, o usuário **ativo**, com **senha inutilizável** (*unusable password*), `is_superadmin = False` e o vínculo com o perfil.
+1. Um usuário com `USUARIO.CRIAR` envia nome, e-mail e perfil. `User.objects.register` cria, numa transação, o usuário **ativo**, com **senha inutilizável** (*unusable password*), `is_superadmin = False` e o vínculo com o perfil.
 2. Depois do commit (`transaction.on_commit`), a view de cadastro dispara a mesma solicitação de recuperação para o e-mail do novo usuário, usando o **formulário público de recuperação do allauth** com a requisição atual.
 3. O texto do e-mail é neutro ("defina ou redefina sua senha") e serve aos dois casos.
 4. Antes de definir a senha, o login é impossível, porque a senha inutilizável nunca confere.
@@ -455,19 +455,19 @@ Alternativas consideradas:
 - **Fluxo próprio de definição de senha com a `PasswordResetConfirmView` do Django:** duplicaria o fluxo de recuperação, com dois tokens, duas páginas e dois conjuntos de templates para a mesma tarefa.
 - **Recuperação com as views de senha do Django, sem allauth:** contraria a escolha do TCC (3.3.1) e não tem limite de tentativas nem prevenção de enumeração prontos.
 - **Senha provisória definida pelo administrador:** descartada pela proposal.
-- **Model `Convite` com token no banco:** acrescenta tabela, expiração e limpeza próprias sem necessidade.
+- **Model `Invitation` com token no banco:** acrescenta tabela, expiração e limpeza próprias sem necessidade.
 
 ### D13. Ativação e desativação de usuários
 
-- **`desativar()`:** `is_active = False`, com a verificação de continuidade (D10). O usuário **mantém** perfil, senha, `is_superadmin` e todas as referências de histórico. Efeitos:
+- **`deactivate()`:** `is_active = False`, com a verificação de continuidade (D10). O usuário **mantém** perfil, senha, `is_superadmin` e todas as referências de histórico. Efeitos:
   - o login é recusado (D11);
   - a sessão aberta deixa de valer na próxima requisição;
   - as permissões efetivas ficam vazias, inclusive se for superadmin (D7);
   - o usuário deixa de contar para a continuidade (D10);
   - não recebe e-mail de recuperação, e um link emitido antes da desativação é recusado (D12).
-- **`reativar()`:** `is_active = True`, sem verificação de continuidade. Perfil, senha e superadmin voltam a valer como estavam.
+- **`reactivate()`:** `is_active = True`, sem verificação de continuidade. Perfil, senha e superadmin voltam a valer como estavam.
 - **Interface:** ações de desativar e reativar por POST com CSRF, com confirmação, protegidas por `USUARIO.ALTERAR_SITUACAO`.
-- **Sem exclusão física:** não há view nem operação de exclusão. Recomendação às Changes futuras: chaves estrangeiras para `Usuario` usam `PROTECT`, o que impede apagar usuários com histórico mesmo fora da interface.
+- **Sem exclusão física:** não há view nem operação de exclusão. Recomendação às Changes futuras: chaves estrangeiras para `User` usam `PROTECT`, o que impede apagar usuários com histórico mesmo fora da interface.
 
 ### D14. Verificações de autorização na aplicação
 
@@ -477,7 +477,7 @@ Alternativas consideradas:
 - A verificação acontece no `dispatch`, portanto **para todos os métodos HTTP**, inclusive POST.
 - Se for necessária uma view em função, o padrão é `login_required` combinado com `permission_required(..., raise_exception=True)`, que reproduz o mesmo comportamento.
 - **Templates** usam `perms.USUARIO.CRIAR` (o `PermWrapper` do Django chama `has_perm("USUARIO.CRIAR")`) **só para mostrar ou esconder** links e botões. Esconder não substitui a verificação da view.
-- **Proibido** em views e templates: decidir acesso pelo `codigo`, `nome` ou `sistema` do perfil, ou pelo `is_superadmin`.
+- **Proibido** em views e templates: decidir acesso pelo `code`, `name` ou `is_system` do perfil, ou pelo `is_superadmin`.
 - **Gestão de perfis:** as views usam o mesmo `PermissionRequiredMixin` com as constantes `PERFIL.*`. Como essas permissões são reservadas (D21), só o superadmin ativo passa, sem nenhuma verificação de `is_superadmin` na view. Um usuário com todas as permissões de `USUARIO` recebe 403 nessas rotas.
 - **Regras por objeto:** nenhuma permissão por objeto nesta Change, e o parâmetro `obj` de `has_perm` é ignorado. As restrições que dependem do alvo são regras de negócio do model, e não permissões: o e-mail de superadmin (D16) e a exclusão de perfil do sistema ou com usuários (D22).
 
@@ -513,8 +513,8 @@ Cada ação sensível tem sua própria rota e permissão, em vez de um formulár
 | Camada | Pergunta | Componentes | Não faz |
 |---|---|---|---|
 | **Autenticação** | Quem é você? | allauth (login, logout, recuperação e criação inicial de senha, limites de tentativas), sessões, backend | não decide o que o usuário pode fazer |
-| **Autorização** | Você pode executar isto? | `Usuario.has_perm` e permissões efetivas, `PermissionRequiredMixin`, `perms` nos templates | não altera dados nem conhece as invariantes |
-| **Regras de negócio** | Esta operação é válida? | operações do `Usuario`, do `Perfil` e dos managers, restrições do banco, exceções de domínio (continuidade, perfil protegido, perfil em uso, permissão reservada) | só considera **quem** executa quando a própria regra é sobre o executor (proteção de superadmin, D16), recebendo-o explicitamente; valem igualmente para views, comandos e shell |
+| **Autorização** | Você pode executar isto? | `User.has_perm` e permissões efetivas, `PermissionRequiredMixin`, `perms` nos templates | não altera dados nem conhece as invariantes |
+| **Regras de negócio** | Esta operação é válida? | operações do `User`, do `Role` e dos managers, restrições do banco, exceções de domínio (continuidade, perfil protegido, perfil em uso, permissão reservada) | só considera **quem** executa quando a própria regra é sobre o executor (proteção de superadmin, D16), recebendo-o explicitamente; valem igualmente para views, comandos e shell |
 | **Apresentação** | Como mostrar? | forms e templates | não protege nada; só reflete as outras camadas |
 
 Exemplos:
@@ -524,21 +524,21 @@ Exemplos:
 - Um usuário inativo nem chega à autorização: a **autenticação** já o trata como anônimo. Mesmo assim, `has_perm` também recusa usuários inativos, como defesa em profundidade.
 - Um administrador com todas as permissões de `USUARIO` abre a criação de perfil: é barrado na **autorização** (403), porque `PERFIL.CRIAR` é reservada.
 - O Superadmin tenta excluir o perfil `DOCENTE`: passa pela autorização e é barrado pela **regra de negócio** de perfil do sistema.
-- O Superadmin retira `USUARIO.EDITAR` do perfil `ADMINISTRADOR`: passa pela autorização e pela **regra de negócio** de continuidade, porque ele mesmo, ativo, mantém a capacidade. A verificação de continuidade da operação `Perfil.alterar_permissoes` continua existindo e recusa a alteração quando ela é aplicada sem nenhum superadmin ativo e retiraria a capacidade do último usuário que a tem pelo perfil (por exemplo, por uma chamada à operação fora da interface). Ver D10 e D22.
+- O Superadmin retira `USUARIO.EDITAR` do perfil `ADMINISTRADOR`: passa pela autorização e pela **regra de negócio** de continuidade, porque ele mesmo, ativo, mantém a capacidade. A verificação de continuidade da operação `Role.set_permissions` continua existindo e recusa a alteração quando ela é aplicada sem nenhum superadmin ativo e retiraria a capacidade do último usuário que a tem pelo perfil (por exemplo, por uma chamada à operação fora da interface). Ver D10 e D22.
 
 ### D16. Superadmin: criação, controle por comando e proteção
 
-**Criação do primeiro superadmin: comando `criar_superadmin`** (executado com `make manage cmd="criar_superadmin"`):
+**Criação do primeiro superadmin: comando `create_superadmin`** (executado com `make manage cmd="create_superadmin"`):
 - pede no terminal e-mail e nome, e a senha **duas vezes, sem eco** (`getpass`), validada pelos `AUTH_PASSWORD_VALIDATORS`;
-- recusa e-mail já cadastrado, com mensagem indicando o comando `alterar_superadmin`;
+- recusa e-mail já cadastrado, com mensagem indicando o comando `set_superadmin`;
 - cria, numa transação e pelo manager (com normalização do e-mail), o usuário ativo com `is_superadmin = True` e perfil `ADMINISTRADOR`, que sempre existe por ser perfil do sistema (D3);
 - não envia e-mail e não depende da interface web nem de cadastro público.
 
 Quem roda o comando é o próprio superadmin que está sendo criado. Ele define a própria senha, e a instalação funciona antes de o envio de e-mail estar configurado.
 
-**Controle de `is_superadmin`: comando `alterar_superadmin`**, que recebe o e-mail do usuário e uma entre duas opções, conceder ou remover:
+**Controle de `is_superadmin`: comando `set_superadmin`**, que recebe o e-mail do usuário e uma entre duas opções, conceder ou remover:
 - conceder marca `is_superadmin = True`;
-- remover usa a operação `alterar_superadmin(False)` do model e passa pela **regra de continuidade** (D10). Se for recusada, o comando termina com erro e nada muda.
+- remover usa a operação `set_superadmin(False)` do model e passa pela **regra de continuidade** (D10). Se for recusada, o comando termina com erro e nada muda.
 
 **Na interface web**, nenhum formulário, view ou operação lê ou grava `is_superadmin` para alterá-lo:
 - os formulários declaram explicitamente os campos aceitos, e `is_superadmin` nunca está entre eles;
@@ -563,8 +563,8 @@ Por que só o e-mail precisa de bloqueio explícito:
 - nome, perfil e situação não dão acesso à conta. O perfil nem afeta o acesso de um superadmin ativo (D7), e uma desativação indevida é revertida por quem tem `USUARIO.ALTERAR_SITUACAO`, com a continuidade garantindo que sempre existe alguém assim. Enquanto o superadmin estiver desativado, e se não houver outro ativo, a gestão de perfis fica indisponível pela interface até a reativação (ver Risks).
 
 **Onde a proteção é garantida:**
-- a operação `alterar_dados` do model recebe explicitamente o executor;
-- se o e-mail mudar, o alvo tiver `is_superadmin = True` (ativo ou não) e o executor não for superadmin ativo, ela lança `OperacaoRestritaASuperadmin` (derivada de `ValidationError`), e nada é alterado;
+- a operação `update_details` do model recebe explicitamente o executor;
+- se o e-mail mudar, o alvo tiver `is_superadmin = True` (ativo ou não) e o executor não for superadmin ativo, ela lança `SuperadminOnlyOperation` (derivada de `ValidationError`), e nada é alterado;
 - a regra fica no model para valer em qualquer view atual ou futura;
 - a view de edição, além disso, mostra o e-mail como somente leitura nesse caso, o que é apenas apresentação.
 
@@ -572,16 +572,16 @@ Alternativas consideradas:
 - **Bloquear toda edição de superadmin por administradores comuns:** mais restritivo do que a segurança exige e impediria correções simples, como o nome.
 - **Permitir a troca de e-mail com confirmação no endereço antigo:** protege, mas acrescenta um fluxo de confirmação inteiro sem necessidade nesta versão.
 - **Marcar superadmin pela interface:** qualquer usuário com permissão de gestão poderia conceder acesso irrestrito (escalonamento de privilégio).
-- **O comando `criar_superadmin` enviar o link de recuperação:** exigiria e-mail funcionando e uma URL base configurada já na instalação.
+- **O comando `create_superadmin` enviar o link de recuperação:** exigiria e-mail funcionando e uma URL base configurada já na instalação.
 
 ### D17. Remoção do `/admin` do Django
 
 `django.contrib.admin` sai de `INSTALLED_APPS` e a rota `admin/` sai de `config/urls.py`. `django.contrib.auth` continua, porque fornece `AbstractBaseUser`, hashers, middleware e views de senha.
 
 Motivos:
-- o admin autoriza por `is_staff`, `is_superuser` e `Permission` do Django, o que criaria **um segundo sistema de autorização**, contrário ao ponto único de D7;
+- o admin autoriza por `is_staff`, `is_superuser` e `auth.Permission` do Django, o que criaria **um segundo sistema de autorização**, contrário ao ponto único de D7;
 - ele grava com `save()` direto, contornando as operações que garantem as invariantes (D6, D10);
-- o `Usuario` não tem `is_staff` nem `is_superuser`, então o admin nem funcionaria sem adaptações.
+- o `User` não tem `is_staff` nem `is_superuser`, então o admin nem funcionaria sem adaptações.
 
 A manutenção fica com a própria interface, os comandos de gerenciamento e `make shell`.
 
@@ -590,7 +590,7 @@ Alternativa considerada:
 
 ### D18. Interface sem Tailwind nesta Change
 
-Os templates usam o sistema de templates do Django, com um template base mínimo em `contas/templates/`, mensagens pelo `django.contrib.messages` e HTML semântico. O Tailwind CSS (P8) fica para uma Change própria, porque traz ferramenta de build e decisões de identidade visual que não pertencem a identidade e acesso. O template base é o ponto em que essa Change vai atuar depois.
+Os templates usam o sistema de templates do Django, com um template base mínimo em `accounts/templates/`, mensagens pelo `django.contrib.messages` e HTML semântico. O Tailwind CSS (P8) fica para uma Change própria, porque traz ferramenta de build e decisões de identidade visual que não pertencem a identidade e acesso. O template base é o ponto em que essa Change vai atuar depois.
 
 Alternativa considerada:
 - **Configurar o Tailwind aqui:** aumenta o escopo e mistura duas decisões independentes na mesma revisão.
@@ -603,21 +603,21 @@ Alternativa considerada:
 
 | Configuração | Valor |
 |---|---|
-| `INSTALLED_APPS` | remove `django.contrib.admin`; adiciona `allauth`, `allauth.account`, `contas` |
+| `INSTALLED_APPS` | remove `django.contrib.admin`; adiciona `allauth`, `allauth.account`, `accounts` |
 | `MIDDLEWARE` | adiciona `allauth.account.middleware.AccountMiddleware` |
-| `AUTH_USER_MODEL` | `contas.Usuario` |
+| `AUTH_USER_MODEL` | `accounts.User` |
 | `AUTHENTICATION_BACKENDS` | backend do allauth |
-| `LOGIN_URL` / `LOGIN_REDIRECT_URL` | login do allauth / `inicio` |
+| `LOGIN_URL` / `LOGIN_REDIRECT_URL` | login do allauth / `home` (rota `inicio/`) |
 | logout (allauth) | só POST, com redirecionamento para o login |
 | allauth | login por e-mail, sem username, e-mail único, verificação desligada, adapter com cadastro fechado, recuperação de senha por link, sem login automático após redefinir, sem e-mail para endereços não cadastrados, limites e prevenção de enumeração padrão |
-| `AUTH_PASSWORD_VALIDATORS` | os atuais, com o validador de similaridade comparando `email` e `nome` |
+| `AUTH_PASSWORD_VALIDATORS` | os atuais, com o validador de similaridade comparando `email` e `name` |
 | `PASSWORD_RESET_TIMEOUT` | padrão do Django (3 dias), usado pelo link de criação e de recuperação |
 | `EMAIL_BACKEND` | lido de `DJANGO_EMAIL_BACKEND` |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | lidos do ambiente, opcionais, usados com o backend SMTP (Gmail, conforme o TCC) |
 
 **`compose.yaml`:** `DJANGO_EMAIL_BACKEND` com padrão `django.core.mail.backends.console.EmailBackend` e `DEFAULT_FROM_EMAIL` com um valor de desenvolvimento, seguindo o formato `${VAR:-padrão}` já adotado. As credenciais SMTP não têm padrão e vêm do `.env` quando necessárias.
 
-**`config/urls.py`:** remove `admin/`; inclui as rotas de `contas` e as views selecionadas do allauth (D11, D14).
+**`config/urls.py`:** remove `admin/`; inclui as rotas de `accounts` e as views selecionadas do allauth (D11, D14).
 
 **`README.md`:** criação do primeiro superadmin e controle de `is_superadmin` pelos comandos, gestão de perfis pelo superadmin (incluindo a revisão dos perfis personalizados depois de cada módulo novo), onde ver os e-mails no desenvolvimento e variáveis para SMTP.
 
@@ -629,23 +629,23 @@ Princípios:
 - todos os testes rodam no PostgreSQL via `make test`;
 - o banco de testes aplica as migrations, então perfis do sistema e permissões da `0002` existem como em uma instalação real;
 - os testes de autorização por perfil usam **usuários que não são superadmin**, e o superadmin tem testes próprios, para que o acesso irrestrito não mascare permissões faltando;
-- as asserções sobre as concessões de `ADMINISTRADOR` e `DOCENTE` valem **só para o estado da carga** e ficam em `test_catalogo.py`; os demais testes criam o estado de que precisam pelas operações do model;
+- as asserções sobre as concessões de `ADMINISTRADOR` e `DOCENTE` valem **só para o estado da carga** e ficam em `test_catalog.py`; os demais testes criam o estado de que precisam pelas operações do model;
 - os e-mails são verificados na caixa de saída em memória do Django;
 - o ORM não é substituído por *mocks*.
 
 | Arquivo | Tipo | O que verifica |
 |---|---|---|
-| `test_modelos.py` | unitário | e-mail normalizado; unicidade sem diferenciar maiúsculas e minúsculas pela restrição do banco; senha inutilizável no cadastro; cadastro sem perfil recusado; segundo perfil recusado pela restrição; formato inválido de código de `Permissao` e `Perfil` recusado; nome de perfil repetido com outra caixa recusado pela restrição; perfil com usuários não pode ser apagado pelo `PROTECT` |
-| `test_catalogo.py` | unitário | códigos no banco = constantes do código; conjunto reservado contido no catálogo e disjunto de `CAPACIDADE_ADMINISTRATIVA`; **estado da carga**: `ADMINISTRADOR` e `DOCENTE` existem com `sistema = True`, `ADMINISTRADOR` concede todo o conjunto `CAPACIDADE_ADMINISTRATIVA`, `DOCENTE` sem permissões, nenhum perfil concede permissão reservada |
-| `test_autorizacao.py` | unitário | anônimo sem permissões; inativo sem permissões (com e sem perfil); permissões vindas do perfil; permissão fora do perfil negada; superadmin ativo com qualquer código, inclusive reservado; superadmin inativo sem acesso; um perfil com outro `codigo` e as mesmas permissões dá o mesmo resultado (independência do nome); permissão reservada gravada diretamente num perfil não é concedida a quem não é superadmin; alteração de permissões pela operação do perfil refletida numa nova instância do usuário, para todos os usuários do perfil |
-| `test_continuidade.py` | unitário | desativar, remover superadmin, trocar perfil do último usuário com capacidade e retirar do perfil dele uma permissão de `CAPACIDADE_ADMINISTRATIVA` são bloqueados e nada muda; as mesmas operações são permitidas quando há outro usuário com capacidade, inclusive um superadmin ativo; superadmin inativo não conta; capacidade por perfil, sem superadmin, conta, inclusive por perfil personalizado; retirar permissões fora do conjunto e acrescentar permissões não são verificados; reativar não é verificado |
-| `test_perfis.py` | unitário | criação com código, nome e descrição; perfil novo sem permissões; criação com permissões escolhidas; código fora do formato, código repetido, nome vazio e nome repetido com outra caixa recusados; `sistema` sempre `False` na criação; edição de nome e descrição sem mudar o código; código enviado na edição ignorado; definição do conjunto de permissões; permissão reservada recusada na criação e na definição, sem alteração parcial; exclusão de perfil personalizado sem usuários remove as concessões; exclusão de perfil do sistema recusada; exclusão com usuário ativo e com usuário só inativo recusadas; perfis do sistema com nome e permissões editáveis |
-| `test_views_perfis.py` | integração | para cada rota de perfis de D14: anônimo redirecionado ao login com `next`; usuário com todas as permissões de `USUARIO`, sem superadmin, recebe 403 e nada muda; superadmin ativo com perfil `DOCENTE` acessa e executa; formulário de permissões não oferece permissões reservadas; POST com permissão reservada recusado com erro; exclusão só por POST, com confirmação; POST sem token CSRF recusado com 403; recusas de negócio (perfil do sistema, perfil em uso, nome repetido) mostram erro sem alterar dados; alteração de permissões vale na próxima requisição de um usuário do perfil com sessão aberta |
-| `test_autenticacao.py` | integração | login por e-mail (com maiúsculas no campo); senha errada recusada; usuário inativo recusado; usuário sem senha definida recusado; logout por POST; GET no logout não encerra a sessão; cadastro público indisponível; rotas de gestão de e-mail do allauth inexistentes; sessão aberta perde validade após a desativação; e-mail antigo não autentica após a troca |
-| `test_senha.py` | integração | cadastro dispara o e-mail de recuperação para o novo usuário; usuário com senha inutilizável define a senha pelo link e faz login; link reutilizado recusado; chave adulterada recusada; link invalidado após troca de e-mail; senha fraca recusada; recuperação para e-mail cadastrado envia link; para e-mail desconhecido, mesma resposta e nenhum e-mail; usuário inativo não recebe e-mail; link emitido antes da desativação não redefine; **superadmin recupera o acesso**; sessões antigas perdem validade após redefinir; sem login automático |
-| `test_protecao_superadmin.py` | unitário e integração | administrador comum não altera o e-mail de um superadmin (ativo ou inativo), pelo model e pela view, e nada muda; administrador comum altera o nome de um superadmin; superadmin ativo altera o e-mail de outro superadmin; formulários web ignoram `is_superadmin` enviado no POST; cadastro sempre cria `is_superadmin = False` |
-| `test_views_usuarios.py` | integração | para cada rota de D14: anônimo redirecionado ao login com `next`; autenticado sem permissão recebe 403; com permissão recebe 200 ou executa; superadmin com perfil `DOCENTE` acessa; violação de continuidade pela view mostra erro sem alterar dados; ações de situação só aceitam POST |
-| `test_comandos.py` | integração | `criar_superadmin` cria usuário ativo, superadmin, com perfil `ADMINISTRADOR` e senha utilizável, inclusive depois de o nome e as permissões do `ADMINISTRADOR` terem sido alterados; e-mail repetido e senha fraca recusados; `alterar_superadmin` concede e remove; remover do último usuário com capacidade é recusado pela continuidade |
+| `test_models.py` | unitário | e-mail normalizado; unicidade sem diferenciar maiúsculas e minúsculas pela restrição do banco; senha inutilizável no cadastro; cadastro sem perfil recusado; segundo perfil recusado pela restrição; formato inválido de código de `Permission` e `Role` recusado; nome de perfil repetido com outra caixa recusado pela restrição; perfil com usuários não pode ser apagado pelo `PROTECT` |
+| `test_catalog.py` | unitário | códigos no banco = constantes do código; conjunto reservado contido no catálogo e disjunto de `ADMINISTRATIVE_CAPABILITY`; **estado da carga**: `ADMINISTRADOR` e `DOCENTE` existem com `is_system = True`, `ADMINISTRADOR` concede todo o conjunto `ADMINISTRATIVE_CAPABILITY`, `DOCENTE` sem permissões, nenhum perfil concede permissão reservada |
+| `test_authorization.py` | unitário | anônimo sem permissões; inativo sem permissões (com e sem perfil); permissões vindas do perfil; permissão fora do perfil negada; superadmin ativo com qualquer código, inclusive reservado; superadmin inativo sem acesso; um perfil com outro `code` e as mesmas permissões dá o mesmo resultado (independência do nome); permissão reservada gravada diretamente num perfil não é concedida a quem não é superadmin; alteração de permissões pela operação do perfil refletida numa nova instância do usuário, para todos os usuários do perfil |
+| `test_continuity.py` | unitário | desativar, remover superadmin, trocar perfil do último usuário com capacidade e retirar do perfil dele uma permissão de `ADMINISTRATIVE_CAPABILITY` são bloqueados e nada muda; as mesmas operações são permitidas quando há outro usuário com capacidade, inclusive um superadmin ativo; superadmin inativo não conta; capacidade por perfil, sem superadmin, conta, inclusive por perfil personalizado; retirar permissões fora do conjunto e acrescentar permissões não são verificados; reativar não é verificado |
+| `test_roles.py` | unitário | criação com código, nome e descrição; perfil novo sem permissões; criação com permissões escolhidas; código fora do formato, código repetido, nome vazio e nome repetido com outra caixa recusados; `is_system` sempre `False` na criação; edição de nome e descrição sem mudar o código; código enviado na edição ignorado; definição do conjunto de permissões; permissão reservada recusada na criação e na definição, sem alteração parcial; exclusão de perfil personalizado sem usuários remove as concessões; exclusão de perfil do sistema recusada; exclusão com usuário ativo e com usuário só inativo recusadas; perfis do sistema com nome e permissões editáveis |
+| `test_role_views.py` | integração | para cada rota de perfis de D14: anônimo redirecionado ao login com `next`; usuário com todas as permissões de `USUARIO`, sem superadmin, recebe 403 e nada muda; superadmin ativo com perfil `DOCENTE` acessa e executa; formulário de permissões não oferece permissões reservadas; POST com permissão reservada recusado com erro; exclusão só por POST, com confirmação; POST sem token CSRF recusado com 403; recusas de negócio (perfil do sistema, perfil em uso, nome repetido) mostram erro sem alterar dados; alteração de permissões vale na próxima requisição de um usuário do perfil com sessão aberta |
+| `test_authentication.py` | integração | login por e-mail (com maiúsculas no campo); senha errada recusada; usuário inativo recusado; usuário sem senha definida recusado; logout por POST; GET no logout não encerra a sessão; cadastro público indisponível; rotas de gestão de e-mail do allauth inexistentes; sessão aberta perde validade após a desativação; e-mail antigo não autentica após a troca |
+| `test_password.py` | integração | cadastro dispara o e-mail de recuperação para o novo usuário; usuário com senha inutilizável define a senha pelo link e faz login; link reutilizado recusado; chave adulterada recusada; link invalidado após troca de e-mail; senha fraca recusada; recuperação para e-mail cadastrado envia link; para e-mail desconhecido, mesma resposta e nenhum e-mail; usuário inativo não recebe e-mail; link emitido antes da desativação não redefine; **superadmin recupera o acesso**; sessões antigas perdem validade após redefinir; sem login automático |
+| `test_superadmin_protection.py` | unitário e integração | administrador comum não altera o e-mail de um superadmin (ativo ou inativo), pelo model e pela view, e nada muda; administrador comum altera o nome de um superadmin; superadmin ativo altera o e-mail de outro superadmin; formulários web ignoram `is_superadmin` enviado no POST; cadastro sempre cria `is_superadmin = False` |
+| `test_user_views.py` | integração | para cada rota de D14: anônimo redirecionado ao login com `next`; autenticado sem permissão recebe 403; com permissão recebe 200 ou executa; superadmin com perfil `DOCENTE` acessa; violação de continuidade pela view mostra erro sem alterar dados; ações de situação só aceitam POST |
+| `test_commands.py` | integração | `create_superadmin` cria usuário ativo, superadmin, com perfil `ADMINISTRADOR` e senha utilizável, inclusive depois de o nome e as permissões do `ADMINISTRADOR` terem sido alterados; e-mail repetido e senha fraca recusados; `set_superadmin` concede e remove; remover do último usuário com capacidade é recusado pela continuidade |
 
 O teste de conexão existente em `config/tests.py` continua como está.
 
@@ -653,20 +653,20 @@ O teste de conexão existente em `config/tests.py` continua como está.
 
 As permissões `PERFIL.*` controlam quem define o que cada perfil pode fazer. Se um perfil pudesse concedê-las, quem as tivesse poderia conceder a si mesmo, pelo próprio perfil, qualquer permissão do catálogo. Por isso elas são **reservadas**.
 
-- **Conjunto:** `PERMISSOES_RESERVADAS_SUPERADMIN` em `contas/permissoes.py`, com as cinco permissões `PERFIL.*` de D8. É uma lista explícita, como `CAPACIDADE_ADMINISTRATIVA`.
-- **Regra de negócio:** nenhuma permissão reservada pode ser concedida a um perfil, seja ele do sistema ou personalizado. As operações `Perfil.objects.criar` e `Perfil.alterar_permissoes` (D22) recusam o conjunto inteiro se ele contiver uma permissão reservada, lançando `PermissaoReservadaNaoConcedivel` (derivada de `ValidationError`), e nada é alterado.
+- **Conjunto:** `SUPERADMIN_RESERVED_PERMISSIONS` em `accounts/permissions.py`, com as cinco permissões `PERFIL.*` de D8. É uma lista explícita, como `ADMINISTRATIVE_CAPABILITY`.
+- **Regra de negócio:** nenhuma permissão reservada pode ser concedida a um perfil, seja ele do sistema ou personalizado. As operações `Role.objects.create_role` e `Role.set_permissions` (D22) recusam o conjunto inteiro se ele contiver uma permissão reservada, lançando `ReservedPermissionNotGrantable` (derivada de `ValidationError`), e nada é alterado.
 - **Migrations:** não concedem permissões reservadas (D9), e o teste de catálogo confere isso no estado da carga (D20).
 - **Autorização:** o superadmin ativo as possui pela regra de acesso irrestrito (D7, passo 3). Para os demais usuários, o passo 4 de D7 as ignora mesmo se estiverem gravadas num perfil, como defesa em profundidade.
 - **Interface:** o formulário de permissões de perfil não as lista. Um POST que as inclua é recusado pela regra de negócio.
 - **Relação com `is_superadmin`:** a exclusividade é obtida sem ler `is_superadmin` fora do ponto único de decisão (D7). O superadmin continua não sendo permissão, e nenhuma permissão representa o superadmin.
-- **Relação com a continuidade:** as reservadas não fazem parte de `CAPACIDADE_ADMINISTRATIVA` (D10).
+- **Relação com a continuidade:** as reservadas não fazem parte de `ADMINISTRATIVE_CAPABILITY` (D10).
 - **Delegação futura:** liberar uma permissão `PERFIL.*` para perfis exige retirá-la do conjunto reservado numa Change própria, com decisão explícita sobre escalonamento de privilégio.
 
 Alternativas consideradas:
 - **Verificar `is_superadmin` nas views de perfis:** criaria um segundo ponto de decisão de acesso, contra D7 e D14.
 - **Regra de negócio que recebe o executor e recusa quem não é superadmin, sem permissões `PERFIL.*`:** a view não teria permissão a verificar, e a negação viria da regra de negócio com mensagem de erro, e não da autorização com 403 (D15).
 - **Permissões `PERFIL.*` concedíveis a perfis:** permitiria escalonamento total de privilégio, como descrito acima.
-- **Marca `reservada` como coluna de `Permissao`:** a reserva é uma decisão do código, versionada junto com as constantes, e não um dado editável. A lista no código segue o padrão de `CAPACIDADE_ADMINISTRATIVA`.
+- **Marca `is_reserved` como coluna de `Permission`:** a reserva é uma decisão do código, versionada junto com as constantes, e não um dado editável. A lista no código segue o padrão de `ADMINISTRATIVE_CAPABILITY`.
 
 ### D22. Gestão de perfis pelo Superadmin
 
@@ -674,17 +674,17 @@ Operações no model (P2), todas numa transação e todas usadas pelas views de 
 
 | Operação | Permissão da view | Regras |
 |---|---|---|
-| `Perfil.objects.criar(codigo, nome, descricao, permissoes=())` | `PERFIL.CRIAR` | código obrigatório, no formato e único; nome obrigatório e único sem diferenciar maiúsculas de minúsculas; `sistema = False`; permissões só as informadas, **nenhuma por padrão**; nenhuma reservada (D21) |
-| `perfil.alterar_dados(nome, descricao)` | `PERFIL.EDITAR` | não recebe `codigo` nem `sistema`; nome obrigatório e único; vale também para perfis do sistema |
-| `perfil.alterar_permissoes(permissoes)` | `PERFIL.ALTERAR_PERMISSOES` | recebe o **conjunto final**; grava a diferença; nenhuma reservada (D21); verificação de continuidade quando retira permissão de `CAPACIDADE_ADMINISTRATIVA` (D10); vale também para perfis do sistema |
-| `perfil.excluir()` | `PERFIL.EXCLUIR` | recusada se `sistema = True` (`PerfilDoSistemaProtegido`) ou se houver qualquer usuário vinculado, ativo ou inativo (`PerfilEmUso`); sem usuários, remove o perfil e, por `CASCADE`, as concessões |
+| `Role.objects.create_role(code, name, description, permissions=())` | `PERFIL.CRIAR` | código obrigatório, no formato e único; nome obrigatório e único sem diferenciar maiúsculas de minúsculas; `is_system = False`; permissões só as informadas, **nenhuma por padrão**; nenhuma reservada (D21) |
+| `role.update_details(name, description)` | `PERFIL.EDITAR` | não recebe `code` nem `is_system`; nome obrigatório e único; vale também para perfis do sistema |
+| `role.set_permissions(permissions)` | `PERFIL.ALTERAR_PERMISSOES` | recebe o **conjunto final**; grava a diferença; nenhuma reservada (D21); verificação de continuidade quando retira permissão de `ADMINISTRATIVE_CAPABILITY` (D10); vale também para perfis do sistema |
+| `role.delete_role()` | `PERFIL.EXCLUIR` | recusada se `is_system = True` (`SystemRoleProtected`) ou se houver qualquer usuário vinculado, ativo ou inativo (`RoleInUse`); sem usuários, remove o perfil e, por `CASCADE`, as concessões |
 
-As exceções derivam de `ValidationError`: a view as mostra como mensagem de erro, e nada é alterado. A mensagem de `PerfilEmUso` informa quantos usuários estão vinculados e orienta a trocar o perfil deles antes (operação de `gestao-usuarios`, com a sua própria permissão e a continuidade).
+As exceções derivam de `ValidationError`: a view as mostra como mensagem de erro, e nada é alterado. A mensagem de `RoleInUse` informa quantos usuários estão vinculados e orienta a trocar o perfil deles antes (operação de `gestao-usuarios`, com a sua própria permissão e a continuidade).
 
-**Listagem e consulta** (`PERFIL.VISUALIZAR`): a lista mostra código, nome, se é do sistema e a quantidade de usuários vinculados. A consulta mostra também a descrição e as permissões concedidas, agrupadas por recurso (propriedade `recurso` de D4). A lista de usuários vinculados não é exibida aqui, para não duplicar a gestão de usuários.
+**Listagem e consulta** (`PERFIL.VISUALIZAR`): a lista mostra código, nome, se é do sistema e a quantidade de usuários vinculados. A consulta mostra também a descrição e as permissões concedidas, agrupadas por recurso (propriedade `resource` de D4). A lista de usuários vinculados não é exibida aqui, para não duplicar a gestão de usuários.
 
 **Formulários:**
-- declaram explicitamente os campos aceitos; `sistema` nunca está entre eles, e `codigo` só está no de criação;
+- declaram explicitamente os campos aceitos; `is_system` nunca está entre eles, e `code` só está no de criação;
 - o formulário de permissões lista o catálogo sem as reservadas, agrupado por recurso, com a descrição de cada permissão;
 - a exclusão é uma ação por POST com CSRF, após confirmação, no mesmo padrão da desativação de usuários (D13).
 
@@ -713,16 +713,16 @@ Alternativas consideradas:
 - **[Banco de desenvolvimento já migrado com `auth.User`]** A troca de `AUTH_USER_MODEL` depois das migrations de `auth` e `admin` gera histórico inconsistente. → Recriar o banco com `make reset-db` antes do primeiro `migrate` desta Change (Migration Plan). Não há dados de produção.
 - **[Invariantes contornáveis por gravação direta]** `save()`/`update()` no shell ignoram D6 e D10. → Remoção do `/admin` (D17); interface e comandos usam só as operações do model; a restrição de "no máximo um perfil" está no banco.
 - **[Constantes e migrations divergirem]** Uma permissão pode existir no código e não no banco, ou o contrário. → Teste de consistência do catálogo (D8, D20).
-- **[Migration futura retirar a capacidade do `ADMINISTRADOR`]** → As migrations de configuração padrão só acrescentam permissões e só aos perfis do sistema (D9); remover uma permissão do catálogo exige mudar as constantes e passa pelo teste de consistência (D8); o teste de que o `ADMINISTRADOR` concede o conjunto `CAPACIDADE_ADMINISTRATIVA` vale para o estado da carga (D20).
+- **[Migration futura retirar a capacidade do `ADMINISTRADOR`]** → As migrations de configuração padrão só acrescentam permissões e só aos perfis do sistema (D9); remover uma permissão do catálogo exige mudar as constantes e passa pelo teste de consistência (D8); o teste de que o `ADMINISTRADOR` concede o conjunto `ADMINISTRATIVE_CAPABILITY` vale para o estado da carga (D20).
 - **[Superadmin retirar permissões de gestão de usuários do `ADMINISTRADOR` ou de outro perfil]** A continuidade aceita, porque o próprio Superadmin ativo mantém a capacidade, mas os administradores pelo perfil perdem o acesso na próxima requisição. → Consequência aceita: a configuração dos perfis é responsabilidade do Superadmin. A tela de permissões mostra quantos usuários estão vinculados ao perfil antes de salvar.
 - **[Corrida entre operações de continuidade]** → Bloqueio das linhas dos usuários ativos na transação (D10), também na alteração de permissões de perfil. Não há teste automatizado de concorrência, porque testes com threads tendem a ser instáveis. O bloqueio é verificado por revisão.
 - **[Permissão reservada concedida a um perfil por gravação direta]** Um `save()` no shell poderia vincular `PERFIL.*` a um perfil. → A operação do model recusa (D21); o `has_perm` ignora permissões reservadas para quem não é superadmin (D7); teste de catálogo e teste de autorização (D20).
 - **[Escalonamento de privilégio pela atribuição de perfis]** Quem tem `USUARIO.CRIAR` ou `USUARIO.ALTERAR_PERFIL` pode atribuir um perfil que concede permissões que ele não tem, inclusive a si mesmo ou a uma conta nova com e-mail que controla. Antes dos perfis personalizados, só o `ADMINISTRADOR` tinha essas permissões e concedia todo o catálogo de `USUARIO`, então o risco não aparecia. → **Sem mitigação decidida.** O ponto está em Open Questions. Até a decisão, a concessão dessas duas permissões a um perfil equivale, na prática, a permitir atribuir qualquer perfil.
-- **[Gestão de perfis indisponível sem superadmin ativo]** Um administrador comum pode desativar o único superadmin ativo, e não há regra de sempre existir um superadmin ativo (D10). → Risco aceito: a gestão de usuários continua garantida pela continuidade; quem tem `USUARIO.ALTERAR_SITUACAO` pode reativar o superadmin; o comando `alterar_superadmin` concede superadmin a outro usuário.
+- **[Gestão de perfis indisponível sem superadmin ativo]** Um administrador comum pode desativar o único superadmin ativo, e não há regra de sempre existir um superadmin ativo (D10). → Risco aceito: a gestão de usuários continua garantida pela continuidade; quem tem `USUARIO.ALTERAR_SITUACAO` pode reativar o superadmin; o comando `set_superadmin` concede superadmin a outro usuário.
 - **[Perfis personalizados sem as permissões de um módulo novo]** Depois de um módulo novo, só os perfis do sistema recebem a configuração padrão (D9). → Consequência aceita do menor privilégio. O README orienta o Superadmin a revisar os perfis personalizados depois de cada módulo novo.
 - **[Perfil excluído durante um cadastro ou troca de perfil]** → Verificação de vínculos na exclusão, `PROTECT` e chave estrangeira no banco (D5, D22); a operação que perde a corrida mostra erro e nada fica inconsistente.
 - **[Divergência com o TCC sobre "dois papéis"]** Perfis personalizados vão além do texto das Seções 2.3.4 e 3.3.1, e a Constitution determina que o TCC prevalece. → Pendente de decisão dos orientadores (Open Questions). Os perfis do sistema preservam os dois papéis do TCC em toda instalação.
-- **[Registros `EmailAddress` do allauth fora de sincronia]** Um e-mail antigo continuaria autenticando. → Sincronização em `alterar_dados` e teste de integração (D11).
+- **[Registros `EmailAddress` do allauth fora de sincronia]** Um e-mail antigo continuaria autenticando. → Sincronização em `update_details` e teste de integração (D11).
 - **[Rotas do allauth expondo fluxos indesejados]** → Inclusão seletiva das views, em vez de `allauth.urls` (D11), e teste de que as rotas de cadastro e de gestão de e-mail não existem.
 - **[Nomes das configurações do allauth mudam entre versões]** → Versão fixada com `==`, configurações conferidas contra a documentação dessa versão e comportamento travado pelos testes de integração.
 - **[Superadmin mascara falhas de permissão]** → Testes de perfil sempre com usuários que não são superadmin (D20).
@@ -731,18 +731,18 @@ Alternativas consideradas:
 - **[Fluxo de recuperação do allauth não atender, por padrão, senha inutilizável ou usuário inativo]** → Comportamentos travados por testes de integração (D12, D20); se necessário, ajuste por adapter ou subclasse do allauth, sem fluxo paralelo.
 - **[Falha no envio do e-mail de criação de senha]** O usuário fica cadastrado sem conseguir entrar. → Aviso a quem cadastrou; o próprio usuário pede novo link em "Esqueci minha senha" (D12).
 - **[Limite de tentativas da recuperação atingido por cadastros em sequência]** Vários cadastros seguidos, do mesmo IP, disparam várias solicitações. → A view trata o limite como falha de envio e avisa; o usuário usa a recuperação depois; os limites são configuráveis se isso se mostrar frequente.
-- **[Único superadmin esquece a senha]** → Recuperação pelo fluxo do allauth (D12); em último caso, `alterar_superadmin` em outro usuário ou o shell.
+- **[Único superadmin esquece a senha]** → Recuperação pelo fluxo do allauth (D12); em último caso, `set_superadmin` em outro usuário ou o shell.
 - **[`DOCENTE` sem funcionalidades até as próximas Changes]** → Consequência aceita da estrutura progressiva. A página `inicio/` informa o usuário.
 
 ## Migration Plan
 
 1. Recriar o banco de desenvolvimento (`make reset-db`), porque o `AUTH_USER_MODEL` muda e o `admin` sai.
 2. Adicionar `django-allauth` ao `requirements.txt` e reconstruir a imagem (`make up`).
-3. Criar a app `contas`, os models e a migration `0001`. Configurar `AUTH_USER_MODEL` **antes** do primeiro `migrate`.
-4. Criar a migration de dados `0002` (perfis do sistema com `sistema = True`, as dez permissões de `USUARIO` e `PERFIL` e as concessões iniciais, sem nenhuma permissão reservada concedida).
+3. Criar a app `accounts`, os models e a migration `0001`. Configurar `AUTH_USER_MODEL` **antes** do primeiro `migrate`.
+4. Criar a migration de dados `0002` (perfis do sistema com `is_system = True`, as dez permissões de `USUARIO` e `PERFIL` e as concessões iniciais, sem nenhuma permissão reservada concedida).
 5. Ajustar `settings.py`, `urls.py` e `compose.yaml` (D19).
 6. Rodar `make migrate` e `make test`.
-7. Criar o primeiro superadmin (`make manage cmd="criar_superadmin"`) e validar login, cadastro com e-mail no console, criação da senha pelo link, recuperação de senha, proteção do e-mail de superadmin e desativação.
+7. Criar o primeiro superadmin (`make manage cmd="create_superadmin"`) e validar login, cadastro com e-mail no console, criação da senha pelo link, recuperação de senha, proteção do e-mail de superadmin e desativação.
 8. Com o superadmin, validar a gestão de perfis: criar um perfil personalizado sem permissões, conceder permissões de `USUARIO`, conferir que as permissões `PERFIL.*` não são oferecidas, atribuir o perfil a um usuário e ver o efeito na próxima requisição dele, tentar excluir o perfil em uso e o perfil `DOCENTE` (ambos recusados), trocar o perfil do usuário e excluir o perfil personalizado. Com um usuário `ADMINISTRADOR` sem superadmin, conferir 403 nas rotas de perfis.
 
 **Rollback:** reverter os commits da Change e recriar o banco (`make reset-db`). Só o ambiente de desenvolvimento é afetado.

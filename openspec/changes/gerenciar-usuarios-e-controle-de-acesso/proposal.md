@@ -4,12 +4,12 @@ O sistema ainda não tem identidade nem controle de acesso. Sem isso, não há c
 
 ## What Changes
 
-- **Usuário próprio do sistema** (`Usuario`), identificado por e-mail e sem nome de usuário (*username*). O e-mail é único, sem diferenciar maiúsculas de minúsculas.
-- **Perfis** (`Perfil`) configuráveis. Os perfis iniciais `ADMINISTRADOR` e `DOCENTE` são criados pela carga do sistema e marcados como **perfis do sistema**, que não podem ser excluídos. Os demais perfis são **personalizados** e criados pelo Superadmin. Todo perfil tem um código informado na criação, único e imutável depois, e um nome obrigatório e único, sem diferenciar maiúsculas de minúsculas.
-- **Permissões granulares** (`Permissao`) no padrão `RECURSO.ACAO`. São definidas pelo sistema e sincronizadas com o banco por migrations, sem cadastro manual. Ninguém cria permissões pela interface, nem o Superadmin.
-- **Relacionamentos:** `Usuario ↔ Perfil` N:N no modelo, com a regra de que **cada usuário tem exatamente um perfil** nesta versão. `Perfil ↔ Permissao` também é N:N.
+- **Usuário próprio do sistema** (`User`), identificado por e-mail e sem nome de usuário (*username*). O e-mail é único, sem diferenciar maiúsculas de minúsculas.
+- **Perfis** (`Role`) configuráveis. Os perfis iniciais `ADMINISTRADOR` e `DOCENTE` são criados pela carga do sistema e marcados como **perfis do sistema**, que não podem ser excluídos. Os demais perfis são **personalizados** e criados pelo Superadmin. Todo perfil tem um código informado na criação, único e imutável depois, e um nome obrigatório e único, sem diferenciar maiúsculas de minúsculas.
+- **Permissões granulares** (`Permission`) no padrão `RECURSO.ACAO`. São definidas pelo sistema e sincronizadas com o banco por migrations, sem cadastro manual. Ninguém cria permissões pela interface, nem o Superadmin.
+- **Relacionamentos:** `User ↔ Role` N:N no modelo, com a regra de que **cada usuário tem exatamente um perfil** nesta versão. `Role ↔ Permission` também é N:N.
 - **Autorização por permissão:** o acesso a cada funcionalidade protegida depende das **permissões efetivas** do usuário, que são as permissões concedidas pelos seus perfis. Nenhuma regra verifica o código ou o nome do perfil.
-- **Superadmin:** o `Usuario` tem a flag `is_superadmin`. Com `is_superadmin = true`, o usuário acessa todas as funcionalidades do sistema, qualquer que seja a permissão atribuída ao seu perfil. O superadmin é uma característica do usuário para a administração e a manutenção do sistema, e é também o responsável por configurar os perfis. **Não é um perfil nem uma permissão.** A regra fica na camada de autorização da aplicação e não depende do `is_superuser` do Django.
+- **Superadmin:** o `User` tem a flag `is_superadmin`. Com `is_superadmin = true`, o usuário acessa todas as funcionalidades do sistema, qualquer que seja a permissão atribuída ao seu perfil. O superadmin é uma característica do usuário para a administração e a manutenção do sistema, e é também o responsável por configurar os perfis. **Não é um perfil nem uma permissão.** A regra fica na camada de autorização da aplicação e não depende do `is_superuser` do Django.
 - **Gestão de perfis pelo Superadmin:** listar e consultar, criar, editar nome e descrição, definir as permissões concedidas e excluir perfis. As operações são protegidas pelas permissões do recurso `PERFIL` e passam pela mesma camada de autorização por permissão das demais funcionalidades.
 - **Permissões reservadas ao Superadmin:** as permissões `PERFIL.*` fazem parte do catálogo, mas não podem ser concedidas a nenhum perfil. Por isso, na prática, só o superadmin ativo as possui.
 - **Menor privilégio nos perfis:** um perfil novo não tem nenhuma permissão, exceto as escolhidas explicitamente na criação.
@@ -60,11 +60,11 @@ O sistema ainda não tem identidade nem controle de acesso. Sem isso, não há c
 - **Seção 3.3.1 (django-allauth):** a autenticação usa a biblioteca definida no TCC. O fluxo de registro que ela oferece fica desligado, em respeito ao RF04.
 - **RNF02:** senhas guardadas só como hash, verificação de acesso no servidor e proteções nativas do Django (CSRF, XSS, injeção de SQL).
 - **Seção 3.3.1 (testes):** a "checagem de permissões por perfil" é uma das regras de negócio centrais a serem cobertas por testes unitários e de integração (P9).
-- **Seção 3.3 e P11:** `Usuario`, `Perfil` e `Permissao` passam a fazer parte do diagrama de classes. `Usuario` já está entre as entidades centrais previstas.
+- **Seção 3.3 e P11:** `User`, `Role` e `Permission` passam a fazer parte do diagrama de classes. `User` corresponde à entidade Usuário, que já está entre as entidades centrais previstas.
 
 ## Decisões arquiteturais
 
-- **Modelos próprios de identidade**, em vez de `User`, `Group` e `Permission` do Django. Os códigos `RECURSO.ACAO` não correspondem ao CRUD de um model (por exemplo, aprovar uma reserva ou gerar um relatório). Os modelos próprios evitam as permissões `add/change/delete/view` geradas automaticamente para cada model e deixam as entidades explícitas no diagrama de classes. A integração com o mecanismo de autenticação do Django e do allauth continua existindo.
+- **Modelos próprios de identidade**, em vez de `auth.User`, `auth.Group` e `auth.Permission` do Django. Os códigos `RECURSO.ACAO` não correspondem ao CRUD de um model (por exemplo, aprovar uma reserva ou gerar um relatório). Os modelos próprios evitam as permissões `add/change/delete/view` geradas automaticamente para cada model e deixam as entidades explícitas no diagrama de classes. A integração com o mecanismo de autenticação do Django e do allauth continua existindo.
 - **Modelo de usuário personalizado definido antes da primeira migration de autenticação.** O Django exige isso, e mudar depois é muito custoso.
 - **Catálogo de permissões definido no código** e sincronizado por migration. Uma permissão só faz efeito se o código a verifica, então não faz sentido criá-la pela interface. O Superadmin **combina** permissões existentes em perfis, mas não cria permissões.
 - **Perfis do sistema e perfis personalizados.** `ADMINISTRADOR` e `DOCENTE` são criados pela carga, marcados como perfis do sistema e protegidos contra exclusão. Os perfis personalizados são criados pelo Superadmin. Em todos eles, nome, descrição e permissões podem ser alterados pelo Superadmin, e o código é imutável. O código serve para a carga, para as migrations localizarem os perfis do sistema e para a interface, nunca para decisões de autorização.
@@ -90,8 +90,8 @@ Nenhuma. Não há specs existentes em `openspec/specs/`.
 
 ## Impact
 
-- **Código novo:** a primeira app de domínio do projeto, com os models `Usuario` (incluindo a flag `is_superadmin`), `Perfil` (incluindo a marca `sistema`) e `Permissao`, suas migrations (incluindo a carga dos perfis do sistema e das permissões iniciais), as views, rotas e templates de autenticação, de gestão de usuários e de gestão de perfis, e os testes.
-- **Configuração:** `AUTH_USER_MODEL` aponta para `Usuario`. Entram as configurações do django-allauth (login por e-mail, registro desligado) e de envio de e-mail.
+- **Código novo:** a primeira app de domínio do projeto, `accounts`, com os models `User` (incluindo a flag `is_superadmin`), `Role` (incluindo a marca `is_system`) e `Permission`, suas migrations (incluindo a carga dos perfis do sistema e das permissões iniciais), as views, rotas e templates de autenticação, de gestão de usuários e de gestão de perfis, e os testes.
+- **Configuração:** `AUTH_USER_MODEL` aponta para `User`. Entram as configurações do django-allauth (login por e-mail, registro desligado) e de envio de e-mail.
 - **Dependências:** `django-allauth` é adicionado ao `requirements.txt`.
 - **Banco de desenvolvimento:** se já tiver recebido `migrate` com o usuário padrão do Django, precisará ser recriado (`make reset-db`), porque o modelo de usuário muda antes da primeira migration de autenticação. Não há dados de produção afetados.
 - **Módulos futuros:** espaços, horários, reservas, notificações e relatórios passam a declarar suas permissões no padrão `RECURSO.ACAO`, a proteger suas funcionalidades por elas e, se quiserem, a conceder uma configuração padrão aos perfis do sistema. Depois de cada módulo novo, o Superadmin precisa revisar os perfis personalizados. As notificações por e-mail já terão uma configuração de envio para reaproveitar.

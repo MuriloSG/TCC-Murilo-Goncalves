@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action|capfirst }} usuário{% endblock %}
+
+{% block content %}
+  <h1>{{ action|capfirst }} usuário</h1>
+  <p>Deseja {{ action }} {{ target.name }} ({{ target.email }})?</p>
+  {% if action == 'desativar' %}
+    <p>O usuário deixa de conseguir entrar no sistema. Os dados dele continuam guardados e ele pode ser reativado depois.</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">{{ action|capfirst }}</button>
+  </form>
+  <p><a href="{% url 'user_list' %}">Cancelar</a></p>
+{% endblock %}

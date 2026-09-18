@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  {% if target %}
+    <p>{{ target.name }} ({{ target.email }}){% if target.role %} · perfil atual: {{ target.role.name }}{% endif %}</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button type="submit">{{ submit_label }}</button>
+  </form>
+  <p><a href="{% url 'user_list' %}">Voltar para a lista</a></p>
+{% endblock %}

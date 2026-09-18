@@ -4,5 +4,11 @@
 
 {% block content %}
   <h1>Olá, {{ user.name }}</h1>
-  <p>Nenhuma funcionalidade está disponível para o seu perfil no momento. Novas funcionalidades serão liberadas conforme o sistema evoluir.</p>
+  {% if perms.USUARIO.VISUALIZAR %}
+    <ul>
+      <li><a href="{% url 'user_list' %}">Usuários</a></li>
+    </ul>
+  {% else %}
+    <p>Nenhuma funcionalidade está disponível para o seu perfil no momento. Novas funcionalidades serão liberadas conforme o sistema evoluir.</p>
+  {% endif %}
 {% endblock %}

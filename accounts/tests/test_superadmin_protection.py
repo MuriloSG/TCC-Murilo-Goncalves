@@ -83,3 +83,77 @@ class SuperadminEmailProtectionTests(TestCase):
             email='novo@ifnmg.edu.br', name='Novo', role=Role.objects.get(code='ADMINISTRADOR'),
         )
         self.assertFalse(self.reload(user).is_superadmin)
+
+
+class SuperadminProtectionViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        teacher = Role.objects.get(code='DOCENTE')
+        administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=administrator)
+        cls.superadmin = User.objects.register(email='super@ifnmg.edu.br', name='Super', role=teacher)
+        cls.superadmin.set_superadmin(True)
+        cls.other_superadmin = User.objects.register(email='outro@ifnmg.edu.br', name='Outro', role=teacher)
+        cls.other_superadmin.set_superadmin(True)
+
+    def edit_url(self, user):
+        return f'/usuarios/{user.pk}/editar/'
+
+    def reload(self, user):
+        return User.objects.get(pk=user.pk)
+
+    def test_email_is_read_only_for_regular_admin(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(self.edit_url(self.superadmin))
+        self.assertTrue(response.context['form'].fields['email'].widget.attrs.get('readonly'))
+        self.assertContains(response, 'readonly')
+
+    def test_email_is_editable_for_active_superadmin(self):
+        self.client.force_login(self.other_superadmin)
+        response = self.client.get(self.edit_url(self.superadmin))
+        self.assertNotIn('readonly', response.context['form'].fields['email'].widget.attrs)
+
+    def test_forged_email_change_by_regular_admin_is_refused_with_error(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(self.edit_url(self.superadmin), {'name': 'Novo', 'email': 'outro.mail@ifnmg.edu.br'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Somente um superadmin ativo pode alterar o e-mail')
+        superadmin = self.reload(self.superadmin)
+        self.assertEqual((superadmin.name, superadmin.email), ('Super', 'super@ifnmg.edu.br'))
+
+    def test_forged_email_change_of_inactive_superadmin_is_refused(self):
+        User.objects.filter(pk=self.superadmin.pk).update(is_active=False)
+        self.client.force_login(self.admin)
+        self.client.post(self.edit_url(self.superadmin), {'name': 'Super', 'email': 'outro.mail@ifnmg.edu.br'})
+        self.assertEqual(self.reload(self.superadmin).email, 'super@ifnmg.edu.br')
+
+    def test_regular_admin_changes_only_the_name(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(self.edit_url(self.superadmin), {'name': 'Super Admin', 'email': 'super@ifnmg.edu.br'})
+        self.assertRedirects(response, '/usuarios/')
+        self.assertEqual(self.reload(self.superadmin).name, 'Super Admin')
+
+    def test_active_superadmin_changes_the_email_of_another_superadmin(self):
+        self.client.force_login(self.other_superadmin)
+        self.client.post(self.edit_url(self.superadmin), {'name': 'Super', 'email': 'novo.super@ifnmg.edu.br'})
+        self.assertEqual(self.reload(self.superadmin).email, 'novo.super@ifnmg.edu.br')
+
+    def test_superadmin_flag_sent_in_requests_is_ignored(self):
+        self.client.force_login(self.other_superadmin)
+        for url, data in [
+            (self.edit_url(self.superadmin), {'name': 'Super', 'email': 'super@ifnmg.edu.br', 'is_superadmin': ''}),
+            (f'/usuarios/{self.superadmin.pk}/perfil/', {'role': Role.objects.get(code='ADMINISTRADOR').pk, 'is_superadmin': 'false'}),
+            (self.edit_url(self.admin), {'name': 'Admin', 'email': 'admin@ifnmg.edu.br', 'is_superadmin': 'on'}),
+            (f'/usuarios/{self.admin.pk}/perfil/', {'role': Role.objects.get(code='ADMINISTRADOR').pk, 'is_superadmin': 'true'}),
+        ]:
+            with self.subTest(url):
+                self.assertEqual(self.client.post(url, data).status_code, 302)
+        self.assertTrue(self.reload(self.superadmin).is_superadmin)
+        self.assertFalse(self.reload(self.admin).is_superadmin)
+
+    def test_regular_admin_deactivates_a_superadmin_who_keeps_the_flag(self):
+        self.client.force_login(self.admin)
+        self.client.post(f'/usuarios/{self.superadmin.pk}/desativar/')
+        superadmin = self.reload(self.superadmin)
+        self.assertFalse(superadmin.is_active)
+        self.assertTrue(superadmin.is_superadmin)

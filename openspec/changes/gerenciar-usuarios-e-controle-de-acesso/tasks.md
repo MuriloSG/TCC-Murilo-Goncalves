@@ -72,10 +72,10 @@
 
 ## 8. Criação inicial e recuperação de senha
 
-- [ ] 8.1 Confirmar que um usuário criado por `register` fica com senha inutilizável e não autentica antes de definir a senha (D12)
-- [ ] 8.2 Disparar na view de cadastro, após o commit (`transaction.on_commit`), a solicitação de recuperação do allauth para o e-mail do novo usuário, usando o formulário público do allauth (D12)
-- [ ] 8.3 Avisar quem cadastrou quando o envio do e-mail falhar, mantendo o usuário cadastrado, sem oferecer reenvio pelo administrador (D12)
-- [ ] 8.4 Verificar, e ajustar no adapter ou em subclasse quando necessário, que o usuário inativo não recebe e-mail e que um link emitido antes da desativação não redefine a senha (D12)
+- [x] 8.1 Confirmar que um usuário criado por `register` fica com senha inutilizável e não autentica antes de definir a senha (D12)
+- [x] 8.2 Disparar na view de cadastro, após o commit (`transaction.on_commit`), a solicitação de recuperação do allauth para o e-mail do novo usuário, usando o formulário público do allauth (D12)
+- [x] 8.3 Avisar quem cadastrou quando o envio do e-mail falhar, mantendo o usuário cadastrado, sem oferecer reenvio pelo administrador (D12)
+- [x] 8.4 Verificar, e ajustar no adapter ou em subclasse quando necessário, que o usuário inativo não recebe e-mail e que um link emitido antes da desativação não redefine a senha (D12)
 
 ## 9. Comandos de gerenciamento
 
@@ -92,12 +92,12 @@
 
 ## 11. Gestão de usuários na interface
 
-- [ ] 11.1 Criar em `accounts/forms.py` os formulários de cadastro, de edição e de troca de perfil, declarando explicitamente os campos aceitos, sem senha e sem `is_superadmin` (D12, D16)
-- [ ] 11.2 Exibir o e-mail como somente leitura no formulário de edição quando o alvo for superadmin e o executor não for superadmin ativo (D16)
-- [ ] 11.3 Criar as views de listagem, cadastro, edição, troca de perfil, desativação e reativação como class-based views com `PermissionRequiredMixin` e as constantes do catálogo (D14)
-- [ ] 11.4 Aceitar as ações de situação somente por POST com CSRF, com confirmação (D13)
-- [ ] 11.5 Mostrar as recusas de regra de negócio (continuidade, proteção de superadmin, e-mail em uso) como mensagem de erro, sem alterar dados (D15)
-- [ ] 11.6 Criar as rotas de `usuarios/` conforme a tabela de D14 e os templates correspondentes (D14)
+- [x] 11.1 Criar em `accounts/forms.py` os formulários de cadastro, de edição e de troca de perfil, declarando explicitamente os campos aceitos, sem senha e sem `is_superadmin` (D12, D16)
+- [x] 11.2 Exibir o e-mail como somente leitura no formulário de edição quando o alvo for superadmin e o executor não for superadmin ativo (D16)
+- [x] 11.3 Criar as views de listagem, cadastro, edição, troca de perfil, desativação e reativação como class-based views com `PermissionRequiredMixin` e as constantes do catálogo (D14)
+- [x] 11.4 Aceitar as ações de situação somente por POST com CSRF, com confirmação (D13)
+- [x] 11.5 Mostrar as recusas de regra de negócio (continuidade, proteção de superadmin, e-mail em uso) como mensagem de erro, sem alterar dados (D15)
+- [x] 11.6 Criar as rotas de `usuarios/` conforme a tabela de D14 e os templates correspondentes (D14)
 
 ## 12. Gestão de perfis na interface
 
@@ -112,9 +112,9 @@
 
 - [ ] 13.1 Escrever `accounts/tests/test_authentication.py`: login por e-mail com maiúsculas, senha errada, usuário inativo, usuário sem senha definida, logout por POST, ausência de cadastro público e das rotas de gestão de e-mail, sessão perdendo validade após a desativação e e-mail antigo sem autenticar após a troca (D20)
 - [ ] 13.2 Escrever `accounts/tests/test_password.py`: e-mail disparado pelo cadastro, definição da senha pelo link, link reutilizado, chave adulterada, link invalidado pela troca de e-mail, senha fraca, resposta igual para e-mail desconhecido, usuário inativo sem e-mail, recuperação do superadmin e sessões antigas invalidadas (D20)
-- [ ] 13.3 Escrever `accounts/tests/test_user_views.py`: para cada rota de usuários, anônimo redirecionado ao login com `next`, autenticado sem permissão com 403, com permissão executando, superadmin com perfil `DOCENTE` acessando, violação de continuidade com erro e ações de situação só por POST (D20)
+- [x] 13.3 Escrever `accounts/tests/test_user_views.py`: para cada rota de usuários, anônimo redirecionado ao login com `next`, autenticado sem permissão com 403, com permissão executando, superadmin com perfil `DOCENTE` acessando, violação de continuidade com erro e ações de situação só por POST (D20)
 - [ ] 13.4 Escrever `accounts/tests/test_role_views.py`: para cada rota de perfis, 403 para usuário com todas as permissões de `USUARIO`, acesso do superadmin ativo, formulário sem permissões reservadas, POST com reservada recusado, exclusão só por POST, POST sem CSRF com 403 e alteração de permissões valendo na próxima requisição (D20)
-- [ ] 13.5 Completar `accounts/tests/test_superadmin_protection.py` com a parte de views, inclusive `is_superadmin` enviado no POST sendo ignorado (D20)
+- [x] 13.5 Completar `accounts/tests/test_superadmin_protection.py` com a parte de views, inclusive `is_superadmin` enviado no POST sendo ignorado (D20)
 - [ ] 13.6 Executar `make test` e confirmar que toda a suíte passa no PostgreSQL (D20)
 
 ## 14. Documentação e verificação final

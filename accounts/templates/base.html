@@ -9,6 +9,7 @@
   <header>
     <p>Agendamento de Espaços · IFNMG Campus Salinas</p>
     {% if user.is_authenticated %}
+      <nav><a href="{% url 'home' %}">Início</a></nav>
       <form method="post" action="{% url 'account_logout' %}">
         {% csrf_token %}
         <span>{{ user.name }}</span>

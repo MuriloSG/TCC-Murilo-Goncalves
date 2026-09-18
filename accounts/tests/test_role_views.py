@@ -305,6 +305,13 @@ class DeleteTests(RoleViewsTestCase):
         self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
         self.assertEqual(User.objects.get(pk=inactive.pk).role, self.coordination)
 
+    def test_deletes_after_changing_the_role_of_its_users(self):
+        member = User.objects.register(email='a@ifnmg.edu.br', name='A', role=self.coordination)
+        member.change_role(self.teacher)
+        self.assertRedirects(self.client.post(self.url('delete')), '/perfis/')
+        self.assertFalse(Role.objects.filter(pk=self.coordination.pk).exists())
+        self.assertEqual(list(User.objects.get(pk=member.pk).roles.all()), [self.teacher])
+
     def test_system_role_has_no_delete_link(self):
         self.assertNotContains(self.client.get(self.url('detail', self.teacher)), '/excluir/')
         self.assertContains(self.client.get(self.url('detail')), '/excluir/')

@@ -110,17 +110,17 @@
 
 ## 13. Testes de integração
 
-- [ ] 13.1 Escrever `accounts/tests/test_authentication.py`: login por e-mail com maiúsculas, senha errada, usuário inativo, usuário sem senha definida, logout por POST, ausência de cadastro público e das rotas de gestão de e-mail, sessão perdendo validade após a desativação e e-mail antigo sem autenticar após a troca (D20)
-- [ ] 13.2 Escrever `accounts/tests/test_password.py`: e-mail disparado pelo cadastro, definição da senha pelo link, link reutilizado, chave adulterada, link invalidado pela troca de e-mail, senha fraca, resposta igual para e-mail desconhecido, usuário inativo sem e-mail, recuperação do superadmin e sessões antigas invalidadas (D20)
+- [x] 13.1 Escrever `accounts/tests/test_authentication.py`: login por e-mail com maiúsculas, senha errada, usuário inativo, usuário sem senha definida, logout por POST, ausência de cadastro público e das rotas de gestão de e-mail, sessão perdendo validade após a desativação e e-mail antigo sem autenticar após a troca (D20)
+- [x] 13.2 Escrever `accounts/tests/test_password.py`: e-mail disparado pelo cadastro, definição da senha pelo link, link reutilizado, chave adulterada, link invalidado pela troca de e-mail, senha fraca, resposta igual para e-mail desconhecido, usuário inativo sem e-mail, recuperação do superadmin e sessões antigas invalidadas (D20)
 - [x] 13.3 Escrever `accounts/tests/test_user_views.py`: para cada rota de usuários, anônimo redirecionado ao login com `next`, autenticado sem permissão com 403, com permissão executando, superadmin com perfil `DOCENTE` acessando, violação de continuidade com erro e ações de situação só por POST (D20)
 - [x] 13.4 Escrever `accounts/tests/test_role_views.py`: para cada rota de perfis, 403 para usuário com todas as permissões de `USUARIO`, acesso do superadmin ativo, formulário sem permissões reservadas, POST com reservada recusado, exclusão só por POST, POST sem CSRF com 403 e alteração de permissões valendo na próxima requisição (D20)
 - [x] 13.5 Completar `accounts/tests/test_superadmin_protection.py` com a parte de views, inclusive `is_superadmin` enviado no POST sendo ignorado (D20)
-- [ ] 13.6 Executar `make test` e confirmar que toda a suíte passa no PostgreSQL (D20)
+- [x] 13.6 Executar `make test` e confirmar que toda a suíte passa no PostgreSQL (D20)
 
 ## 14. Documentação e verificação final
 
-- [ ] 14.1 Documentar no `README.md` a criação do primeiro superadmin com `make manage cmd="create_superadmin"` e o uso de `set_superadmin` (D16)
-- [ ] 14.2 Documentar no `README.md` as variáveis de e-mail e o comportamento padrão de desenvolvimento, com o link aparecendo no console por `make logs` (D12, D19)
-- [ ] 14.3 Percorrer as quatro specs desta Change e confirmar que cada cenário tem teste ou verificação manual correspondente
-- [ ] 14.4 Executar `make manage cmd="makemigrations --check --dry-run"` e confirmar que não há migration pendente
-- [ ] 14.5 Executar `openspec validate gerenciar-usuarios-e-controle-de-acesso --strict` e corrigir o que for apontado
+- [x] 14.1 Documentar no `README.md` a criação do primeiro superadmin com `make manage cmd="create_superadmin"` e o uso de `set_superadmin` (D16)
+- [x] 14.2 Documentar no `README.md` as variáveis de e-mail e o comportamento padrão de desenvolvimento, com o link aparecendo no console por `make logs` (D12, D19)
+- [x] 14.3 Percorrer as quatro specs desta Change e confirmar que cada cenário tem teste ou verificação manual correspondente
+- [x] 14.4 Executar `make manage cmd="makemigrations --check --dry-run"` e confirmar que não há migration pendente
+- [x] 14.5 Executar `openspec validate gerenciar-usuarios-e-controle-de-acesso --strict` e corrigir o que for apontado

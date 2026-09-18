@@ -17,11 +17,41 @@ Todo o ambiente de desenvolvimento roda em Docker. Não é preciso instalar Pyth
 Depois de clonar o repositório, na raiz do projeto:
 
 ```bash
-make up        # constrói a imagem e sobe os containers
-make migrate   # aplica as migrations no PostgreSQL
+make up                                # constrói a imagem e sobe os containers
+make migrate                           # aplica as migrations no PostgreSQL
+make manage cmd="create_superadmin"    # cria o primeiro superadmin
 ```
 
-A aplicação fica disponível em <http://localhost:8000/>. Enquanto nenhuma funcionalidade estiver implementada, essa página exibe a tela padrão de boas-vindas do Django.
+Depois disso, entre em <http://localhost:8000/contas/login/> com o e-mail e a senha do superadmin. A raiz `/` ainda responde 404: ela está reservada para a consulta pública de disponibilidade.
+
+## Superadmin
+
+O superadmin tem acesso irrestrito e é o único que configura os perfis. Ele não é um perfil nem uma permissão, mas uma característica do usuário, e só é controlado pelos comandos abaixo, nunca pela interface.
+
+**Criar o primeiro superadmin:**
+
+```bash
+make manage cmd="create_superadmin"
+```
+
+O comando pede o e-mail, o nome e a senha, duas vezes e sem exibi-la. A senha passa pela mesma política da interface. O usuário é criado ativo, com o perfil `ADMINISTRADOR`, sem depender do envio de e-mail. O comando recusa um e-mail já cadastrado: nesse caso, use o `set_superadmin`.
+
+**Conceder ou remover o superadmin de um usuário existente:**
+
+```bash
+make manage cmd="set_superadmin maria@ifnmg.edu.br --grant"
+make manage cmd="set_superadmin maria@ifnmg.edu.br --revoke"
+```
+
+A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capacidade administrativa, isto é, sem superadmin ativo nem usuário cujo perfil conceda todas as permissões de `USUARIO`.
+
+## Usuários e perfis
+
+- Os perfis do sistema, `ADMINISTRADOR` e `DOCENTE`, são criados pelas migrations e não podem ser excluídos.
+- Usuários são cadastrados pela interface, em **Usuários**, por quem tem a permissão. O novo usuário recebe por e-mail um link para definir a própria senha. Ninguém define a senha de outra pessoa.
+- Qualquer usuário ativo recupera o acesso em **Esqueci minha senha**, na página de login. O link vale por 3 dias e pode ser usado uma única vez.
+- Só o superadmin acessa **Perfis**, onde cria perfis personalizados e define as permissões de cada um. Um perfil novo não concede nenhuma permissão até que ele as escolha.
+- **Depois de cada módulo novo**, o superadmin deve revisar os perfis personalizados: as permissões novas chegam apenas aos perfis do sistema, conforme a configuração padrão do módulo.
 
 ## Comandos
 
@@ -63,6 +93,13 @@ A aplicação fica disponível em <http://localhost:8000/>. Enquanto nenhuma fun
 | `POSTGRES_DB` | `agendamento` | Nome do banco de dados |
 | `POSTGRES_USER` | `agendamento` | Usuário do banco de dados |
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
+| `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
+| `DJANGO_DEFAULT_FROM_EMAIL` | `Agendamento IFNMG Salinas <nao-responda@localhost>` | Remetente dos e-mails |
+| `DJANGO_EMAIL_HOST` | vazio | Servidor SMTP |
+| `DJANGO_EMAIL_PORT` | `587` | Porta do servidor SMTP |
+| `DJANGO_EMAIL_HOST_USER` | vazio | Usuário do servidor SMTP |
+| `DJANGO_EMAIL_HOST_PASSWORD` | vazio | Senha do servidor SMTP |
+| `DJANGO_EMAIL_USE_TLS` | `1` | Uso de TLS no SMTP, ativo somente com o valor `1` |
 
 `POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco.
 
@@ -76,6 +113,28 @@ DJANGO_SECRET_KEY=outra-chave-local
 - Se uma variável obrigatória estiver ausente, a aplicação não inicia e o erro indica o nome da variável.
 
 > **Atenção:** os valores padrão são inseguros e servem apenas ao desenvolvimento local. Não os reutilize em nenhum ambiente acessível externamente.
+
+## E-mail
+
+No desenvolvimento, nenhum e-mail sai de fato: o backend padrão é o de console, e cada mensagem aparece nos logs do container `web`. Para ver o link de definição ou de recuperação de senha, acompanhe:
+
+```bash
+make logs
+```
+
+Para enviar e-mails de verdade, por exemplo pelo Gmail, defina no `.env` o backend SMTP e as credenciais. No Gmail, use uma senha de app, e não a senha da conta:
+
+```dotenv
+DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+DJANGO_EMAIL_HOST=smtp.gmail.com
+DJANGO_EMAIL_PORT=587
+DJANGO_EMAIL_USE_TLS=1
+DJANGO_EMAIL_HOST_USER=conta@gmail.com
+DJANGO_EMAIL_HOST_PASSWORD=senha-de-app
+DJANGO_DEFAULT_FROM_EMAIL=Agendamento IFNMG Salinas <conta@gmail.com>
+```
+
+Depois de alterar o `.env`, recrie o container com `make up`. Se o envio falhar durante um cadastro, o usuário continua cadastrado, quem cadastrou é avisado e o próprio usuário pode pedir um novo link em **Esqueci minha senha**.
 
 ## Dependências
 
@@ -104,8 +163,9 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 ├── requirements.txt   # dependências Python com versões fixas
 ├── manage.py
 ├── config/            # configuração do projeto Django
-├── openspec/          # Constitution, specs e changes do OpenSpec
+├── accounts/          # usuários, perfis, permissões e autenticação
+├── openspec/          # Constitution, convenções, specs e changes do OpenSpec
 └── sources/           # texto do TCC
 ```
 
-As funcionalidades do sistema e a estrutura de cada domínio são criadas pelas changes do OpenSpec, em `openspec/changes/`.
+As funcionalidades do sistema e a estrutura de cada domínio são criadas pelas changes do OpenSpec, em `openspec/changes/`. As convenções de código que valem para todos os apps estão em `openspec/conventions.md`.

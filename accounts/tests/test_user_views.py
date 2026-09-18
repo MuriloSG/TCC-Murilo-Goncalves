@@ -136,6 +136,11 @@ class CreateTests(UserViewsTestCase):
         self.assertFalse(User.objects.filter(name='Joana Lima').exists())
         self.assertEqual(mail.outbox, [])
 
+    def test_refuses_more_than_one_role(self):
+        response = self.post(role=[self.administrator.pk, self.teacher.pk])
+        self.assertIn('role', response.context['form'].errors)
+        self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
+
     def test_refuses_email_in_use_ignoring_case_and_situation(self):
         User.objects.filter(pk=self.target.pk).update(is_active=False)
         response = self.post(email='MARIA@ifnmg.edu.br')
@@ -222,6 +227,13 @@ class UpdateTests(UserViewsTestCase):
         self.assertFalse(target.is_superadmin)
         self.assertEqual(target.role, self.teacher)
 
+    def test_edits_users_of_any_role(self):
+        other_admin = User.objects.register(email='outro@ifnmg.edu.br', name='Outro', role=self.administrator)
+        for user in (other_admin, self.target):
+            with self.subTest(user.email):
+                self.client.post(self.url('update', user), {'name': 'Nome Novo', 'email': user.email})
+                self.assertEqual(self.reload(user).name, 'Nome Novo')
+
     def test_form_has_no_password_field(self):
         response = self.client.get(self.url('update'))
         self.assertEqual(set(response.context['form'].fields), {'name', 'email'})
@@ -244,6 +256,16 @@ class ChangeRoleTests(UserViewsTestCase):
         target = self.reload(self.target)
         self.assertEqual(list(target.roles.all()), [self.administrator])
         self.assertFalse(target.is_superadmin)
+
+    def test_changes_to_a_custom_role(self):
+        coordination = Role.objects.create_role(code='COORDENACAO', name='Coordenação')
+        self.client.post(self.url('change_role'), {'role': coordination.pk})
+        self.assertEqual(list(self.reload(self.target).roles.all()), [coordination])
+
+    def test_refuses_more_than_one_role(self):
+        response = self.client.post(self.url('change_role'), {'role': [self.administrator.pk, self.teacher.pk]})
+        self.assertIn('role', response.context['form'].errors)
+        self.assertEqual(list(self.reload(self.target).roles.all()), [self.teacher])
 
     def test_continuity_violation_is_shown_and_nothing_changes(self):
         response = self.client.post(self.url('change_role', self.admin), {'role': self.teacher.pk})

@@ -1,5 +1,8 @@
 import re
+from datetime import datetime, timedelta
+from unittest import mock
 
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core import mail
 from django.core.cache import cache
 from django.test import Client, TestCase
@@ -79,3 +82,108 @@ class InactiveUserTests(PasswordFlowTestCase):
 
         self.assertTrue(response.context['token_fail'])
         self.assertFalse(User.objects.get(pk=self.user.pk).has_usable_password())
+
+
+class RecoveryRequestTests(PasswordFlowTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user.set_password(PASSWORD)
+        self.user.save()
+
+    def test_active_user_receives_the_link(self):
+        self.request_link('Maria@IFNMG.edu.br')
+        self.assertEqual([message.to for message in mail.outbox], [['maria@ifnmg.edu.br']])
+        self.assertIn('/contas/senha/redefinir/', mail.outbox[0].body)
+
+    def test_unknown_email_gets_the_same_response_and_no_email(self):
+        known = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'}, follow=True)
+        unknown = self.client.post('/contas/senha/recuperar/', {'email': 'inexistente@ifnmg.edu.br'}, follow=True)
+        self.assertEqual(known.redirect_chain, unknown.redirect_chain)
+        self.assertEqual(known.content, unknown.content)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_too_many_requests_are_refused_without_email(self):
+        for _ in range(5):
+            self.request_link()
+        response = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(len(mail.outbox), 5)
+
+    def test_superadmin_recovers_the_access(self):
+        self.user.set_superadmin(True)
+        self.request_link()
+        self.set_password(reset_link(mail.outbox[0]), 'Nova-senha-forte-456')
+        self.assertTrue(self.login(password='Nova-senha-forte-456'))
+
+
+class ResetTests(PasswordFlowTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user.set_password(PASSWORD)
+        self.user.save()
+        self.request_link()
+        self.link = reset_link(mail.outbox[0])
+
+    def assertLinkRefused(self, response):
+        self.assertTrue(response.context['token_fail'])
+        self.assertContains(response, 'Este link não é mais válido')
+        self.assertTrue(User.objects.get(pk=self.user.pk).check_password(PASSWORD))
+
+    def test_new_password_replaces_the_old_one_without_logging_in(self):
+        client = Client()
+        response = self.set_password(self.link, 'Nova-senha-forte-456', client)
+        self.assertRedirects(response, '/contas/senha/redefinir/concluido/', fetch_redirect_response=False)
+        self.assertNotIn('_auth_user_id', client.session)
+        self.assertContains(client.get(response['Location']), 'href="/contas/login/"')
+        self.assertFalse(self.login())
+        self.assertTrue(self.login(password='Nova-senha-forte-456'))
+
+    def test_password_is_stored_as_hash(self):
+        self.set_password(self.link, 'Nova-senha-forte-456')
+        stored = User.objects.get(pk=self.user.pk).password
+        self.assertNotIn('Nova-senha-forte-456', stored)
+        self.assertTrue(stored.startswith('pbkdf2_sha256$'))
+
+    def test_link_is_single_use(self):
+        self.set_password(self.link, 'Nova-senha-forte-456')
+        response = self.set_password(self.link, 'Terceira-senha-789')
+        self.assertTrue(response.context['token_fail'])
+        self.assertTrue(User.objects.get(pk=self.user.pk).check_password('Nova-senha-forte-456'))
+
+    def test_tampered_key_is_refused(self):
+        tampered = self.link[:-2] + ('a' if self.link[-2] != 'a' else 'b') + '/'
+        self.assertLinkRefused(self.set_password(tampered, 'Nova-senha-forte-456'))
+
+    def test_expired_link_is_refused(self):
+        later = datetime.now() + timedelta(days=3, hours=1)
+        with mock.patch.object(PasswordResetTokenGenerator, '_now', return_value=later):
+            self.assertLinkRefused(self.set_password(self.link, 'Nova-senha-forte-456'))
+
+    def test_email_change_invalidates_the_link(self):
+        executor = User.objects.register(
+            email='admin@ifnmg.edu.br', name='Admin', role=Role.objects.get(code='ADMINISTRADOR'),
+        )
+        self.user.update_details(executor, name='Maria Sousa', email='maria.sousa@ifnmg.edu.br')
+        self.assertLinkRefused(self.set_password(self.link, 'Nova-senha-forte-456'))
+
+    def test_weak_passwords_are_refused_and_the_link_stays_valid(self):
+        client = Client()
+        form_url = client.get(self.link)['Location']
+        for password in ['93847261530', 'password123', 'Ab1-x', 'Maria Sousa', 'maria@ifnmg']:
+            with self.subTest(password):
+                response = client.post(form_url, {'password1': password, 'password2': password})
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context['form'].errors['password1'])
+        self.assertTrue(User.objects.get(pk=self.user.pk).check_password(PASSWORD))
+        response = client.post(form_url, {'password1': 'Nova-senha-forte-456', 'password2': 'Nova-senha-forte-456'})
+        self.assertRedirects(response, '/contas/senha/redefinir/concluido/', fetch_redirect_response=False)
+
+    def test_reset_invalidates_existing_sessions(self):
+        other_browser = Client()
+        other_browser.post('/contas/login/', {'login': 'maria@ifnmg.edu.br', 'password': PASSWORD})
+        self.assertEqual(other_browser.get('/inicio/').status_code, 200)
+        self.request_link()
+        response = self.set_password(reset_link(mail.outbox[-1]), 'Nova-senha-forte-456')
+        self.assertRedirects(response, '/contas/senha/redefinir/concluido/', fetch_redirect_response=False)
+        response = other_browser.get('/inicio/')
+        self.assertRedirects(response, '/contas/login/?next=/inicio/', fetch_redirect_response=False)

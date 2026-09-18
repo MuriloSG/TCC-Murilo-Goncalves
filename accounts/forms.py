@@ -12,10 +12,24 @@ def role_choice_field():
     )
 
 
+def clean_single_role(form):
+    """Recusa o envio de mais de um perfil.
+
+    O ModelChoiceField usaria só o último valor recebido, e o usuário seria gravado
+    com um dos perfis em vez de a operação ser recusada.
+    """
+    if len(form.data.getlist(form.add_prefix('role'))) > 1:
+        raise forms.ValidationError('Escolha exatamente um perfil.', code='multiple_roles')
+    return form.cleaned_data['role']
+
+
 class UserCreateForm(forms.Form):
     name = forms.CharField(label='Nome', max_length=150)
     email = forms.EmailField(label='E-mail', max_length=254)
     role = role_choice_field()
+
+    def clean_role(self):
+        return clean_single_role(self)
 
 
 class UserUpdateForm(forms.Form):
@@ -44,6 +58,9 @@ class UserRoleForm(forms.Form):
     def __init__(self, *args, target, **kwargs):
         kwargs.setdefault('initial', {'role': target.role})
         super().__init__(*args, **kwargs)
+
+    def clean_role(self):
+        return clean_single_role(self)
 
 
 

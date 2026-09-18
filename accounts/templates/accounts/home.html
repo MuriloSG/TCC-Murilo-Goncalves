@@ -4,9 +4,10 @@
 
 {% block content %}
   <h1>Olá, {{ user.name }}</h1>
-  {% if perms.USUARIO.VISUALIZAR %}
+  {% if perms.USUARIO.VISUALIZAR or perms.PERFIL.VISUALIZAR %}
     <ul>
-      <li><a href="{% url 'user_list' %}">Usuários</a></li>
+      {% if perms.USUARIO.VISUALIZAR %}<li><a href="{% url 'user_list' %}">Usuários</a></li>{% endif %}
+      {% if perms.PERFIL.VISUALIZAR %}<li><a href="{% url 'role_list' %}">Perfis</a></li>{% endif %}
     </ul>
   {% else %}
     <p>Nenhuma funcionalidade está disponível para o seu perfil no momento. Novas funcionalidades serão liberadas conforme o sistema evoluir.</p>

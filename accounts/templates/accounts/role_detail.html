@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil {{ role.code }}{% endblock %}
+
+{% block content %}
+  <h1>{{ role.name }}</h1>
+  <dl>
+    <dt>Código</dt>
+    <dd>{{ role.code }}</dd>
+    <dt>Tipo</dt>
+    <dd>{{ role.is_system|yesno:"Do sistema,Personalizado" }}</dd>
+    <dt>Descrição</dt>
+    <dd>{{ role.description|default:"—" }}</dd>
+    <dt>Usuários vinculados</dt>
+    <dd>{{ role.user_count }}</dd>
+  </dl>
+
+  <h2>Permissões concedidas</h2>
+  {% regroup permissions by resource as groups %}
+  {% for group in groups %}
+    <h3>{{ group.grouper }}</h3>
+    <ul>
+      {% for permission in group.list %}
+        <li>{{ permission.code }} · {{ permission.description }}</li>
+      {% endfor %}
+    </ul>
+  {% empty %}
+    <p>Este perfil não concede nenhuma permissão.</p>
+  {% endfor %}
+
+  <p>
+    {% if perms.PERFIL.EDITAR %}<a href="{% url 'role_update' role.pk %}">Editar</a>{% endif %}
+    {% if perms.PERFIL.ALTERAR_PERMISSOES %}<a href="{% url 'role_permissions' role.pk %}">Alterar permissões</a>{% endif %}
+    {% if perms.PERFIL.EXCLUIR and not role.is_system %}<a href="{% url 'role_delete' role.pk %}">Excluir</a>{% endif %}
+  </p>
+  <p><a href="{% url 'role_list' %}">Voltar para a lista</a></p>
+{% endblock %}

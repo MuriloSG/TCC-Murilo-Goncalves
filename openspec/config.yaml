@@ -7,3 +7,6 @@ context: |
   Princípios obrigatórios: leia openspec/constitution.md antes de criar ou revisar qualquer
   artefato e mantenha o artefato em conformidade com ela. Em caso de divergência entre a
   Constitution e o TCC, prevalece o TCC.
+  Convenções de implementação: siga openspec/conventions.md ao escrever código, specs, design
+  e tasks de qualquer Change (idioma, docstrings sem comentários, acesso por login_required na
+  URL e PermissionMiddleware, sem mixins, regras de negócio no model, testes e commits).

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  {% if target %}
+    <p>Código: <strong>{{ target.code }}</strong> · {{ target.name }}</p>
+  {% endif %}
+  {% if user_count is not None %}
+    <p>{{ user_count }} usuário{{ user_count|pluralize }} vinculado{{ user_count|pluralize }} a este perfil. A alteração vale para todos a partir da próxima requisição de cada um.</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button type="submit">{{ submit_label }}</button>
+  </form>
+  <p>
+    {% if target %}
+      <a href="{% url 'role_detail' target.pk %}">Voltar para o perfil</a>
+    {% else %}
+      <a href="{% url 'role_list' %}">Voltar para a lista</a>
+    {% endif %}
+  </p>
+{% endblock %}

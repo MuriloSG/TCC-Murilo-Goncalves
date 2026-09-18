@@ -1,6 +1,7 @@
 from django import forms
 
-from accounts.models import Role
+from accounts.models import Permission, Role
+from accounts.permissions import SUPERADMIN_RESERVED_PERMISSIONS
 
 
 def role_choice_field():
@@ -44,3 +45,62 @@ class UserRoleForm(forms.Form):
         kwargs.setdefault('initial', {'role': target.role})
         super().__init__(*args, **kwargs)
 
+
+
+def grantable_permission_choices():
+    """Permissões do catálogo que podem ser concedidas, agrupadas por recurso (D4, D21)."""
+    groups = {}
+    for permission in Permission.objects.exclude(code__in=SUPERADMIN_RESERVED_PERMISSIONS).order_by('code'):
+        groups.setdefault(permission.resource, []).append(
+            (permission.code, f'{permission.code} · {permission.description}'),
+        )
+    return list(groups.items())
+
+
+def permission_choice_field():
+    """Campo de permissões validado contra o catálogo inteiro.
+
+    O widget só exibe as permissões concedíveis. Uma permissão reservada enviada
+    no POST passa pelo campo e é recusada pela operação do model, que informa o
+    motivo (D21).
+    """
+    return forms.ModelMultipleChoiceField(
+        label='Permissões',
+        queryset=Permission.objects.all(),
+        to_field_name='code',
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+
+class RoleCreateForm(forms.Form):
+    code = forms.CharField(
+        label='Código',
+        max_length=50,
+        help_text='Letras maiúsculas sem acento, com palavras separadas por "_". Não pode ser alterado depois.',
+    )
+    name = forms.CharField(label='Nome', max_length=100)
+    description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea)
+    permissions = permission_choice_field()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['permissions'].widget.choices = grantable_permission_choices()
+
+
+class RoleUpdateForm(forms.Form):
+    name = forms.CharField(label='Nome', max_length=100)
+    description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea)
+
+    def __init__(self, *args, target, **kwargs):
+        kwargs.setdefault('initial', {'name': target.name, 'description': target.description})
+        super().__init__(*args, **kwargs)
+
+
+class RolePermissionsForm(forms.Form):
+    permissions = permission_choice_field()
+
+    def __init__(self, *args, target, **kwargs):
+        kwargs.setdefault('initial', {'permissions': list(target.permissions.values_list('code', flat=True))})
+        super().__init__(*args, **kwargs)
+        self.fields['permissions'].widget.choices = grantable_permission_choices()

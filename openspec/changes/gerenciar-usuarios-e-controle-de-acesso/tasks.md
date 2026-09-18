@@ -101,19 +101,19 @@
 
 ## 12. Gestão de perfis na interface
 
-- [ ] 12.1 Criar os formulários de criação, de edição e de permissões de perfil, sem `is_system`, com `code` só na criação e sem oferecer as permissões reservadas (D21, D22)
-- [ ] 12.2 Agrupar as permissões por recurso no formulário e na consulta do perfil, usando a propriedade `resource` (D4, D22)
-- [ ] 12.3 Criar as views de listagem, consulta, criação, edição, permissões e exclusão declarando as constantes `PERFIL.*` em `permission_required`, com `login_required` nas URLs, sem verificar `is_superadmin` (D14, D21)
-- [ ] 12.4 Mostrar na listagem código, nome, se é do sistema e a quantidade de usuários vinculados (D22)
-- [ ] 12.5 Aceitar a exclusão somente por POST com CSRF, após confirmação, e mostrar as recusas (perfil do sistema, perfil em uso) como mensagem de erro (D22)
-- [ ] 12.6 Criar as rotas de `perfis/` conforme a tabela de D14 e os templates correspondentes (D14)
+- [x] 12.1 Criar os formulários de criação, de edição e de permissões de perfil, sem `is_system`, com `code` só na criação e sem oferecer as permissões reservadas (D21, D22)
+- [x] 12.2 Agrupar as permissões por recurso no formulário e na consulta do perfil, usando a propriedade `resource` (D4, D22)
+- [x] 12.3 Criar as views de listagem, consulta, criação, edição, permissões e exclusão declarando as constantes `PERFIL.*` em `permission_required`, com `login_required` nas URLs, sem verificar `is_superadmin` (D14, D21)
+- [x] 12.4 Mostrar na listagem código, nome, se é do sistema e a quantidade de usuários vinculados (D22)
+- [x] 12.5 Aceitar a exclusão somente por POST com CSRF, após confirmação, e mostrar as recusas (perfil do sistema, perfil em uso) como mensagem de erro (D22)
+- [x] 12.6 Criar as rotas de `perfis/` conforme a tabela de D14 e os templates correspondentes (D14)
 
 ## 13. Testes de integração
 
 - [ ] 13.1 Escrever `accounts/tests/test_authentication.py`: login por e-mail com maiúsculas, senha errada, usuário inativo, usuário sem senha definida, logout por POST, ausência de cadastro público e das rotas de gestão de e-mail, sessão perdendo validade após a desativação e e-mail antigo sem autenticar após a troca (D20)
 - [ ] 13.2 Escrever `accounts/tests/test_password.py`: e-mail disparado pelo cadastro, definição da senha pelo link, link reutilizado, chave adulterada, link invalidado pela troca de e-mail, senha fraca, resposta igual para e-mail desconhecido, usuário inativo sem e-mail, recuperação do superadmin e sessões antigas invalidadas (D20)
 - [x] 13.3 Escrever `accounts/tests/test_user_views.py`: para cada rota de usuários, anônimo redirecionado ao login com `next`, autenticado sem permissão com 403, com permissão executando, superadmin com perfil `DOCENTE` acessando, violação de continuidade com erro e ações de situação só por POST (D20)
-- [ ] 13.4 Escrever `accounts/tests/test_role_views.py`: para cada rota de perfis, 403 para usuário com todas as permissões de `USUARIO`, acesso do superadmin ativo, formulário sem permissões reservadas, POST com reservada recusado, exclusão só por POST, POST sem CSRF com 403 e alteração de permissões valendo na próxima requisição (D20)
+- [x] 13.4 Escrever `accounts/tests/test_role_views.py`: para cada rota de perfis, 403 para usuário com todas as permissões de `USUARIO`, acesso do superadmin ativo, formulário sem permissões reservadas, POST com reservada recusado, exclusão só por POST, POST sem CSRF com 403 e alteração de permissões valendo na próxima requisição (D20)
 - [x] 13.5 Completar `accounts/tests/test_superadmin_protection.py` com a parte de views, inclusive `is_superadmin` enviado no POST sendo ignorado (D20)
 - [ ] 13.6 Executar `make test` e confirmar que toda a suíte passa no PostgreSQL (D20)
 

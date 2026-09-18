@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Perfis{% endblock %}
+
+{% block content %}
+  <h1>Perfis</h1>
+  {% if perms.PERFIL.CRIAR %}
+    <p><a href="{% url 'role_create' %}">Criar perfil</a></p>
+  {% endif %}
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>Usuários vinculados</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for role in roles %}
+        <tr>
+          <td><a href="{% url 'role_detail' role.pk %}">{{ role.code }}</a></td>
+          <td>{{ role.name }}</td>
+          <td>{{ role.is_system|yesno:"Do sistema,Personalizado" }}</td>
+          <td>{{ role.user_count }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

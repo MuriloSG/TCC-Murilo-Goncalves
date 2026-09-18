@@ -17,4 +17,10 @@ urlpatterns = [
     path('usuarios/<int:pk>/perfil/', login_required(views.UserRoleView.as_view()), name='user_change_role'),
     path('usuarios/<int:pk>/desativar/', login_required(views.UserDeactivateView.as_view()), name='user_deactivate'),
     path('usuarios/<int:pk>/reativar/', login_required(views.UserReactivateView.as_view()), name='user_reactivate'),
+    path('perfis/', login_required(views.RoleListView.as_view()), name='role_list'),
+    path('perfis/novo/', login_required(views.RoleCreateView.as_view()), name='role_create'),
+    path('perfis/<int:pk>/', login_required(views.RoleDetailView.as_view()), name='role_detail'),
+    path('perfis/<int:pk>/editar/', login_required(views.RoleUpdateView.as_view()), name='role_update'),
+    path('perfis/<int:pk>/permissoes/', login_required(views.RolePermissionsView.as_view()), name='role_permissions'),
+    path('perfis/<int:pk>/excluir/', login_required(views.RoleDeleteView.as_view()), name='role_delete'),
 ]

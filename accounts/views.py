@@ -3,14 +3,22 @@ import logging
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse_lazy
-from django.views.generic import FormView, ListView, TemplateView
+from django.urls import reverse, reverse_lazy
+from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from accounts import permissions
 from accounts.adapters import send_password_link
-from accounts.forms import UserCreateForm, UserRoleForm, UserUpdateForm
-from accounts.models import User
+from accounts.forms import (
+    RoleCreateForm,
+    RolePermissionsForm,
+    RoleUpdateForm,
+    UserCreateForm,
+    UserRoleForm,
+    UserUpdateForm,
+)
+from accounts.models import Role, User
 from accounts.utils import add_operation_error
 
 logger = logging.getLogger(__name__)
@@ -20,26 +28,22 @@ class HomeView(TemplateView):
     template_name = 'accounts/home.html'
 
 
-class UserListView(ListView):
-    permission_required = permissions.USER_VIEW
-    template_name = 'accounts/user_list.html'
-    context_object_name = 'users'
+class OperationFormView(FormView):
+    """Formulário que executa uma operação do model.
 
-    def get_queryset(self):
-        return User.objects.prefetch_related('roles').order_by('name', 'email')
+    Quando a rota tem `pk`, carrega o objeto alvo de `model`. As recusas das regras
+    de negócio (ValidationError) voltam como erros do próprio formulário.
+    """
 
-
-class UserFormView(FormView):
-    template_name = 'accounts/user_form.html'
-    success_url = reverse_lazy('user_list')
+    model = None
+    target = None
     title = ''
     submit_label = 'Salvar'
-    target = None
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
         if 'pk' in kwargs:
-            self.target = get_object_or_404(User, pk=kwargs['pk'])
+            self.target = get_object_or_404(self.model, pk=kwargs['pk'])
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
@@ -55,8 +59,51 @@ class UserFormView(FormView):
         return super().form_valid(form)
 
 
-class UserCreateView(UserFormView):
+class ConfirmedActionView(TemplateView):
+    """Mostra a confirmação no GET e executa a operação só no POST (D13, D22).
+
+    As recusas das regras de negócio viram mensagens de erro, sem alterar dados.
+    """
+
+    model = None
+    success_url = None
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = get_object_or_404(self.model, pk=kwargs['pk'])
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(target=self.target, **kwargs)
+
+    def get_success_url(self):
+        return self.success_url
+
+    def get_failure_url(self):
+        return self.get_success_url()
+
+    def post(self, request, *args, **kwargs):
+        try:
+            self.perform()
+        except ValidationError as error:
+            for message in error.messages:
+                messages.error(request, message)
+            return redirect(self.get_failure_url())
+        return redirect(self.get_success_url())
+
+
+class UserListView(ListView):
+    permission_required = permissions.USER_VIEW
+    template_name = 'accounts/user_list.html'
+    context_object_name = 'users'
+
+    def get_queryset(self):
+        return User.objects.prefetch_related('roles').order_by('name', 'email')
+
+
+class UserCreateView(OperationFormView):
     permission_required = permissions.USER_CREATE
+    template_name = 'accounts/user_form.html'
+    success_url = reverse_lazy('user_list')
     form_class = UserCreateForm
     title = 'Cadastrar usuário'
     submit_label = 'Cadastrar'
@@ -82,8 +129,11 @@ class UserCreateView(UserFormView):
             )
 
 
-class UserUpdateView(UserFormView):
+class UserUpdateView(OperationFormView):
     permission_required = permissions.USER_EDIT
+    model = User
+    template_name = 'accounts/user_form.html'
+    success_url = reverse_lazy('user_list')
     form_class = UserUpdateForm
     title = 'Editar usuário'
 
@@ -95,8 +145,11 @@ class UserUpdateView(UserFormView):
         messages.success(self.request, f'Dados de {self.target.email} atualizados.')
 
 
-class UserRoleView(UserFormView):
+class UserRoleView(OperationFormView):
     permission_required = permissions.USER_CHANGE_ROLE
+    model = User
+    template_name = 'accounts/user_form.html'
+    success_url = reverse_lazy('user_list')
     form_class = UserRoleForm
     title = 'Trocar perfil'
 
@@ -108,27 +161,15 @@ class UserRoleView(UserFormView):
         messages.success(self.request, f'Perfil de {self.target.email} alterado para {data["role"]}.')
 
 
-class UserStatusView(TemplateView):
-    """Confirma no GET e executa só no POST (D13)."""
-
+class UserStatusView(ConfirmedActionView):
     permission_required = permissions.USER_CHANGE_STATUS
+    model = User
     template_name = 'accounts/user_status_confirm.html'
+    success_url = reverse_lazy('user_list')
     action = ''
 
-    def setup(self, request, *args, **kwargs):
-        super().setup(request, *args, **kwargs)
-        self.target = get_object_or_404(User, pk=kwargs['pk'])
-
     def get_context_data(self, **kwargs):
-        return super().get_context_data(action=self.action, target=self.target, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        try:
-            self.perform()
-        except ValidationError as error:
-            for message in error.messages:
-                messages.error(request, message)
-        return redirect('user_list')
+        return super().get_context_data(action=self.action, **kwargs)
 
 
 class UserDeactivateView(UserStatusView):
@@ -145,3 +186,92 @@ class UserReactivateView(UserStatusView):
     def perform(self):
         self.target.reactivate()
         messages.success(self.request, f'Usuário {self.target.email} reativado.')
+
+
+class RoleListView(ListView):
+    permission_required = permissions.ROLE_VIEW
+    template_name = 'accounts/role_list.html'
+    context_object_name = 'roles'
+
+    def get_queryset(self):
+        return Role.objects.annotate(user_count=Count('user_roles')).order_by('name')
+
+
+class RoleDetailView(DetailView):
+    permission_required = permissions.ROLE_VIEW
+    template_name = 'accounts/role_detail.html'
+    context_object_name = 'role'
+
+    def get_queryset(self):
+        return Role.objects.annotate(user_count=Count('user_roles'))
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(permissions=self.object.permissions.order_by('code'), **kwargs)
+
+
+class RoleFormView(OperationFormView):
+    model = Role
+    template_name = 'accounts/role_form.html'
+
+    def get_success_url(self):
+        return reverse('role_detail', args=[self.target.pk])
+
+
+class RoleCreateView(RoleFormView):
+    permission_required = permissions.ROLE_CREATE
+    form_class = RoleCreateForm
+    title = 'Criar perfil'
+    submit_label = 'Criar'
+
+    def perform(self, data):
+        self.target = Role.objects.create_role(
+            code=data['code'],
+            name=data['name'],
+            description=data['description'],
+            permissions=data['permissions'],
+        )
+        messages.success(self.request, f'Perfil {self.target.code} criado.')
+
+
+class RoleUpdateView(RoleFormView):
+    permission_required = permissions.ROLE_EDIT
+    form_class = RoleUpdateForm
+    title = 'Editar perfil'
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def perform(self, data):
+        self.target.update_details(name=data['name'], description=data['description'])
+        messages.success(self.request, f'Perfil {self.target.code} atualizado.')
+
+
+class RolePermissionsView(RoleFormView):
+    permission_required = permissions.ROLE_CHANGE_PERMISSIONS
+    form_class = RolePermissionsForm
+    title = 'Permissões do perfil'
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(user_count=self.target.user_roles.count(), **kwargs)
+
+    def perform(self, data):
+        self.target.set_permissions(data['permissions'])
+        messages.success(self.request, f'Permissões do perfil {self.target.code} atualizadas.')
+
+
+class RoleDeleteView(ConfirmedActionView):
+    permission_required = permissions.ROLE_DELETE
+    model = Role
+    template_name = 'accounts/role_confirm_delete.html'
+    success_url = reverse_lazy('role_list')
+
+    def get_failure_url(self):
+        return reverse('role_detail', args=[self.target.pk])
+
+    def perform(self):
+        code = self.target.code
+        self.target.delete_role()
+        messages.success(self.request, f'Perfil {code} excluído.')

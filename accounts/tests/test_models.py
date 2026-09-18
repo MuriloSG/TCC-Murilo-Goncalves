@@ -242,3 +242,123 @@ class RolePermissionTests(TestCase):
         self.permission.delete()
         self.assertFalse(RolePermission.objects.filter(role=self.role).exists())
         self.assertTrue(Role.objects.filter(pk=self.role.pk).exists())
+
+
+class RegisterTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+
+    def test_register_creates_active_user_with_one_role_and_unusable_password(self):
+        user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Souza', role=self.teacher)
+        user = User.objects.get(pk=user.pk)
+        self.assertEqual((user.email, user.name), ('maria@ifnmg.edu.br', 'Maria Souza'))
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.is_superadmin)
+        self.assertFalse(user.has_usable_password())
+        self.assertEqual(list(user.roles.all()), [self.teacher])
+        self.assertEqual(user.role, self.teacher)
+
+    def test_register_normalizes_email_and_name(self):
+        user = User.objects.register(email=' Maria@IFNMG.edu.br ', name='  Maria  ', role=self.teacher)
+        self.assertEqual(User.objects.get(pk=user.pk).email, 'maria@ifnmg.edu.br')
+        self.assertEqual(User.objects.get(pk=user.pk).name, 'Maria')
+
+    def test_register_does_not_accept_superadmin_or_password(self):
+        with self.assertRaises(TypeError):
+            User.objects.register(
+                email='maria@ifnmg.edu.br', name='Maria', role=self.teacher, is_superadmin=True,
+            )
+        with self.assertRaises(TypeError):
+            User.objects.register(
+                email='maria@ifnmg.edu.br', name='Maria', role=self.teacher, password='Senha-forte-123',
+            )
+        self.assertFalse(User.objects.exists())
+
+    def test_register_refuses_invalid_data_without_creating_anything(self):
+        cases = {
+            'name': dict(email='maria@ifnmg.edu.br', name='  ', role=self.teacher),
+            'email': dict(email='', name='Maria', role=self.teacher),
+            'invalid email': dict(email='maria.ifnmg.edu.br', name='Maria', role=self.teacher),
+            'role': dict(email='maria@ifnmg.edu.br', name='Maria', role=None),
+        }
+        for label, data in cases.items():
+            with self.subTest(label):
+                with self.assertRaises(ValidationError) as raised:
+                    User.objects.register(**data)
+                self.assertIn(label.split()[-1], raised.exception.message_dict)
+        self.assertFalse(User.objects.exists())
+        self.assertFalse(UserRole.objects.exists())
+
+    def test_register_refuses_email_in_use_ignoring_case_and_status(self):
+        User.objects.register(email='maria@ifnmg.edu.br', name='Maria', role=self.teacher)
+        User.objects.filter(email='maria@ifnmg.edu.br').update(is_active=False)
+        with self.assertRaises(ValidationError) as raised:
+            User.objects.register(email='MARIA@ifnmg.edu.br', name='Outra', role=self.administrator)
+        self.assertTrue(raised.exception.messages)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(UserRole.objects.count(), 1)
+
+    def test_register_leaves_no_user_without_role_when_link_fails(self):
+        unsaved_role = Role(code='INEXISTENTE', name='Inexistente')
+        with self.assertRaises(ValueError):
+            User.objects.register(email='maria@ifnmg.edu.br', name='Maria', role=unsaved_role)
+        self.assertFalse(User.objects.exists())
+
+
+class UpdateDetailsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.executor = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.teacher)
+
+    def setUp(self):
+        self.user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=self.teacher)
+        self.user.set_password('Senha-forte-123')
+        self.user.save()
+
+    def test_changes_name_and_email_only(self):
+        password = self.user.password
+        self.user.update_details(self.executor, name='Maria Souza', email=' Maria.Souza@IFNMG.edu.br ')
+        user = User.objects.get(pk=self.user.pk)
+        self.assertEqual((user.name, user.email), ('Maria Souza', 'maria.souza@ifnmg.edu.br'))
+        self.assertEqual(user.password, password)
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.is_superadmin)
+        self.assertEqual(user.role, self.teacher)
+
+    def test_does_not_overwrite_status_changed_elsewhere(self):
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        self.user.update_details(self.executor, name='Maria Souza', email=self.user.email)
+        user = User.objects.get(pk=self.user.pk)
+        self.assertEqual(user.name, 'Maria Souza')
+        self.assertFalse(user.is_active)
+
+    def test_inactive_user_can_be_edited(self):
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        user = User.objects.get(pk=self.user.pk)
+        user.update_details(self.executor, name='Maria Souza', email=user.email)
+        user = User.objects.get(pk=self.user.pk)
+        self.assertEqual(user.name, 'Maria Souza')
+        self.assertFalse(user.is_active)
+
+    def test_refuses_invalid_data_and_keeps_previous_values(self):
+        cases = {
+            'name': dict(name='', email='maria@ifnmg.edu.br'),
+            'email': dict(name='Maria', email='maria.ifnmg.edu.br'),
+        }
+        for field, data in cases.items():
+            with self.subTest(field):
+                with self.assertRaises(ValidationError) as raised:
+                    self.user.update_details(self.executor, **data)
+                self.assertIn(field, raised.exception.message_dict)
+                self.assertEqual((self.user.name, self.user.email), ('Maria Sousa', 'maria@ifnmg.edu.br'))
+                user = User.objects.get(pk=self.user.pk)
+                self.assertEqual((user.name, user.email), ('Maria Sousa', 'maria@ifnmg.edu.br'))
+
+    def test_refuses_email_of_another_user_ignoring_case(self):
+        with self.assertRaises(ValidationError):
+            self.user.update_details(self.executor, name='Maria', email='Admin@ifnmg.edu.br')
+        self.assertEqual(User.objects.get(pk=self.user.pk).email, 'maria@ifnmg.edu.br')
+        self.assertEqual(User.objects.get(pk=self.executor.pk).email, 'admin@ifnmg.edu.br')

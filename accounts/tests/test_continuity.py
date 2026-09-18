@@ -248,6 +248,56 @@ class SuperadminStatusTests(ContinuityTestCase):
         self.assertEqual(capable_emails(), {'admin@ifnmg.edu.br'})
 
 
+class ChangeRoleTests(ContinuityTestCase):
+    def test_change_role_replaces_the_only_role(self):
+        create_user('admin@ifnmg.edu.br', self.administrator)
+        user = create_user('docente@ifnmg.edu.br', self.teacher)
+        user.change_role(self.administrator)
+        self.assertEqual(list(User.objects.get(pk=user.pk).roles.all()), [self.administrator])
+        self.assertEqual(UserRole.objects.filter(user=user).count(), 1)
+
+    def test_change_to_custom_role(self):
+        create_user('admin@ifnmg.edu.br', self.administrator)
+        user = create_user('docente@ifnmg.edu.br', self.teacher)
+        user.change_role(self.coordination)
+        self.assertEqual(User.objects.get(pk=user.pk).role, self.coordination)
+
+    def test_change_role_refreshes_the_instance_permissions(self):
+        superadmin = create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+        user = create_user('docente@ifnmg.edu.br', self.teacher)
+        self.assertFalse(user.has_perm(permissions.USER_VIEW))
+        user.change_role(self.administrator)
+        self.assertTrue(user.has_perm(permissions.USER_VIEW))
+        self.assertTrue(superadmin.is_superadmin)
+
+    def test_last_capable_user_by_role_cannot_lose_the_role(self):
+        admin = create_user('admin@ifnmg.edu.br', self.administrator)
+        with self.assertRaises(AdministrativeContinuityViolation):
+            admin.change_role(self.teacher)
+        self.assertEqual(list(User.objects.get(pk=admin.pk).roles.all()), [self.administrator])
+        self.assertTrue(admin.has_perm(permissions.USER_VIEW))
+
+    def test_last_capable_superadmin_can_change_role(self):
+        superadmin = create_user('super@ifnmg.edu.br', self.administrator, is_superadmin=True)
+        superadmin.change_role(self.teacher)
+        reloaded = User.objects.get(pk=superadmin.pk)
+        self.assertEqual(reloaded.role, self.teacher)
+        self.assertTrue(reloaded.has_administrative_capability())
+
+    def test_change_role_allowed_when_another_user_is_capable(self):
+        create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+        admin = create_user('admin@ifnmg.edu.br', self.administrator)
+        admin.change_role(self.teacher)
+        self.assertEqual(User.objects.get(pk=admin.pk).role, self.teacher)
+
+    def test_change_role_requires_a_role(self):
+        create_user('admin@ifnmg.edu.br', self.administrator)
+        user = create_user('docente@ifnmg.edu.br', self.teacher)
+        with self.assertRaises(ValidationError):
+            user.change_role(None)
+        self.assertEqual(list(User.objects.get(pk=user.pk).roles.all()), [self.teacher])
+
+
 class ContinuityGuardTests(ContinuityTestCase):
     def test_guard_checks_the_final_state_and_rolls_back(self):
         admin = create_user('admin@ifnmg.edu.br', self.administrator)

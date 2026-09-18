@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # accounts antes do allauth, para que seus templates sobrescrevam os dele.
     'accounts',
     'allauth',
     'allauth.account',
@@ -52,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'accounts.middleware.PermissionMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -89,8 +89,6 @@ DATABASES = {
 }
 
 
-# Authentication
-
 AUTH_USER_MODEL = 'accounts.User'
 
 AUTHENTICATION_BACKENDS = [
@@ -101,9 +99,6 @@ LOGIN_URL = 'account_login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'account_login'
 
-
-# django-allauth
-# https://docs.allauth.org/en/latest/account/configuration.html
 
 ACCOUNT_ADAPTER = 'accounts.adapters.AccountAdapter'
 ACCOUNT_LOGIN_METHODS = {'email'}
@@ -162,9 +157,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-# Email
-# https://docs.djangoproject.com/en/5.2/topics/email/
 
 EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', 'localhost')

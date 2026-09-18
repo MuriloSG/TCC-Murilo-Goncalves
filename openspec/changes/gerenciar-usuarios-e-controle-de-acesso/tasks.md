@@ -94,7 +94,7 @@
 
 - [x] 11.1 Criar em `accounts/forms.py` os formulários de cadastro, de edição e de troca de perfil, declarando explicitamente os campos aceitos, sem senha e sem `is_superadmin` (D12, D16)
 - [x] 11.2 Exibir o e-mail como somente leitura no formulário de edição quando o alvo for superadmin e o executor não for superadmin ativo (D16)
-- [x] 11.3 Criar as views de listagem, cadastro, edição, troca de perfil, desativação e reativação como class-based views com `PermissionRequiredMixin` e as constantes do catálogo (D14)
+- [x] 11.3 Criar as views de listagem, cadastro, edição, troca de perfil, desativação e reativação como class-based views que declaram a permissão em `permission_required`, com `login_required` nas URLs e a verificação no `PermissionMiddleware` (D14)
 - [x] 11.4 Aceitar as ações de situação somente por POST com CSRF, com confirmação (D13)
 - [x] 11.5 Mostrar as recusas de regra de negócio (continuidade, proteção de superadmin, e-mail em uso) como mensagem de erro, sem alterar dados (D15)
 - [x] 11.6 Criar as rotas de `usuarios/` conforme a tabela de D14 e os templates correspondentes (D14)
@@ -103,7 +103,7 @@
 
 - [ ] 12.1 Criar os formulários de criação, de edição e de permissões de perfil, sem `is_system`, com `code` só na criação e sem oferecer as permissões reservadas (D21, D22)
 - [ ] 12.2 Agrupar as permissões por recurso no formulário e na consulta do perfil, usando a propriedade `resource` (D4, D22)
-- [ ] 12.3 Criar as views de listagem, consulta, criação, edição, permissões e exclusão com `PermissionRequiredMixin` e as constantes `PERFIL.*`, sem verificar `is_superadmin` (D14, D21)
+- [ ] 12.3 Criar as views de listagem, consulta, criação, edição, permissões e exclusão declarando as constantes `PERFIL.*` em `permission_required`, com `login_required` nas URLs, sem verificar `is_superadmin` (D14, D21)
 - [ ] 12.4 Mostrar na listagem código, nome, se é do sistema e a quantidade de usuários vinculados (D22)
 - [ ] 12.5 Aceitar a exclusão somente por POST com CSRF, após confirmação, e mostrar as recusas (perfil do sistema, perfil em uso) como mensagem de erro (D22)
 - [ ] 12.6 Criar as rotas de `perfis/` conforme a tabela de D14 e os templates correspondentes (D14)

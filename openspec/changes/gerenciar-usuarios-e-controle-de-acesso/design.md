@@ -74,10 +74,13 @@ Identidade, perfis, permissões e autenticação ficam numa única app, `account
 accounts/
   models.py          User, Role, Permission, UserRole, RolePermission e os managers de User e Role
   permissions.py     catálogo de códigos (constantes), conjunto da capacidade administrativa e conjunto das permissões reservadas
-  adapters.py        adapter do allauth (cadastro público fechado)
+  adapters.py        adapter do allauth (cadastro público fechado, usuário inativo) e disparo do link de senha
+  tokens.py          gerador de token da recuperação que recusa usuário inativo (D12)
+  middleware.py      PermissionMiddleware, que aplica a permissão declarada pela view (D14)
   forms.py
-  views.py           autenticação, gestão de usuários e gestão de perfis
-  urls.py
+  utils.py           funções auxiliares da app (ex.: levar erros das operações do model para o formulário)
+  views.py           página inicial, gestão de usuários e gestão de perfis
+  urls.py            rotas da app, com login_required nas que exigem autenticação (D14)
   management/commands/   create_superadmin e set_superadmin (D16)
   migrations/        0001 (esquema) e 0002 (perfis do sistema, permissões iniciais e concessões iniciais)
   templates/         templates da app, sobrescritas do allauth (account/) e 403.html
@@ -90,8 +93,9 @@ Fluxo de uma requisição protegida:
 Requisição
   → SessionMiddleware + AuthenticationMiddleware   quem é? (usuário inativo vira anônimo)
   → AccountMiddleware (allauth)
+  → URL: login_required                             está autenticado? (anônimo → login com next)
+  → PermissionMiddleware → request.user.has_perm("USUARIO.CRIAR")   pode executar? (senão, 403)
   → View
-      ├─ PermissionRequiredMixin → request.user.has_perm("USUARIO.CRIAR")   pode executar?
       ├─ Form                                                                 a entrada é válida?
       └─ métodos do User / manager (transação)                               a operação respeita as regras?
              → ORM → PostgreSQL
@@ -471,14 +475,15 @@ Alternativas consideradas:
 
 ### D14. Verificações de autorização na aplicação
 
-- **Views protegidas** são *class-based views* com o `PermissionRequiredMixin` do Django, e `permission_required` recebe as constantes do catálogo. O comportamento padrão do mixin é exatamente o desejado:
-  - **anônimo** → redireciona para o login (`LOGIN_URL`) com `next`;
-  - **autenticado sem a permissão** → `PermissionDenied`, respondido com **403** e o template `403.html` amigável.
-- A verificação acontece no `dispatch`, portanto **para todos os métodos HTTP**, inclusive POST.
-- Se for necessária uma view em função, o padrão é `login_required` combinado com `permission_required(..., raise_exception=True)`, que reproduz o mesmo comportamento.
+- **Autenticação na URL:** toda rota que exige usuário autenticado é declarada com `login_required(...)` no `urls.py`. O anônimo é redirecionado para o login (`LOGIN_URL`) com `next`.
+- **Permissão por middleware:** a view declara a permissão exigida no atributo `permission_required`, com a constante do catálogo, e não contém lógica de acesso. O `accounts.middleware.PermissionMiddleware` lê esse atributo no `process_view`, depois da resolução da URL e antes da view, e chama `request.user.has_perm`. Sem a permissão, lança `PermissionDenied`, respondido com **403** e o template `403.html` amigável.
+  - a verificação acontece antes da view, portanto **para todos os métodos HTTP**, inclusive POST;
+  - vale igualmente para views em classe (atributo da classe) e em função (atributo da função);
+  - rede de segurança: se uma rota com permissão ficar sem `login_required`, o middleware redireciona o anônimo para o login em vez de deixá-lo chegar à view.
+- **Sem mixins de acesso** (`LoginRequiredMixin`, `PermissionRequiredMixin`): a autenticação fica visível na tabela de rotas e a autorização num único ponto, o que reduz a manutenção. As views ficam só com a lógica da operação.
 - **Templates** usam `perms.USUARIO.CRIAR` (o `PermWrapper` do Django chama `has_perm("USUARIO.CRIAR")`) **só para mostrar ou esconder** links e botões. Esconder não substitui a verificação da view.
 - **Proibido** em views e templates: decidir acesso pelo `code`, `name` ou `is_system` do perfil, ou pelo `is_superadmin`.
-- **Gestão de perfis:** as views usam o mesmo `PermissionRequiredMixin` com as constantes `PERFIL.*`. Como essas permissões são reservadas (D21), só o superadmin ativo passa, sem nenhuma verificação de `is_superadmin` na view. Um usuário com todas as permissões de `USUARIO` recebe 403 nessas rotas.
+- **Gestão de perfis:** as views declaram as constantes `PERFIL.*` em `permission_required`, verificadas pelo mesmo middleware. Como essas permissões são reservadas (D21), só o superadmin ativo passa, sem nenhuma verificação de `is_superadmin` na view. Um usuário com todas as permissões de `USUARIO` recebe 403 nessas rotas.
 - **Regras por objeto:** nenhuma permissão por objeto nesta Change, e o parâmetro `obj` de `has_perm` é ignorado. As restrições que dependem do alvo são regras de negócio do model, e não permissões: o e-mail de superadmin (D16) e a exclusão de perfil do sistema ou com usuários (D22).
 
 Rotas previstas e proteção (caminhos indicativos):
@@ -513,7 +518,7 @@ Cada ação sensível tem sua própria rota e permissão, em vez de um formulár
 | Camada | Pergunta | Componentes | Não faz |
 |---|---|---|---|
 | **Autenticação** | Quem é você? | allauth (login, logout, recuperação e criação inicial de senha, limites de tentativas), sessões, backend | não decide o que o usuário pode fazer |
-| **Autorização** | Você pode executar isto? | `User.has_perm` e permissões efetivas, `PermissionRequiredMixin`, `perms` nos templates | não altera dados nem conhece as invariantes |
+| **Autorização** | Você pode executar isto? | `User.has_perm` e permissões efetivas, `login_required` nas URLs, `PermissionMiddleware`, `perms` nos templates | não altera dados nem conhece as invariantes |
 | **Regras de negócio** | Esta operação é válida? | operações do `User`, do `Role` e dos managers, restrições do banco, exceções de domínio (continuidade, perfil protegido, perfil em uso, permissão reservada) | só considera **quem** executa quando a própria regra é sobre o executor (proteção de superadmin, D16), recebendo-o explicitamente; valem igualmente para views, comandos e shell |
 | **Apresentação** | Como mostrar? | forms e templates | não protege nada; só reflete as outras camadas |
 
@@ -603,7 +608,7 @@ Alternativa considerada:
 
 | Configuração | Valor |
 |---|---|
-| `INSTALLED_APPS` | remove `django.contrib.admin`; adiciona `allauth`, `allauth.account`, `accounts` |
+| `INSTALLED_APPS` | remove `django.contrib.admin`; adiciona `accounts`, `allauth` e `allauth.account`, com `accounts` antes do allauth para que seus templates sobrescrevam os dele |
 | `MIDDLEWARE` | adiciona `allauth.account.middleware.AccountMiddleware` |
 | `AUTH_USER_MODEL` | `accounts.User` |
 | `AUTHENTICATION_BACKENDS` | backend do allauth |

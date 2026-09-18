@@ -1,27 +1,26 @@
 import logging
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
-from django.utils.functional import cached_property
 from django.views.generic import FormView, ListView, TemplateView
 
 from accounts import permissions
 from accounts.adapters import send_password_link
 from accounts.forms import UserCreateForm, UserRoleForm, UserUpdateForm
 from accounts.models import User
+from accounts.utils import add_operation_error
 
 logger = logging.getLogger(__name__)
 
 
-class HomeView(LoginRequiredMixin, TemplateView):
+class HomeView(TemplateView):
     template_name = 'accounts/home.html'
 
 
-class UserListView(PermissionRequiredMixin, ListView):
+class UserListView(ListView):
     permission_required = permissions.USER_VIEW
     template_name = 'accounts/user_list.html'
     context_object_name = 'users'
@@ -30,31 +29,28 @@ class UserListView(PermissionRequiredMixin, ListView):
         return User.objects.prefetch_related('roles').order_by('name', 'email')
 
 
-class TargetUserMixin:
-    """Carrega o usuário alvo da rota só depois da verificação de acesso."""
-
-    @cached_property
-    def target(self):
-        return get_object_or_404(User, pk=self.kwargs['pk'])
-
-    def get_context_data(self, **kwargs):
-        return super().get_context_data(target=self.target, **kwargs)
-
-
-class UserFormView(PermissionRequiredMixin, FormView):
+class UserFormView(FormView):
     template_name = 'accounts/user_form.html'
     success_url = reverse_lazy('user_list')
     title = ''
     submit_label = 'Salvar'
+    target = None
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        if 'pk' in kwargs:
+            self.target = get_object_or_404(User, pk=kwargs['pk'])
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(title=self.title, submit_label=self.submit_label, **kwargs)
+        return super().get_context_data(
+            title=self.title, submit_label=self.submit_label, target=self.target, **kwargs,
+        )
 
     def form_valid(self, form):
         try:
             self.perform(form.cleaned_data)
         except ValidationError as error:
-            form.add_operation_error(error)
+            add_operation_error(form, error)
             return self.form_invalid(form)
         return super().form_valid(form)
 
@@ -86,7 +82,7 @@ class UserCreateView(UserFormView):
             )
 
 
-class UserUpdateView(TargetUserMixin, UserFormView):
+class UserUpdateView(UserFormView):
     permission_required = permissions.USER_EDIT
     form_class = UserUpdateForm
     title = 'Editar usuário'
@@ -99,7 +95,7 @@ class UserUpdateView(TargetUserMixin, UserFormView):
         messages.success(self.request, f'Dados de {self.target.email} atualizados.')
 
 
-class UserRoleView(TargetUserMixin, UserFormView):
+class UserRoleView(UserFormView):
     permission_required = permissions.USER_CHANGE_ROLE
     form_class = UserRoleForm
     title = 'Trocar perfil'
@@ -112,15 +108,19 @@ class UserRoleView(TargetUserMixin, UserFormView):
         messages.success(self.request, f'Perfil de {self.target.email} alterado para {data["role"]}.')
 
 
-class UserStatusView(TargetUserMixin, PermissionRequiredMixin, TemplateView):
+class UserStatusView(TemplateView):
     """Confirma no GET e executa só no POST (D13)."""
 
     permission_required = permissions.USER_CHANGE_STATUS
     template_name = 'accounts/user_status_confirm.html'
     action = ''
 
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = get_object_or_404(User, pk=kwargs['pk'])
+
     def get_context_data(self, **kwargs):
-        return super().get_context_data(action=self.action, **kwargs)
+        return super().get_context_data(action=self.action, target=self.target, **kwargs)
 
     def post(self, request, *args, **kwargs):
         try:

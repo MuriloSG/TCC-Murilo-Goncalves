@@ -1,7 +1,12 @@
+"""Carga inicial do catálogo de permissões e dos perfis do sistema (D8, D9).
+
+Os códigos são escritos literalmente, sem importar accounts.permissions, para que
+a migration continue reproduzível se as constantes mudarem depois. O perfil DOCENTE
+não recebe permissões e nenhuma permissão PERFIL.* é concedida.
+"""
+
 from django.db import migrations
 
-# Codes are written literally, without importing accounts.permissions, so the
-# migration stays reproducible if the constants change later (D8).
 PERMISSIONS = [
     ('USUARIO.VISUALIZAR', 'Listar e consultar usuários'),
     ('USUARIO.CRIAR', 'Cadastrar usuário'),
@@ -20,7 +25,6 @@ SYSTEM_ROLES = [
     ('DOCENTE', 'Docente'),
 ]
 
-# Initial grants. DOCENTE receives nothing and no PERFIL.* is granted (D9).
 INITIAL_GRANTS = {
     'ADMINISTRADOR': [
         'USUARIO.VISUALIZAR',
@@ -50,10 +54,10 @@ def create_catalog(apps, schema_editor):
 
 
 def remove_catalog(apps, schema_editor):
+    """As concessões saem por CASCADE; perfis ainda vinculados a usuários falham por PROTECT."""
     Permission = apps.get_model('accounts', 'Permission')
     Role = apps.get_model('accounts', 'Role')
 
-    # Grants go away by CASCADE. Roles still linked to users fail by PROTECT.
     Role.objects.filter(code__in=[code for code, _ in SYSTEM_ROLES], is_system=True).delete()
     Permission.objects.filter(code__in=[code for code, _ in PERMISSIONS]).delete()
 

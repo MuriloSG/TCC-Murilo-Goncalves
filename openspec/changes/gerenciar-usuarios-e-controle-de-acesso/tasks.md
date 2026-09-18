@@ -79,16 +79,16 @@
 
 ## 9. Comandos de gerenciamento
 
-- [ ] 9.1 Criar `accounts/management/commands/create_superadmin.py`, que pede e-mail, nome e a senha duas vezes sem eco, valida a senha pelos `AUTH_PASSWORD_VALIDATORS` e cria numa transação o usuário ativo, superadmin, com o perfil `ADMINISTRADOR` (D16)
-- [ ] 9.2 Recusar no `create_superadmin` e-mail já cadastrado, indicando na mensagem o comando `set_superadmin` (D16)
-- [ ] 9.3 Criar `accounts/management/commands/set_superadmin.py`, que concede ou remove `is_superadmin` pelo e-mail, usando a operação do model e, na remoção, a regra de continuidade (D16)
-- [ ] 9.4 Escrever `accounts/tests/test_commands.py` cobrindo criação, e-mail repetido, senha fraca, concessão, remoção e remoção recusada pela continuidade (D20)
+- [x] 9.1 Criar `accounts/management/commands/create_superadmin.py`, que pede e-mail, nome e a senha duas vezes sem eco, valida a senha pelos `AUTH_PASSWORD_VALIDATORS` e cria numa transação o usuário ativo, superadmin, com o perfil `ADMINISTRADOR` (D16)
+- [x] 9.2 Recusar no `create_superadmin` e-mail já cadastrado, indicando na mensagem o comando `set_superadmin` (D16)
+- [x] 9.3 Criar `accounts/management/commands/set_superadmin.py`, que concede ou remove `is_superadmin` pelo e-mail, usando a operação do model e, na remoção, a regra de continuidade (D16)
+- [x] 9.4 Escrever `accounts/tests/test_commands.py` cobrindo criação, e-mail repetido, senha fraca, concessão, remoção e remoção recusada pela continuidade (D20)
 
 ## 10. Base da interface
 
-- [ ] 10.1 Criar o template base do projeto e o `403.html` amigável, em português, sem Tailwind nesta Change (D18)
-- [ ] 10.2 Criar a página inicial autenticada em `inicio/`, exigindo só autenticação, mostrando apenas os atalhos permitidos ao usuário pelo `perms` (D14)
-- [ ] 10.3 Confirmar que `/admin` não existe e que a raiz `/` continua livre para a consulta pública de outra Change (D14, D17)
+- [x] 10.1 Criar o template base do projeto e o `403.html` amigável, em português, sem Tailwind nesta Change (D18)
+- [x] 10.2 Criar a página inicial autenticada em `inicio/`, exigindo só autenticação, mostrando apenas os atalhos permitidos ao usuário pelo `perms` (D14)
+- [x] 10.3 Confirmar que `/admin` não existe e que a raiz `/` continua livre para a consulta pública de outra Change (D14, D17)
 
 ## 11. Gestão de usuários na interface
 

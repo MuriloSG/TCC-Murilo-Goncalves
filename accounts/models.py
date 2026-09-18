@@ -14,6 +14,7 @@ from accounts.permissions import (
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
 PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
+ADMINISTRATOR_ROLE = 'ADMINISTRADOR'
 
 
 class AdministrativeContinuityViolation(ValidationError):
@@ -139,6 +140,21 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         user.set_unusable_password()
         user.full_clean()
         with transaction.atomic(using=self.db):
+            user.save(using=self.db)
+            UserRole.objects.using(self.db).create(user=user, role=role)
+        return user
+
+    def create_superadmin(self, email, name, password):
+        user = self.model(
+            email=self.normalize_email(email),
+            name=(name or '').strip(),
+            is_active=True,
+            is_superadmin=True,
+        )
+        user.set_password(password)
+        user.full_clean()
+        with transaction.atomic(using=self.db):
+            role = Role.objects.using(self.db).get(code=ADMINISTRATOR_ROLE)
             user.save(using=self.db)
             UserRole.objects.using(self.db).create(user=user, role=role)
         return user

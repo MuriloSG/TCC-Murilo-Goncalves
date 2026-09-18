@@ -1,17 +1,23 @@
-"""
-URL configuration for config project.
+from allauth.account import views as account_views
+from django.urls import path, re_path
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-urlpatterns = []
+urlpatterns = [
+    path('contas/login/', account_views.login, name='account_login'),
+    path('contas/logout/', account_views.logout, name='account_logout'),
+    path('contas/senha/recuperar/', account_views.password_reset, name='account_reset_password'),
+    path(
+        'contas/senha/recuperar/enviado/',
+        account_views.password_reset_done,
+        name='account_reset_password_done',
+    ),
+    path(
+        'contas/senha/redefinir/concluido/',
+        account_views.password_reset_from_key_done,
+        name='account_reset_password_from_key_done',
+    ),
+    re_path(
+        r'^contas/senha/redefinir/(?P<uidb36>[0-9A-Za-z]+)-(?P<key>.+)/$',
+        account_views.password_reset_from_key,
+        name='account_reset_password_from_key',
+    ),
+]

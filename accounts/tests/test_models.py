@@ -1,3 +1,4 @@
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -327,6 +328,21 @@ class UpdateDetailsTests(TestCase):
         self.assertTrue(user.is_active)
         self.assertFalse(user.is_superadmin)
         self.assertEqual(user.role, self.teacher)
+
+    def test_removes_email_addresses_other_than_the_new_one(self):
+        EmailAddress.objects.create(user=self.user, email='maria@ifnmg.edu.br')
+        EmailAddress.objects.create(user=self.user, email='maria.souza@ifnmg.edu.br')
+        self.user.update_details(self.executor, name='Maria Souza', email='Maria.Souza@ifnmg.edu.br')
+        self.assertEqual(
+            list(EmailAddress.objects.filter(user=self.user).values_list('email', flat=True)),
+            ['maria.souza@ifnmg.edu.br'],
+        )
+
+    def test_keeps_email_addresses_when_the_change_is_refused(self):
+        EmailAddress.objects.create(user=self.user, email='maria@ifnmg.edu.br')
+        with self.assertRaises(ValidationError):
+            self.user.update_details(self.executor, name='Maria', email='admin@ifnmg.edu.br')
+        self.assertTrue(EmailAddress.objects.filter(user=self.user, email='maria@ifnmg.edu.br').exists())
 
     def test_does_not_overwrite_status_changed_elsewhere(self):
         User.objects.filter(pk=self.user.pk).update(is_active=False)

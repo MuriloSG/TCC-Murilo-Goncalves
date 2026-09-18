@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -244,6 +245,7 @@ class User(AbstractBaseUser):
             try:
                 self.full_clean()
                 self.save(update_fields=['name', 'email'])
+                EmailAddress.objects.filter(user=self).exclude(email__iexact=self.email).delete()
             except BaseException:
                 self.name, self.email = previous
                 raise

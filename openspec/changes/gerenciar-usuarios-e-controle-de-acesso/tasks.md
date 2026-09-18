@@ -46,7 +46,7 @@
 - [x] 5.4 Implementar `User.change_role(role)`, que troca o vínculo numa transação, com a verificação de continuidade (D6, D10)
 - [x] 5.5 Implementar `User.update_details(executor, name, email)`, que altera só nome e e-mail e lança `SuperadminOnlyOperation` quando o e-mail de um superadmin é alterado por quem não é superadmin ativo (D16)
 - [x] 5.6 Escrever os testes das operações de usuário e `accounts/tests/test_superadmin_protection.py` na parte de model (D20)
-- [ ] 5.7 Sincronizar em `update_details`, na mesma transação, os registros `EmailAddress` do allauth do usuário, para que o e-mail antigo deixe de autenticar (D11, depende da seção 7)
+- [x] 5.7 Sincronizar em `update_details`, na mesma transação, os registros `EmailAddress` do allauth do usuário, para que o e-mail antigo deixe de autenticar (D11, depende da seção 7)
 
 ## 6. Operações de gestão de perfis no model
 
@@ -60,15 +60,15 @@
 
 ## 7. Autenticação com django-allauth
 
-- [ ] 7.1 Acrescentar `django-allauth` ao `requirements.txt`, fixado com `==`, e reconstruir a imagem com `make up` (D19)
-- [ ] 7.2 Registrar `allauth` e `allauth.account` em `INSTALLED_APPS`, o `AccountMiddleware` em `MIDDLEWARE` e, se a versão exigir, `django.contrib.sites` com `SITE_ID` (D11)
-- [ ] 7.3 Definir `AUTHENTICATION_BACKENDS` só com o backend do allauth e aplicar as migrations com `make migrate` (D11)
-- [ ] 7.4 Configurar o allauth: login só por e-mail, sem username, e-mail único, verificação de e-mail desligada, logout só por POST, recuperação por link, sem login automático após redefinir e sem envio para endereços não cadastrados (D11, D12)
-- [ ] 7.5 Criar `accounts/adapters.py` com o adapter que fecha o cadastro público e registrá-lo em `ACCOUNT_ADAPTER` (D11)
-- [ ] 7.6 Ligar em `config/urls.py` somente as rotas do allauth usadas por esta Change (login, logout e as quatro etapas da recuperação de senha), em português, sem incluir `allauth.urls` inteiro (D11, D14)
-- [ ] 7.7 Configurar `LOGIN_URL`, `LOGIN_REDIRECT_URL` e `LOGOUT_REDIRECT_URL` para a página inicial autenticada (D14)
-- [ ] 7.8 Configurar o e-mail por variáveis de ambiente, com `DJANGO_EMAIL_BACKEND` e `DEFAULT_FROM_EMAIL` no `compose.yaml` e o backend de console como padrão de desenvolvimento (D19)
-- [ ] 7.9 Sobrescrever os templates do allauth em `accounts/templates/account/`, em português e na base visual do projeto (D11, D18)
+- [x] 7.1 Acrescentar `django-allauth` ao `requirements.txt`, fixado com `==`, e reconstruir a imagem com `make up` (D19)
+- [x] 7.2 Registrar `allauth` e `allauth.account` em `INSTALLED_APPS`, o `AccountMiddleware` em `MIDDLEWARE` e, se a versão exigir, `django.contrib.sites` com `SITE_ID` (D11)
+- [x] 7.3 Definir `AUTHENTICATION_BACKENDS` só com o backend do allauth e aplicar as migrations com `make migrate` (D11)
+- [x] 7.4 Configurar o allauth: login só por e-mail, sem username, e-mail único, verificação de e-mail desligada, logout só por POST, recuperação por link, sem login automático após redefinir e sem envio para endereços não cadastrados (D11, D12)
+- [x] 7.5 Criar `accounts/adapters.py` com o adapter que fecha o cadastro público e registrá-lo em `ACCOUNT_ADAPTER` (D11)
+- [x] 7.6 Ligar em `config/urls.py` somente as rotas do allauth usadas por esta Change (login, logout e as quatro etapas da recuperação de senha), em português, sem incluir `allauth.urls` inteiro (D11, D14)
+- [x] 7.7 Configurar `LOGIN_URL`, `LOGIN_REDIRECT_URL` e `LOGOUT_REDIRECT_URL` para a página inicial autenticada (D14)
+- [x] 7.8 Configurar o e-mail por variáveis de ambiente, com `DJANGO_EMAIL_BACKEND` e `DEFAULT_FROM_EMAIL` no `compose.yaml` e o backend de console como padrão de desenvolvimento (D19)
+- [x] 7.9 Sobrescrever os templates do allauth em `accounts/templates/account/`, em português e na base visual do projeto (D11, D18)
 
 ## 8. Criação inicial e recuperação de senha
 

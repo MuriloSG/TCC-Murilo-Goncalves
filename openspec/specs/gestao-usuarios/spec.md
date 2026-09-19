@@ -48,7 +48,7 @@ Listar e consultar, cadastrar, editar nome e e-mail, alterar o perfil e alterar 
 - **THEN** as duas alterações são gravadas
 
 ### Requirement: Cadastro de usuário
-O cadastro DEVE (MUST) exigir nome, e-mail e exatamente um perfil, escolhido entre os perfis existentes no sistema, do sistema ou personalizados. Esta spec não define restrição sobre quais perfis o executor pode escolher em relação às suas próprias permissões: esse ponto (escalonamento de privilégio na atribuição de perfis) está pendente de decisão no design. O usuário cadastrado DEVE (MUST) ser gravado ativo, com `is_superadmin = False`, sem senha utilizável e vinculado ao perfil informado. Um cadastro que não seja concluído NÃO DEVE (MUST NOT) deixar gravado usuário sem perfil. O envio do link para o novo usuário definir a própria senha segue a spec `autenticacao`.
+O cadastro DEVE (MUST) exigir nome, e-mail e exatamente um perfil, escolhido entre os perfis existentes no sistema, do sistema ou personalizados. Esta spec não define restrição sobre quais perfis o executor pode escolher em relação às suas próprias permissões: esse ponto (escalonamento de privilégio na atribuição de perfis) está pendente de decisão no design. O usuário cadastrado DEVE (MUST) ser gravado ativo, com `is_superadmin = False`, sem senha utilizável e vinculado ao perfil informado. O cadastro DEVE (MUST) aceitar só e-mails do domínio institucional `@ifnmg.edu.br`, sem diferenciar maiúsculas e minúsculas. Um cadastro que não seja concluído NÃO DEVE (MUST NOT) deixar gravado usuário sem perfil. O envio do link para o novo usuário definir a própria senha segue a spec `autenticacao`.
 
 #### Scenario: Cadastro válido
 - **GIVEN** um usuário autenticado com a permissão de cadastrar usuários
@@ -71,6 +71,11 @@ O cadastro DEVE (MUST) exigir nome, e-mail e exatamente um perfil, escolhido ent
 - **GIVEN** um usuário autenticado com a permissão de cadastrar usuários
 - **WHEN** ele envia o cadastro com o e-mail `maria.ifnmg.edu.br`
 - **THEN** nenhum usuário é criado e o formulário indica que o e-mail é inválido
+
+#### Scenario: E-mail fora do domínio institucional
+- **GIVEN** um usuário autenticado com a permissão de cadastrar usuários
+- **WHEN** ele envia o cadastro com o e-mail `maria@gmail.com`
+- **THEN** nenhum usuário é criado e o formulário indica que o e-mail deve terminar em `@ifnmg.edu.br`
 
 #### Scenario: Perfil ausente
 - **GIVEN** um usuário autenticado com a permissão de cadastrar usuários
@@ -505,7 +510,7 @@ A lista de usuários DEVE (MUST) aceitar uma busca por trecho do nome ou do e-ma
 ### Requirement: Importação de usuários por planilha
 Um usuário ativo autenticado com a permissão `USUARIO.IMPORTAR`, ou superadmin ativo, DEVE (MUST) poder cadastrar e atualizar usuários em lote por meio de um arquivo CSV, conforme a spec `importacao-planilhas`, com o tipo `USUARIO`. O arquivo DEVE (MUST) ter as colunas obrigatórias `E-mail`, `Nome` e `Perfil`. O e-mail DEVE (MUST) ser a coluna identificadora, normalizado como no cadastro (sem espaços nas bordas e em minúsculas). O perfil DEVE (MUST) ser informado pelo código, sem espaços nas bordas e convertido para maiúsculas, e resolvido entre os perfis existentes. Um código sem perfil correspondente DEVE (MUST) ser um erro na coluna `Perfil`, e a importação NÃO DEVE (MUST NOT) criar perfis. Para cada linha, a importação DEVE (MUST) decidir:
 - `create`, quando não existe usuário com o e-mail, cadastrando-o pela mesma operação do cadastro, com o nome e o perfil da linha;
-- `update`, quando o usuário existe e o nome ou o perfil são diferentes, alterando só o que difere, pelas mesmas operações da edição e da troca de perfil;
+- `update`, quando o usuário existe e o nome ou o perfil são diferentes, alterando só o que difere, pelas mesmas operações da edição e da troca de perfil, sem exigir o domínio institucional do e-mail de um usuário já existente;
 - `unchanged`, quando o usuário existe e nada difere, sem executar nenhuma operação.
 
 A importação NÃO DEVE (MUST NOT) alterar o e-mail, a senha, a situação nem `is_superadmin` de nenhum usuário, e nenhuma coluna do arquivo DEVE (MUST) definir esses dados. Um superadmin DEVE (MUST) ser tratado como qualquer outro usuário. Um usuário inativo presente no arquivo DEVE (MUST) ser atualizado normalmente, continuar inativo e receber o aviso de usuário inativo na prévia.
@@ -534,6 +539,11 @@ A importação NÃO DEVE (MUST NOT) alterar o e-mail, a senha, a situação nem 
 #### Scenario: E-mail inválido
 - **WHEN** a prévia de um arquivo com a linha `davi-ifnmg;Davi Rocha;DOCENTE` é gerada
 - **THEN** a linha recebe erro na coluna `E-mail`, com a mesma mensagem do cadastro pela tela
+
+#### Scenario: E-mail fora do domínio institucional na importação
+- **GIVEN** que não existe usuário com o e-mail `davi@gmail.com`
+- **WHEN** a prévia de um arquivo com a linha `davi@gmail.com;Davi Rocha;DOCENTE` é gerada
+- **THEN** a linha recebe erro na coluna `E-mail`, com a mesma mensagem do cadastro pela tela, e ninguém é cadastrado
 
 #### Scenario: Usuário inativo
 - **GIVEN** o usuário inativo `eva@ifnmg.edu.br`, com o perfil `DOCENTE`

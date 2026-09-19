@@ -88,6 +88,16 @@ class ActionTests(UserImportTestCase):
         row = self.row(self.preview('davi-ifnmg;Davi Rocha;DOCENTE\n'))
         self.assertEqual(row.errors, [{'column': 'E-mail', 'code': 'invalid', 'message': INVALID_EMAIL_MESSAGE}])
 
+    def test_email_of_another_domain_is_not_registered(self):
+        importation = self.preview('davi@gmail.com;Davi Rocha;DOCENTE\n')
+        self.assertEqual(self.error_codes(importation), [('E-mail', 'institutional_email')])
+        self.assertFalse(User.objects.filter(email='davi@gmail.com').exists())
+
+    def test_existing_user_of_another_domain_is_still_updated(self):
+        create_user('eva@gmail.com', 'Eva', self.teacher)
+        self.confirm(self.preview('eva@gmail.com;Eva Lima;DOCENTE\n'))
+        self.assertEqual(User.objects.get(email='eva@gmail.com').name, 'Eva Lima')
+
     def test_inactive_user_is_updated_and_stays_inactive(self):
         create_user('eva@ifnmg.edu.br', 'Eva', self.teacher, is_active=False)
         importation = self.preview('eva@ifnmg.edu.br;Eva;ADMINISTRADOR\n')
@@ -200,6 +210,11 @@ class ScreenEquivalenceTests(UserImportTestCase):
     def test_invalid_email(self):
         screen = self.screen_errors('/usuarios/novo/', {'name': 'Davi', 'email': 'davi', 'role': self.teacher.pk})
         row = self.row(self.preview('davi;Davi;DOCENTE\n'))
+        self.assertEqual([error['message'] for error in row.errors], screen['email'])
+
+    def test_email_of_another_domain(self):
+        screen = self.screen_errors('/usuarios/novo/', {'name': 'Davi', 'email': 'davi@gmail.com', 'role': self.teacher.pk})
+        row = self.row(self.preview('davi@gmail.com;Davi;DOCENTE\n'))
         self.assertEqual([error['message'] for error in row.errors], screen['email'])
 
     def test_name_too_long(self):

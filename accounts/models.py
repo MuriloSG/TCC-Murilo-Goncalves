@@ -20,6 +20,7 @@ from outbox.models import OutboxEntry
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
 PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
 ADMINISTRATOR_ROLE = 'ADMINISTRADOR'
+INSTITUTIONAL_EMAIL_DOMAIN = 'ifnmg.edu.br'
 
 
 class AdministrativeContinuityViolation(ValidationError):
@@ -38,6 +39,15 @@ class SuperadminOnlyOperation(ValidationError):
         super().__init__(
             message or 'Somente um superadmin ativo pode alterar o e-mail de um superadmin.',
             code='superadmin_only',
+        )
+
+
+def validate_institutional_email(value):
+    """Recusa o e-mail fora do domínio institucional, sem diferenciar maiúsculas e minúsculas."""
+    if not (value or '').strip().lower().endswith(f'@{INSTITUTIONAL_EMAIL_DOMAIN}'):
+        raise ValidationError(
+            f'Este e-mail não é institucional. Use um e-mail terminado em @{INSTITUTIONAL_EMAIL_DOMAIN}.',
+            code='institutional_email',
         )
 
 
@@ -175,9 +185,14 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
 
         O envio fica na mesma transação do cadastro: se o cadastro for desfeito, inclusive
         na prévia de uma importação, o envio também é (D7 da Change enviar-emails-por-outbox).
+        Só são aceitos e-mails do domínio institucional.
         """
         if role is None:
             raise role_required_error()
+        try:
+            validate_institutional_email(email)
+        except ValidationError as error:
+            raise ValidationError({'email': error.error_list}) from None
         user = self.model(
             email=self.normalize_email(email),
             name=(name or '').strip(),

@@ -128,12 +128,13 @@ class CreateTests(UserViewsTestCase):
         cases = {
             'name': {'name': ''},
             'email': {'email': 'joana.ifnmg.edu.br'},
+            'email of another domain': {'email': 'joana@gmail.com'},
             'role': {'role': ''},
         }
         for field, changes in cases.items():
             with self.subTest(field):
                 response = self.post(**changes)
-                self.assertIn(field, response.context['form'].errors)
+                self.assertIn(field.split()[0], response.context['form'].errors)
         self.assertFalse(User.objects.filter(name='Joana Lima').exists())
         self.assertEqual(mail.outbox, [])
 

@@ -1,7 +1,7 @@
 from allauth.account import forms as allauth_forms
 from django import forms
 
-from accounts.models import Permission, Role
+from accounts.models import Permission, Role, validate_institutional_email
 from accounts.permissions import SUPERADMIN_RESERVED_PERMISSIONS
 from ui.forms import GroupedCheckboxSelectMultiple
 
@@ -83,6 +83,10 @@ class UserCreateForm(forms.Form):
     name = forms.CharField(label='Nome', max_length=150)
     email = email_field()
     role = role_choice_field()
+
+    def clean_email(self):
+        validate_institutional_email(self.cleaned_data['email'])
+        return self.cleaned_data['email']
 
     def clean_role(self):
         return clean_single_role(self)

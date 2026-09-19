@@ -282,6 +282,8 @@ class RegisterTests(TestCase):
             'name': dict(email='maria@ifnmg.edu.br', name='  ', role=self.teacher),
             'email': dict(email='', name='Maria', role=self.teacher),
             'invalid email': dict(email='maria.ifnmg.edu.br', name='Maria', role=self.teacher),
+            'other domain email': dict(email='maria@gmail.com', name='Maria', role=self.teacher),
+            'similar domain email': dict(email='maria@ifnmg.edu.br.com', name='Maria', role=self.teacher),
             'role': dict(email='maria@ifnmg.edu.br', name='Maria', role=None),
         }
         for label, data in cases.items():

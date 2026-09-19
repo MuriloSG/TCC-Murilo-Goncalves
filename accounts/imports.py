@@ -17,6 +17,7 @@ from accounts.models import (
     deferred_administrative_continuity,
     ensure_administrative_continuity,
     lock_active_users,
+    validate_institutional_email,
 )
 from imports.definitions import Column, ImportDefinition, RowError, RowPlan, errors_from_validation
 
@@ -80,6 +81,16 @@ class UserImport(ImportDefinition):
         return self.update(user, cleaned, errors, executor)
 
     def create(self, cleaned, errors, executor):
+        """Planeja o cadastro da linha.
+
+        O domínio institucional só é exigido no cadastro, para que a linha de um
+        usuário já existente com outro domínio continue podendo ser atualizada.
+        """
+        if not any(error.column == 'E-mail' for error in errors):
+            try:
+                validate_institutional_email(cleaned['email'])
+            except ValidationError as error:
+                errors = [RowError('E-mail', error.code, error.messages[0])] + errors
         plan = RowPlan(
             action='create',
             changes={

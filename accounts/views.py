@@ -1,5 +1,6 @@
 import logging
 
+from allauth.account import views as allauth_views
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -25,6 +26,21 @@ from accounts.models import Role, User
 from accounts.utils import add_operation_error
 
 logger = logging.getLogger(__name__)
+
+
+class LogoutView(allauth_views.LogoutView):
+    """Saída do sistema, com a confirmação em modal quando pedida pelo htmx.
+
+    O POST continua sendo o envio comum do formulário, e o allauth redireciona
+    para a página de login.
+    """
+
+    modal_template_name = 'account/logout_modal.html'
+
+    def get_template_names(self):
+        if self.request.htmx:
+            return [self.modal_template_name]
+        return super().get_template_names()
 
 
 class HomeView(TemplateView):

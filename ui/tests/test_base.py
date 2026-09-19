@@ -57,7 +57,7 @@ class AppLayoutTests(LayoutTestCase):
     def test_barra_lateral_com_simbolo_e_nome_do_sistema(self):
         response = self.client.get('/inicio/')
         content = response.content.decode()
-        sidebar = content[content.index('<aside class="sidebar">'):content.index('</aside>')]
+        sidebar = content[content.index('<aside class="sidebar" id="menu-lateral">'):content.index('</aside>')]
         self.assertRegex(sidebar, r'<a class="brand" href="/inicio/">\s*<img src="/static/ui/img/simbolo-if.png" alt=""')
         self.assertIn('<span class="brand-name">Agendamento de espaços</span>', sidebar)
         self.assertIn('<span class="brand-campus">IFNMG Campus Salinas</span>', sidebar)
@@ -73,7 +73,7 @@ class AppLayoutTests(LayoutTestCase):
 
     def test_item_atual_e_trilha_na_lista_de_usuarios(self):
         response = self.client.get('/usuarios/')
-        self.assertRegex(response.content.decode(), r'<a href="/usuarios/" aria-current="page"><svg[^>]*>.*?</svg>\s*Usuários</a>')
+        self.assertRegex(response.content.decode(), r'<a href="/usuarios/" aria-current="page"><svg[^>]*>.*?</svg>\s*<span class="nav-text">Usuários</span></a>')
         self.assertNotRegex(response.content.decode(), r'<a href="/perfis/" aria-current="page">')
         crumbs = re.search(r'<nav class="crumbs" aria-label="Trilha de navegação">(.*?)</nav>', response.content.decode(), re.S)
         self.assertRegex(crumbs.group(1), r'<span aria-current="page">Usuários</span></li>\s*</ol>\s*$')
@@ -94,8 +94,7 @@ class AppLayoutTests(LayoutTestCase):
         dropdown = menu[menu.index('<div class="menu-list">'):]
         self.assertIn('<span class="who-name">Ana Maria Souza</span>', dropdown)
         self.assertIn('<span class="who-role">Administrador</span>', dropdown)
-        self.assertRegex(menu, r'<form method="post" action="/contas/logout/">\s*<input type="hidden" name="csrfmiddlewaretoken"')
-        self.assertRegex(menu, r'<button type="submit"><svg[^>]*>.*?</svg>\s*Sair</button>')
+        self.assertRegex(menu, r'<a href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal"><svg[^>]*>.*?</svg>\s*Sair</a>')
 
     def test_menu_do_celular_sem_javascript(self):
         response = self.client.get('/inicio/')
@@ -103,8 +102,52 @@ class AppLayoutTests(LayoutTestCase):
         topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
         self.assertRegex(topbar, r'<details class="topbar-menu">\s*<summary><svg[^>]*>.*?</svg>\s*Menu</summary>')
         self.assertIn('<nav class="side-nav" aria-label="Principal">', topbar)
-        self.assertRegex(topbar, r'<form method="post" action="/contas/logout/">')
-        self.assertIn('Sair</button>', topbar)
+        self.assertRegex(topbar, r'<a class="btn-secondary" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal">')
+        self.assertIn('Sair</a>', topbar)
+
+    def test_rodape_da_barra_lateral_com_usuario_e_sair(self):
+        content = self.client.get('/inicio/').content.decode()
+        footer = content[content.index('<div class="sidebar-footer">'):content.index('</aside>')]
+        self.assertIn('<span class="avatar" aria-hidden="true">AS</span>', footer)
+        self.assertIn('<span class="who-name">Ana Maria Souza</span>', footer)
+        self.assertRegex(footer, r'<a class="icon-btn" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal" aria-label="Sair">')
+        self.assertIn('<span class="tip" role="tooltip">Sair</span>', footer)
+
+    def test_botao_de_recolher_a_barra_lateral(self):
+        content = self.client.get('/inicio/').content.decode()
+        self.assertRegex(
+            content,
+            r'<button class="icon-btn" type="button" data-sidebar-toggle aria-controls="menu-lateral" '
+            r'aria-expanded="true" aria-label="Recolher menu lateral" hidden>',
+        )
+        self.assertIn('<div class="app-shell">', content)
+        self.assertIn('<script src="/static/ui/js/sidebar.js" defer></script>', content)
+
+    def test_barra_lateral_recolhida_vem_do_cookie(self):
+        self.client.cookies['menu_lateral'] = 'recolhido'
+        self.assertContains(self.client.get('/inicio/'), '<div class="app-shell is-collapsed">')
+        self.client.cookies['menu_lateral'] = 'expandido'
+        self.assertContains(self.client.get('/inicio/'), '<div class="app-shell">')
+
+    def test_confirmacao_de_saida_em_modal(self):
+        response = self.client.get('/contas/logout/', headers={'HX-Request': 'true'})
+        content = response.content.decode()
+        self.assertTrue(content.lstrip().startswith('<dialog class="modal"'), content[:80])
+        self.assertIn('Sair do sistema?</h1>', content)
+        self.assertRegex(content, r'<form method="post" action="/contas/logout/">')
+        self.assertNotIn('hx-post', content)
+        self.assertIn('data-modal-close>Fechar</button>', content)
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_sair_pelo_modal_encerra_a_sessao(self):
+        response = self.client.post('/contas/logout/')
+        self.assertRedirects(response, '/contas/login/', fetch_redirect_response=False)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_confirmacao_de_saida_sem_javascript_e_a_pagina(self):
+        response = self.client.get('/contas/logout/')
+        self.assertContains(response, '<header class="auth-panel">')
+        self.assertContains(response, '<h1>Sair do sistema?</h1>', html=True)
 
     def test_navegacao_sem_permissao_de_perfis(self):
         self.client.force_login(self.clerk)

@@ -40,6 +40,7 @@ CONTRAST_PAIRS = [
     ('focus', 'sidebar', 3, 'Contorno de foco sobre a barra lateral'),
     ('on-sidebar-muted', 'sidebar', 3, 'Borda do botão Menu na barra do celular'),
     ('avatar-text', 'avatar-bg', 4.5, 'Avatar de iniciais'),
+    ('avatar-text', 'surface', 4.5, 'Avatar de iniciais no rodapé da barra lateral'),
     ('on-brand', 'brand-surface', 4.5, 'Texto do painel do login'),
     ('on-brand-muted', 'brand-surface', 4.5, 'Texto secundário do painel do login'),
     ('success-text', 'success-bg', 4.5, 'Texto de sucesso'),

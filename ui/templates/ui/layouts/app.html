@@ -5,13 +5,20 @@
 
 {% block body %}
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
-  <div class="app-shell">
-    <aside class="sidebar">
+  <div class="app-shell{% if request.COOKIES.menu_lateral == "recolhido" %} is-collapsed{% endif %}">
+    <aside class="sidebar" id="menu-lateral">
       <a class="brand" href="{% url 'home' %}">
         <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
         <span><span class="brand-name">Agendamento de espaços</span><span class="brand-campus">IFNMG Campus Salinas</span></span>
       </a>
       {% include "ui/components/navigation.html" %}
+      {% if user.is_authenticated %}
+        <div class="sidebar-footer">
+          <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+          <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
+          <a class="icon-btn" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal" aria-label="Sair">{% icon "log-out" %}<span class="tip" role="tooltip">Sair</span></a>
+        </div>
+      {% endif %}
     </aside>
 
     <div class="topbar">
@@ -26,10 +33,7 @@
           {% if user.is_authenticated %}
             <div class="topbar-user">
               <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
-              <form method="post" action="{% url 'account_logout' %}">
-                {% csrf_token %}
-                <button class="btn-secondary" type="submit">{% icon "log-out" %}Sair</button>
-              </form>
+              <a class="btn-secondary" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal">{% icon "log-out" %}Sair</a>
             </div>
           {% endif %}
         </div>
@@ -38,6 +42,11 @@
 
     <div>
       <header class="header">
+        <button class="icon-btn" type="button" data-sidebar-toggle aria-controls="menu-lateral" aria-expanded="true" aria-label="Recolher menu lateral" hidden>
+          <span class="when-expanded">{% icon "panel-left-close" %}</span>
+          <span class="when-collapsed">{% icon "panel-left-open" %}</span>
+          <span class="tip tip-below" role="tooltip"><span class="when-expanded">Recolher menu lateral</span><span class="when-collapsed">Expandir menu lateral</span></span>
+        </button>
         <nav class="crumbs" aria-label="Trilha de navegação">
           <ol>
             {% block crumbs %}<li><span aria-current="page">Início</span></li>{% endblock %}
@@ -48,10 +57,7 @@
             <summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">{{ user.name|initials }}</span></summary>
             <div class="menu-list">
               <span class="who menu-head"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
-              <form method="post" action="{% url 'account_logout' %}">
-                {% csrf_token %}
-                <button type="submit">{% icon "log-out" %}Sair</button>
-              </form>
+              <a href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal">{% icon "log-out" %}Sair</a>
             </div>
           </details>
         {% endif %}

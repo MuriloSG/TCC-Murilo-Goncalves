@@ -1,9 +1,9 @@
 ## 1. App `ui` e regras de texto
 
-- [ ] 1.1 Criar o app `ui` na raiz do projeto com `__init__.py`, `apps.py` e `tests/__init__.py`, e registrá-lo em `INSTALLED_APPS`, sem criar diretórios que esta Change não usa (D1)
-- [ ] 1.2 Criar `ui/text_rules.py` com `FORBIDDEN_PATTERNS`, `EMOJI_RANGES`, `GLOSSARY` (todas as linhas da tabela 9.4 das convenções), `PROPER_NOUNS` e `CAPITALIZED_ELEMENTS`, com docstring de módulo que aponte a seção 9 das convenções (D4)
-- [ ] 1.3 Implementar `find_violations(text, element=None)`, que ignora maiúsculas e acentos na comparação, respeita limites de palavra Unicode, trata palavras só com maiúsculas como sigla e aplica maiúsculas e dois-pontos só nos elementos previstos (D4)
-- [ ] 1.4 Escrever `ui/tests/test_text_rules.py` com um caso positivo e um negativo por regra, incluindo os exemplos da spec: "Usuário cadastrado!", "Cadastrar Usuário", "Bloquear", "com sucesso", "10:00" em título, "VAR usuário" e "Esqueci minha senha"
+- [x] 1.1 Criar o app `ui` na raiz do projeto com `__init__.py`, `apps.py` e `tests/__init__.py`, e registrá-lo em `INSTALLED_APPS`, sem criar diretórios que esta Change não usa (D1)
+- [x] 1.2 Criar `ui/text_rules.py` com `FORBIDDEN_PATTERNS`, `EMOJI_RANGES`, `GLOSSARY` (todas as linhas da tabela 9.4 das convenções), `PROPER_NOUNS` e `CAPITALIZED_ELEMENTS`, com docstring de módulo que aponte a seção 9 das convenções (D4)
+- [x] 1.3 Implementar `find_violations(text, element=None)`, que ignora maiúsculas e acentos na comparação, respeita limites de palavra Unicode, trata palavras só com maiúsculas como sigla e aplica maiúsculas e dois-pontos só nos elementos previstos (D4)
+- [x] 1.4 Escrever `ui/tests/test_text_rules.py` com um caso positivo e um negativo por regra, incluindo os exemplos da spec: "Usuário cadastrado!", "Cadastrar Usuário", "Bloquear", "com sucesso", "10:00" em título, "VAR usuário" e "Esqueci minha senha"
 
 ## 2. Verificação dos templates e das strings Python
 
@@ -16,10 +16,10 @@
 
 ## 3. Formatos brasileiros
 
-- [ ] 3.1 Criar `config/formats/__init__.py`, `config/formats/pt_BR/__init__.py` e `config/formats/pt_BR/formats.py` com os formatos de data, hora, data e hora, e número (D6)
-- [ ] 3.2 Definir `FORMAT_MODULE_PATH = ["config.formats"]` e `USE_THOUSAND_SEPARATOR = True` no `settings.py` (D6)
-- [ ] 3.3 Escrever `ui/tests/test_formats.py` renderizando um template com `{{ data|date }}`, `{{ hora|time }}` e `{{ numero }}` e verificando "18/09/2026", "10:00" e "1.234,5"
-- [ ] 3.4 Conferir nos templates de `accounts` que nenhum id ou valor técnico é renderizado com `{{ }}` em atributo sem `|unlocalize` (Risks)
+- [x] 3.1 Criar `config/formats/__init__.py`, `config/formats/pt_BR/__init__.py` e `config/formats/pt_BR/formats.py` com os formatos de data, hora, data e hora, e número (D6)
+- [x] 3.2 Definir `FORMAT_MODULE_PATH = ["config.formats"]` e `USE_THOUSAND_SEPARATOR = True` no `settings.py` (D6)
+- [x] 3.3 Escrever `ui/tests/test_formats.py` renderizando um template com `{{ data|date }}`, `{{ hora|time }}` e `{{ numero }}` e verificando "18/09/2026", "10:00" e "1.234,5"
+- [x] 3.4 Conferir nos templates de `accounts` que nenhum id ou valor técnico é renderizado com `{{ }}` em atributo sem `|unlocalize` (Risks)
 
 ## 4. Revisão dos textos de `accounts`
 

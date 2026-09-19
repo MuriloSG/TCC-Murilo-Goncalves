@@ -72,11 +72,14 @@ Regras para todo texto exibido e toda tela, em qualquer app. Elas são verificad
 
 "Texto exibido" inclui templates (HTML e os `.txt` de e-mail e de mensagens), strings passadas a `messages`, `ValidationError`, rótulos e ajudas de formulário, e as mensagens de bibliotecas (Django e allauth) que aparecem nas rotas expostas. Quando uma biblioteca mostra um texto fora destas regras, ele é sobrescrito no projeto.
 
+A verificação compara palavras, sem interpretar o sentido: um termo proibido é recusado em qualquer contexto, por isso "Acesso negado" virou "Acesso restrito". Códigos de permissão no formato `RECURSO.ACAO` são dado, e não texto, e ficam fora dela.
+
 ### 9.1 Tom e tratamento
 
 - Impessoal, com o imperativo direto nas instruções: "Informe o e-mail institucional."
 - Fatos e estados na terceira pessoa: "Este laboratório está ocupado das 10:00 às 12:00."
 - Sem "você", "nós" nem verbos na primeira pessoa do plural. O possessivo ("seu perfil", "sua senha") é permitido quando indica o que pertence ao usuário.
+- Rótulos escritos na voz do usuário, como o link "Esqueci minha senha", são permitidos: a regra veta a primeira pessoa do plural, e não o singular.
 
 ### 9.2 Texto: proibido
 

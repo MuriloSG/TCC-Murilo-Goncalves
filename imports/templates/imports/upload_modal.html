@@ -1,0 +1,15 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}{{ screens.upload_title }}{% endblock %}
+
+{% block description %}O sistema confere o arquivo e mostra a prévia. Nada é gravado antes da confirmação.{% endblock %}
+
+{% block form_attributes %} enctype="multipart/form-data" hx-post="{{ request.get_full_path }}" hx-target="#modal" hx-encoding="multipart/form-data"{% endblock %}
+
+{% block body %}
+  {{ form }}
+  <p><a class="link" href="{{ template_url }}">Baixar modelo do arquivo</a></p>
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "upload" %}Enviar arquivo</button>{% endblock %}

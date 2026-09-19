@@ -1,0 +1,92 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Importação de {{ importation.file_name }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ section_url }}">{{ screens.section_title }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ list_url }}">Importações</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ importation.file_name }}</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Importação de {{ importation.file_name }}</h1>
+    </div>
+    {% if importation.is_validated %}
+      <form id="confirmar-importacao" method="post" action="{{ confirm_url }}">{% csrf_token %}</form>
+      <div class="page-actions">
+        <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
+        <button class="btn-primary" type="submit" form="confirmar-importacao">{% icon "check" %}Confirmar importação</button>
+      </div>
+    {% elif importation.status == "COM_ERROS" %}
+      <div class="page-actions">
+        <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo corrigido</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  {% if importation.status == "VALIDADA" %}
+    <div class="alert tone-info" role="status">{% icon "info" %}<p>Prévia pronta. Nenhum dado foi gravado. Confira as linhas e confirme a importação.</p></div>
+  {% elif importation.status == "COM_ERROS" %}
+    <div class="alert tone-error" role="status">{% icon "circle-x" %}<p>A importação tem erros e não pode ser confirmada. Corrija a planilha e envie o arquivo de novo.</p></div>
+  {% endif %}
+  {% for error in importation.file_errors %}
+    <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>{{ error.message }}</p></div>
+  {% endfor %}
+
+  <section class="card" aria-label="Resumo da importação">
+    <dl class="detail-grid">
+      <div><dt>Situação</dt><dd>{% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}</dd></div>
+      <div><dt>Enviada por</dt><dd>{{ importation.created_by.name }}, em {{ importation.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+      <div><dt>Resultado</dt><dd>{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged errors=summary.errors %}</dd></div>
+      <div><dt>Prévias refeitas</dt><dd>{% if importation.revalidation_count %}{{ importation.revalidation_count }} vez{{ importation.revalidation_count|pluralize:"es" }}, porque os dados mudaram antes da confirmação{% else %}Nenhuma{% endif %}</dd></div>
+      {% if importation.resolved_by %}
+        <div><dt>{% if importation.status == "CONCLUIDA" %}Confirmada por{% else %}Descartada por{% endif %}</dt><dd>{{ importation.resolved_by.name }}, em {{ importation.resolved_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+        <div><dt>Arquivo</dt><dd>{{ importation.file_name }}</dd></div>
+      {% endif %}
+    </dl>
+  </section>
+
+  <section class="card" aria-labelledby="linhas-importacao">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="linhas-importacao">{% if only_errors %}Linhas com erro{% else %}Linhas do arquivo{% endif %} <span class="count">{{ rows|length }}</span></h2>
+      </div>
+      {% if only_errors %}
+        <a class="link" href="{{ detail_url }}">Mostrar todas as linhas</a>
+      {% elif summary.errors %}
+        <a class="link" href="{{ detail_url }}?linhas=erros">Mostrar só as linhas com erro</a>
+      {% endif %}
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Linha</th>
+          {% for column in columns %}<th scope="col">{{ column }}</th>{% endfor %}
+          <th scope="col">Resultado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="cell-primary" data-label="Linha">{{ row.line_number }}</td>
+            {% for label, value in row.cells %}<td data-label="{{ label }}">{{ value|default:"Vazio" }}</td>{% endfor %}
+            <td data-label="Resultado">
+              <div class="line-result">
+                <p class="line-action">{{ row.action }}</p>
+                {% for change in row.changes %}<p>{{ change }}</p>{% endfor %}
+                {% for warning in row.warnings %}<p class="line-note">{% icon "triangle-alert" %}{{ warning }}</p>{% endfor %}
+                {% for error in row.errors %}<p class="line-error">{% icon "circle-x" %}{{ error }}</p>{% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

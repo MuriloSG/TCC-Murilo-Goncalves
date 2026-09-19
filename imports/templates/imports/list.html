@@ -1,0 +1,65 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ screens.list_title }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ section_url }}">{{ screens.section_title }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Importações</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">{{ screens.list_title }}</h1>
+    </div>
+    <div class="page-actions">
+      <a class="btn-secondary" href="{{ template_url }}">{% icon "download" %}Baixar modelo</a>
+      <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}{{ screens.upload_title }}</a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-importacoes">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-importacoes">Todas as importações <span class="count">{{ importations|length }}</span></h2>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Arquivo</th>
+          <th scope="col">Enviada em</th>
+          <th scope="col">Situação</th>
+          <th scope="col">Resultado</th>
+          <th scope="col" class="cell-actions">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for importation in importations %}
+          <tr>
+            <td class="cell-primary" data-label="Arquivo">
+              <span class="person-name">{{ importation.file_name }}</span>
+              <span class="person-detail">Enviada por {{ importation.created_by.name }}</span>
+            </td>
+            <td data-label="Enviada em">{{ importation.created_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+            <td data-label="Situação">{% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}</td>
+            <td data-label="Resultado">{% include "imports/partials/result.html" with created=importation.created_count updated=importation.updated_count unchanged=importation.unchanged_count errors=importation.error_count %}</td>
+            <td class="cell-actions" data-label="Ações">
+              <div class="row-actions">
+                <a class="icon-btn" href="{{ importation.detail_url }}" aria-label="Ver importação">{% icon "arrow-right" %}<span class="label">Ver importação</span><span class="tip" role="tooltip">Ver importação</span></a>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td class="cell-primary" colspan="5">{{ screens.empty_message }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

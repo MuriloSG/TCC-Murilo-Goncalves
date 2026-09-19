@@ -44,18 +44,18 @@
 
 ## 6. Views, rotas e telas
 
-- [ ] 6.1 Criar as views base em `imports/views.py` sobre a `ModalView`: lista, envio, modelo, detalhe, confirmação por POST e descarte em modal (D16, D18)
-- [ ] 6.2 Criar as views e as rotas de `usuarios/importacoes/` em `accounts`, com `login_required` e `permission_required = permissions.USER_IMPORT` (D16)
-- [ ] 6.3 Criar os templates de envio, prévia e detalhe, histórico e descarte a partir das referências, com os componentes e tokens de `ui` e os textos de D17
-- [ ] 6.4 Acrescentar à lista de usuários o botão "Importar usuários" e o link do histórico, visíveis só com `perms.USUARIO.IMPORTAR`
-- [ ] 6.5 Testar cada rota nas quatro situações da convenção §7 e o 404 de uma importação de outro tipo
-- [ ] 6.6 Testar a prévia com erros sem o controle de confirmar, a mensagem de divergência, o descarte e o conteúdo do modelo baixado
-- [ ] 6.7 Rodar `make test` com a suíte inteira passando, incluindo os testes de texto e de classes da interface
-- [ ] 6.8 Commit
+- [x] 6.1 Criar as views base em `imports/views.py` sobre a `ModalView`: lista, envio, modelo, detalhe, confirmação por POST e descarte em modal (D16, D18)
+- [x] 6.2 Criar as views e as rotas de `usuarios/importacoes/` em `accounts`, com `login_required` e `permission_required = permissions.USER_IMPORT` (D16)
+- [x] 6.3 Criar os templates de envio, prévia e detalhe, histórico e descarte a partir das referências, com os componentes e tokens de `ui` e os textos de D17
+- [x] 6.4 Acrescentar à lista de usuários o botão "Importar usuários" e o link do histórico, visíveis só com `perms.USUARIO.IMPORTAR`
+- [x] 6.5 Testar cada rota nas quatro situações da convenção §7 e o 404 de uma importação de outro tipo
+- [x] 6.6 Testar a prévia com erros sem o controle de confirmar, a mensagem de divergência, o descarte e o conteúdo do modelo baixado
+- [x] 6.7 Rodar `make test` com a suíte inteira passando, incluindo os testes de texto e de classes da interface
+- [x] 6.8 Commit
 
 ## 7. Verificação
 
-- [ ] 7.1 Medir prévia e confirmação com arquivos de 100, 500, 1.000 e 2.000 linhas no banco `visual_check`, ajustar os limites e registrar os valores em D5
+- [x] 7.1 Medir prévia e confirmação com arquivos de 100, 500, 1.000 e 2.000 linhas no banco `visual_check`, ajustar os limites e registrar os valores em D5
 - [ ] 7.2 Abrir no Excel o modelo baixado e um CSV salvo como "CSV UTF-8" e como "CSV (separado por vírgulas)", e conferir as mensagens de cada caso
-- [ ] 7.3 Conferir as telas no navegador com Playwright, no banco `visual_check`, em 360 e 1280 px
-- [ ] 7.4 Validar a Change com `openspec validate importar-usuarios-por-planilha --strict`
+- [x] 7.3 Conferir as telas no navegador com Playwright, no banco `visual_check`, em 360 e 1280 px
+- [x] 7.4 Validar a Change com `openspec validate importar-usuarios-por-planilha --strict`

@@ -4,7 +4,7 @@ from django.test import TestCase
 from accounts import permissions
 from accounts.emails import PASSWORD_LINK
 from accounts.forms import INVALID_EMAIL_MESSAGE
-from accounts.imports import UserImport
+from accounts.imports import UserImport, concluded_message
 from accounts.models import AdministrativeContinuityViolation, Permission, Role, RolePermission, User, UserRole
 from imports.models import Import
 from imports.reader import read_csv
@@ -214,3 +214,18 @@ class ScreenEquivalenceTests(UserImportTestCase):
         screen = self.screen_errors(f'/usuarios/{self.admin.pk}/perfil/', {'role': self.teacher.pk})
         importation = self.preview('admin@ifnmg.edu.br;Admin;DOCENTE\n')
         self.assertEqual([error['message'] for error in importation.file_errors], screen['__all__'])
+
+
+class ConcludedMessageTests(TestCase):
+    def test_messages(self):
+        cases = [
+            ({'create': 2, 'update': 2}, 'Importação concluída. 2 usuários cadastrados e 2 atualizados. '
+             'O link para definir a senha será enviado aos usuários cadastrados.'),
+            ({'create': 1, 'update': 0}, 'Importação concluída. 1 usuário cadastrado. '
+             'O link para definir a senha será enviado aos usuários cadastrados.'),
+            ({'create': 0, 'update': 1}, 'Importação concluída. 1 usuário atualizado.'),
+            ({'create': 0, 'update': 0}, 'Importação concluída. Nenhum usuário foi cadastrado ou alterado.'),
+        ]
+        for summary, message in cases:
+            with self.subTest(summary):
+                self.assertEqual(concluded_message(summary | {'unchanged': 0, 'errors': 0}), message)

@@ -133,3 +133,20 @@ class UserImport(ImportDefinition):
         except ValidationError as error:
             return [RowError(None, error.code or 'administrative_continuity', ' '.join(error.messages))]
         return []
+
+
+def concluded_message(summary):
+    """Mensagem da importação de usuários concluída, com os totais e o aviso do link."""
+    created, updated = summary['create'], summary['update']
+    parts = []
+    if created:
+        parts.append(f'{created} usuário{"s" if created > 1 else ""} cadastrado{"s" if created > 1 else ""}')
+    if updated:
+        noun = '' if created else f' usuário{"s" if updated > 1 else ""}'
+        parts.append(f'{updated}{noun} atualizado{"s" if updated > 1 else ""}')
+    if not parts:
+        return 'Importação concluída. Nenhum usuário foi cadastrado ou alterado.'
+    message = f'Importação concluída. {" e ".join(parts)}.'
+    if created:
+        message += ' O link para definir a senha será enviado aos usuários cadastrados.'
+    return message

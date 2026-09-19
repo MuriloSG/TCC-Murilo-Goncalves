@@ -89,7 +89,16 @@ A definição não tem gancho "depois de gravar": efeitos externos vão para o o
 6. descarta os registros com todas as células vazias ou só com espaços;
 7. confere a quantidade de linhas restantes com `IMPORT_MAX_ROWS` e recusa um arquivo sem linhas.
 
-Os limites ficam em `settings.py`, lidos de variáveis de ambiente, como os demais. **Valores iniciais:** `IMPORT_MAX_FILE_SIZE = 1 MB` e `IMPORT_MAX_ROWS = 1.000`. Eles são um ponto de partida: a task de medição roda prévia e confirmação com arquivos de tamanhos crescentes e ajusta os valores para que as duas etapas fiquem abaixo de alguns segundos. O resultado é registrado nesta seção.
+Os limites ficam em `settings.py`, lidos de variáveis de ambiente, como os demais. **Valores iniciais:** `IMPORT_MAX_FILE_SIZE = 1 MB` e `IMPORT_MAX_ROWS = 1.000`. Eles foram medidos no ambiente de desenvolvimento, com a importação de usuários e só cadastros:
+
+| Linhas | Tamanho | Prévia | Confirmação |
+|---|---|---|---|
+| 100 | 4 KB | 0,15 s | 0,15 s |
+| 500 | 25 KB | 0,72 s | 0,76 s |
+| 1.000 | 52 KB | 1,55 s | 1,66 s |
+| 2.000 | 107 KB | 3,58 s | 3,88 s |
+
+O tempo cresce de forma linear, cerca de 1,6 ms por linha em cada etapa. Com 1.000 linhas, as duas etapas ficam abaixo de 2 segundos, e os valores iniciais foram mantidos. O limite de 1 MB fica bem acima do tamanho de 1.000 linhas e serve só para recusar, antes da leitura, arquivos claramente fora do esperado. Os dois valores podem ser ajustados por variável de ambiente (`DJANGO_IMPORT_MAX_ROWS` e `DJANGO_IMPORT_MAX_FILE_SIZE`) quando houver hospedagem definida.
 
 Alternativas consideradas:
 - **Detectar a codificação e o separador:** Windows-1252 decodifica qualquer sequência de bytes, então a detecção esconderia erros. Recusar com instrução é mais previsível.
@@ -259,6 +268,14 @@ O autor não tem imagem de referência para estas telas e dispensou a exigência
 - Sucesso da confirmação: "Importação concluída. 6 usuários cadastrados e 4 atualizados. O link para definir a senha será enviado aos usuários cadastrados."
 - Divergência: "Os dados mudaram desde a prévia. Confira a nova prévia e confirme de novo."
 - Estado vazio do histórico: "Nenhuma importação de usuários."
+
+Telas implementadas, conferidas no navegador em 360 e 1280 px:
+- **Lista de usuários:** ganha os botões secundários "Importações" (ícone `history`) e "Importar usuários" (ícone `upload`), ao lado de "Cadastrar usuário", visíveis só com `USUARIO.IMPORTAR`.
+- **Envio:** modal de formulário com o campo "Arquivo CSV", a ajuda com o formato e as colunas e o link "Baixar modelo do arquivo". O botão do seletor de arquivo recebe o visual do botão secundário, numa regra de `.field input[type="file"]` no `app.css`. As recusas do arquivo aparecem como erro do campo.
+- **Prévia e detalhe:** página completa com título "Importação de <arquivo>", as ações "Descartar importação" e "Confirmar importação" só na importação validada, e "Enviar arquivo corrigido" na importação com erros. Um alerta fixo aparece só nas situações que pedem ação (validada e com erros), e a confirmação ou o descarte vão para o resumo, que usa o `detail-grid` da tela de perfil. As linhas ficam numa `data-table` com as colunas do arquivo e o resultado, que mostra a ação, as mudanças no formato "Perfil: DOCENTE → ADMINISTRADOR", os avisos e os erros com a coluna. O link "Mostrar só as linhas com erro" filtra pela URL (`?linhas=erros`). O resultado usa o componente `.line-result`, criado no `app.css` com os tokens existentes.
+- **Histórico:** `data-table` com arquivo e autor, data, selo de situação, resultado e o botão só com ícone "Ver importação". Selos: "Validada" (info), "Com erros" (erro), "Concluída" (sucesso) e "Descartada" (info com `circle-minus`, como "Inativo").
+- **Descarte:** modal de confirmação padrão, com a pergunta, a consequência e o botão de perigo.
+- Ícones novos do Lucide: `upload`, `download` e `history`.
 - Aviso de inativo: "Usuário inativo. Os dados serão atualizados e ele continuará inativo."
 
 ### D18. Modelo para baixar

@@ -7,6 +7,15 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
+from imports.views import (
+    ImportConfirmView,
+    ImportDetailView,
+    ImportDiscardView,
+    ImportListView,
+    ImportScreens,
+    ImportTemplateView,
+    ImportUploadView,
+)
 from ui.views import ModalView
 
 from accounts import permissions
@@ -19,6 +28,7 @@ from accounts.forms import (
     UserRoleForm,
     UserUpdateForm,
 )
+from accounts.imports import UserImport, concluded_message
 from accounts.models import Role, User
 from accounts.utils import add_operation_error
 
@@ -327,3 +337,46 @@ class RoleDeleteView(ConfirmedActionView):
         code = self.target.code
         self.target.delete_role()
         messages.success(self.request, f'Perfil {code} excluído.')
+
+
+USER_IMPORT_SCREENS = ImportScreens(
+    definition=UserImport(),
+    url_prefix='user_import',
+    section_title='Usuários',
+    section_url_name='user_list',
+    list_title='Importações de usuários',
+    upload_title='Importar usuários',
+    template_file_name='modelo-importacao-usuarios.csv',
+    empty_message='Nenhuma importação de usuários.',
+    concluded_message=concluded_message,
+)
+
+
+class UserImportListView(ImportListView):
+    permission_required = permissions.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportUploadView(ImportUploadView):
+    permission_required = permissions.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportTemplateView(ImportTemplateView):
+    permission_required = permissions.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportDetailView(ImportDetailView):
+    permission_required = permissions.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportConfirmView(ImportConfirmView):
+    permission_required = permissions.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportDiscardView(ImportDiscardView):
+    permission_required = permissions.USER_IMPORT
+    screens = USER_IMPORT_SCREENS

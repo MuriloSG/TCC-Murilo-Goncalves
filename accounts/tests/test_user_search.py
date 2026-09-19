@@ -111,7 +111,7 @@ class ListSearchViewTests(SearchTestCase):
     def test_atualizacao_pelo_htmx_responde_so_a_tabela(self):
         response = self.client.get('/usuarios/', {'busca': 'ana'}, headers=HTMX | {'HX-Target': 'tabela-usuarios'})
         content = response.content.decode()
-        self.assertTrue(content.startswith('<table class="data-table">'), content[:80])
+        self.assertTrue(content.startswith('<table class="data-table compact-rows">'), content[:80])
         self.assertNotIn('<html', content)
         self.assertNotIn('role="search"', content)
         self.assertEqual(self.listed(response), ['Ana Souza'])
@@ -167,4 +167,4 @@ class PaginatedSearchTests(SearchTestCase):
 
     def test_navegacao_pelo_htmx_responde_so_a_tabela(self):
         response = self.client.get('/usuarios/', {'pagina': '2'}, headers=HTMX | {'HX-Target': 'tabela-usuarios'})
-        self.assertTrue(response.content.decode().startswith('<table class="data-table">'))
+        self.assertTrue(response.content.decode().startswith('<table class="data-table compact-rows">'))

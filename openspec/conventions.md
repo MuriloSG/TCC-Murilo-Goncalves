@@ -148,9 +148,10 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 - Aparência institucional e sóbria. A hierarquia vem da tipografia e do espaçamento, e não de cor ou ornamento.
 - Toda cor tem uma função definida: marca, ação, estado ou texto.
 - Estado nunca é indicado só pela cor. Ele sempre vem com texto e, nos selos, com ícone.
-- Ícones só da biblioteca Lucide, em SVG, nunca emoji. Ações de linha usam botão só com ícone, com `aria-label` e dica visível no hover e no foco. Abaixo de 640 px, o texto aparece junto do ícone. Botões com texto levam o ícone à esquerda.
+- Ícones só da biblioteca Lucide, em SVG, nunca emoji. Ações de linha usam botão só com ícone, com `aria-label` e dica visível no hover e no foco. Abaixo de 640 px, o texto aparece junto do ícone, exceto nas listas compactas (abaixo). Botões com texto levam o ícone à esquerda.
 - Foco visível no teclado, alvo de toque de pelo menos 44x44 px e layout funcional a partir de 360 px de largura.
 - Tabelas densas e legíveis. Abaixo de 640 px, cada linha vira um bloco empilhado de rótulo e valor.
+- Lista compacta (`data-table compact-rows`), para listas de pessoas em que cada linha se identifica pelo nome: abaixo de 640 px, a linha mostra o avatar, o nome e o e-mail, uma linha de resumo com as células `cell-meta` (perfil e selo de situação) sem rótulos, e um único botão "Mais ações" (`row-menu`, ícone `ellipsis-vertical`) com todas as ações da linha. O template passa essa lista a `row_actions.html` em `compact`. Acima de 640 px, a tabela fica igual às demais. É usada na lista de usuários.
 - Só os tokens da escala fechada (cores, espaçamentos, raios, sombras e tamanhos de fonte). Nada de `style=`, valores arbitrários do Tailwind (`p-[13px]`, `bg-[#...]`) ou cores fora dos tokens nos templates.
 - Contraste mínimo AA: 4,5:1 para texto normal, 3:1 para texto grande e bordas de controle.
 - Tudo o que abre e fecha tem transição curta, com os tempos `--motion-fast` (150 ms) e `--motion-base` (200 ms) do `app.css`: modal e fundo (surgir e sumir; no celular, subir da base da tela), grupos recolhíveis (altura), menus suspensos, dica e mudanças de cor no hover. Animação só acompanha uma mudança de estado, nunca é enfeite, e desliga quando o sistema pede movimento reduzido (`prefers-reduced-motion`).

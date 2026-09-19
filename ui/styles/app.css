@@ -1264,12 +1264,72 @@
     }
   }
 
+  .data-table.compact-rows {
+    @variant max-sm {
+      & tr {
+        display: grid;
+        grid-template-columns: var(--spacing-8) auto 1fr auto;
+        column-gap: var(--spacing-3);
+        row-gap: var(--spacing-1);
+        align-items: center;
+        padding: var(--spacing-3) var(--spacing-1) var(--spacing-3) var(--spacing-4);
+      }
+
+      & td,
+      & .cell-primary,
+      & .cell-actions {
+        display: block;
+        padding: 0;
+
+        &::before {
+          content: none;
+        }
+      }
+
+      & .cell-primary {
+        grid-column: 1 / 4;
+      }
+
+      & .avatar {
+        width: var(--spacing-8);
+        height: var(--spacing-8);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+      }
+
+      & .cell-meta {
+        grid-row: 2;
+        grid-column: 2;
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+      }
+
+      & .cell-meta + .cell-meta {
+        grid-column: 3;
+      }
+
+      & .cell-actions {
+        grid-row: 1 / 3;
+        grid-column: 4;
+      }
+
+      & .row-actions > :not(.row-menu) {
+        display: none;
+      }
+
+      & .row-menu {
+        display: block;
+      }
+    }
+  }
+
   .row-actions {
     display: flex;
     justify-content: flex-end;
     gap: var(--spacing-1);
 
-    & .more-flat {
+    & .more-flat,
+    & .row-menu {
       display: none;
     }
 
@@ -1278,7 +1338,8 @@
       justify-content: flex-start;
       gap: var(--spacing-2);
 
-      & .icon-btn {
+      & > .icon-btn,
+      & > .more-flat > .icon-btn {
         padding-inline: var(--spacing-3);
         border: 1px solid var(--color-control-border);
         color: var(--color-text);

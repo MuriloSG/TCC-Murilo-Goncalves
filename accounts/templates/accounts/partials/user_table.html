@@ -1,4 +1,4 @@
-{% load ui %}<table class="data-table">
+{% load ui %}<table class="data-table compact-rows">
   <thead>
     <tr>
       <th scope="col">Usuário</th>
@@ -19,8 +19,8 @@
             </span>
           </div>
         </td>
-        <td data-label="Perfil">{{ item.roles.all.0.name|default:"Sem perfil" }}</td>
-        <td data-label="Situação">
+        <td class="cell-meta" data-label="Perfil">{{ item.roles.all.0.name|default:"Sem perfil" }}</td>
+        <td class="cell-meta" data-label="Situação">
           {% if item.is_active %}
             {% include "ui/components/badge.html" with tone="success" icon="check" label="Ativo" %}
           {% else %}
@@ -37,6 +37,7 @@
           {% endif %}
           {% action_list edit as visible %}
           {% action_list change_role change_status as more %}
+          {% action_list edit change_role change_status as compact %}
           {% include "ui/components/row_actions.html" %}
         </td>
       </tr>

@@ -50,6 +50,29 @@ class UserListScreenTests(ScreensTestCase):
         inactive = self.row(self.client.get('/usuarios/').content.decode(), 'carla@')
         self.assertIn('Reativar usuário</a>', inactive)
 
+    def test_menu_compacto_do_celular_com_todas_as_acoes(self):
+        content = self.client.get('/usuarios/').content.decode()
+        self.assertIn('<table class="data-table compact-rows">', content)
+        menu = re.search(r'<details class="menu row-menu">.*?</details>', self.row(content, 'maria@'), re.S).group(0)
+        self.assertIn('<summary class="icon-btn" aria-label="Mais ações">', menu)
+        labels = re.findall(r'<a href="/usuarios/\d+/[^"]+" hx-get="[^"]+" hx-target="#modal"[^>]*>.*?</svg>\s*(.*?)</a>', menu, re.S)
+        self.assertEqual(labels, ['Editar', 'Trocar perfil', 'Desativar usuário'])
+        inactive = self.row(content, 'carla@')
+        self.assertRegex(inactive, r'(?s)<details class="menu row-menu">.*?Reativar usuário</a>')
+
+    def test_menu_compacto_segue_as_permissoes(self):
+        role = Role.objects.create_role(code='EDICAO', name='Edição', permissions=['USUARIO.VISUALIZAR', 'USUARIO.EDITAR'])
+        self.client.force_login(User.objects.register(email='joao@ifnmg.edu.br', name='João', role=role))
+        menu = re.search(r'<details class="menu row-menu">.*?</details>', self.row(self.client.get('/usuarios/').content.decode(), 'maria@'), re.S).group(0)
+        self.assertIn('Editar</a>', menu)
+        self.assertNotIn('Trocar perfil', menu)
+        self.assertNotIn('Desativar usuário', menu)
+
+    def test_perfil_e_situacao_na_linha_de_resumo(self):
+        row = self.row(self.client.get('/usuarios/').content.decode(), 'maria@')
+        self.assertIn('<td class="cell-meta" data-label="Perfil">Docente</td>', row)
+        self.assertIn('<td class="cell-meta" data-label="Situação">', row)
+
     def test_celulas_com_rotulo_da_coluna(self):
         row = self.row(self.client.get('/usuarios/').content.decode(), 'maria@')
         for label in ('Usuário', 'Perfil', 'Situação', 'Ações'):

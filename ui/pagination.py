@@ -7,8 +7,8 @@ além do fim, para que um link salvo nunca vire erro depois que a lista mudar.
 from django.core.paginator import Paginator
 
 PAGE_PARAMETER = 'pagina'
-PAGE_SIZE = 20
-ROWS_PAGE_SIZE = 50
+PAGE_SIZE = 5
+ROWS_PAGE_SIZE = 20
 
 
 def paginate(request, items, per_page=PAGE_SIZE):

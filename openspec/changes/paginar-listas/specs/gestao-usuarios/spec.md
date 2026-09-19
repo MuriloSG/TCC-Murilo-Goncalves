@@ -32,9 +32,9 @@ A lista de usuários DEVE (MUST) aceitar uma busca por trecho do nome ou do e-ma
 - **THEN** a lista mostra "Nenhum usuário encontrado para a busca." e um link "Limpar busca" para a lista sem parâmetros
 
 #### Scenario: Busca paginada
-- **GIVEN** 45 usuários com "Silva" no nome
+- **GIVEN** 11 usuários com "Silva" no nome
 - **WHEN** a lista é acessada com `busca=silva&pagina=2`
-- **THEN** são exibidos os usuários 21 a 40 do resultado e o link "Próxima" leva a `?busca=silva&pagina=3`
+- **THEN** são exibidos os usuários 6 a 10 do resultado e o link "Próxima" leva a `?busca=silva&pagina=3`
 
 #### Scenario: Atualização pelo htmx
 - **WHEN** a lista recebe um GET com `busca=ana` e o cabeçalho `HX-Request` vindo do formulário de filtros ou da navegação entre páginas

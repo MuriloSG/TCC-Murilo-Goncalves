@@ -7,6 +7,7 @@ from accounts.models import Role, User
 from imports.models import Import
 from imports.reader import SourceRow
 from outbox.models import OutboxEntry
+from ui.pagination import PAGE_SIZE, ROWS_PAGE_SIZE
 
 HEADER = 'E-mail;Nome;Perfil\n'
 
@@ -233,22 +234,26 @@ class TemplateTests(ImportViewsTestCase):
 
 class PaginationTests(ImportViewsTestCase):
     def test_preview_rows_are_paginated_and_summary_counts_all(self):
-        lines = [f'p{index:03d}@ifnmg.edu.br;Pessoa {index:03d};COORDENACAO' for index in range(120)]
+        total = ROWS_PAGE_SIZE * 2 + 1
+        lines = [f'p{index:03d}@ifnmg.edu.br;Pessoa {index:03d};COORDENACAO' for index in range(total)]
         importation = self.preview(*lines)
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
         content = response.content.decode()
-        self.assertIn('Exibindo <strong>1</strong> a <strong>50</strong> de <strong>120</strong> linhas', content)
-        self.assertIn('p049@ifnmg.edu.br', content)
-        self.assertNotIn('p050@ifnmg.edu.br', content)
-        self.assertIn('120 linhas com erro', content)
+        self.assertIn(
+            f'Exibindo <strong>1</strong> a <strong>{ROWS_PAGE_SIZE}</strong> de <strong>{total}</strong> linhas', content,
+        )
+        self.assertIn(f'p{ROWS_PAGE_SIZE - 1:03d}@ifnmg.edu.br', content)
+        self.assertNotIn(f'p{ROWS_PAGE_SIZE:03d}@ifnmg.edu.br', content)
+        self.assertIn(f'{total} linhas com erro', content)
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/', {'linhas': 'erros'})
         self.assertContains(response, f'href="/usuarios/importacoes/{importation.pk}/?linhas=erros&amp;pagina=2"')
 
     def test_history_is_paginated(self):
-        for _ in range(21):
+        total = PAGE_SIZE + 1
+        for _ in range(total):
             self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
         response = self.client.get('/usuarios/importacoes/', {'pagina': '2'})
         self.assertContains(
-            response, 'Exibindo <strong>21</strong> a <strong>21</strong> de <strong>21</strong> importações',
+            response, f'Exibindo <strong>{total}</strong> a <strong>{total}</strong> de <strong>{total}</strong> importações',
         )
-        self.assertContains(response, 'Todas as importações <span class="count">21</span>')
+        self.assertContains(response, f'Todas as importações <span class="count">{total}</span>')

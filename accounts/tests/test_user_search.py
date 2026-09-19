@@ -4,6 +4,7 @@ from django.test import Client, TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from ui.pagination import PAGE_SIZE
 
 HTMX = {'HX-Request': 'true'}
 
@@ -141,17 +142,25 @@ class ListSearchViewTests(SearchTestCase):
 
 
 class PaginatedSearchTests(SearchTestCase):
+    total = PAGE_SIZE * 2 + 1
+
     def setUp(self):
         self.client.force_login(self.ana)
-        for index in range(45):
-            User.objects.register(email=f'silva{index:02d}@ifnmg.edu.br', name=f'Pessoa Silva {index:02d}', role=self.admin_role)
+        for index in range(self.total):
+            User.objects.register(
+                email=f'silva{index:03d}@ifnmg.edu.br', name=f'Pessoa Silva {index:03d}', role=self.admin_role,
+            )
 
     def test_busca_paginada_mantem_a_busca(self):
         response = self.client.get('/usuarios/', {'busca': 'silva', 'pagina': '2'})
         content = response.content.decode()
-        self.assertIn('Exibindo <strong>21</strong> a <strong>40</strong> de <strong>45</strong> usuários', content)
-        self.assertIn('Pessoa Silva 20', content)
-        self.assertNotIn('Pessoa Silva 19', content)
+        self.assertIn(
+            f'Exibindo <strong>{PAGE_SIZE + 1}</strong> a <strong>{PAGE_SIZE * 2}</strong> '
+            f'de <strong>{self.total}</strong> usuários',
+            content,
+        )
+        self.assertIn(f'Pessoa Silva {PAGE_SIZE:03d}', content)
+        self.assertNotIn(f'Pessoa Silva {PAGE_SIZE - 1:03d}', content)
         self.assertIn('href="/usuarios/?busca=silva&amp;pagina=3"', content)
         self.assertIn('href="/usuarios/?busca=silva"', content)
         self.assertIn('hx-target="#tabela-usuarios"', content)

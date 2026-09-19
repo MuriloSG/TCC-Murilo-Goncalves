@@ -2,6 +2,7 @@ from django.test import Client, TestCase
 
 from accounts import permissions
 from accounts.models import Permission, Role, User
+from ui.pagination import PAGE_SIZE
 
 ROUTES = {
     'list': '/perfis/',
@@ -323,13 +324,18 @@ class DeleteTests(RoleViewsTestCase):
 
 class RoleListPaginationTests(TestCase):
     def test_roles_are_paginated(self):
-        for index in range(55):
+        total = PAGE_SIZE * 2 + 1
+        for index in range(total - Role.objects.count()):
             code = f'PERFIL_{chr(65 + index // 26)}{chr(65 + index % 26)}'
             Role.objects.create_role(code=code, name=f'Perfil {index:02d}')
         superadmin = User.objects.create_superadmin(email='super@ifnmg.edu.br', name='Super', password='Senha-forte-123')
         self.client.force_login(superadmin)
         response = self.client.get('/perfis/')
-        self.assertContains(response, 'Exibindo <strong>1</strong> a <strong>20</strong> de <strong>57</strong> perfis')
+        self.assertContains(
+            response, f'Exibindo <strong>1</strong> a <strong>{PAGE_SIZE}</strong> de <strong>{total}</strong> perfis',
+        )
         self.assertContains(response, 'Página 1 de 3')
         response = self.client.get('/perfis/', {'pagina': '3'})
-        self.assertContains(response, 'Exibindo <strong>41</strong> a <strong>57</strong> de <strong>57</strong> perfis')
+        self.assertContains(
+            response, f'Exibindo <strong>{total}</strong> a <strong>{total}</strong> de <strong>{total}</strong> perfis',
+        )

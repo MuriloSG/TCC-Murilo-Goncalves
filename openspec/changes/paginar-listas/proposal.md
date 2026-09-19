@@ -8,8 +8,8 @@ As listas do sistema mostram todos os registros numa única página. Com os doce
 - **Parâmetro `pagina` na URL**, que se combina com os demais parâmetros de cada lista (`busca` e `situacao` nos usuários, `linhas` na prévia). Mudar a busca ou o filtro volta para a primeira página.
 - **Página inválida ou além da última** mostra a página válida mais próxima, sem erro.
 - **Navegação** com "Anterior", "Página X de Y" e "Próxima", num componente único do app `ui`, usado por todas as listas. Sem JavaScript, os links funcionam como links comuns. Na lista de usuários, a troca de página usa o mesmo fragmento da tabela atualizado pelo htmx.
-- **Rodapé** das listas passa a informar o intervalo exibido: "Exibindo 21 a 40 de 57 usuários". O total cadastrado continua no contador do título do cartão.
-- **Tamanho da página:** 20 itens nas listas e 50 linhas na prévia e no detalhe de uma importação.
+- **Rodapé** das listas passa a informar o intervalo exibido: "Exibindo 6 a 10 de 57 usuários". O total cadastrado continua no contador do título do cartão.
+- **Tamanho da página:** 5 itens nas listas e 20 linhas na prévia e no detalhe de uma importação, definidos em constantes do app `ui`.
 
 ### Fora do escopo
 

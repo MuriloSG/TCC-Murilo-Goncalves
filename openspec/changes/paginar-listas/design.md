@@ -17,7 +17,7 @@
 
 ### D1. Função `paginate` no app `ui`
 
-`ui.pagination.paginate(request, queryset, per_page)` usa o `Paginator` do Django e `get_page(request.GET.get('pagina'))`. `get_page` devolve a primeira página para valores inválidos e a última para números além do fim, então nenhuma página inválida vira 404. As constantes são `PAGE_SIZE = 20` e, nas importações, `ROWS_PAGE_SIZE = 50`.
+`ui.pagination.paginate(request, queryset, per_page)` usa o `Paginator` do Django e `get_page(request.GET.get('pagina'))`. `get_page` devolve a primeira página para valores inválidos e a última para números além do fim, então nenhuma página inválida vira 404. As constantes são `PAGE_SIZE = 5` e, nas importações, `ROWS_PAGE_SIZE = 20`, escolhidas pelo autor. Os testes calculam os valores esperados a partir delas, para que mudar o tamanho da página não exija mudar os testes.
 
 Alternativa considerada: **`paginate_by` da `ListView`**. Ela responde 404 para uma página fora do intervalo, o que quebraria um link salvo depois que registros forem excluídos ou filtrados. Também não serviria às linhas da importação, que não são uma `ListView`.
 
@@ -28,7 +28,7 @@ A tag `{% page_url number %}` da biblioteca `ui` copia `request.GET`, troca `pag
 ### D3. Componente `ui/components/pagination.html`
 
 ```text
-[ Exibindo 21 a 40 de 57 usuários ]        [ Anterior ]  Página 2 de 3  [ Próxima ]
+[ Exibindo 6 a 10 de 57 usuários ]        [ Anterior ]  Página 2 de 3  [ Próxima ]
 ```
 
 - Um `<nav aria-label="Paginação">` dentro do rodapé do cartão. O intervalo fica à esquerda e a navegação à direita. Abaixo de 640 px, ficam empilhados: o intervalo, depois "Página X de Y" numa linha própria e os dois botões dividindo a largura, porque os três lado a lado não cabem em 360 px.
@@ -45,9 +45,9 @@ A paginação entra no fragmento `user_table.html`, junto com o rodapé, para qu
 
 ### D5. Importações
 
-O histórico pagina as importações (20 por página). A prévia e o detalhe paginam as linhas (50 por página), inclusive com o filtro `?linhas=erros`. O resumo continua contando todas as linhas da importação, e não só as da página.
+O histórico pagina as importações (`PAGE_SIZE` por página). A prévia e o detalhe paginam as linhas (`ROWS_PAGE_SIZE` por página), inclusive com o filtro `?linhas=erros`. O resumo continua contando todas as linhas da importação, e não só as da página.
 
 ## Risks / Trade-offs
 
-- **[Sem links numerados]** Chegar à página 30 exige avançar uma a uma ou editar a URL. → Com 20 itens por página, o volume esperado do campus cabe em poucas páginas. A busca resolve o caso de achar alguém específico.
+- **[Sem links numerados]** Chegar à página 30 exige avançar uma a uma ou editar a URL. → A busca resolve o caso de achar alguém específico, e o tamanho da página pode ser aumentado nas constantes.
 - **[Contagem extra]** O `Paginator` faz uma consulta de contagem por página. → É o custo normal da paginação, e evita carregar todos os registros.

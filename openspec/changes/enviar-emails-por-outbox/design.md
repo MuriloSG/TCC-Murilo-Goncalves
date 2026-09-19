@@ -160,6 +160,8 @@ Alternativa considerada: **registrar na view**, embrulhando `register` e `enqueu
 
 No `compose.yaml`, um serviço `worker` com `build: .`, o mesmo volume de código e as mesmas variáveis do `web` (as variáveis passam para uma âncora YAML compartilhada), `command: python manage.py process_outbox` e `depends_on: db: condition: service_healthy`. Não expõe porta. O `make up` já o inicia, e `make logs` mostra os e-mails do backend de console. O README ganha uma linha sobre o worker e a variável `DJANGO_SITE_URL`.
 
+O serviço tem `restart: unless-stopped`. No primeiro `make up`, o worker sobe antes do `make migrate` e encerra ao não encontrar a tabela do outbox. O mesmo acontece se o banco ficar indisponível. Com o reinício automático, ele volta sozinho quando o banco estiver pronto.
+
 O worker não recarrega o código sozinho como o `runserver`. Depois de alterar um tratador, é preciso `docker compose restart worker`, e isso fica documentado no README.
 
 ### D10. Efeito na Change `importar-usuarios-por-planilha`

@@ -3,6 +3,21 @@ x-postgres-env: &postgres-env
   POSTGRES_USER: ${POSTGRES_USER:-agendamento}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agendamento}
 
+x-app-env: &app-env
+  <<: *postgres-env
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-somente-para-desenvolvimento-local}
+  DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+  DJANGO_SITE_URL: ${DJANGO_SITE_URL:-http://localhost:8000}
+  DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+  DJANGO_DEFAULT_FROM_EMAIL: ${DJANGO_DEFAULT_FROM_EMAIL:-Agendamento IFNMG Salinas <nao-responda@localhost>}
+  DJANGO_EMAIL_HOST: ${DJANGO_EMAIL_HOST:-}
+  DJANGO_EMAIL_PORT: ${DJANGO_EMAIL_PORT:-587}
+  DJANGO_EMAIL_HOST_USER: ${DJANGO_EMAIL_HOST_USER:-}
+  DJANGO_EMAIL_HOST_PASSWORD: ${DJANGO_EMAIL_HOST_PASSWORD:-}
+  DJANGO_EMAIL_USE_TLS: ${DJANGO_EMAIL_USE_TLS:-1}
+
 services:
   db:
     image: postgres:17
@@ -22,19 +37,18 @@ services:
       - .:/app
     ports:
       - "8000:8000"
-    environment:
-      <<: *postgres-env
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-somente-para-desenvolvimento-local}
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
-      DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
-      DJANGO_DEFAULT_FROM_EMAIL: ${DJANGO_DEFAULT_FROM_EMAIL:-Agendamento IFNMG Salinas <nao-responda@localhost>}
-      DJANGO_EMAIL_HOST: ${DJANGO_EMAIL_HOST:-}
-      DJANGO_EMAIL_PORT: ${DJANGO_EMAIL_PORT:-587}
-      DJANGO_EMAIL_HOST_USER: ${DJANGO_EMAIL_HOST_USER:-}
-      DJANGO_EMAIL_HOST_PASSWORD: ${DJANGO_EMAIL_HOST_PASSWORD:-}
-      DJANGO_EMAIL_USE_TLS: ${DJANGO_EMAIL_USE_TLS:-1}
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: python manage.py process_outbox
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    environment: *app-env
     depends_on:
       db:
         condition: service_healthy

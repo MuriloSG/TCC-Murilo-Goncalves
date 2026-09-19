@@ -81,12 +81,14 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 | Serviço | Imagem | Função |
 |---|---|---|
 | `web` | construída a partir do `Dockerfile` (Python 3.13) | Aplicação Django com o servidor de desenvolvimento na porta 8000 |
+| `worker` | a mesma do `web` | Envia os e-mails registrados no outbox, com o comando `process_outbox` |
 | `db` | `postgres:17` | Banco de dados PostgreSQL, sem porta publicada no host |
 | `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface com o Tailwind CSS e o recompila a cada alteração |
 
 - O código do projeto é montado em `/app` no container `web`. Alterações feitas na máquina recarregam o servidor automaticamente, e arquivos gerados no container, como migrations, aparecem no repositório.
 - Os dados do PostgreSQL ficam no volume `postgres_data`, que `make down` preserva e `make reset-db` remove.
-- O `web` só é iniciado depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
+- O `web` e o `worker` só são iniciados depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
+- O `worker` reinicia sozinho se encerrar, por exemplo quando sobe antes do `make migrate` ou quando o banco fica indisponível. Ele monta o mesmo código do `web`, mas não recarrega sozinho: depois de alterar o código de envio de e-mails, rode `docker compose restart worker`.
 - O `tailwind` lê o `ui/styles/app.css` e os templates de todos os apps e grava `ui/static/ui/css/app.css`, que o `web` serve como arquivo estático. Uma classe nova num template aparece no CSS sem reiniciar containers. O CSS gerado fica fora do Git.
 - O `tailwind` monta o projeto em `/app`, como o `web`, e guarda as dependências de Node.js num volume anônimo em `/app/node_modules`, para que a montagem do projeto não as esconda. O Node.js só é usado para compilar o CSS: a imagem do `web` não o tem.
 
@@ -96,6 +98,7 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 |---|---|---|
 | `DJANGO_SECRET_KEY` | `django-insecure-somente-para-desenvolvimento-local` | Chave secreta do Django |
 | `DJANGO_DEBUG` | `1` | Modo de depuração, ativo somente com o valor `1` |
+| `DJANGO_SITE_URL` | `http://localhost:8000` | Endereço do sistema usado nos links dos e-mails enviados pelo `worker` |
 | `POSTGRES_DB` | `agendamento` | Nome do banco de dados |
 | `POSTGRES_USER` | `agendamento` | Usuário do banco de dados |
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
@@ -106,8 +109,12 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 | `DJANGO_EMAIL_HOST_USER` | vazio | Usuário do servidor SMTP |
 | `DJANGO_EMAIL_HOST_PASSWORD` | vazio | Senha do servidor SMTP |
 | `DJANGO_EMAIL_USE_TLS` | `1` | Uso de TLS no SMTP, ativo somente com o valor `1` |
+| `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail do outbox antes de desistir |
+| `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |
+| `DJANGO_OUTBOX_POLL_INTERVAL` | `5` | Segundos que o `worker` espera quando não há e-mail para enviar |
+| `DJANGO_OUTBOX_BATCH_SIZE` | `20` | E-mails enviados pelo `worker` a cada ciclo |
 
-`POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco.
+`POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco. As variáveis do outbox não estão no `compose.yaml`: sem elas, valem os padrões da tabela, e elas podem ser definidas no `.env`.
 
 Os valores padrão estão no `compose.yaml` e permitem subir o ambiente sem nenhuma configuração. Para sobrescrever um valor, crie um arquivo `.env` na raiz do projeto, que é ignorado pelo Git:
 
@@ -122,7 +129,7 @@ DJANGO_SECRET_KEY=outra-chave-local
 
 ## E-mail
 
-No desenvolvimento, nenhum e-mail sai de fato: o backend padrão é o de console, e cada mensagem aparece nos logs do container `web`. Para ver o link de definição ou de recuperação de senha, acompanhe:
+No desenvolvimento, nenhum e-mail sai de fato: o backend padrão é o de console, e cada mensagem aparece nos logs. O link de definição de senha de um usuário cadastrado é enviado pelo container `worker`, em alguns segundos. O link de recuperação pedido em **Esqueci minha senha** sai na hora, pelo container `web`. Para ver os dois, acompanhe:
 
 ```bash
 make logs
@@ -140,7 +147,9 @@ DJANGO_EMAIL_HOST_PASSWORD=senha-de-app
 DJANGO_DEFAULT_FROM_EMAIL=Agendamento IFNMG Salinas <conta@gmail.com>
 ```
 
-Depois de alterar o `.env`, recrie o container com `make up`. Se o envio falhar durante um cadastro, o usuário continua cadastrado, quem cadastrou é avisado e o próprio usuário pode pedir um novo link em **Esqueci minha senha**.
+Depois de alterar o `.env`, recrie os containers com `make up`.
+
+Os e-mails que o sistema dispara por conta própria, como o link de definição de senha de um usuário cadastrado, passam pelo outbox: o cadastro grava a intenção de envio na mesma transação, e o `worker` envia depois. Se o envio falhar, o `worker` tenta de novo nos intervalos configurados e, no limite de tentativas, desiste e registra o erro no log. O usuário continua cadastrado e pode pedir um novo link em **Esqueci minha senha**.
 
 ## Interface
 
@@ -176,7 +185,7 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 
 ```text
 .
-├── compose.yaml       # serviços web, db e tailwind
+├── compose.yaml       # serviços web, worker, db e tailwind
 ├── Dockerfile         # imagens de desenvolvimento da aplicação e da compilação do CSS
 ├── Makefile           # atalhos para os comandos do dia a dia
 ├── requirements.txt   # dependências Python com versões fixas
@@ -186,6 +195,7 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 ├── config/            # configuração do projeto Django
 ├── accounts/          # usuários, perfis, permissões e autenticação
 ├── ui/                # layouts, componentes, tokens, ícones e regras de texto e visual
+├── outbox/            # envio dos e-mails disparados pelo sistema, pelo worker
 ├── openspec/          # Constitution, convenções, specs e changes do OpenSpec
 └── sources/           # texto do TCC
 ```

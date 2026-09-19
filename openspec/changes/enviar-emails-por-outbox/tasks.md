@@ -20,11 +20,11 @@
 
 ## 3. Ambiente
 
-- [ ] 3.1 Acrescentar o serviço `worker` ao `compose.yaml`, com as variáveis compartilhadas por âncora e `DJANGO_SITE_URL` (D9)
-- [ ] 3.2 Atualizar o README com o worker, os logs dos e-mails, o reinício após alterar o código e as novas variáveis
-- [ ] 3.3 Subir o ambiente com `make up`, cadastrar um usuário pela interface, conferir o e-mail em `make logs` e definir a senha pelo link recebido
-- [ ] 3.4 Commit
+- [x] 3.1 Acrescentar o serviço `worker` ao `compose.yaml`, com as variáveis compartilhadas por âncora e `DJANGO_SITE_URL` (D9)
+- [x] 3.2 Atualizar o README com o worker, os logs dos e-mails, o reinício após alterar o código e as novas variáveis
+- [x] 3.3 Subir o ambiente com `make up`, cadastrar um usuário pela interface, conferir o e-mail em `make logs` e definir a senha pelo link recebido
+- [x] 3.4 Commit
 
 ## 4. Verificação
 
-- [ ] 4.1 Validar a Change com `openspec validate enviar-emails-por-outbox --strict`
+- [x] 4.1 Validar a Change com `openspec validate enviar-emails-por-outbox --strict`

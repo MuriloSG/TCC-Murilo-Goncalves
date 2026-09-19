@@ -26,6 +26,26 @@
     return closed ? closed.querySelector("summary") : element;
   }
 
+  function closeWithAnimation(dialog) {
+    if (dialog.classList.contains("is-closing")) {
+      return;
+    }
+    dialog.classList.add("is-closing");
+    var finish = function () {
+      if (dialog.open) {
+        dialog.close();
+      }
+    };
+    dialog.addEventListener("animationend", finish, { once: true });
+    window.setTimeout(finish, 400);
+  }
+
+  var replacing = false;
+
+  document.addEventListener("htmx:beforeSwap", function (event) {
+    replacing = event.detail.target.id === "modal" && !!event.detail.target.querySelector("dialog[open]");
+  });
+
   document.addEventListener("htmx:beforeRequest", function (event) {
     var container = document.getElementById("modal");
     if (event.detail.target === container && !container.contains(event.detail.elt)) {
@@ -46,10 +66,17 @@
     if (!dialog) {
       return;
     }
+    if (replacing) {
+      dialog.classList.add("is-replaced");
+    }
     dialog.addEventListener("click", function (click) {
       if (click.target.closest("[data-modal-close]")) {
-        dialog.close();
+        closeWithAnimation(dialog);
       }
+    });
+    dialog.addEventListener("cancel", function (cancel) {
+      cancel.preventDefault();
+      closeWithAnimation(dialog);
     });
     dialog.addEventListener("keydown", function (key) {
       keepFocusInside(dialog, key);

@@ -152,6 +152,7 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 - Tabelas densas e legíveis. Abaixo de 640 px, cada linha vira um bloco empilhado de rótulo e valor.
 - Só os tokens da escala fechada (cores, espaçamentos, raios, sombras e tamanhos de fonte). Nada de `style=`, valores arbitrários do Tailwind (`p-[13px]`, `bg-[#...]`) ou cores fora dos tokens nos templates.
 - Contraste mínimo AA: 4,5:1 para texto normal, 3:1 para texto grande e bordas de controle.
+- Tudo o que abre e fecha tem transição curta, com os tempos `--motion-fast` (150 ms) e `--motion-base` (200 ms) do `app.css`: modal e fundo (surgir e sumir; no celular, subir da base da tela), grupos recolhíveis (altura), menus suspensos, dica e mudanças de cor no hover. Animação só acompanha uma mudança de estado, nunca é enfeite, e desliga quando o sistema pede movimento reduzido (`prefers-reduced-motion`).
 
 ### 9.8 Telas novas
 

@@ -97,8 +97,8 @@ class AccessTests(ImportViewsTestCase):
 
     def test_user_list_shows_import_actions_only_with_the_permission(self):
         response = self.client.get('/usuarios/')
-        self.assertContains(response, 'href="/usuarios/importacoes/nova/"')
         self.assertContains(response, 'href="/usuarios/importacoes/"')
+        self.assertNotContains(response, '/usuarios/importacoes/nova/')
         client = Client()
         client.force_login(self.user_with(permissions.USER_VIEW))
         response = client.get('/usuarios/')

@@ -16,7 +16,6 @@
     <div class="page-actions">
       {% if perms.USUARIO.IMPORTAR %}
         <a class="btn-secondary" href="{% url 'user_import_list' %}">{% icon "history" %}Importações</a>
-        <a class="btn-secondary" href="{% url 'user_import_upload' %}" hx-get="{% url 'user_import_upload' %}" hx-target="#modal">{% icon "upload" %}Importar usuários</a>
       {% endif %}
       {% if perms.USUARIO.CRIAR %}
         <a class="btn-primary" href="{% url 'user_create' %}" hx-get="{% url 'user_create' %}" hx-target="#modal">{% icon "user-plus" %}Cadastrar usuário</a>

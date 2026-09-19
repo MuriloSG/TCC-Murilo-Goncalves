@@ -1,0 +1,10 @@
+<div class="check-groups"{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
+  {% for group, options, index in widget.optgroups %}
+    <fieldset>
+      {% if group %}<legend>{{ group }}</legend>{% endif %}
+      {% for option in options %}
+        <label class="check"><input type="{{ option.type }}" name="{{ option.name }}" value="{{ option.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" with widget=option %}>{{ option.label }}</label>
+      {% endfor %}
+    </fieldset>
+  {% endfor %}
+</div>

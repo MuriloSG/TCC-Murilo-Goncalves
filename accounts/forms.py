@@ -3,6 +3,7 @@ from django import forms
 
 from accounts.models import Permission, Role
 from accounts.permissions import SUPERADMIN_RESERVED_PERMISSIONS
+from ui.forms import GroupedCheckboxSelectMultiple
 
 
 INVALID_EMAIL_MESSAGE = 'Informe um e-mail válido.'
@@ -20,9 +21,21 @@ def use_email_messages(field):
 
 
 class LoginForm(allauth_forms.LoginForm):
+    """Login com os rótulos da tela de entrada (D14 da Change definir-identidade-visual).
+
+    A ajuda do campo de senha, que o allauth usa para o link de recuperação, sai
+    porque a tela já tem o link "Esqueci minha senha".
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         use_email_messages(self.fields['login'])
+        self.fields['login'].label = 'E-mail institucional'
+        self.fields['login'].widget.attrs['placeholder'] = 'nome.sobrenome@ifnmg.edu.br'
+        self.fields['password'].label = 'Senha'
+        self.fields['password'].help_text = ''
+        self.fields['password'].widget.attrs.pop('placeholder', None)
+        self.fields['remember'].label = 'Manter conectado'
 
 
 class PasswordResetForm(allauth_forms.ResetPasswordForm):
@@ -129,7 +142,7 @@ def permission_choice_field():
         queryset=Permission.objects.all(),
         to_field_name='code',
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=GroupedCheckboxSelectMultiple,
     )
 
 

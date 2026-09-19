@@ -1,0 +1,8 @@
+{% load ui %}<nav class="side-nav" aria-label="Principal">
+  <p class="nav-label">Menu principal</p>
+  <ul>
+    {% nav_link "home" "Início" "house" %}
+    {% if perms.USUARIO.VISUALIZAR %}{% nav_link "user_list" "Usuários" "users" prefix="user_" %}{% endif %}
+    {% if perms.PERFIL.VISUALIZAR %}{% nav_link "role_list" "Perfis" "shield-check" prefix="role_" %}{% endif %}
+  </ul>
+</nav>

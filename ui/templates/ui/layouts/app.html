@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static ui %}
+
+{% block body_attributes %} hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endblock %}
+
+{% block body %}
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{% url 'home' %}">
+        <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+        <span><span class="brand-name">Agendamento de espaços</span><span class="brand-campus">IFNMG Campus Salinas</span></span>
+      </a>
+      {% include "ui/components/navigation.html" %}
+    </aside>
+
+    <div class="topbar">
+      <a class="brand" href="{% url 'home' %}">
+        <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+        <span><span class="brand-name">Agendamento de espaços</span><span class="brand-campus">IFNMG Campus Salinas</span></span>
+      </a>
+      <details class="topbar-menu">
+        <summary>{% icon "menu" %}Menu</summary>
+        <div class="topbar-panel">
+          {% include "ui/components/navigation.html" %}
+          {% if user.is_authenticated %}
+            <div class="topbar-user">
+              <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
+              <form method="post" action="{% url 'account_logout' %}">
+                {% csrf_token %}
+                <button class="btn-secondary" type="submit">{% icon "log-out" %}Sair</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      </details>
+    </div>
+
+    <div>
+      <header class="header">
+        <nav class="crumbs" aria-label="Trilha de navegação">
+          <ol>
+            {% block crumbs %}<li><span aria-current="page">Início</span></li>{% endblock %}
+          </ol>
+        </nav>
+        {% if user.is_authenticated %}
+          <details class="menu user-menu">
+            <summary>
+              <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+              <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
+              {% icon "chevron-down" %}
+            </summary>
+            <div class="menu-list">
+              <form method="post" action="{% url 'account_logout' %}">
+                {% csrf_token %}
+                <button type="submit">{% icon "log-out" %}Sair</button>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+      </header>
+
+      <main class="page" id="conteudo" tabindex="-1">
+        {% block page_head %}{% endblock %}
+        {% include "ui/components/messages.html" %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+{% endblock %}

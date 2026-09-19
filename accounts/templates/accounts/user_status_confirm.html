@@ -1,17 +1,12 @@
-{% extends "base.html" %}
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
 
 {% block title %}{{ action|capfirst }} {{ target.name }}?{% endblock %}
 
-{% block content %}
-  <h1>{{ action|capfirst }} {{ target.name }}?</h1>
-  {% if action == 'desativar' %}
-    <p>O usuário {{ target.email }} deixa de conseguir entrar no sistema. Os dados dele continuam guardados, e ele pode ser reativado depois.</p>
-  {% else %}
-    <p>O usuário {{ target.email }} volta a poder entrar no sistema com a senha que já tinha.</p>
-  {% endif %}
-  <form method="post">
-    {% csrf_token %}
-    <button type="submit">{{ action|capfirst }} usuário</button>
-  </form>
-  <p><a href="{% url 'user_list' %}">Fechar</a></p>
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'user_list' %}">Usuários</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ action|capfirst }} usuário</span></li>
 {% endblock %}
+
+{% block content %}{% include "accounts/user_status_modal.html" %}{% endblock %}

@@ -48,7 +48,9 @@ class ProjectRoutesTests(TestCase):
 class PermissionDeniedPageTests(TestCase):
     def test_renders_friendly_403(self):
         request = RequestFactory().get('/usuarios/')
-        request.user = User(email='maria@ifnmg.edu.br', name='Maria')
+        request.user = User.objects.register(
+            email='maria@ifnmg.edu.br', name='Maria', role=Role.objects.get(code='DOCENTE'),
+        )
         response = permission_denied(request, PermissionDenied())
         self.assertEqual(response.status_code, 403)
         self.assertIn('Acesso restrito', response.content.decode())

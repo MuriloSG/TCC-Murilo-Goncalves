@@ -1,0 +1,15 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · Agendamento de espaços · IFNMG Salinas</title>
+  <link rel="stylesheet" href="{% static 'ui/css/app.css' %}">
+  <script src="{% static 'ui/js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'ui/js/modal.js' %}" defer></script>
+</head>
+<body{% block body_attributes %}{% endblock %}>
+  {% block body %}{% endblock %}
+  <div id="modal"></div>
+</body>
+</html>

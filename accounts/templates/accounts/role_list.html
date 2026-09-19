@@ -1,30 +1,68 @@
-{% extends "base.html" %}
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
 
 {% block title %}Perfis{% endblock %}
 
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Perfis</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Perfis</h1>
+      <p class="page-description">Perfis de acesso e as permissões que cada um concede.</p>
+    </div>
+    {% if perms.PERFIL.CRIAR %}
+      <a class="btn-primary" href="{% url 'role_create' %}" hx-get="{% url 'role_create' %}" hx-target="#modal">{% icon "shield-plus" %}Criar perfil</a>
+    {% endif %}
+  </div>
+{% endblock %}
+
 {% block content %}
-  <h1>Perfis</h1>
-  {% if perms.PERFIL.CRIAR %}
-    <p><a href="{% url 'role_create' %}">Criar perfil</a></p>
-  {% endif %}
-  <table>
-    <thead>
-      <tr>
-        <th>Código</th>
-        <th>Nome</th>
-        <th>Tipo</th>
-        <th>Usuários vinculados</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for role in roles %}
+  <section class="card" aria-labelledby="lista-perfis">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-perfis">Todos os perfis <span class="count">{{ roles|length }}</span></h2>
+        <p class="card-description">Nome, código, tipo e usuários vinculados de cada perfil.</p>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
         <tr>
-          <td><a href="{% url 'role_detail' role.pk %}">{{ role.code }}</a></td>
-          <td>{{ role.name }}</td>
-          <td>{{ role.is_system|yesno:"Do sistema,Personalizado" }}</td>
-          <td>{{ role.user_count }}</td>
+          <th scope="col">Perfil</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Usuários vinculados</th>
+          <th scope="col" class="cell-actions">Ações</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for role in roles %}
+          <tr>
+            <td class="cell-primary" data-label="Perfil">
+              <a class="person-name link" href="{% url 'role_detail' role.pk %}">{{ role.name }}</a>
+              <span class="person-detail">{{ role.code }}</span>
+            </td>
+            <td data-label="Tipo">{{ role.is_system|yesno:"Do sistema,Personalizado" }}</td>
+            <td data-label="Usuários vinculados">{{ role.user_count }}</td>
+            <td class="cell-actions" data-label="Ações">
+              {% row_action "role_update" role.pk "Editar" "pencil" when=perms.PERFIL.EDITAR as edit %}
+              {% row_action "role_permissions" role.pk "Alterar permissões" "list-checks" when=perms.PERFIL.ALTERAR_PERMISSOES as change_permissions %}
+              {% if role.is_system %}
+                {% row_action "role_delete" role.pk "Excluir perfil" "trash-2" when=False as delete %}
+              {% else %}
+                {% row_action "role_delete" role.pk "Excluir perfil" "trash-2" when=perms.PERFIL.EXCLUIR danger=True as delete %}
+              {% endif %}
+              {% action_list edit change_permissions delete as visible %}
+              {% include "ui/components/row_actions.html" with more=None %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td class="cell-primary" colspan="4">Nenhum perfil cadastrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="card-foot">Exibindo <strong>{{ roles|length }}</strong> perfi{{ roles|length|pluralize:"l,s" }}</p>
+  </section>
 {% endblock %}

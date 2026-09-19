@@ -30,36 +30,36 @@
 
 ## 5. Componentes
 
-- [ ] 5.1 Escrever em `@layer components` do `app.css` as classes do D11 (`btn-primary`, `btn-secondary`, `btn-danger`, `icon-btn` com a dica, `menu`, `link`, `field`, `input`, `select-wrap`, `control`, `card`, `data-table`, `person`, `avatar`, `badge`, `count`, `alert` e `modal`) e do D12 (`sidebar`, `side-nav`, `header`, `crumbs`), só com tokens, e a regra global de `:focus-visible` (D11, D12)
-- [ ] 5.2 Criar `ui/forms.py` com o `FormRenderer` e os templates `ui/forms/form.html` e `ui/forms/field.html` com rótulo, "(opcional)", ajuda, erros, `aria-describedby` e `aria-invalid`, e configurar `FORM_RENDERER` e `django.forms` em `INSTALLED_APPS` (D11)
-- [ ] 5.3 Criar `ui/components/messages.html` com tom, ícone e `role` por tipo de mensagem, `ui/components/badge.html` e `ui/components/row_actions.html`, com botões de ícone, dica, `aria-label` e o menu "Mais ações" (D7, D10, D11)
-- [ ] 5.4 Criar `ui/templatetags/ui.py` com as tags `icon` e `nav_link` e o filtro `initials` (D10, D12)
+- [x] 5.1 Escrever em `@layer components` do `app.css` as classes do D11 (`btn-primary`, `btn-secondary`, `btn-danger`, `icon-btn` com a dica, `menu`, `link`, `field`, `input`, `select-wrap`, `control`, `card`, `data-table`, `person`, `avatar`, `badge`, `count`, `alert` e `modal`) e do D12 (`sidebar`, `side-nav`, `header`, `crumbs`), só com tokens, e a regra global de `:focus-visible` (D11, D12)
+- [x] 5.2 Criar `ui/forms.py` com o `FormRenderer` e os templates `ui/forms/form.html` e `ui/forms/field.html` com rótulo, "(opcional)", ajuda, erros, `aria-describedby` e `aria-invalid`, e configurar `FORM_RENDERER` e `django.forms` em `INSTALLED_APPS` (D11)
+- [x] 5.3 Criar `ui/components/messages.html` com tom, ícone e `role` por tipo de mensagem, `ui/components/badge.html` e `ui/components/row_actions.html`, com botões de ícone, dica, `aria-label` e o menu "Mais ações" (D7, D10, D11)
+- [x] 5.4 Criar `ui/templatetags/ui.py` com as tags `icon` e `nav_link` e o filtro `initials` (D10, D12)
 - [x] 5.5 Acrescentar `data-label` à lista de atributos verificados pelo teste de texto (D12)
 
 ## 6. Modais com htmx
 
-- [ ] 6.1 Criar `ui/components/modal.html` (dialog, título, descrição, botão de ícone "Fechar", corpo e rodapé com "Fechar" e a ação) e `ui/components/confirm_modal.html` (D16)
-- [ ] 6.2 Criar `ui/static/ui/js/modal.js`, que abre o `<dialog>` com `showModal()` no `htmx:afterSwap` do `#modal` e devolve o foco ao botão de origem ao fechar (D16)
-- [ ] 6.3 Criar `ui/views.py` com `ModalView`: fragmento do modal quando `request.htmx`, página completa sem ele, e `HttpResponseClientRedirect` no sucesso, para a URL atual quando a origem for a lista (D16)
-- [ ] 6.4 Fazer `OperationFormView` e `ConfirmedActionView` de `accounts/views.py` herdarem de `ModalView`, sem mudar a lógica das views concretas, e definir `modal_template_name` em cada uma (D16)
-- [ ] 6.5 Escrever os testes de cada rota de ação: GET com `HX-Request` responde só o fragmento, GET sem ele responde a página completa, POST inválido pelo htmx responde o fragmento com erro sem gravar, e POST válido pelo htmx responde `HX-Redirect`
+- [x] 6.1 Criar `ui/components/modal.html` (dialog, título, descrição, botão de ícone "Fechar", corpo e rodapé com "Fechar" e a ação) e `ui/components/confirm_modal.html` (D16)
+- [x] 6.2 Criar `ui/static/ui/js/modal.js`, que abre o `<dialog>` com `showModal()` no `htmx:afterSwap` do `#modal` e devolve o foco ao botão de origem ao fechar (D16)
+- [x] 6.3 Criar `ui/views.py` com `ModalView`: fragmento do modal quando `request.htmx`, página completa sem ele, e `HttpResponseClientRedirect` no sucesso, para a URL atual quando a origem for a lista (D16)
+- [x] 6.4 Fazer `OperationFormView` e `ConfirmedActionView` de `accounts/views.py` herdarem de `ModalView`, sem mudar a lógica das views concretas, e definir `modal_template_name` em cada uma (D16)
+- [x] 6.5 Escrever os testes de cada rota de ação: GET com `HX-Request` responde só o fragmento, GET sem ele responde a página completa, POST inválido pelo htmx responde o fragmento com erro sem gravar, e POST válido pelo htmx responde `HX-Redirect`
 
 ## 7. Layouts
 
-- [ ] 7.1 Mover `accounts/templates/base.html` para `ui/templates/base.html`, só com o `head`, o CSS, o htmx, o `modal.js`, o `hx-headers` com o CSRF no `body` e o `#modal` vazio (D12, D16)
-- [ ] 7.2 Criar `ui/templates/ui/layouts/app.html` com o link "Ir para o conteúdo", a barra lateral (símbolo do IF, nome do sistema, campus, "Menu principal" e navegação), o cabeçalho (trilha e menu do usuário com "Sair" por POST), a barra do topo com `<details>` "Menu" abaixo de 1024 px, o `main` com `id="conteudo"`, o cabeçalho da página e as mensagens (D12)
-- [ ] 7.3 Criar `ui/templates/ui/layouts/auth.html` com o painel `brand-surface` e o formulário, em duas colunas a partir de 1024 px e empilhados abaixo disso (D14)
-- [ ] 7.4 Escrever `ui/tests/test_base.py`: símbolo do IF com o nome do sistema e o campus no link para o início, logo negativo com o texto alternativo no login, primeiro link "Ir para o conteúdo", `aria-current="page"` e trilha na lista de usuários, "Perfis" ausente sem a permissão, menu do usuário com iniciais, nome, perfil e "Sair", login com o painel da marca e o título "Entrar", e nenhum endereço externo em `link`, `script`, `img` e `@font-face`
+- [x] 7.1 Mover `accounts/templates/base.html` para `ui/templates/base.html`, só com o `head`, o CSS, o htmx, o `modal.js`, o `hx-headers` com o CSRF no `body` e o `#modal` vazio (D12, D16)
+- [x] 7.2 Criar `ui/templates/ui/layouts/app.html` com o link "Ir para o conteúdo", a barra lateral (símbolo do IF, nome do sistema, campus, "Menu principal" e navegação), o cabeçalho (trilha e menu do usuário com "Sair" por POST), a barra do topo com `<details>` "Menu" abaixo de 1024 px, o `main` com `id="conteudo"`, o cabeçalho da página e as mensagens (D12)
+- [x] 7.3 Criar `ui/templates/ui/layouts/auth.html` com o painel `brand-surface` e o formulário, em duas colunas a partir de 1024 px e empilhados abaixo disso (D14)
+- [x] 7.4 Escrever `ui/tests/test_base.py`: símbolo do IF com o nome do sistema e o campus no link para o início, logo negativo com o texto alternativo no login, primeiro link "Ir para o conteúdo", `aria-current="page"` e trilha na lista de usuários, "Perfis" ausente sem a permissão, menu do usuário com iniciais, nome, perfil e "Sair", login com o painel da marca e o título "Entrar", e nenhum endereço externo em `link`, `script`, `img` e `@font-face`
 
 ## 8. Aplicação às telas de `accounts`
 
-- [ ] 8.1 Aplicar o layout a `accounts/home.html` e `403.html` (D14)
-- [ ] 8.2 Reescrever `user_list.html` no cartão da prévia: contador, descrição, tabela com pessoa, perfil, selo e ações (Editar e Mais ações), rodapé "Exibindo X de Y usuários" e botão primário "Cadastrar usuário" no cabeçalho da página (D14)
-- [ ] 8.3 Transformar `user_form.html` (cadastrar, editar e trocar perfil) e `user_status_confirm.html` em modais, com as páginas completas estendendo o layout (D14, D16)
-- [ ] 8.4 Reescrever `role_list.html` e `role_detail.html` em cartões, e transformar `role_form.html` (com as permissões em `fieldset` por recurso) e `role_confirm_delete.html` em modais (D14, D16)
-- [ ] 8.5 Aplicar o layout de autenticação a `login.html`, com o renderizador de formulários, os campos com ícone, "E-mail institucional" e a nota de acesso, e a `logout.html` e às quatro telas da recuperação de senha (D14)
-- [ ] 8.6 Escrever os testes dos cenários da spec: selos com palavra e ícone, `role="alert"` e `role="status"` nas mensagens, botão "Editar" com `aria-label` e dica, `aria-invalid` e `aria-describedby` no e-mail vazio, "(opcional)" na descrição do perfil, `data-label` nas células e o texto do estado vazio de permissões
-- [ ] 8.7 Rodar `make test` com a suíte inteira passando, incluindo os testes de texto, contraste, valores soltos e modais
+- [x] 8.1 Aplicar o layout a `accounts/home.html` e `403.html` (D14)
+- [x] 8.2 Reescrever `user_list.html` no cartão da prévia: contador, descrição, tabela com pessoa, perfil, selo e ações (Editar e Mais ações), rodapé "Exibindo X de Y usuários" e botão primário "Cadastrar usuário" no cabeçalho da página (D14)
+- [x] 8.3 Transformar `user_form.html` (cadastrar, editar e trocar perfil) e `user_status_confirm.html` em modais, com as páginas completas estendendo o layout (D14, D16)
+- [x] 8.4 Reescrever `role_list.html` e `role_detail.html` em cartões, e transformar `role_form.html` (com as permissões em `fieldset` por recurso) e `role_confirm_delete.html` em modais (D14, D16)
+- [x] 8.5 Aplicar o layout de autenticação a `login.html`, com o renderizador de formulários, os campos com ícone, "E-mail institucional" e a nota de acesso, e a `logout.html` e às quatro telas da recuperação de senha (D14)
+- [x] 8.6 Escrever os testes dos cenários da spec: selos com palavra e ícone, `role="alert"` e `role="status"` nas mensagens, botão "Editar" com `aria-label` e dica, `aria-invalid` e `aria-describedby` no e-mail vazio, "(opcional)" na descrição do perfil, `data-label` nas células e o texto do estado vazio de permissões
+- [x] 8.7 Rodar `make test` com a suíte inteira passando, incluindo os testes de texto, contraste, valores soltos e modais
 
 ## 9. Documentação
 
@@ -69,6 +69,6 @@
 
 ## 10. Verificação visual manual
 
-- [ ] 10.1 Conferir todas as telas e modais em 360, 640, 1024 e 1280 px de largura, sem rolagem horizontal
-- [ ] 10.2 Percorrer todas as telas só com o teclado: foco visível, dicas dos botões de ícone no foco, foco preso no modal, Esc fechando e foco voltando ao botão de origem
-- [ ] 10.3 Conferir as telas com zoom de 200% e com o JavaScript desligado, incluindo o botão "Menu" e as ações abrindo como páginas
+- [x] 10.1 Conferir todas as telas e modais em 360, 640, 1024 e 1280 px de largura, sem rolagem horizontal
+- [x] 10.2 Percorrer todas as telas só com o teclado: foco visível, dicas dos botões de ícone no foco, foco preso no modal, Esc fechando e foco voltando ao botão de origem
+- [x] 10.3 Conferir as telas com zoom de 200% e com o JavaScript desligado, incluindo o botão "Menu" e as ações abrindo como páginas

@@ -1,13 +1,26 @@
-{% extends "base.html" %}
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
 
 {% block title %}Acesso restrito{% endblock %}
 
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Acesso restrito</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Acesso restrito</h1>
+      <p class="page-description">Esta página exige uma permissão que o seu perfil não concede. Para obter acesso, procure um administrador do sistema.</p>
+    </div>
+  </div>
+{% endblock %}
+
 {% block content %}
-  <h1>Acesso restrito</h1>
-  <p>Esta página exige uma permissão que o seu perfil não concede. Para obter acesso, procure um administrador do sistema.</p>
   {% if user.is_authenticated %}
-    <p><a href="{% url 'home' %}">Voltar para o início</a></p>
+    <p><a class="link" href="{% url 'home' %}">Voltar para o início</a></p>
   {% else %}
-    <p><a href="{% url 'account_login' %}">Entrar</a></p>
+    <p><a class="link" href="{% url 'account_login' %}">Entrar</a></p>
   {% endif %}
 {% endblock %}

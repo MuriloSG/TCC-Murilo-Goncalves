@@ -1,28 +1,24 @@
-{% extends "base.html" %}
+{% extends "ui/layouts/auth.html" %}
+{% load ui %}
 
 {% block title %}Entrar{% endblock %}
 
 {% block content %}
-  <h1>Entrar</h1>
-  <form method="post" action="{% url 'account_login' %}">
+  <div class="auth-heading">
+    <h1>Entrar</h1>
+    <p>Use o e-mail institucional e a senha cadastrados no sistema.</p>
+  </div>
+  <form class="form-fields" method="post" action="{% url 'account_login' %}">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    <div>
-      <label for="{{ form.login.id_for_label }}">E-mail</label>
-      {{ form.login }}
-      {{ form.login.errors }}
-    </div>
-    <div>
-      <label for="{{ form.password.id_for_label }}">Senha</label>
-      {{ form.password }}
-      {{ form.password.errors }}
-    </div>
-    <div>
-      {{ form.remember }}
-      <label for="{{ form.remember.id_for_label }}">Manter conectado</label>
+    {% include "ui/forms/form_errors.html" %}
+    {% include "ui/forms/field.html" with field=form.login icon="mail" %}
+    {% include "ui/forms/field.html" with field=form.password icon="lock" %}
+    <div class="row-between">
+      {% include "ui/forms/field.html" with field=form.remember %}
+      <a class="link" href="{% url 'account_reset_password' %}">Esqueci minha senha</a>
     </div>
     {{ redirect_field }}
-    <button type="submit">Entrar</button>
+    <button class="btn-primary" type="submit">{% icon "arrow-right" %}Entrar</button>
   </form>
-  <p><a href="{% url 'account_reset_password' %}">Esqueci minha senha</a></p>
+  <p class="note">Para obter acesso, procure um administrador do sistema.</p>
 {% endblock %}

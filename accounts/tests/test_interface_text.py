@@ -34,7 +34,7 @@ class AuthenticationMessagesTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get('/contas/logout/')
         self.assertContains(response, '<h1>Sair do sistema?</h1>', html=True)
-        self.assertContains(response, '<a href="/inicio/">Fechar</a>', html=True)
+        self.assertContains(response, '<a class="btn-secondary" href="/inicio/">Fechar</a>', html=True)
 
     def test_credenciais_incorretas(self):
         response = self.client.post('/contas/login/', {'login': 'ana@ifnmg.edu.br', 'password': 'errada'})
@@ -47,7 +47,7 @@ class AuthenticationMessagesTests(TestCase):
         self.assertContains(response, INVALID_EMAIL)
         response = self.client.post('/contas/senha/recuperar/', {'email': 'ana'})
         self.assertContains(response, INVALID_EMAIL)
-        self.assertContains(response, '<label for="id_email">E-mail:</label>', html=True)
+        self.assertContains(response, '<label for="id_email">E-mail</label>', html=True)
 
 
 class PasswordResetTextTests(TestCase):
@@ -114,27 +114,27 @@ class ManagementScreensTextTests(TestCase):
         client = Client()
         client.force_login(self.target)
         response = client.get('/inicio/')
-        self.assertContains(response, '<h1>Início</h1>', html=True)
+        self.assertContains(response, '<h1 class="page-title">Início</h1>', html=True)
         self.assertNotContains(response, 'Olá')
         self.assertNotIn('!', response.content.decode().removeprefix('<!DOCTYPE html>'))
 
     def test_confirmacao_de_desativacao(self):
         response = self.client.get(f'/usuarios/{self.target.pk}/desativar/')
-        self.assertContains(response, '<h1>Desativar Maria Sousa?</h1>', html=True)
-        self.assertContains(response, '<button type="submit">Desativar usuário</button>', html=True)
-        self.assertContains(response, '<a href="/usuarios/">Fechar</a>', html=True)
+        self.assertContains(response, 'Desativar Maria Sousa?</h1>')
+        self.assertContains(response, 'Desativar usuário</button>')
+        self.assertContains(response, '<a class="btn-secondary" href="/usuarios/">Fechar</a>', html=True)
         self.assertNotContains(response, 'Cancelar')
 
     def test_confirmacao_de_reativacao(self):
         self.target.deactivate()
         response = self.client.get(f'/usuarios/{self.target.pk}/reativar/')
-        self.assertContains(response, '<h1>Reativar Maria Sousa?</h1>', html=True)
+        self.assertContains(response, 'Reativar Maria Sousa?</h1>')
         self.assertContains(response, 'volta a poder entrar no sistema com a senha que já tinha')
-        self.assertContains(response, '<button type="submit">Reativar usuário</button>', html=True)
+        self.assertContains(response, 'Reativar usuário</button>')
 
     def test_fechar_volta_a_tela_de_origem_sem_alterar_dados(self):
         response = self.client.get(f'/usuarios/{self.target.pk}/desativar/')
-        close_url = re.search(r'<a href="([^"]+)">Fechar</a>', response.content.decode()).group(1)
+        close_url = re.search(r'<a class="btn-secondary" href="([^"]+)">Fechar</a>', response.content.decode()).group(1)
         self.assertEqual(close_url, '/usuarios/')
         self.assertEqual(self.client.get(close_url).status_code, 200)
         self.assertTrue(User.objects.get(pk=self.target.pk).is_active)
@@ -142,15 +142,16 @@ class ManagementScreensTextTests(TestCase):
     def test_situacao_inativo_oferece_reativar(self):
         self.target.deactivate()
         response = self.client.get('/usuarios/')
-        self.assertContains(response, '<td>Inativo</td>', html=True)
-        self.assertContains(response, f'<a href="/usuarios/{self.target.pk}/reativar/">Reativar</a>', html=True)
+        self.assertContains(response, 'Inativo</span>')
+        self.assertContains(response, f'href="/usuarios/{self.target.pk}/reativar/"')
+        self.assertContains(response, 'aria-label="Reativar usuário"')
 
     def test_confirmacao_de_exclusao_de_perfil(self):
         response = self.client.get(f'/perfis/{self.role.pk}/excluir/')
-        self.assertContains(response, '<h1>Excluir o perfil Coordenação?</h1>', html=True)
+        self.assertContains(response, 'Excluir o perfil Coordenação?</h1>')
         self.assertContains(response, 'é excluído de forma definitiva')
-        self.assertContains(response, '<button type="submit">Excluir perfil</button>', html=True)
-        self.assertContains(response, f'<a href="/perfis/{self.role.pk}/">Fechar</a>', html=True)
+        self.assertContains(response, 'Excluir perfil</button>')
+        self.assertContains(response, f'<a class="btn-secondary" href="/perfis/{self.role.pk}/">Fechar</a>', html=True)
         self.assertNotContains(response, 'Cancelar')
 
     def test_perfil_sem_descricao(self):

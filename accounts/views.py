@@ -4,9 +4,11 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, FormView, ListView, TemplateView
+
+from ui.views import ModalView
 
 from accounts import permissions
 from accounts.adapters import send_password_link
@@ -28,8 +30,8 @@ class HomeView(TemplateView):
     template_name = 'accounts/home.html'
 
 
-class OperationFormView(FormView):
-    """Formulário que executa uma operação do model.
+class OperationFormView(ModalView, FormView):
+    """Formulário que executa uma operação do model, aberto em modal (D16).
 
     Quando a rota tem `pk`, carrega o objeto alvo de `model`. As recusas das regras
     de negócio (ValidationError) voltam como erros do próprio formulário.
@@ -59,10 +61,11 @@ class OperationFormView(FormView):
         return super().form_valid(form)
 
 
-class ConfirmedActionView(TemplateView):
+class ConfirmedActionView(ModalView, TemplateView):
     """Mostra a confirmação no GET e executa a operação só no POST (D13, D22).
 
     As recusas das regras de negócio viram mensagens de erro, sem alterar dados.
+    A confirmação abre em modal (D16).
     """
 
     model = None
@@ -87,8 +90,8 @@ class ConfirmedActionView(TemplateView):
         except ValidationError as error:
             for message in error.messages:
                 messages.error(request, message)
-            return redirect(self.get_failure_url())
-        return redirect(self.get_success_url())
+            return self.redirect_to(self.get_failure_url())
+        return self.redirect_to(self.get_success_url())
 
 
 class UserListView(ListView):
@@ -103,6 +106,7 @@ class UserListView(ListView):
 class UserCreateView(OperationFormView):
     permission_required = permissions.USER_CREATE
     template_name = 'accounts/user_form.html'
+    modal_template_name = 'accounts/user_form_modal.html'
     success_url = reverse_lazy('user_list')
     form_class = UserCreateForm
     title = 'Cadastrar usuário'
@@ -133,6 +137,7 @@ class UserUpdateView(OperationFormView):
     permission_required = permissions.USER_EDIT
     model = User
     template_name = 'accounts/user_form.html'
+    modal_template_name = 'accounts/user_form_modal.html'
     success_url = reverse_lazy('user_list')
     form_class = UserUpdateForm
     title = 'Editar usuário'
@@ -149,6 +154,7 @@ class UserRoleView(OperationFormView):
     permission_required = permissions.USER_CHANGE_ROLE
     model = User
     template_name = 'accounts/user_form.html'
+    modal_template_name = 'accounts/user_form_modal.html'
     success_url = reverse_lazy('user_list')
     form_class = UserRoleForm
     title = 'Trocar perfil'
@@ -165,6 +171,7 @@ class UserStatusView(ConfirmedActionView):
     permission_required = permissions.USER_CHANGE_STATUS
     model = User
     template_name = 'accounts/user_status_confirm.html'
+    modal_template_name = 'accounts/user_status_modal.html'
     success_url = reverse_lazy('user_list')
     action = ''
 
@@ -212,9 +219,13 @@ class RoleDetailView(DetailView):
 class RoleFormView(OperationFormView):
     model = Role
     template_name = 'accounts/role_form.html'
+    modal_template_name = 'accounts/role_form_modal.html'
 
     def get_success_url(self):
         return reverse('role_detail', args=[self.target.pk])
+
+    def get_close_url(self):
+        return reverse('role_detail', args=[self.target.pk]) if self.target else reverse('role_list')
 
 
 class RoleCreateView(RoleFormView):
@@ -266,10 +277,14 @@ class RoleDeleteView(ConfirmedActionView):
     permission_required = permissions.ROLE_DELETE
     model = Role
     template_name = 'accounts/role_confirm_delete.html'
+    modal_template_name = 'accounts/role_delete_modal.html'
     success_url = reverse_lazy('role_list')
 
     def get_failure_url(self):
         return reverse('role_detail', args=[self.target.pk])
+
+    def get_close_url(self):
+        return self.get_failure_url()
 
     def perform(self):
         code = self.target.code

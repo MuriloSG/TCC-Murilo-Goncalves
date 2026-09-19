@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Excluir o perfil {{ target.name }}?{% endblock %}
+
+{% block consequence %}O perfil {{ target.code }} é excluído de forma definitiva, sem afetar o catálogo de permissões. A exclusão é recusada se o perfil for do sistema ou tiver usuários vinculados.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "trash-2" %}Excluir perfil</button>{% endblock %}

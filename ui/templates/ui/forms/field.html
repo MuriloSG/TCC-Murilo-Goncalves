@@ -1,0 +1,26 @@
+{% load ui %}{% if field.use_fieldset %}
+  <fieldset class="field">
+    <legend>{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</legend>
+    {% if field.help_text %}<div class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</div>{% endif %}
+    {{ field }}
+    {% include "ui/forms/errors.html" %}
+  </fieldset>
+{% elif field.widget_type == "checkbox" %}
+  <div>
+    <div class="check">{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+    {% include "ui/forms/errors.html" %}
+  </div>
+{% else %}
+  <div class="field">
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</label>
+    {% if icon %}
+      <div class="control">{% icon icon %}{{ field }}</div>
+    {% elif field.widget_type == "select" %}
+      <div class="select-wrap">{{ field }}{% icon "chevron-down" %}</div>
+    {% else %}
+      {{ field }}
+    {% endif %}
+    {% if field.help_text %}<div class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</div>{% endif %}
+    {% include "ui/forms/errors.html" %}
+  </div>
+{% endif %}

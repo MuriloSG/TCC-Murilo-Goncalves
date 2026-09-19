@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.forms',
+    'django_htmx',
     'accounts',
     'ui',
     'allauth',
@@ -52,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'django_htmx.middleware.HtmxMiddleware',
     'accounts.middleware.PermissionMiddleware',
 ]
 
@@ -71,6 +74,8 @@ TEMPLATES = [
         },
     },
 ]
+
+FORM_RENDERER = 'ui.forms.FormRenderer'
 
 WSGI_APPLICATION = 'config.wsgi.application'
 

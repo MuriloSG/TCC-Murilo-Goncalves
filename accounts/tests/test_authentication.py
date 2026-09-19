@@ -72,8 +72,8 @@ class LoginPageTests(AuthenticationTestCase):
 
     def test_offers_password_recovery_and_no_signup(self):
         response = self.client.get('/contas/login/')
-        self.assertContains(response, '<a href="/contas/senha/recuperar/">Esqueci minha senha</a>', html=True)
-        for text in ['signup', 'cadastr', 'Criar conta', 'criar uma conta']:
+        self.assertContains(response, '<a class="link" href="/contas/senha/recuperar/">Esqueci minha senha</a>', html=True)
+        for text in ['signup', 'Cadastre-se', 'Cadastrar', 'Criar conta', 'criar uma conta']:
             self.assertNotContains(response, text)
 
 

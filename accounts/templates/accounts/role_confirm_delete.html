@@ -1,13 +1,13 @@
-{% extends "base.html" %}
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
 
 {% block title %}Excluir o perfil {{ target.name }}?{% endblock %}
 
-{% block content %}
-  <h1>Excluir o perfil {{ target.name }}?</h1>
-  <p>O perfil {{ target.code }} é excluído de forma definitiva, sem afetar o catálogo de permissões. A exclusão é recusada se o perfil for do sistema ou tiver usuários vinculados.</p>
-  <form method="post">
-    {% csrf_token %}
-    <button type="submit">Excluir perfil</button>
-  </form>
-  <p><a href="{% url 'role_detail' target.pk %}">Fechar</a></p>
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'role_list' %}">Perfis</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'role_detail' target.pk %}">{{ target.name }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Excluir perfil</span></li>
 {% endblock %}
+
+{% block content %}{% include "accounts/role_delete_modal.html" %}{% endblock %}

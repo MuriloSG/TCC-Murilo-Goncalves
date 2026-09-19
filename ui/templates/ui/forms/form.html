@@ -1,0 +1,5 @@
+{% include "ui/forms/form_errors.html" %}
+<div class="form-fields">
+  {% for field, errors in fields %}{{ field.as_field_group }}{% endfor %}
+</div>
+{% for field in hidden_fields %}{{ field }}{% endfor %}

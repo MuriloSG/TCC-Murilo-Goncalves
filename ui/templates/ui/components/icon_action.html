@@ -1,0 +1,1 @@
+{% load ui %}<a class="icon-btn{% if action.danger %} danger{% endif %}" href="{{ action.url }}" hx-get="{{ action.url }}" hx-target="#modal" aria-label="{{ action.label }}">{% icon action.icon %}<span class="label">{{ action.label }}</span><span class="tip" role="tooltip">{{ action.label }}</span></a>

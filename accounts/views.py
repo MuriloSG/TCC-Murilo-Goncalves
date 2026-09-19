@@ -17,6 +17,7 @@ from accounts.forms import (
     RolePermissionsForm,
     RoleUpdateForm,
     UserCreateForm,
+    UserFilterForm,
     UserRoleForm,
     UserUpdateForm,
 )
@@ -95,12 +96,39 @@ class ConfirmedActionView(ModalView, TemplateView):
 
 
 class UserListView(ListView):
+    """Lista de usuários com busca e filtro pela URL.
+
+    Quando o formulário de filtros pede pelo htmx, responde só com a tabela e o
+    rodapé, o alvo da troca.
+    """
+
     permission_required = permissions.USER_VIEW
     template_name = 'accounts/user_list.html'
+    table_template_name = 'accounts/partials/user_table.html'
+    table_target = 'tabela-usuarios'
     context_object_name = 'users'
 
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.filters = UserFilterForm(request.GET)
+        self.term, self.status = self.filters.criteria()
+
     def get_queryset(self):
-        return User.objects.prefetch_related('roles').order_by('name', 'email')
+        return User.objects.search(self.term, self.status).prefetch_related('roles').order_by('name', 'email')
+
+    def get_template_names(self):
+        if self.request.htmx and self.request.htmx.target == self.table_target:
+            return [self.table_template_name]
+        return super().get_template_names()
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            filters=self.filters,
+            filtered=bool(self.term) or self.status != 'todos',
+            total=User.objects.count(),
+            table_target=self.table_target,
+            **kwargs,
+        )
 
 
 class UserCreateView(OperationFormView):

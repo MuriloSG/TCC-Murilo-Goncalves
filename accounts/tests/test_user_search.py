@@ -1,7 +1,11 @@
-from django.test import TestCase
+import re
+
+from django.test import Client, TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+
+HTMX = {'HX-Request': 'true'}
 
 
 class SearchTestCase(TestCase):
@@ -47,3 +51,89 @@ class ManagerSearchTests(SearchTestCase):
         self.assertEqual(len(User.objects.search('')), 3)
         self.assertEqual(len(User.objects.search()), 3)
 
+
+class ListSearchViewTests(SearchTestCase):
+    def setUp(self):
+        self.client.force_login(self.ana)
+
+    def listed(self, response):
+        return re.findall(r'<span class="person-name">([^<(]+?)(?: \(superadmin\))?</span>', response.content.decode())
+
+    def test_busca_por_trecho_do_nome(self):
+        response = self.client.get('/usuarios/', {'busca': 'SOU'})
+        self.assertEqual(self.listed(response), ['Ana Souza'])
+        self.assertContains(response, 'Exibindo <strong>1</strong> de <strong>3</strong> usuários')
+
+    def test_busca_por_trecho_do_email(self):
+        self.assertEqual(self.listed(self.client.get('/usuarios/', {'busca': 'bruno.lima'})), ['Bruno Lima'])
+
+    def test_filtro_por_situacao(self):
+        self.assertEqual(self.listed(self.client.get('/usuarios/', {'situacao': 'inativos'})), ['Carla Mendes'])
+        self.assertEqual(self.listed(self.client.get('/usuarios/', {'situacao': 'ativos'})), ['Ana Souza', 'Bruno Lima'])
+
+    def test_busca_e_filtro_combinados(self):
+        User.objects.register(email='ana.clara@ifnmg.edu.br', name='Ana Clara', role=self.admin_role).deactivate()
+        response = self.client.get('/usuarios/', {'busca': 'ana', 'situacao': 'ativos'})
+        self.assertEqual(self.listed(response), ['Ana Souza'])
+
+    def test_situacao_invalida_mostra_todos(self):
+        response = self.client.get('/usuarios/', {'situacao': 'qualquer'})
+        self.assertEqual(self.listed(response), ['Ana Souza', 'Bruno Lima', 'Carla Mendes'])
+        self.assertNotContains(response, 'class="error"')
+
+    def test_ordem_por_nome(self):
+        self.assertEqual(self.listed(self.client.get('/usuarios/', {'busca': 'ifnmg'})), ['Ana Souza', 'Bruno Lima', 'Carla Mendes'])
+
+    def test_busca_sem_resultado(self):
+        response = self.client.get('/usuarios/', {'busca': 'zzz'})
+        self.assertEqual(self.listed(response), [])
+        self.assertContains(response, '<p>Nenhum usuário encontrado para a busca.</p>', html=True)
+        self.assertContains(response, '<a class="link" href="/usuarios/">Limpar busca</a>', html=True)
+        self.assertContains(response, 'Exibindo <strong>0</strong> de <strong>3</strong> usuários')
+
+    def test_lista_sem_busca_mantem_o_estado_vazio_original(self):
+        response = self.client.get('/usuarios/', {'busca': ''})
+        self.assertNotContains(response, 'Limpar busca')
+
+    def test_formulario_mostra_o_estado_atual(self):
+        response = self.client.get('/usuarios/', {'busca': 'ana', 'situacao': 'inativos'})
+        content = response.content.decode()
+        self.assertRegex(content, r'<form class="filters" method="get" action="/usuarios/" role="search" hx-get="/usuarios/"')
+        self.assertIn('hx-push-url="true" hx-history="false"', content)
+        self.assertRegex(content, r'<input type="search" name="busca" value="ana"')
+        self.assertIn('<option value="inativos" selected>Inativos</option>', content)
+        self.assertIn('<label class="sr-only" for="id_busca">Buscar por nome ou e-mail</label>', content)
+        self.assertIn('<label class="sr-only" for="id_situacao">Situação</label>', content)
+        self.assertRegex(content, r'(?s)<noscript><button class="btn-secondary" type="submit">.*Buscar</button></noscript>')
+
+    def test_atualizacao_pelo_htmx_responde_so_a_tabela(self):
+        response = self.client.get('/usuarios/', {'busca': 'ana'}, headers=HTMX | {'HX-Target': 'tabela-usuarios'})
+        content = response.content.decode()
+        self.assertTrue(content.startswith('<table class="data-table">'), content[:80])
+        self.assertNotIn('<html', content)
+        self.assertNotIn('role="search"', content)
+        self.assertEqual(self.listed(response), ['Ana Souza'])
+        self.assertIn('Exibindo <strong>1</strong> de <strong>3</strong> usuários', content)
+
+    def test_htmx_com_outro_alvo_responde_a_pagina(self):
+        response = self.client.get('/usuarios/', {'busca': 'ana'}, headers=HTMX | {'HX-Target': 'outro'})
+        self.assertContains(response, '<html')
+
+    def test_busca_sem_a_permissao(self):
+        client = Client()
+        client.force_login(self.bruno)
+        self.assertEqual(client.get('/usuarios/', {'busca': 'ana'}).status_code, 403)
+
+    def test_busca_nao_altera_dados(self):
+        before = list(User.objects.order_by('pk').values_list('name', 'email', 'is_active'))
+        self.client.get('/usuarios/', {'busca': 'ana', 'situacao': 'inativos'})
+        self.assertEqual(list(User.objects.order_by('pk').values_list('name', 'email', 'is_active')), before)
+
+    def test_desativacao_pelo_htmx_volta_para_a_lista_filtrada(self):
+        response = self.client.post(
+            f'/usuarios/{self.bruno.pk}/desativar/',
+            headers=HTMX | {'HX-Current-URL': 'http://testserver/usuarios/?busca=ana'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['HX-Redirect'], '/usuarios/?busca=ana')
+        self.assertFalse(User.objects.get(pk=self.bruno.pk).is_active)

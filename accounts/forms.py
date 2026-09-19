@@ -108,6 +108,32 @@ class UserUpdateForm(forms.Form):
             self.fields['email'].help_text = 'Somente um superadmin pode alterar o e-mail de um superadmin.'
 
 
+class UserFilterForm(forms.Form):
+    """Busca e filtro da lista de usuários, recebidos pela URL (D1 da Change filtrar-lista-de-usuarios).
+
+    Os nomes dos campos são os parâmetros da URL, em português, como os caminhos.
+    Um valor inválido é descartado sem mensagem, e a lista trata o campo como vazio.
+    """
+
+    busca = forms.CharField(
+        label='Buscar por nome ou e-mail',
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'search', 'class': 'input', 'placeholder': 'Buscar por nome ou e-mail'}),
+    )
+    situacao = forms.ChoiceField(
+        label='Situação',
+        choices=[('todos', 'Todas as situações'), ('ativos', 'Ativos'), ('inativos', 'Inativos')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+
+    def criteria(self):
+        """Devolve (termo, situação) válidos, com os valores inválidos trocados pelo padrão."""
+        self.is_valid()
+        return self.cleaned_data.get('busca', ''), self.cleaned_data.get('situacao') or 'todos'
+
+
 class UserRoleForm(forms.Form):
     role = role_choice_field()
 

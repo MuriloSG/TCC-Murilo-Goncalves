@@ -24,57 +24,23 @@
   <section class="card" aria-labelledby="lista-usuarios">
     <div class="card-head">
       <div>
-        <h2 class="card-title" id="lista-usuarios">Todos os usuários <span class="count">{{ users|length }}</span></h2>
+        <h2 class="card-title" id="lista-usuarios">Todos os usuários <span class="count">{{ total }}</span></h2>
         <p class="card-description">Nome, e-mail, perfil e situação de cada usuário.</p>
       </div>
+      <form class="filters" method="get" action="{% url 'user_list' %}" role="search" hx-get="{% url 'user_list' %}" hx-target="#{{ table_target }}" hx-push-url="true" hx-history="false" hx-trigger="submit, input changed delay:300ms from:input[name=busca], search from:input[name=busca], change from:select[name=situacao]">
+        <div class="control">
+          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar por nome ou e-mail</label>
+          {% icon "search" %}{{ filters.busca }}
+        </div>
+        <div class="select-wrap">
+          <label class="sr-only" for="{{ filters.situacao.id_for_label }}">Situação</label>
+          {{ filters.situacao }}{% icon "chevron-down" %}
+        </div>
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Buscar</button></noscript>
+      </form>
     </div>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th scope="col">Usuário</th>
-          <th scope="col">Perfil</th>
-          <th scope="col">Situação</th>
-          <th scope="col" class="cell-actions">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in users %}
-          <tr>
-            <td class="cell-primary" data-label="Usuário">
-              <div class="person">
-                <span class="avatar" aria-hidden="true">{{ item.name|initials }}</span>
-                <span>
-                  <span class="person-name">{{ item.name }}{% if item.is_superadmin %} (superadmin){% endif %}</span>
-                  <span class="person-detail">{{ item.email }}</span>
-                </span>
-              </div>
-            </td>
-            <td data-label="Perfil">{{ item.roles.all.0.name|default:"Sem perfil" }}</td>
-            <td data-label="Situação">
-              {% if item.is_active %}
-                {% include "ui/components/badge.html" with tone="success" icon="check" label="Ativo" %}
-              {% else %}
-                {% include "ui/components/badge.html" with tone="info" icon="circle-minus" label="Inativo" %}
-              {% endif %}
-            </td>
-            <td class="cell-actions" data-label="Ações">
-              {% row_action "user_update" item.pk "Editar" "pencil" when=perms.USUARIO.EDITAR as edit %}
-              {% row_action "user_change_role" item.pk "Trocar perfil" "arrow-left-right" when=perms.USUARIO.ALTERAR_PERFIL as change_role %}
-              {% if item.is_active %}
-                {% row_action "user_deactivate" item.pk "Desativar usuário" "user-x" when=perms.USUARIO.ALTERAR_SITUACAO danger=True as change_status %}
-              {% else %}
-                {% row_action "user_reactivate" item.pk "Reativar usuário" "user-check" when=perms.USUARIO.ALTERAR_SITUACAO as change_status %}
-              {% endif %}
-              {% action_list edit as visible %}
-              {% action_list change_role change_status as more %}
-              {% include "ui/components/row_actions.html" %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td class="cell-primary" colspan="4">Nenhum usuário cadastrado.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p class="card-foot">Exibindo <strong>{{ users|length }}</strong> de <strong>{{ users|length }}</strong> usuário{{ users|length|pluralize }}</p>
+    <div id="{{ table_target }}">
+      {% include "accounts/partials/user_table.html" %}
+    </div>
   </section>
 {% endblock %}

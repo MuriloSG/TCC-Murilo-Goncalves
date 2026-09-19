@@ -601,6 +601,41 @@
     }
   }
 
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-3);
+
+    & .control {
+      width: calc(var(--spacing-16) * 5);
+      max-width: 100%;
+    }
+
+    & .select-wrap {
+      width: var(--container-menu);
+      max-width: 100%;
+    }
+
+    & .control > input {
+      padding-left: var(--spacing-12);
+    }
+
+    & select {
+      appearance: none;
+      padding-right: var(--spacing-10);
+    }
+
+    @variant max-sm {
+      width: 100%;
+
+      & .control,
+      & .select-wrap {
+        width: 100%;
+      }
+    }
+  }
+
   .count {
     display: inline-flex;
     align-items: center;

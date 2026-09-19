@@ -62,6 +62,12 @@ Todos seguem a seção 9 das convenções:
 - rodapé: "Exibindo X de Y usuários", com o singular "Exibindo 1 de 1 usuário";
 - estado vazio: "Nenhum usuário encontrado para a busca." e o link "Limpar busca".
 
+## Notas de implementação
+
+- **Botão Voltar.** O formulário tem `hx-history="false"`. Sem isso, o htmx restaurava a lista a partir da cópia do HTML guardada antes da busca: a tabela voltava filtrada, mas o campo de busca voltava vazio, porque o texto digitado não fica no atributo `value`. Com a opção, o Voltar pede a página ao servidor, que a monta a partir da URL, com o formulário e a tabela coerentes.
+- **Gatilhos do htmx.** Além dos gatilhos do D3, o formulário responde a `submit` (Enter no campo) e o `search` vem do campo de busca (`search from:input[name=busca]`), porque o evento `search` não se propaga até o formulário.
+- **Conferência no navegador (task 5.1).** Busca ao digitar, filtro, contagem, estado vazio, "Limpar busca", Voltar duas vezes, ação em modal a partir da lista filtrada e a busca sem JavaScript (Enter e botão "Buscar") conferidos em 360 e 1280 px, sem rolagem horizontal.
+
 ## Risks / Trade-offs
 
 - [`icontains` não usa índice e percorre a tabela] → o número de usuários de um campus é de centenas, e a consulta é trivial nesse volume. Se crescer, um índice trigram (`pg_trgm`) resolve sem mudar a interface.

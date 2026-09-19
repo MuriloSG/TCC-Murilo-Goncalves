@@ -202,6 +202,7 @@
   --container-modal: 32rem;
   --container-form: 40rem;
   --container-page: 80rem;
+  --container-page-wide: 96rem;
 
   --breakpoint-sm: 40rem;
   --breakpoint-lg: 64rem;
@@ -1704,6 +1705,11 @@
   }
 
   @variant lg {
+    .is-collapsed .page {
+      max-width: var(--container-page-wide);
+      margin-inline: auto;
+    }
+
     .is-collapsed .sidebar {
       overflow: visible;
       padding-inline: var(--spacing-4);
@@ -2286,6 +2292,7 @@
     width: 100%;
     max-width: var(--container-page);
     padding: var(--spacing-6) var(--spacing-4);
+    transition: max-width var(--motion-base) ease;
 
     @variant sm {
       padding-inline: var(--spacing-6);

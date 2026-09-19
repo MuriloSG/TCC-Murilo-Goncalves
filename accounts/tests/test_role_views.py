@@ -122,7 +122,7 @@ class ListAndDetailTests(RoleViewsTestCase):
             [permission.code for permission in response.context['permissions']],
             [permissions.USER_EDIT, permissions.USER_VIEW],
         )
-        self.assertContains(response, '<h3>USUARIO</h3>', html=True)
+        self.assertContains(response, '<span class="perm-group-name">Usuários</span>', html=True)
         self.assertNotContains(response, 'USUARIO.CRIAR')
 
     def test_there_is_no_route_to_manage_the_catalog(self):

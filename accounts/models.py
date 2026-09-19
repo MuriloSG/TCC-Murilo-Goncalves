@@ -9,6 +9,7 @@ from django.db.models.functions import Lower
 
 from accounts.permissions import (
     ADMINISTRATIVE_CAPABILITY,
+    RESOURCE_LABELS,
     SUPERADMIN_RESERVED_PERMISSIONS,
 )
 
@@ -448,6 +449,11 @@ class Permission(models.Model):
     @property
     def resource(self):
         return self.code.partition('.')[0]
+
+    @property
+    def resource_label(self):
+        """Nome do recurso para a interface, com o próprio código quando não há nome."""
+        return RESOURCE_LABELS.get(self.resource, self.resource)
 
     @property
     def action(self):

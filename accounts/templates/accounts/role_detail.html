@@ -16,9 +16,9 @@
       <p class="page-description">Dados do perfil e permissões que ele concede.</p>
     </div>
     <div class="page-actions">
-      {% if perms.PERFIL.EDITAR %}<a class="btn-secondary" href="{% url 'role_update' role.pk %}" hx-get="{% url 'role_update' role.pk %}" hx-target="#modal">{% icon "pencil" %}Editar</a>{% endif %}
-      {% if perms.PERFIL.ALTERAR_PERMISSOES %}<a class="btn-secondary" href="{% url 'role_permissions' role.pk %}" hx-get="{% url 'role_permissions' role.pk %}" hx-target="#modal">{% icon "list-checks" %}Alterar permissões</a>{% endif %}
       {% if perms.PERFIL.EXCLUIR and not role.is_system %}<a class="btn-danger" href="{% url 'role_delete' role.pk %}" hx-get="{% url 'role_delete' role.pk %}" hx-target="#modal">{% icon "trash-2" %}Excluir perfil</a>{% endif %}
+      {% if perms.PERFIL.EDITAR %}<a class="btn-secondary" href="{% url 'role_update' role.pk %}" hx-get="{% url 'role_update' role.pk %}" hx-target="#modal">{% icon "pencil" %}Editar perfil</a>{% endif %}
+      {% if perms.PERFIL.ALTERAR_PERMISSOES %}<a class="btn-primary" href="{% url 'role_permissions' role.pk %}" hx-get="{% url 'role_permissions' role.pk %}" hx-target="#modal">{% icon "list-checks" %}Alterar permissões</a>{% endif %}
     </div>
   </div>
 {% endblock %}
@@ -26,40 +26,49 @@
 {% block content %}
   <section class="card" aria-labelledby="dados-perfil">
     <div class="card-head">
-      <h2 class="card-title" id="dados-perfil">Dados do perfil</h2>
+      <div>
+        <h2 class="card-title" id="dados-perfil">Dados do perfil</h2>
+        <p class="card-description">Código, tipo, descrição e usuários vinculados.</p>
+      </div>
     </div>
-    <div class="card-body">
-      <dl class="data-list">
-        <dt>Código</dt>
-        <dd>{{ role.code }}</dd>
-        <dt>Tipo</dt>
-        <dd>{{ role.is_system|yesno:"Do sistema,Personalizado" }}</dd>
-        <dt>Descrição</dt>
-        <dd>{{ role.description|default:"Sem descrição" }}</dd>
-        <dt>Usuários vinculados</dt>
-        <dd>{{ role.user_count }}</dd>
-      </dl>
-    </div>
+    <dl class="detail-grid">
+      <div><dt>Código do perfil</dt><dd>{{ role.code }}</dd></div>
+      <div><dt>Tipo</dt><dd>{{ role.is_system|yesno:"Perfil do sistema,Perfil personalizado" }}</dd></div>
+      <div><dt>Descrição</dt><dd>{{ role.description|default:"Sem descrição" }}</dd></div>
+      <div><dt>Usuários vinculados</dt><dd>{{ role.user_count }} usuário{{ role.user_count|pluralize }}</dd></div>
+    </dl>
   </section>
 
   <section class="card" aria-labelledby="permissoes-perfil">
     <div class="card-head">
-      <h2 class="card-title" id="permissoes-perfil">Permissões concedidas <span class="count">{{ permissions|length }}</span></h2>
+      <div>
+        <h2 class="card-title" id="permissoes-perfil">Permissões concedidas <span class="count">{{ permissions|length }}</span></h2>
+        <p class="card-description">Agrupadas por módulo do sistema. Selecione um módulo para mostrar ou ocultar as permissões dele.</p>
+      </div>
     </div>
     <div class="card-body">
       {% regroup permissions by resource as groups %}
-      {% for group in groups %}
-        <div>
-          <h3>{{ group.grouper }}</h3>
-          <ul class="plain-list">
-            {% for permission in group.list %}
-              <li>{{ permission.code }} · {{ permission.description }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% empty %}
-        <p>Este perfil não concede nenhuma permissão.</p>
-      {% endfor %}
+      <div class="perm-groups">
+        {% for group in groups %}
+          <details class="perm-group"{% if forloop.first %} open{% endif %}>
+            <summary>
+              <span class="perm-group-name">{{ group.list.0.resource_label }}</span>
+              <span class="perm-group-count">{{ group.list|length }} permiss{{ group.list|length|pluralize:"ão,ões" }}</span>
+              {% icon "chevron-down" %}
+            </summary>
+            <ul class="perm-list">
+              {% for permission in group.list %}
+                <li>
+                  <span class="perm-check">{% icon "check" "size-4" %}</span>
+                  <span><strong>{{ permission.code }}</strong> <span class="perm-description">{{ permission.description }}</span></span>
+                </li>
+              {% endfor %}
+            </ul>
+          </details>
+        {% empty %}
+          <p>Este perfil não concede nenhuma permissão.</p>
+        {% endfor %}
+      </div>
     </div>
   </section>
 {% endblock %}

@@ -4,15 +4,20 @@
 TBD - created by archiving change configurar-ambiente-desenvolvimento. Update Purpose after archive.
 ## Requirements
 ### Requirement: Execução do ambiente via Docker Compose
-O ambiente de desenvolvimento DEVE (MUST) ser iniciado integralmente pelo Docker Compose, com a aplicação Django e o PostgreSQL em containers separados, sem exigir Python, PostgreSQL ou dependências da aplicação instalados na máquina do desenvolvedor.
+O ambiente de desenvolvimento DEVE (MUST) ser iniciado integralmente pelo Docker Compose, com a aplicação Django, o PostgreSQL e a compilação do CSS da interface em containers separados, sem exigir Python, Node.js, PostgreSQL ou dependências da aplicação instalados na máquina do desenvolvedor. O container de compilação do CSS DEVE (MUST) gerar o CSS ao iniciar e gerá-lo de novo sempre que um template ou o arquivo-fonte de CSS for alterado.
 
 #### Scenario: Primeira execução após clonar o repositório
 - **WHEN** um desenvolvedor que tem apenas Docker e Docker Compose instalados clona o repositório e executa `docker compose up --build`
-- **THEN** os containers `web` e `db` são iniciados e `http://localhost:8000/` exibe a página padrão de boas-vindas do Django
+- **THEN** os containers `web`, `db` e `tailwind` são iniciados, o CSS da interface é gerado e `http://localhost:8000/` responde com a interface estilizada
 
 #### Scenario: Aplicação aguarda o banco de dados
 - **WHEN** os containers são iniciados
 - **THEN** o container `web` só inicia depois que o PostgreSQL do container `db` estiver pronto para aceitar conexões
+
+#### Scenario: Alteração de template com o ambiente em execução
+- **GIVEN** o ambiente em execução
+- **WHEN** o desenvolvedor adiciona a um template uma classe de token ainda não usada em nenhum template
+- **THEN** o CSS gerado passa a conter essa classe, sem reiniciar containers
 
 #### Scenario: Encerramento do ambiente
 - **WHEN** o desenvolvedor executa `docker compose down`
@@ -81,18 +86,22 @@ O ambiente DEVE (MUST) permitir executar a suíte de testes do Django no contain
 - **THEN** um teste confirma que a conexão de banco de dados usa o PostgreSQL
 
 ### Requirement: Gerenciamento de dependências
-As dependências Python DEVEM (MUST) ser declaradas com versão exata em um único arquivo versionado e instaladas durante a construção da imagem da aplicação.
+As dependências Python DEVEM (MUST) ser declaradas com versão exata em um único arquivo versionado (`requirements.txt`) e instaladas durante a construção da imagem da aplicação. As dependências de Node.js, usadas só para compilar o CSS, DEVEM (MUST) ser declaradas com versão exata no `package.json`, travadas no `package-lock.json` versionado e instaladas durante a construção da imagem de compilação do CSS. Nenhuma dependência de Node.js DEVE (MUST) ser necessária para executar a aplicação Django.
 
 #### Scenario: Instalação na construção da imagem
-- **WHEN** a imagem da aplicação é construída
-- **THEN** todas as dependências declaradas são instaladas no container nas versões fixadas, sem instalação na máquina do desenvolvedor
+- **WHEN** as imagens do ambiente são construídas
+- **THEN** todas as dependências declaradas são instaladas nos containers nas versões fixadas, sem instalação na máquina do desenvolvedor
 
-#### Scenario: Inclusão de nova dependência
-- **WHEN** o desenvolvedor adiciona uma dependência ao arquivo e reconstrói a imagem
+#### Scenario: Inclusão de nova dependência Python
+- **WHEN** o desenvolvedor adiciona uma dependência ao `requirements.txt` e reconstrói a imagem
 - **THEN** a dependência fica disponível no container `web`
 
+#### Scenario: Inclusão de nova dependência de Node.js
+- **WHEN** o desenvolvedor adiciona uma dependência com `make npm cmd="install --save-exact <pacote>@<versão>"` e executa `make up`
+- **THEN** o `package.json` e o `package-lock.json` são atualizados no repositório e a dependência fica disponível no container `tailwind`
+
 ### Requirement: Atalhos de comandos via Makefile
-O repositório DEVE (MUST) oferecer um `Makefile` cujos alvos executam, por meio do Docker Compose, os comandos de uso diário do ambiente, sem executar Python ou PostgreSQL na máquina do desenvolvedor.
+O repositório DEVE (MUST) oferecer um `Makefile` cujos alvos executam, por meio do Docker Compose, os comandos de uso diário do ambiente, sem executar Python, Node.js ou PostgreSQL na máquina do desenvolvedor.
 
 #### Scenario: Listagem dos alvos
 - **WHEN** o desenvolvedor executa `make` ou `make help`
@@ -100,7 +109,7 @@ O repositório DEVE (MUST) oferecer um `Makefile` cujos alvos executam, por meio
 
 #### Scenario: Subir e parar o ambiente
 - **WHEN** o desenvolvedor executa `make up` e, depois, `make down`
-- **THEN** o ambiente é iniciado em segundo plano, com a imagem reconstruída se necessário, e depois encerrado
+- **THEN** o ambiente é iniciado em segundo plano, com as imagens reconstruídas e as dependências de Node.js reinstaladas se necessário, e depois encerrado
 
 #### Scenario: Migrations e testes pelo Makefile
 - **WHEN** o desenvolvedor executa `make migrate`, `make makemigrations` ou `make test`
@@ -109,6 +118,14 @@ O repositório DEVE (MUST) oferecer um `Makefile` cujos alvos executam, por meio
 #### Scenario: Comando arbitrário do manage.py
 - **WHEN** o desenvolvedor executa `make manage cmd="<comando>"`
 - **THEN** `python manage.py <comando>` é executado no container `web`
+
+#### Scenario: Geração do CSS minificado
+- **WHEN** o desenvolvedor executa `make css`
+- **THEN** o CSS da interface é gerado minificado no container `tailwind`, no caminho servido como arquivo estático
+
+#### Scenario: Comando do npm
+- **WHEN** o desenvolvedor executa `make npm cmd="<comando>"`
+- **THEN** `npm <comando>` é executado no container `tailwind`, no diretório do projeto
 
 #### Scenario: Acesso ao banco pelo psql
 - **WHEN** o desenvolvedor executa `make psql`

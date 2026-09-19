@@ -88,9 +88,12 @@ class AppLayoutTests(LayoutTestCase):
         content = response.content.decode()
         menu = content[content.index('<details class="menu user-menu">'):]
         menu = menu[:menu.index('</details>')]
-        self.assertIn('<span class="avatar" aria-hidden="true">AS</span>', menu)
-        self.assertIn('<span class="who-name">Ana Maria Souza</span>', menu)
-        self.assertIn('<span class="who-role">Administrador</span>', menu)
+        summary = menu[:menu.index('</summary>')]
+        self.assertIn('<summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">AS</span>', summary)
+        self.assertNotIn('Ana Maria Souza', summary)
+        dropdown = menu[menu.index('<div class="menu-list">'):]
+        self.assertIn('<span class="who-name">Ana Maria Souza</span>', dropdown)
+        self.assertIn('<span class="who-role">Administrador</span>', dropdown)
         self.assertRegex(menu, r'<form method="post" action="/contas/logout/">\s*<input type="hidden" name="csrfmiddlewaretoken"')
         self.assertRegex(menu, r'<button type="submit"><svg[^>]*>.*?</svg>\s*Sair</button>')
 

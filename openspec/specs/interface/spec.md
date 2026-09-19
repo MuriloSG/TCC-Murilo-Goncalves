@@ -81,7 +81,7 @@ Todas as páginas autenticadas DEVEM (MUST) estender um único layout com barra 
 
 #### Scenario: Menu do usuário
 - **WHEN** um usuário autenticado abre qualquer página
-- **THEN** o cabeçalho mostra as iniciais, o nome e o perfil do usuário, e o menu dele contém o botão "Sair", que encerra a sessão por POST
+- **THEN** o cabeçalho mostra as iniciais do usuário, e o menu aberto por elas mostra o nome, o perfil e o botão "Sair", que encerra a sessão por POST, e fecha com um clique fora dele ou com Esc
 
 #### Scenario: Link para o conteúdo
 - **WHEN** qualquer página é renderizada

@@ -45,12 +45,9 @@
         </nav>
         {% if user.is_authenticated %}
           <details class="menu user-menu">
-            <summary>
-              <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
-              <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
-              {% icon "chevron-down" %}
-            </summary>
+            <summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">{{ user.name|initials }}</span></summary>
             <div class="menu-list">
+              <span class="who menu-head"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
               <form method="post" action="{% url 'account_logout' %}">
                 {% csrf_token %}
                 <button type="submit">{% icon "log-out" %}Sair</button>

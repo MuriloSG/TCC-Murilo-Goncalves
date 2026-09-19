@@ -31,7 +31,7 @@ class LoginForm(allauth_forms.LoginForm):
         super().__init__(*args, **kwargs)
         use_email_messages(self.fields['login'])
         self.fields['login'].label = 'E-mail institucional'
-        self.fields['login'].widget.attrs['placeholder'] = 'nome.sobrenome@ifnmg.edu.br'
+        self.fields['login'].widget.attrs['placeholder'] = ''
         self.fields['password'].label = 'Senha'
         self.fields['password'].help_text = ''
         self.fields['password'].widget.attrs.pop('placeholder', None)

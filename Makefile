@@ -2,13 +2,13 @@ COMPOSE = docker compose
 MANAGE = $(COMPOSE) run --rm web python manage.py
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs migrate makemigrations test shell manage psql reset-db
+.PHONY: help up down logs migrate makemigrations test shell manage css npm psql reset-db
 
 help: ## Lista os comandos disponíveis
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## Sobe o ambiente em segundo plano, reconstruindo a imagem se necessário
-	$(COMPOSE) up -d --build
+up: ## Sobe o ambiente em segundo plano, reconstruindo as imagens e reinstalando as dependências de Node.js se necessário
+	$(COMPOSE) up -d --build --renew-anon-volumes
 
 down: ## Para e remove os containers (os dados do banco são mantidos)
 	$(COMPOSE) down
@@ -30,6 +30,12 @@ shell: ## Abre o shell do Django
 
 manage: ## Executa um comando do manage.py (ex.: make manage cmd="showmigrations")
 	$(MANAGE) $(cmd)
+
+css: ## Gera o CSS minificado da interface em ui/static/ui/css/app.css
+	$(COMPOSE) run --rm tailwind npx @tailwindcss/cli -i ui/styles/app.css -o ui/static/ui/css/app.css --minify
+
+npm: ## Executa um comando do npm no container tailwind (ex.: make npm cmd="install --save-exact pacote@1.0.0")
+	$(COMPOSE) run --rm tailwind npm $(cmd)
 
 psql: ## Abre o psql no banco de dados do container db
 	$(COMPOSE) up -d --wait db

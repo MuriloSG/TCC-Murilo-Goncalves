@@ -1,24 +1,24 @@
 ## 1. Pré-requisitos
 
-- [ ] 1.1 Confirmar que a Change `definir-texto-da-interface` foi implementada e que o app `ui` e o teste de texto existem
-- [ ] 1.2 Obter a aprovação do autor para a prévia visual `previa.html` (terceira versão) antes de iniciar a seção 2 (D15)
+- [x] 1.1 Confirmar que a Change `definir-texto-da-interface` foi implementada e que o app `ui` e o teste de texto existem
+- [x] 1.2 Obter a aprovação do autor para a prévia visual `previa.html` (terceira versão) antes de iniciar a seção 2 (D15)
 
 ## 2. Build do Tailwind no Docker
 
-- [ ] 2.1 Criar `package.json` com `tailwindcss` e `@tailwindcss/cli` em `4.3.3`, sem `^` nem `~`, e gerar o `package-lock.json` com `npm install` num container `node` temporário (D2)
-- [ ] 2.2 Adicionar ao `Dockerfile` o estágio `tailwind`, com a imagem `node` em tag de versão exata, `WORKDIR /app`, cópia do `package.json` e do `package-lock.json` e `npm ci`, sem alterar o estágio da aplicação (D2)
-- [ ] 2.3 Adicionar ao `compose.yaml` o serviço `tailwind` com `target: tailwind`, bind mount `.:/app`, volume anônimo `/app/node_modules` e o comando do CLI em `--watch=always` (D2)
-- [ ] 2.4 No `Makefile`, alterar `up` para usar `--renew-anon-volumes` e adicionar os alvos `css` (CSS minificado) e `npm` (`npm $(cmd)` no serviço `tailwind`), com descrições `##` (D2)
-- [ ] 2.5 Adicionar `ui/static/ui/css/` e `node_modules/` ao `.gitignore`
-- [ ] 2.6 Executar `make up`, confirmar que os três containers sobem e que `ui/static/ui/css/app.css` é gerado e atualizado ao alterar um template
+- [x] 2.1 Criar `package.json` com `tailwindcss` e `@tailwindcss/cli` em `4.3.3`, sem `^` nem `~`, e gerar o `package-lock.json` com `npm install` num container `node` temporário (D2)
+- [x] 2.2 Adicionar ao `Dockerfile` o estágio `tailwind`, com a imagem `node` em tag de versão exata, `WORKDIR /app`, cópia do `package.json` e do `package-lock.json` e `npm ci`, sem alterar o estágio da aplicação (D2)
+- [x] 2.3 Adicionar ao `compose.yaml` o serviço `tailwind` com `target: tailwind`, bind mount `.:/app`, volume anônimo `/app/node_modules` e o comando do CLI em `--watch=always` (D2)
+- [x] 2.4 No `Makefile`, alterar `up` para usar `--renew-anon-volumes` e adicionar os alvos `css` (CSS minificado) e `npm` (`npm $(cmd)` no serviço `tailwind`), com descrições `##` (D2)
+- [x] 2.5 Adicionar `ui/static/ui/css/` e `node_modules/` ao `.gitignore`
+- [x] 2.6 Executar `make up`, confirmar que os três containers sobem e que `ui/static/ui/css/app.css` é gerado e atualizado ao alterar um template
 
 ## 3. Fonte, ícones, logo e htmx
 
-- [ ] 3.1 Obter `@fontsource-variable/open-sans` 5.3.0 com `npm pack` num container temporário, copiar os woff2 de peso variável, estilo normal, latin e latin-ext para `ui/static/ui/fonts/` com o `OFL.txt` (D9)
-- [ ] 3.2 Obter `lucide-static` 1.47.0 do mesmo modo e copiar para `ui/templates/ui/icons/` os ícones da tabela do D10, com `aria-hidden="true"` e `focusable="false"` e sem `width` e `height` na tag `svg`, junto com o `LICENSE` (D10)
-- [ ] 3.3 Gerar com Pillow num container temporário, sem redimensionar: `simbolo-if.png` a partir de `salinas_horizontal_jpg.jpg` (recorte 49, 41, 207, 254, fundo branco transparente, cores sólidas #309F41 e #CF171F conferidas, 158 x 213) e `logo-horizontal-negativo.png` a partir de `salinas_horizontal_negativo_jpg.jpg` (recorte 49, 41, 862, 266, RGB branco e alfa pela luminância, 813 x 225). Conferir a ausência de halo sobre #EFFBEF e #035B18 (D8)
-- [ ] 3.4 Obter `htmx.org` 2.0.10 com `npm pack` e copiar `htmx.min.js` e a licença para `ui/static/ui/js/` (D16)
-- [ ] 3.5 Adicionar `django-htmx==1.29.0` ao `requirements.txt`, registrar `django_htmx` em `INSTALLED_APPS` e `django_htmx.middleware.HtmxMiddleware` em `MIDDLEWARE`, e reconstruir a imagem (D16)
+- [x] 3.1 Obter `@fontsource-variable/open-sans` 5.3.0 com `npm pack` num container temporário, copiar os woff2 de peso variável, estilo normal, latin e latin-ext para `ui/static/ui/fonts/` com o `OFL.txt` (D9)
+- [x] 3.2 Obter `lucide-static` 1.47.0 do mesmo modo e copiar para `ui/templates/ui/icons/` os ícones da tabela do D10, com `aria-hidden="true"` e `focusable="false"` e sem `width` e `height` na tag `svg`, junto com o `LICENSE` (D10)
+- [x] 3.3 Gerar com Pillow num container temporário, sem redimensionar: `simbolo-if.png` a partir de `salinas_horizontal_jpg.jpg` (recorte 49, 41, 207, 254, fundo branco transparente, cores sólidas #309F41 e #CF171F conferidas, 158 x 213) e `logo-horizontal-negativo.png` a partir de `salinas_horizontal_negativo_jpg.jpg` (recorte 49, 41, 862, 266, RGB branco e alfa pela luminância, 813 x 225). Conferir a ausência de halo sobre #EFFBEF e #035B18 (D8)
+- [x] 3.4 Obter `htmx.org` 2.0.10 com `npm pack` e copiar `htmx.min.js` e a licença para `ui/static/ui/js/` (D16)
+- [x] 3.5 Adicionar `django-htmx==1.29.0` ao `requirements.txt`, registrar `django_htmx` em `INSTALLED_APPS` e `django_htmx.middleware.HtmxMiddleware` em `MIDDLEWARE`, e reconstruir a imagem (D16)
 
 ## 4. Tokens e contraste
 

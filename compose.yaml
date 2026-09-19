@@ -39,5 +39,14 @@ services:
       db:
         condition: service_healthy
 
+  tailwind:
+    build:
+      context: .
+      target: tailwind
+    command: npx @tailwindcss/cli -i ui/styles/app.css -o ui/static/ui/css/app.css --watch=always
+    volumes:
+      - .:/app
+      - /app/node_modules
+
 volumes:
   postgres_data:

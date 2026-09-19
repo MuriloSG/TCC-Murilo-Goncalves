@@ -16,6 +16,7 @@ from imports.views import (
     ImportTemplateView,
     ImportUploadView,
 )
+from ui.pagination import paginate
 from ui.views import ModalView
 
 from accounts import permissions
@@ -142,13 +143,16 @@ class UserListView(ListView):
         return super().get_template_names()
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(
+        context = super().get_context_data(
             filters=self.filters,
             filtered=bool(self.term) or self.status != 'todos',
             total=User.objects.count(),
             table_target=self.table_target,
             **kwargs,
         )
+        context['page'] = paginate(self.request, self.object_list)
+        context['users'] = context['page'].object_list
+        return context
 
 
 class UserCreateView(OperationFormView):
@@ -237,6 +241,12 @@ class RoleListView(ListView):
 
     def get_queryset(self):
         return Role.objects.annotate(user_count=Count('user_roles')).order_by('name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page'] = paginate(self.request, self.object_list)
+        context['roles'] = context['page'].object_list
+        return context
 
 
 class RoleDetailView(DetailView):

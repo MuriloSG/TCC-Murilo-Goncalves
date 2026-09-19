@@ -54,4 +54,4 @@
     {% endfor %}
   </tbody>
 </table>
-<p class="card-foot">Exibindo <strong>{{ users|length }}</strong> de <strong>{{ total }}</strong> usuário{{ total|pluralize }}</p>
+{% include "ui/components/pagination.html" with noun="usuário" noun_plural="usuários" hx_target=table_target %}

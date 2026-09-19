@@ -319,3 +319,17 @@ class DeleteTests(RoleViewsTestCase):
     def test_system_role_has_no_delete_link(self):
         self.assertNotContains(self.client.get(self.url('detail', self.teacher)), '/excluir/')
         self.assertContains(self.client.get(self.url('detail')), '/excluir/')
+
+
+class RoleListPaginationTests(TestCase):
+    def test_roles_are_paginated(self):
+        for index in range(55):
+            code = f'PERFIL_{chr(65 + index // 26)}{chr(65 + index % 26)}'
+            Role.objects.create_role(code=code, name=f'Perfil {index:02d}')
+        superadmin = User.objects.create_superadmin(email='super@ifnmg.edu.br', name='Super', password='Senha-forte-123')
+        self.client.force_login(superadmin)
+        response = self.client.get('/perfis/')
+        self.assertContains(response, 'Exibindo <strong>1</strong> a <strong>20</strong> de <strong>57</strong> perfis')
+        self.assertContains(response, 'Página 1 de 3')
+        response = self.client.get('/perfis/', {'pagina': '3'})
+        self.assertContains(response, 'Exibindo <strong>41</strong> a <strong>57</strong> de <strong>57</strong> perfis')

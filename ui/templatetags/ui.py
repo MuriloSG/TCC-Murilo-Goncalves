@@ -4,6 +4,8 @@ from django import template
 from django.template.loader import get_template
 from django.urls import reverse
 
+from ui.pagination import PAGE_PARAMETER
+
 register = template.Library()
 
 
@@ -107,3 +109,18 @@ def row_action(url_name, pk, label, icon_name, when=True, danger=False):
 @register.simple_tag
 def action_list(*actions):
     return [action for action in actions if action]
+
+
+@register.simple_tag(takes_context=True)
+def page_url(context, number):
+    """Endereço da página `number` da lista atual, com os demais parâmetros da URL.
+
+    A página 1 omite o parâmetro, para coincidir com o endereço sem paginação.
+    """
+    request = context['request']
+    query = request.GET.copy()
+    query.pop(PAGE_PARAMETER, None)
+    if number != 1:
+        query[PAGE_PARAMETER] = number
+    encoded = query.urlencode()
+    return f'{request.path}?{encoded}' if encoded else request.path

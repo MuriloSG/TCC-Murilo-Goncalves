@@ -20,6 +20,7 @@ from django.views.generic import DetailView, FormView, ListView, TemplateView
 from imports.definitions import ImportDefinition
 from imports.forms import ImportUploadForm
 from imports.models import Import, ImportRow
+from ui.pagination import ROWS_PAGE_SIZE, paginate
 from ui.views import ModalView
 
 DIVERGENCE_MESSAGE = 'Os dados mudaram desde a prévia. Confira a nova prévia e confirme de novo.'
@@ -90,6 +91,8 @@ class ImportListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs, **screens_context(self.screens))
+        context['page'] = paginate(self.request, self.object_list)
+        context['importations'] = context['page'].object_list
         for importation in context['importations']:
             importation.tone, importation.icon = status_badge(importation.status)
             importation.detail_url = self.screens.url('detail', importation.pk)
@@ -156,12 +159,14 @@ class ImportDetailView(DetailView):
         if only_errors:
             rows = rows.exclude(errors=[])
         summary = importation.summary()
+        page = paginate(self.request, rows, ROWS_PAGE_SIZE)
         importation.tone, importation.icon = status_badge(importation.status)
         context.update(
             summary=summary,
             only_errors=only_errors,
             columns=[column.label for column in definition.columns],
-            rows=[self.describe(row, definition) for row in rows],
+            page=page,
+            rows=[self.describe(row, definition) for row in page.object_list],
             confirm_url=self.screens.url('confirm', importation.pk),
             discard_url=self.screens.url('discard', importation.pk),
             detail_url=self.screens.url('detail', importation.pk),

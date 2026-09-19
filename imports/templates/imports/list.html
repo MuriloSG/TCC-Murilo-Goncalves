@@ -25,7 +25,7 @@
   <section class="card" aria-labelledby="lista-importacoes">
     <div class="card-head">
       <div>
-        <h2 class="card-title" id="lista-importacoes">Todas as importações <span class="count">{{ importations|length }}</span></h2>
+        <h2 class="card-title" id="lista-importacoes">Todas as importações <span class="count">{{ page.paginator.count }}</span></h2>
       </div>
     </div>
     <table class="data-table">
@@ -61,5 +61,6 @@
         {% endfor %}
       </tbody>
     </table>
+    {% include "ui/components/pagination.html" with noun="importação" noun_plural="importações" %}
   </section>
 {% endblock %}

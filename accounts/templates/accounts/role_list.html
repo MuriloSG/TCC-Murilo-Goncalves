@@ -23,7 +23,7 @@
   <section class="card" aria-labelledby="lista-perfis">
     <div class="card-head">
       <div>
-        <h2 class="card-title" id="lista-perfis">Todos os perfis <span class="count">{{ roles|length }}</span></h2>
+        <h2 class="card-title" id="lista-perfis">Todos os perfis <span class="count">{{ page.paginator.count }}</span></h2>
       </div>
     </div>
     <table class="data-table">
@@ -64,6 +64,6 @@
         {% endfor %}
       </tbody>
     </table>
-    <p class="card-foot">Exibindo <strong>{{ roles|length }}</strong> perfi{{ roles|length|pluralize:"l,s" }}</p>
+    {% include "ui/components/pagination.html" with noun="perfil" noun_plural="perfis" %}
   </section>
 {% endblock %}

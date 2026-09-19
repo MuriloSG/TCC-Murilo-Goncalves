@@ -62,7 +62,8 @@ class ListSearchViewTests(SearchTestCase):
     def test_busca_por_trecho_do_nome(self):
         response = self.client.get('/usuarios/', {'busca': 'SOU'})
         self.assertEqual(self.listed(response), ['Ana Souza'])
-        self.assertContains(response, 'Exibindo <strong>1</strong> de <strong>3</strong> usuários')
+        self.assertContains(response, 'Todos os usuários <span class="count">3</span>')
+        self.assertContains(response, 'Exibindo <strong>1</strong> a <strong>1</strong> de <strong>1</strong> usuário</p>')
 
     def test_busca_por_trecho_do_email(self):
         self.assertEqual(self.listed(self.client.get('/usuarios/', {'busca': 'bruno.lima'})), ['Bruno Lima'])
@@ -89,7 +90,7 @@ class ListSearchViewTests(SearchTestCase):
         self.assertEqual(self.listed(response), [])
         self.assertContains(response, '<p>Nenhum usuário encontrado para a busca.</p>', html=True)
         self.assertContains(response, '<a class="link" href="/usuarios/">Limpar busca</a>', html=True)
-        self.assertContains(response, 'Exibindo <strong>0</strong> de <strong>3</strong> usuários')
+        self.assertNotContains(response, 'Exibindo')
 
     def test_lista_sem_busca_mantem_o_estado_vazio_original(self):
         response = self.client.get('/usuarios/', {'busca': ''})
@@ -113,7 +114,7 @@ class ListSearchViewTests(SearchTestCase):
         self.assertNotIn('<html', content)
         self.assertNotIn('role="search"', content)
         self.assertEqual(self.listed(response), ['Ana Souza'])
-        self.assertIn('Exibindo <strong>1</strong> de <strong>3</strong> usuários', content)
+        self.assertIn('Exibindo <strong>1</strong> a <strong>1</strong> de <strong>1</strong> usuário', content)
 
     def test_htmx_com_outro_alvo_responde_a_pagina(self):
         response = self.client.get('/usuarios/', {'busca': 'ana'}, headers=HTMX | {'HX-Target': 'outro'})
@@ -137,3 +138,24 @@ class ListSearchViewTests(SearchTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['HX-Redirect'], '/usuarios/?busca=ana')
         self.assertFalse(User.objects.get(pk=self.bruno.pk).is_active)
+
+
+class PaginatedSearchTests(SearchTestCase):
+    def setUp(self):
+        self.client.force_login(self.ana)
+        for index in range(45):
+            User.objects.register(email=f'silva{index:02d}@ifnmg.edu.br', name=f'Pessoa Silva {index:02d}', role=self.admin_role)
+
+    def test_busca_paginada_mantem_a_busca(self):
+        response = self.client.get('/usuarios/', {'busca': 'silva', 'pagina': '2'})
+        content = response.content.decode()
+        self.assertIn('Exibindo <strong>21</strong> a <strong>40</strong> de <strong>45</strong> usuários', content)
+        self.assertIn('Pessoa Silva 20', content)
+        self.assertNotIn('Pessoa Silva 19', content)
+        self.assertIn('href="/usuarios/?busca=silva&amp;pagina=3"', content)
+        self.assertIn('href="/usuarios/?busca=silva"', content)
+        self.assertIn('hx-target="#tabela-usuarios"', content)
+
+    def test_navegacao_pelo_htmx_responde_so_a_tabela(self):
+        response = self.client.get('/usuarios/', {'pagina': '2'}, headers=HTMX | {'HX-Target': 'tabela-usuarios'})
+        self.assertTrue(response.content.decode().startswith('<table class="data-table">'))

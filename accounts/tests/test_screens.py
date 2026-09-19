@@ -64,7 +64,9 @@ class UserListScreenTests(ScreensTestCase):
         self.assertNotIn('Cadastrar usuário', content)
 
     def test_rodape_com_a_contagem(self):
-        self.assertContains(self.client.get('/usuarios/'), 'Exibindo <strong>3</strong> de <strong>3</strong> usuários')
+        self.assertContains(
+            self.client.get('/usuarios/'), 'Exibindo <strong>1</strong> a <strong>3</strong> de <strong>3</strong> usuários',
+        )
 
 
 class MessagesScreenTests(ScreensTestCase):

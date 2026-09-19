@@ -229,3 +229,26 @@ class TemplateTests(ImportViewsTestCase):
         self.assertEqual(response['Content-Type'], 'text/csv; charset=utf-8')
         self.assertIn('modelo-importacao-usuarios.csv', response['Content-Disposition'])
         self.assertEqual(response.content, '﻿E-mail;Nome;Perfil\r\n'.encode())
+
+
+class PaginationTests(ImportViewsTestCase):
+    def test_preview_rows_are_paginated_and_summary_counts_all(self):
+        lines = [f'p{index:03d}@ifnmg.edu.br;Pessoa {index:03d};COORDENACAO' for index in range(120)]
+        importation = self.preview(*lines)
+        response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
+        content = response.content.decode()
+        self.assertIn('Exibindo <strong>1</strong> a <strong>50</strong> de <strong>120</strong> linhas', content)
+        self.assertIn('p049@ifnmg.edu.br', content)
+        self.assertNotIn('p050@ifnmg.edu.br', content)
+        self.assertIn('120 linhas com erro', content)
+        response = self.client.get(f'/usuarios/importacoes/{importation.pk}/', {'linhas': 'erros'})
+        self.assertContains(response, f'href="/usuarios/importacoes/{importation.pk}/?linhas=erros&amp;pagina=2"')
+
+    def test_history_is_paginated(self):
+        for _ in range(21):
+            self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        response = self.client.get('/usuarios/importacoes/', {'pagina': '2'})
+        self.assertContains(
+            response, 'Exibindo <strong>21</strong> a <strong>21</strong> de <strong>21</strong> importações',
+        )
+        self.assertContains(response, 'Todas as importações <span class="count">21</span>')

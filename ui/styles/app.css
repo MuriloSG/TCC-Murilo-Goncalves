@@ -1332,6 +1332,48 @@
       font-weight: var(--font-weight-semibold);
     }
   }
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+
+    & .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+    }
+
+    & [aria-current="page"] {
+      white-space: nowrap;
+    }
+
+    & [aria-disabled="true"] {
+      border-color: var(--color-divider);
+      background: var(--color-page);
+      color: var(--color-text-muted);
+      cursor: default;
+    }
+
+    @variant max-sm {
+      flex-direction: column;
+      align-items: stretch;
+
+      & .pagination-controls {
+        flex-wrap: wrap;
+      }
+
+      & .pagination-controls > * {
+        flex: 1;
+      }
+
+      & [aria-current="page"] {
+        order: -1;
+        flex-basis: 100%;
+      }
+    }
+  }
   .person-name {
     display: block;
     font-weight: var(--font-weight-semibold);

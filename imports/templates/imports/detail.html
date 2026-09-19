@@ -55,7 +55,7 @@
   <section class="card" aria-labelledby="linhas-importacao">
     <div class="card-head">
       <div>
-        <h2 class="card-title" id="linhas-importacao">{% if only_errors %}Linhas com erro{% else %}Linhas do arquivo{% endif %} <span class="count">{{ rows|length }}</span></h2>
+        <h2 class="card-title" id="linhas-importacao">{% if only_errors %}Linhas com erro{% else %}Linhas do arquivo{% endif %} <span class="count">{{ page.paginator.count }}</span></h2>
       </div>
       {% if only_errors %}
         <a class="link" href="{{ detail_url }}">Mostrar todas as linhas</a>
@@ -88,5 +88,6 @@
         {% endfor %}
       </tbody>
     </table>
+    {% include "ui/components/pagination.html" with noun="linha" noun_plural="linhas" %}
   </section>
 {% endblock %}

@@ -30,6 +30,13 @@ def initials(name):
     return (parts[0][0] + (parts[-1][0] if len(parts) > 1 else '')).upper()
 
 
+@register.filter
+def first_name(name):
+    """Primeiro nome, para exibir o usuário em espaços estreitos."""
+    parts = (name or '').split()
+    return parts[0] if parts else ''
+
+
 @register.simple_tag
 def row_action(url_name, pk, label, icon_name, when=True, danger=False):
     """Ação de uma linha de tabela para ui/components/row_actions.html.

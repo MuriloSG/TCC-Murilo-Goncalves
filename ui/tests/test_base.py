@@ -109,7 +109,7 @@ class AppLayoutTests(LayoutTestCase):
         content = self.client.get('/inicio/').content.decode()
         footer = content[content.index('<div class="sidebar-footer">'):content.index('</aside>')]
         self.assertIn('<span class="avatar" aria-hidden="true">AS</span>', footer)
-        self.assertIn('<span class="who-name">Ana Maria Souza</span>', footer)
+        self.assertIn('<span class="who-name" title="Ana Maria Souza">Ana</span>', footer)
         self.assertRegex(footer, r'<a class="icon-btn" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal" aria-label="Sair">')
         self.assertIn('<span class="tip" role="tooltip">Sair</span>', footer)
 

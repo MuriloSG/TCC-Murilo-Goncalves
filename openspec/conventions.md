@@ -50,7 +50,8 @@ A referência de implementação é o app `accounts`.
 
 - Views em classe (CBV).
 - Ações que alteram situação ou excluem registros: **GET mostra a confirmação, POST executa**, com CSRF (`ConfirmedActionView`).
-- Templates estendem `base.html`, em português e com HTML semântico, até a Change do Tailwind CSS.
+- Toda ação de gestão (cadastrar, editar, confirmar) abre em **modal carregado pelo htmx** sobre a tela de origem (`ui.views.ModalView`, a partir da Change `definir-identidade-visual`). A view renderiza o fragmento do modal quando `request.htmx` é verdadeiro e a página completa quando não é, pela mesma URL. No sucesso, responde com `HttpResponseClientRedirect` para a tela de origem.
+- Templates estendem `base.html`, em português e com HTML semântico. O texto e o visual das telas seguem a seção 9.
 
 ## 7. Testes
 
@@ -64,3 +65,97 @@ A referência de implementação é o app `accounts`.
 
 - Mensagem curta em português, sem acentos, no formato `tipo: descricao` (`feat: adiciona gestao de perfis na interface`, `refactor: ...`).
 - Um commit por etapa concluída do `tasks.md`, com a suíte passando e as tasks marcadas.
+
+## 9. Interface e texto
+
+Regras para todo texto exibido e toda tela, em qualquer app. Elas são verificadas por testes automáticos do app `ui` (Changes `definir-texto-da-interface` e `definir-identidade-visual`). A lista fechada de expressões proibidas, o glossário e os pares de contraste ficam no código desses testes, e esta seção é a referência para quem escreve.
+
+"Texto exibido" inclui templates (HTML e os `.txt` de e-mail e de mensagens), strings passadas a `messages`, `ValidationError`, rótulos e ajudas de formulário, e as mensagens de bibliotecas (Django e allauth) que aparecem nas rotas expostas. Quando uma biblioteca mostra um texto fora destas regras, ele é sobrescrito no projeto.
+
+### 9.1 Tom e tratamento
+
+- Impessoal, com o imperativo direto nas instruções: "Informe o e-mail institucional."
+- Fatos e estados na terceira pessoa: "Este laboratório está ocupado das 10:00 às 12:00."
+- Sem "você", "nós" nem verbos na primeira pessoa do plural. O possessivo ("seu perfil", "sua senha") é permitido quando indica o que pertence ao usuário.
+
+### 9.2 Texto: proibido
+
+- Exclamações, "Ops", "Oops", "Opa", "Eba", "Uau", emojis e interjeições.
+- Saudação encenada: "Olá", "Bem-vindo de volta", "Que bom ter você aqui".
+- A interface falando como pessoa: "Estamos processando", "Não conseguimos encontrar", "Enviaremos".
+- Mensagens vagas: "Algo deu errado", "Parece que houve um problema", "Ocorreu um erro".
+- Marketing: jornada, experiência, potencialize, descubra, incrível, simples, facilmente, simplesmente, perfeito, poderoso, intuitivo (e as flexões).
+- Listas de três adjetivos, frases de efeito e títulos com dois-pontos ("Usuários: gerencie sua equipe").
+- Travessão (— ou –) em qualquer texto exibido, inclusive como marcador de célula vazia. Célula vazia recebe texto explícito ("Sem descrição").
+- "Por favor" e "com sucesso".
+- Reticências e gerúndio vago ("Carregando informações...") quando existe estado concreto para mostrar.
+- Texto de preenchimento, lorem ipsum, números ou depoimentos fictícios.
+
+### 9.3 Texto: obrigatório
+
+- Botões com verbo no infinitivo, e com objeto quando houver ambiguidade: "Salvar", "Cadastrar usuário", "Desativar usuário".
+- Sucesso: o fato, no particípio, com o objeto identificado. "Usuário ana@ifnmg.edu.br desativado."
+- Erro: o que aconteceu e o que fazer, com o termo do domínio. "Este e-mail já pertence a outro usuário. Use outro e-mail."
+- Confirmação, em modal ou em página: o título é a pergunta com o nome do objeto ("Desativar Ana Souza?"), seguida da consequência em uma ou duas frases, do botão com o verbo específico e do controle "Fechar". "Cancelar" nunca é usado para sair de uma confirmação ou de um formulário, porque é uma ação do domínio (cancelar reserva).
+- Botão só com ícone: o `aria-label` e a dica têm o verbo da ação ("Editar", "Trocar perfil") e seguem estas mesmas regras. Os gatilhos "Menu" e "Mais ações" são a exceção.
+- Maiúscula só no início da frase e em nomes próprios e siglas, inclusive em títulos, botões, rótulos e cabeçalhos de tabela: "Cadastrar usuário", e não "Cadastrar Usuário".
+- Estado vazio: o fato e, quando houver, a ação possível. "Nenhum usuário cadastrado." Sem frase motivacional.
+
+### 9.4 Glossário
+
+Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
+
+| Conceito | Usar | Não usar |
+|---|---|---|
+| Impedir que um usuário entre no sistema | desativar, reativar | bloquear, suspender, inativar |
+| Situação do usuário | Ativo, Inativo | Bloqueado, Suspenso |
+| Resultado da análise de uma solicitação | aprovar, aprovada; rejeitar, rejeitada | reprovar, reprovada, negar, negada |
+| Desistência de uma reserva | cancelar, cancelada | desmarcar, anular |
+| Apagar um registro | excluir | apagar, deletar, remover |
+| Acesso ao sistema | entrar, sair; página de login | logar, deslogar, logout |
+| Endereço eletrônico | e-mail | email, E-Mail |
+| Local reservável | espaço (geral), laboratório, sala (tipos) | recurso, ambiente, item |
+| Pedido ainda não analisado | solicitação de reserva | pedido, agendamento pendente |
+| Pedido aprovado | reserva | agendamento confirmado |
+| Estados de horário | disponível, ocupado | livre, vago, indisponível |
+| Estados da solicitação | pendente, aprovada, rejeitada, cancelada | em análise, aguardando |
+| Pessoas e acesso | docente, administrador, perfil, permissão | professor (como perfil), papel, role, grupo |
+
+### 9.5 Formatos
+
+- Data: dd/mm/aaaa (18/09/2026).
+- Hora: 24 horas com dois dígitos (08:00, 14:30). Intervalo: "das 10:00 às 12:00".
+- Números: ponto como separador de milhar e vírgula decimal (1.234,5).
+- Os formatos vêm da localização do Django configurada no projeto, nunca de formatação manual no template.
+
+### 9.6 Visual: proibido
+
+- Gradientes decorativos (em especial roxo e azul), glassmorphism, neon e blur de fundo.
+- Sombras grandes e difusas, e cantos muito arredondados em tudo.
+- Card dentro de card, e cabeçalho estilo landing page com ilustração genérica.
+- Ícone decorativo ao lado de títulos, emoji como ícone, e selos em excesso.
+- Cor primária espalhada pela tela.
+- Texto abaixo do contraste AA, inclusive cinza-claro sobre branco, e texto longo centralizado.
+- Animação sem função, skeletons e spinners enfeitados.
+- Telas vazias com frase motivacional.
+
+### 9.7 Visual: obrigatório
+
+- Aparência institucional e sóbria. A hierarquia vem da tipografia e do espaçamento, e não de cor ou ornamento.
+- Toda cor tem uma função definida: marca, ação, estado ou texto.
+- Estado nunca é indicado só pela cor. Ele sempre vem com texto e, nos selos, com ícone.
+- Ícones só da biblioteca Lucide, em SVG, nunca emoji. Ações de linha usam botão só com ícone, com `aria-label` e dica visível no hover e no foco. Abaixo de 640 px, o texto aparece junto do ícone. Botões com texto levam o ícone à esquerda.
+- Foco visível no teclado, alvo de toque de pelo menos 44x44 px e layout funcional a partir de 360 px de largura.
+- Tabelas densas e legíveis. Abaixo de 640 px, cada linha vira um bloco empilhado de rótulo e valor.
+- Só os tokens da escala fechada (cores, espaçamentos, raios, sombras e tamanhos de fonte). Nada de `style=`, valores arbitrários do Tailwind (`p-[13px]`, `bg-[#...]`) ou cores fora dos tokens nos templates.
+- Contraste mínimo AA: 4,5:1 para texto normal, 3:1 para texto grande e bordas de controle.
+
+### 9.8 Telas novas
+
+- Antes de desenhar ou implementar qualquer tela nova, pedir ao autor uma imagem de referência da tela.
+- A referência é adaptada, e não copiada:
+  - cores, tipografia, espaçamentos, raios e componentes vêm da paleta e dos tokens da prévia visual (`previa.html` da Change `definir-identidade-visual`, que vai para `openspec/changes/archive/` quando a Change for arquivada);
+  - os textos seguem as seções 9.1 a 9.5;
+  - o visual segue as seções 9.6 e 9.7;
+  - elementos da referência que não existem no sistema (notificações, módulos futuros, marcas que não são a oficial) ficam de fora.
+- O que foi adaptado e o que foi retirado da referência fica registrado no `design.md` da Change da tela.

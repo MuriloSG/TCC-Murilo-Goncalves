@@ -1,16 +1,16 @@
 ## 1. Pré-requisitos
 
-- [ ] 1.1 Confirmar que a Change `enviar-emails-por-outbox` foi implementada e que `User.objects.register` registra o envio `LINK_SENHA` no outbox (D12)
-- [ ] 1.2 Pedir ao autor as imagens de referência das telas de envio, prévia, histórico e detalhe, e registrar em D17 o que foi adaptado e o que foi retirado
+- [x] 1.1 Confirmar que a Change `enviar-emails-por-outbox` foi implementada e que `User.objects.register` registra o envio `LINK_SENHA` no outbox (D12)
+- [x] 1.2 Pedir ao autor as imagens de referência das telas de envio, prévia, histórico e detalhe, e registrar em D17 o que foi adaptado e o que foi retirado
 
 ## 2. Permissão e continuidade em `accounts`
 
-- [ ] 2.1 Acrescentar `USER_IMPORT` em `accounts/permissions.py` e em `ALL_PERMISSIONS`, fora de `ADMINISTRATIVE_CAPABILITY` e de `SUPERADMIN_RESERVED_PERMISSIONS` (D15)
-- [ ] 2.2 Criar a migration de dados `0003` que cria `USUARIO.IMPORTAR` e a concede ao `ADMINISTRADOR`, idempotente e com códigos literais (D15)
-- [ ] 2.3 Atualizar `accounts/tests/test_catalog.py` para onze permissões e testar que a migration preserva as concessões alteradas pelo superadmin
-- [ ] 2.4 Implementar `deferred_administrative_continuity()` com `ContextVar` e fazer `administrative_continuity()` pular a verificação enquanto a marca estiver ativa (D11)
-- [ ] 2.5 Testar que, fora do gerenciador adiado, as telas e os comandos continuam recusando a perda da continuidade, e que a marca é removida mesmo com exceção
-- [ ] 2.6 Commit
+- [x] 2.1 Acrescentar `USER_IMPORT` em `accounts/permissions.py` e em `ALL_PERMISSIONS`, fora de `ADMINISTRATIVE_CAPABILITY` e de `SUPERADMIN_RESERVED_PERMISSIONS` (D15)
+- [x] 2.2 Criar a migration de dados `0003` que cria `USUARIO.IMPORTAR` e a concede ao `ADMINISTRADOR`, idempotente e com códigos literais (D15)
+- [x] 2.3 Atualizar `accounts/tests/test_catalog.py` para onze permissões e testar que a migration preserva as concessões alteradas pelo superadmin
+- [x] 2.4 Implementar `deferred_administrative_continuity()` com `ContextVar` e fazer `administrative_continuity()` pular a verificação enquanto a marca estiver ativa (D11)
+- [x] 2.5 Testar que, fora do gerenciador adiado, as telas e os comandos continuam recusando a perda da continuidade, e que a marca é removida mesmo com exceção
+- [x] 2.6 Commit
 
 ## 3. Motor: leitura
 

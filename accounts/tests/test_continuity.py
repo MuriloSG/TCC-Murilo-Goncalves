@@ -15,6 +15,8 @@ from accounts.models import (
     User,
     UserRole,
     administrative_continuity,
+    deferred_administrative_continuity,
+    ensure_administrative_continuity,
 )
 
 
@@ -306,7 +308,7 @@ class ContinuityGuardTests(ContinuityTestCase):
                 RolePermission.objects.filter(role=self.administrator).delete()
         self.assertEqual(
             set(self.administrator.permissions.values_list('code', flat=True)),
-            permissions.ADMINISTRATIVE_CAPABILITY,
+            permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT},
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 
@@ -382,3 +384,35 @@ class ConcurrentDeactivationTests(TransactionTestCase):
                     return True
             time.sleep(0.05)
         return False
+
+
+class DeferredContinuityTests(ContinuityTestCase):
+    def setUp(self):
+        self.admin = create_user('admin@ifnmg.edu.br', self.administrator)
+        self.other = create_user('outro@ifnmg.edu.br', self.teacher)
+
+    def test_intermediate_state_is_not_checked_inside_the_block(self):
+        with transaction.atomic(), deferred_administrative_continuity():
+            self.admin.change_role(self.teacher)
+            self.other.change_role(self.administrator)
+            ensure_administrative_continuity()
+        self.assertEqual(capable_emails(), {'outro@ifnmg.edu.br'})
+
+    def test_final_check_refuses_system_without_administrator(self):
+        with self.assertRaises(AdministrativeContinuityViolation):
+            with transaction.atomic(), deferred_administrative_continuity():
+                self.admin.change_role(self.teacher)
+                ensure_administrative_continuity()
+        self.assertEqual(User.objects.get(pk=self.admin.pk).role, self.administrator)
+
+    def test_outside_the_block_each_operation_is_checked(self):
+        with transaction.atomic(), deferred_administrative_continuity():
+            pass
+        with self.assertRaises(AdministrativeContinuityViolation):
+            self.admin.change_role(self.teacher)
+
+    def test_block_is_closed_even_after_an_exception(self):
+        with self.assertRaises(RuntimeError), deferred_administrative_continuity():
+            raise RuntimeError
+        with self.assertRaises(AdministrativeContinuityViolation):
+            self.admin.deactivate()

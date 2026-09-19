@@ -252,7 +252,7 @@ Alternativa considerada: **mover `ConfirmedActionView` para `ui`**. Seria um ref
 
 ### D17. Telas e textos
 
-As telas de envio, prévia, histórico e detalhe são desenhadas a partir de imagem de referência pedida ao autor antes da implementação (seção 9.8 das convenções), e as adaptações ficam registradas nesta seção. Textos definidos desde já:
+O autor não tem imagem de referência para estas telas e dispensou a exigência da seção 9.8 das convenções nesta Change. As telas de envio, prévia, histórico e detalhe são derivadas do que a interface já usa: a lista de usuários (cartão com cabeçalho, tabela densa e rodapé de contagem), a página de detalhe de perfil, os modais de formulário e de confirmação, os selos de situação e os tokens e componentes do app `ui`. Nenhum componente visual novo é criado sem necessidade, e os que forem criados entram no `app.css`. Textos definidos desde já:
 
 - Botões: "Importar usuários", "Baixar modelo", "Enviar arquivo", "Confirmar importação", "Descartar importação".
 - Sucesso da confirmação: "Importação concluída. 6 usuários cadastrados e 4 atualizados. O link para definir a senha será enviado aos usuários cadastrados."

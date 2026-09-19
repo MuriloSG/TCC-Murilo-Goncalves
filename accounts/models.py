@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from contextvars import ContextVar
 
 from allauth.account.models import EmailAddress
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
@@ -84,12 +85,32 @@ def ensure_administrative_continuity():
         raise AdministrativeContinuityViolation()
 
 
+_continuity_deferred = ContextVar('continuity_deferred', default=False)
+
+
+@contextmanager
+def deferred_administrative_continuity():
+    """Adia a verificação da continuidade administrativa das operações executadas dentro do bloco.
+
+    As operações continuam travando os usuários ativos, mas não verificam a continuidade
+    ao terminar. Quem abre o bloco verifica uma vez, no fim, com
+    ensure_administrative_continuity. Serve à importação de usuários, em que o estado
+    entre uma linha e outra não conta (D11 da Change importar-usuarios-por-planilha).
+    """
+    token = _continuity_deferred.set(True)
+    try:
+        yield
+    finally:
+        _continuity_deferred.reset(token)
+
+
 @contextmanager
 def administrative_continuity():
     with transaction.atomic():
         lock_active_users()
         yield
-        ensure_administrative_continuity()
+        if not _continuity_deferred.get():
+            ensure_administrative_continuity()
 
 
 def grantable_permissions(permissions):

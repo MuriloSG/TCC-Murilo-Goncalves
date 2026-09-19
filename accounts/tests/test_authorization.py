@@ -61,8 +61,9 @@ class InactiveUserTests(AuthorizationTestCase):
 class RolePermissionsTests(AuthorizationTestCase):
     def test_administrator_holds_user_permissions(self):
         user = self.create_user('admin@ifnmg.edu.br', self.administrator)
-        self.assertEqual(user.effective_permissions(), permissions.ADMINISTRATIVE_CAPABILITY)
-        for code in permissions.ADMINISTRATIVE_CAPABILITY:
+        granted = permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT}
+        self.assertEqual(user.effective_permissions(), granted)
+        for code in granted:
             with self.subTest(code=code):
                 self.assertTrue(user.has_perm(code))
 
@@ -114,7 +115,8 @@ class RolePermissionsTests(AuthorizationTestCase):
         self.assertFalse(user.has_module_perms('PERFIL'))
 
     def test_decision_does_not_depend_on_role_code_or_name(self):
-        grant(self.coordination, *permissions.ADMINISTRATIVE_CAPABILITY)
+        granted = permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT}
+        grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)
         coordinator = self.create_user('coord@ifnmg.edu.br', self.coordination)
         self.assertEqual(administrator.effective_permissions(), coordinator.effective_permissions())
@@ -125,7 +127,7 @@ class RolePermissionsTests(AuthorizationTestCase):
         for code in permissions.ALL_PERMISSIONS | {'RESERVA.APROVAR'}:
             with self.subTest(code=code):
                 self.assertEqual(renamed.has_perm(code), coordinator.has_perm(code))
-                self.assertEqual(renamed.has_perm(code), code in permissions.ADMINISTRATIVE_CAPABILITY)
+                self.assertEqual(renamed.has_perm(code), code in granted)
 
     def test_grant_changes_reach_every_user_of_the_role_on_reload(self):
         first = self.create_user('um@ifnmg.edu.br', self.teacher)

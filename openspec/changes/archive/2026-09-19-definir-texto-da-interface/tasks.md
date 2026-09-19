@@ -42,5 +42,5 @@
 
 ## 6. Documentação
 
-- [ ] 6.1 Conferir que a seção 9 do `openspec/conventions.md` e `ui/text_rules.py` trazem a mesma lista de expressões e o mesmo glossário (D4)
-- [ ] 6.2 Validar a Change com `openspec validate definir-texto-da-interface --strict`
+- [x] 6.1 Conferir que a seção 9 do `openspec/conventions.md` e `ui/text_rules.py` trazem a mesma lista de expressões e o mesmo glossário (D4)
+- [x] 6.2 Validar a Change com `openspec validate definir-texto-da-interface --strict`

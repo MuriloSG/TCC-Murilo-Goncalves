@@ -106,7 +106,23 @@ def grantable_permissions(permissions):
     return found
 
 
+USER_STATUS_FILTERS = {'ativos': True, 'inativos': False}
+
+
 class UserQuerySet(models.QuerySet):
+    def search(self, term='', status=''):
+        """Filtra por trecho do nome ou do e-mail e pela situação.
+
+        A comparação do termo ignora maiúsculas. A situação é "ativos" ou
+        "inativos", e qualquer outro valor mantém todos os usuários.
+        """
+        queryset = self
+        if term:
+            queryset = queryset.filter(models.Q(name__icontains=term) | models.Q(email__icontains=term))
+        if status in USER_STATUS_FILTERS:
+            queryset = queryset.filter(is_active=USER_STATUS_FILTERS[status])
+        return queryset
+
     def with_administrative_capability(self):
         return (
             self.filter(is_active=True)

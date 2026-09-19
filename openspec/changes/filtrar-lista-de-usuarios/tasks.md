@@ -1,11 +1,11 @@
 ## 1. Pré-requisitos
 
-- [ ] 1.1 Confirmar que a Change `definir-identidade-visual` foi implementada, com o cartão da lista de usuários, o htmx e a `ModalView`
+- [x] 1.1 Confirmar que a Change `definir-identidade-visual` foi implementada, com o cartão da lista de usuários, o htmx e a `ModalView`
 
 ## 2. Consulta
 
-- [ ] 2.1 Implementar `User.objects.search(term, status)` com `icontains` em nome e e-mail e o filtro de situação (D2)
-- [ ] 2.2 Escrever os testes do manager: trecho do nome, trecho do e-mail, maiúsculas, situação, combinação e termo vazio
+- [x] 2.1 Implementar `User.objects.search(term, status)` com `icontains` em nome e e-mail e o filtro de situação (D2)
+- [x] 2.2 Escrever os testes do manager: trecho do nome, trecho do e-mail, maiúsculas, situação, combinação e termo vazio
 
 ## 3. View e formulário
 

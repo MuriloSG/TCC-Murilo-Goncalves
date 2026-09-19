@@ -403,7 +403,9 @@
   }
 
   .menu[open] > .menu-list,
-  .notifications[open] > .notifications-panel,
+  .notifications[open] > .notifications-panel {
+    animation: drop-in var(--motion-fast) ease-out;
+  }
 
   .menu {
     position: relative;

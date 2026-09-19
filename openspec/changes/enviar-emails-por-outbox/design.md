@@ -57,7 +57,7 @@ Alternativa considerada: **`GenericForeignKey`**. Traria `contenttypes` para um 
 
 ### D2. Registro do envio
 
-`outbox.enqueue(kind, reference)` grava com `OutboxEntry.objects.bulk_create([...], ignore_conflicts=True)`. No PostgreSQL, isso gera `ON CONFLICT DO NOTHING`, que respeita o índice único parcial. Com isso, um envio `A_ENVIAR` existente não é duplicado nem tem as tentativas reiniciadas. A função não abre transação: ela participa da transação de quem chama, e é por isso que o rollback da operação desfaz o envio.
+`OutboxEntry.objects.enqueue(kind, reference)`, operação do manager como as demais do projeto, grava com `OutboxEntry.objects.bulk_create([...], ignore_conflicts=True)`. No PostgreSQL, isso gera `ON CONFLICT DO NOTHING`, que respeita o índice único parcial. Com isso, um envio `A_ENVIAR` existente não é duplicado nem tem as tentativas reiniciadas. A função não abre transação: ela participa da transação de quem chama, e é por isso que o rollback da operação desfaz o envio.
 
 Alternativa considerada: **`transaction.on_commit`**, como hoje. O Django descarta os callbacks de um savepoint desfeito, então a prévia não enviaria nada. Mas o envio continuaria acontecendo dentro da requisição, sem novas tentativas, e a intenção se perderia se o processo caísse entre o commit e o envio.
 
@@ -141,7 +141,7 @@ Alternativas consideradas:
 
 ### D7. Registro no `register`
 
-`UserManager.register` chama `enqueue(PASSWORD_LINK, user.pk)` dentro da própria transação, depois de gravar o usuário e o vínculo com o perfil. Enviar o link a quem é cadastrado é regra da spec `autenticacao`, e a convenção põe regra de negócio no model. Com isso:
+`UserManager.register` chama `OutboxEntry.objects.enqueue(PASSWORD_LINK, user.pk)` dentro da própria transação, depois de gravar o usuário e o vínculo com o perfil. Enviar o link a quem é cadastrado é regra da spec `autenticacao`, e a convenção põe regra de negócio no model. Com isso:
 - o cadastro pela tela e a importação de usuários registram o envio sem código repetido;
 - dentro da prévia da importação, o envio fica no mesmo savepoint do usuário e é desfeito junto;
 - `create_superadmin` não passa por `register` e não registra envio, porque o superadmin é criado já com senha.

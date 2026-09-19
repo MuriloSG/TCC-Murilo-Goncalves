@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django_htmx',
     'accounts',
     'ui',
+    'outbox',
     'allauth',
     'allauth.account',
 ]
@@ -180,3 +181,13 @@ EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS') == '1'
 DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', 'webmaster@localhost')
+
+
+SITE_URL = os.environ.get('DJANGO_SITE_URL', 'http://localhost:8000')
+
+OUTBOX_MAX_ATTEMPTS = int(os.environ.get('DJANGO_OUTBOX_MAX_ATTEMPTS', '5'))
+OUTBOX_RETRY_DELAYS = [
+    int(delay) for delay in os.environ.get('DJANGO_OUTBOX_RETRY_DELAYS', '60,300,900,3600').split(',')
+]
+OUTBOX_POLL_INTERVAL = float(os.environ.get('DJANGO_OUTBOX_POLL_INTERVAL', '5'))
+OUTBOX_BATCH_SIZE = int(os.environ.get('DJANGO_OUTBOX_BATCH_SIZE', '20'))

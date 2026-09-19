@@ -201,7 +201,7 @@ Alternativas consideradas:
 
 ### D12. Outbox dentro da execução da linha
 
-Na ação `create`, a importação de usuários só chama `register`. Pela D7 da Change `enviar-emails-por-outbox`, o próprio `register` registra no outbox o envio `LINK_SENHA`, na transação corrente, com `outbox.enqueue`. Assim, o registro fica no mesmo savepoint do usuário. Na prévia, o rollback desfaz o registro junto com o usuário. Na confirmação, ele é efetivado junto com o usuário. Por isso o motor não precisa de gancho "depois de gravar". O link é gerado pelo worker no momento do envio e nunca é gravado no outbox.
+Na ação `create`, a importação de usuários só chama `register`. Pela D7 da Change `enviar-emails-por-outbox`, o próprio `register` registra no outbox o envio `LINK_SENHA`, na transação corrente, com `OutboxEntry.objects.enqueue`. Assim, o registro fica no mesmo savepoint do usuário. Na prévia, o rollback desfaz o registro junto com o usuário. Na confirmação, ele é efetivado junto com o usuário. Por isso o motor não precisa de gancho "depois de gravar". O link é gerado pelo worker no momento do envio e nunca é gravado no outbox.
 
 ### D13. Permissão por ação dentro do plano
 

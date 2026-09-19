@@ -7,11 +7,14 @@ from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
 
+from accounts.emails import PASSWORD_LINK
+
 from accounts.permissions import (
     ADMINISTRATIVE_CAPABILITY,
     RESOURCE_LABELS,
     SUPERADMIN_RESERVED_PERMISSIONS,
 )
+from outbox.models import OutboxEntry
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
 PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
@@ -147,6 +150,11 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         return (email or '').strip().lower()
 
     def register(self, email, name, role):
+        """Cadastra o usuário sem senha e registra no outbox o envio do link para defini-la.
+
+        O envio fica na mesma transação do cadastro: se o cadastro for desfeito, inclusive
+        na prévia de uma importação, o envio também é (D7 da Change enviar-emails-por-outbox).
+        """
         if role is None:
             raise role_required_error()
         user = self.model(
@@ -160,6 +168,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         with transaction.atomic(using=self.db):
             user.save(using=self.db)
             UserRole.objects.using(self.db).create(user=user, role=role)
+            OutboxEntry.objects.using(self.db).enqueue(PASSWORD_LINK, user.pk)
         return user
 
     def create_superadmin(self, email, name, password):

@@ -1,6 +1,4 @@
 from allauth.account.adapter import DefaultAccountAdapter
-from allauth.account.forms import ResetPasswordForm
-from allauth.core import ratelimit
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -29,14 +27,3 @@ class AccountAdapter(DefaultAccountAdapter):
             return None
         return user
 
-
-def send_password_link(request, email):
-    """Dispara a recuperação de senha do allauth, com o mesmo limite de tentativas
-    da tela pública. Devolve False quando o limite foi atingido ou nada foi enviado."""
-    if not ratelimit.consume(request, action='reset_password', key=email.lower()):
-        return False
-    form = ResetPasswordForm(data={'email': email})
-    if not form.is_valid():
-        return False
-    form.save(request)
-    return bool(form.users)

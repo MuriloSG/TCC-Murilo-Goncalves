@@ -1,9 +1,7 @@
-import logging
 
 from allauth.account import views as allauth_views
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -12,7 +10,6 @@ from django.views.generic import DetailView, FormView, ListView, TemplateView
 from ui.views import ModalView
 
 from accounts import permissions
-from accounts.adapters import send_password_link
 from accounts.forms import (
     RoleCreateForm,
     RolePermissionsForm,
@@ -24,9 +21,6 @@ from accounts.forms import (
 )
 from accounts.models import Role, User
 from accounts.utils import add_operation_error
-
-logger = logging.getLogger(__name__)
-
 
 class LogoutView(allauth_views.LogoutView):
     """Saída do sistema, com a confirmação em modal quando pedida pelo htmx.
@@ -158,23 +152,10 @@ class UserCreateView(OperationFormView):
 
     def perform(self, data):
         user = User.objects.register(email=data['email'], name=data['name'], role=data['role'])
-        messages.success(self.request, f'Usuário {user.email} cadastrado.')
-        transaction.on_commit(lambda: self.send_password_link(user))
-
-    def send_password_link(self, user):
-        try:
-            sent = send_password_link(self.request, user.email)
-        except Exception:
-            logger.exception('Falha ao enviar o link de definição de senha para %s.', user.email)
-            sent = False
-        if sent:
-            messages.info(self.request, f'O link para definir a senha foi enviado para {user.email}.')
-        else:
-            messages.warning(
-                self.request,
-                f'Não foi possível enviar o e-mail para {user.email}. O usuário foi cadastrado e pode '
-                'pedir um novo link em "Esqueci minha senha", na página de login.',
-            )
+        messages.success(
+            self.request,
+            f'Usuário {user.email} cadastrado. O link para definir a senha será enviado para {user.email}.',
+        )
 
 
 class UserUpdateView(OperationFormView):

@@ -19,8 +19,6 @@ class OutboxEntryQuerySet(models.QuerySet):
             next_attempt_at__lte=timezone.now(),
         ).order_by('next_attempt_at', 'pk')
 
-
-class OutboxEntryManager(models.Manager.from_queryset(OutboxEntryQuerySet)):
     def enqueue(self, kind, reference):
         """Registra o envio na transação de quem chama (D2).
 
@@ -52,7 +50,7 @@ class OutboxEntry(models.Model):
     created_at = models.DateTimeField('criado em', auto_now_add=True)
     sent_at = models.DateTimeField('enviado em', null=True, blank=True)
 
-    objects = OutboxEntryManager()
+    objects = OutboxEntryQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'envio de e-mail'

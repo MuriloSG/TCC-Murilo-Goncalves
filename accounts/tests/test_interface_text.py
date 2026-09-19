@@ -170,7 +170,10 @@ class ManagementScreensTextTests(TestCase):
             '/usuarios/novo/', {'name': 'Joana', 'email': 'joana@ifnmg.edu.br', 'role': self.teacher.pk},
         )
         texts = [str(message) for message in get_messages(response.wsgi_request)]
-        self.assertIn('Usuário joana@ifnmg.edu.br cadastrado.', texts)
+        self.assertIn(
+            'Usuário joana@ifnmg.edu.br cadastrado. O link para definir a senha será enviado para joana@ifnmg.edu.br.',
+            texts,
+        )
         self.assertFalse(any('com sucesso' in text or '!' in text for text in texts))
 
     def test_email_invalido_no_cadastro_e_na_edicao(self):

@@ -10,13 +10,13 @@
 
 ## 2. Link de definição de senha
 
-- [ ] 2.1 Criar `accounts/emails.py` com `PASSWORD_LINK` e o tratador `password_link`, e registrá-lo em `AccountsConfig.ready` (D6)
-- [ ] 2.2 Fazer `UserManager.register` chamar `OutboxEntry.objects.enqueue(PASSWORD_LINK, user.pk)` dentro da transação (D7)
-- [ ] 2.3 Simplificar `UserCreateView.perform` com a nova mensagem e remover o `on_commit`, o método de envio da view e `accounts.adapters.send_password_link` (D8)
-- [ ] 2.4 Escrever os testes do tratador: link com a URL base, link que define a senha pela rota atual, e-mail atual, descarte de usuário inexistente, inativo e com senha definida, e limite da recuperação pública não consumido
-- [ ] 2.5 Atualizar os testes do cadastro pela tela: um envio `A_ENVIAR` na mesma transação, nenhum e-mail durante a requisição, nova mensagem, cadastro recusado sem envio, e `create_superadmin` sem envio
-- [ ] 2.6 Rodar `make test` com a suíte inteira passando, incluindo o teste de texto da interface
-- [ ] 2.7 Commit
+- [x] 2.1 Criar `accounts/emails.py` com `PASSWORD_LINK` e o tratador `password_link`, e registrá-lo em `AccountsConfig.ready` (D6)
+- [x] 2.2 Fazer `UserManager.register` chamar `OutboxEntry.objects.enqueue(PASSWORD_LINK, user.pk)` dentro da transação (D7)
+- [x] 2.3 Simplificar `UserCreateView.perform` com a nova mensagem e remover o `on_commit`, o método de envio da view e `accounts.adapters.send_password_link` (D8)
+- [x] 2.4 Escrever os testes do tratador: link com a URL base, link que define a senha pela rota atual, e-mail atual, descarte de usuário inexistente, inativo e com senha definida, e limite da recuperação pública não consumido
+- [x] 2.5 Atualizar os testes do cadastro pela tela: um envio `A_ENVIAR` na mesma transação, nenhum e-mail durante a requisição, nova mensagem, cadastro recusado sem envio, e `create_superadmin` sem envio
+- [x] 2.6 Rodar `make test` com a suíte inteira passando, incluindo o teste de texto da interface
+- [x] 2.7 Commit
 
 ## 3. Ambiente
 

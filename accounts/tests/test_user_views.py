@@ -1,11 +1,12 @@
-from unittest import mock
-
 from django.core import mail
 from django.core.cache import cache
-from django.test import Client, TestCase, TransactionTestCase
+from django.core.management import call_command
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 
 from accounts import permissions
+from accounts.emails import PASSWORD_LINK
 from accounts.models import Role, User
+from outbox.models import OutboxEntry
 
 ROUTES = {
     'list': ('/usuarios/', permissions.USER_VIEW),
@@ -174,7 +175,7 @@ class CreateSendTests(TransactionTestCase):
         data = self.data | {'role': self.teacher.pk} | changes
         return self.client.post('/usuarios/novo/', data, follow=True)
 
-    def test_creates_user_and_sends_the_password_link(self):
+    def test_creates_user_and_registers_the_password_link(self):
         response = self.post(is_superadmin='on', password='Senha-forte-123', password1='Senha-forte-123')
         self.assertRedirects(response, '/usuarios/')
         user = User.objects.get(email='joana@ifnmg.edu.br')
@@ -183,32 +184,27 @@ class CreateSendTests(TransactionTestCase):
         self.assertFalse(user.is_superadmin)
         self.assertFalse(user.has_usable_password())
         self.assertEqual(user.role, self.teacher)
-        self.assertEqual([message.to for message in mail.outbox], [['joana@ifnmg.edu.br']])
-        self.assertIn('/contas/senha/redefinir/', mail.outbox[0].body)
-        self.assertContains(response, 'O link para definir a senha foi enviado para joana@ifnmg.edu.br')
+        self.assertEqual(mail.outbox, [])
+        entry = OutboxEntry.objects.get(reference=str(user.pk))
+        self.assertEqual((entry.kind, entry.status), (PASSWORD_LINK, 'A_ENVIAR'))
+        self.assertContains(
+            response,
+            'Usuário joana@ifnmg.edu.br cadastrado. O link para definir a senha será enviado para joana@ifnmg.edu.br.',
+        )
 
+    def test_refused_creation_registers_no_link(self):
+        self.post(email='Admin@ifnmg.edu.br')
+        self.assertEqual(list(OutboxEntry.objects.values_list('reference', flat=True)), [str(self.admin.pk)])
+
+    @override_settings(SITE_URL='http://testserver')
     def test_link_of_the_creation_is_the_same_route_of_the_recovery(self):
-        User.objects.register(email='maria@ifnmg.edu.br', name='Maria', role=self.teacher)
         self.post()
-        Client().post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
-        created, recovery = mail.outbox
-        prefix = '/contas/senha/redefinir/'
+        call_command('process_outbox', '--once')
+        Client().post('/contas/senha/recuperar/', {'email': 'joana@ifnmg.edu.br'})
+        created, recovery = [message for message in mail.outbox if message.to == ['joana@ifnmg.edu.br']]
+        prefix = 'http://testserver/contas/senha/redefinir/'
         self.assertIn(prefix, created.body)
         self.assertIn(prefix, recovery.body)
-
-    def test_send_failure_keeps_the_user_and_warns(self):
-        with mock.patch('accounts.adapters.ResetPasswordForm.save', side_effect=OSError('SMTP fora do ar')):
-            with self.assertLogs('accounts.views', 'ERROR'):
-                response = self.post()
-        self.assertTrue(User.objects.filter(email='joana@ifnmg.edu.br').exists())
-        self.assertContains(response, 'Não foi possível enviar o e-mail para joana@ifnmg.edu.br')
-
-    def test_rate_limit_is_treated_as_send_failure(self):
-        with mock.patch('accounts.adapters.ratelimit.consume', return_value=False):
-            response = self.post()
-        self.assertTrue(User.objects.filter(email='joana@ifnmg.edu.br').exists())
-        self.assertEqual(mail.outbox, [])
-        self.assertContains(response, 'Não foi possível enviar o e-mail')
 
 
 class UpdateTests(UserViewsTestCase):

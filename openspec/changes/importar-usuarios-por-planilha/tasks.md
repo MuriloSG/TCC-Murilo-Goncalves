@@ -34,13 +34,13 @@
 
 ## 5. Importação de usuários
 
-- [ ] 5.1 Criar `UserImport` em `accounts/imports.py` com colunas, identificador, `lock`, rótulos e o mapa de campos para colunas (D4, D14)
-- [ ] 5.2 Implementar `execute_row` com normalização, resolução do perfil, `create`, `update`, `unchanged`, aviso de inativo, com o envio do link registrado pelo próprio `register` (D12, D14)
-- [ ] 5.3 Implementar as verificações de permissão por ação com `executor.has_perm` (D13)
-- [ ] 5.4 Implementar `check_file` com a continuidade administrativa adiada (D11)
-- [ ] 5.5 Escrever os testes com os cenários da spec `gestao-usuarios`: cadastro, troca de perfil, sem alteração, perfil inexistente, e-mail inválido, inativo, superadmin, permissões por ação, confirmação por quem tem menos permissões, rebaixar e promover, sem administrador, outbox só para cadastrados e nenhum registro na prévia ou na divergência
-- [ ] 5.6 Escrever os testes de equivalência com as telas: cada recusa do cadastro, da edição e da troca de perfil tem uma linha equivalente com a mesma mensagem
-- [ ] 5.7 Commit
+- [x] 5.1 Criar `UserImport` em `accounts/imports.py` com colunas, identificador, `lock`, rótulos e o mapa de campos para colunas (D4, D14)
+- [x] 5.2 Implementar `execute_row` com normalização, resolução do perfil, `create`, `update`, `unchanged`, aviso de inativo, com o envio do link registrado pelo próprio `register` (D12, D14)
+- [x] 5.3 Implementar as verificações de permissão por ação com `executor.has_perm` (D13)
+- [x] 5.4 Implementar `check_file` com a continuidade administrativa adiada (D11)
+- [x] 5.5 Escrever os testes com os cenários da spec `gestao-usuarios`: cadastro, troca de perfil, sem alteração, perfil inexistente, e-mail inválido, inativo, superadmin, permissões por ação, confirmação por quem tem menos permissões, rebaixar e promover, sem administrador, outbox só para cadastrados e nenhum registro na prévia ou na divergência
+- [x] 5.6 Escrever os testes de equivalência com as telas: cada recusa do cadastro, da edição e da troca de perfil tem uma linha equivalente com a mesma mensagem
+- [x] 5.7 Commit
 
 ## 6. Views, rotas e telas
 

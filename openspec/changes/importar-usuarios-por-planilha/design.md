@@ -201,7 +201,7 @@ Alternativas consideradas:
 
 ### D12. Outbox dentro da execução da linha
 
-Na ação `create`, a importação de usuários chama, depois do `register` e dentro do mesmo savepoint, a operação de registro do link de definição de senha criada pela Change `enviar-emails-por-outbox`. Na prévia, o rollback desfaz o registro junto com o usuário. Na confirmação, ele é efetivado junto com o usuário. Por isso o motor não precisa de gancho "depois de gravar". O link é gerado pelo worker no momento do envio e nunca é gravado no outbox.
+Na ação `create`, a importação de usuários só chama `register`. Pela D7 da Change `enviar-emails-por-outbox`, o próprio `register` registra no outbox o envio `LINK_SENHA`, na transação corrente, com `outbox.enqueue`. Assim, o registro fica no mesmo savepoint do usuário. Na prévia, o rollback desfaz o registro junto com o usuário. Na confirmação, ele é efetivado junto com o usuário. Por isso o motor não precisa de gancho "depois de gravar". O link é gerado pelo worker no momento do envio e nunca é gravado no outbox.
 
 ### D13. Permissão por ação dentro do plano
 
@@ -219,7 +219,7 @@ Alternativas consideradas:
 ### D14. Ações de usuários
 
 `execute_row` normaliza os valores, resolve o perfil por `Role.objects.filter(code=...)` e procura o usuário por `email__iexact`:
-- sem usuário: `register(email, name, role)` e registro no outbox;
+- sem usuário: `register(email, name, role)`, que já registra o envio do link no outbox (D12);
 - com usuário: compara nome e perfil. Nome diferente chama `update_details(executor, name, user.email)`, e perfil diferente chama `change_role(role)`. Nada diferente gera `unchanged`;
 - usuário inativo: acrescenta o aviso `inactive_user`, sem mudar a situação.
 
@@ -284,5 +284,4 @@ As telas de envio, prévia, histórico e detalhe são desenhadas a partir de ima
 ## Open Questions
 
 - Valores definitivos de `IMPORT_MAX_FILE_SIZE` e `IMPORT_MAX_ROWS`, a registrar em D5 depois da medição.
-- Nome e assinatura da operação de registro do link no outbox, definidos pela Change `enviar-emails-por-outbox` (D12).
 - Imagens de referência das telas (D17).

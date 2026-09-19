@@ -63,9 +63,9 @@
 
 ## 9. Documentação
 
-- [ ] 9.1 Atualizar o `README.md`: serviço `tailwind`, alvos `css` e `npm`, motivo do `--renew-anon-volumes`, htmx e Node.js como pré-requisito dispensado
-- [ ] 9.2 Acrescentar à seção 9 do `openspec/conventions.md` a referência aos tokens, aos componentes e aos layouts do app `ui`, e a instrução de usar os componentes em vez de repetir classes
-- [ ] 9.3 Validar a Change com `openspec validate definir-identidade-visual --strict`
+- [x] 9.1 Atualizar o `README.md`: serviço `tailwind`, alvos `css` e `npm`, motivo do `--renew-anon-volumes`, htmx e Node.js como pré-requisito dispensado
+- [x] 9.2 Acrescentar à seção 9 do `openspec/conventions.md` a referência aos tokens, aos componentes e aos layouts do app `ui`, e a instrução de usar os componentes em vez de repetir classes
+- [x] 9.3 Validar a Change com `openspec validate definir-identidade-visual --strict`
 
 ## 10. Verificação visual manual
 

@@ -2,7 +2,7 @@
 
 Sistema web para agendamento de espaços físicos do IFNMG – Campus Salinas, desenvolvido com Django e PostgreSQL como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação.
 
-Todo o ambiente de desenvolvimento roda em Docker. Não é preciso instalar Python nem PostgreSQL na máquina.
+Todo o ambiente de desenvolvimento roda em Docker. Não é preciso instalar Python, Node.js nem PostgreSQL na máquina.
 
 ## Pré-requisitos
 
@@ -17,7 +17,7 @@ Todo o ambiente de desenvolvimento roda em Docker. Não é preciso instalar Pyth
 Depois de clonar o repositório, na raiz do projeto:
 
 ```bash
-make up                                # constrói a imagem e sobe os containers
+make up                                # constrói as imagens, sobe os containers e gera o CSS
 make migrate                           # aplica as migrations no PostgreSQL
 make manage cmd="create_superadmin"    # cria o primeiro superadmin
 ```
@@ -58,7 +58,7 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 | Comando | Equivalente Docker Compose | O que faz |
 |---|---|---|
 | `make` ou `make help` | — | Lista os comandos disponíveis |
-| `make up` | `docker compose up -d --build` | Sobe o ambiente em segundo plano, reconstruindo a imagem se necessário |
+| `make up` | `docker compose up -d --build --renew-anon-volumes` | Sobe o ambiente em segundo plano, reconstruindo as imagens e reinstalando as dependências de Node.js se necessário |
 | `make down` | `docker compose down` | Para e remove os containers; os dados do banco são mantidos |
 | `make logs` | `docker compose logs -f` | Acompanha os logs dos containers |
 | `make migrate` | `docker compose run --rm web python manage.py migrate` | Aplica as migrations pendentes |
@@ -66,12 +66,15 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 | `make test` | `docker compose run --rm web python manage.py test` | Executa a suíte de testes |
 | `make shell` | `docker compose run --rm web python manage.py shell` | Abre o shell do Django |
 | `make manage cmd="<comando>"` | `docker compose run --rm web python manage.py <comando>` | Executa qualquer outro comando do `manage.py` |
+| `make css` | `docker compose run --rm tailwind npx @tailwindcss/cli -i ui/styles/app.css -o ui/static/ui/css/app.css --minify` | Gera o CSS da interface minificado |
+| `make npm cmd="<comando>"` | `docker compose run --rm tailwind npm <comando>` | Executa um comando do npm no container `tailwind` |
 | `make psql` | `docker compose up -d --wait db` e depois `docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'` | Abre o `psql` no banco de dados |
 | `make reset-db` | `docker compose down -v` | **Apaga todos os dados do banco** e remove os containers |
 
 - Os comandos baseados em `run --rm` funcionam com o ambiente parado ou em execução. O Compose sobe o banco quando necessário e remove o container do comando ao final.
 - As migrations não são aplicadas automaticamente na subida do ambiente. Execute `make migrate` sempre que houver migrations novas.
 - Os testes rodam em um banco de testes criado temporariamente no próprio PostgreSQL e removido ao final da execução.
+- O `make up` usa `--renew-anon-volumes` porque as dependências de Node.js ficam num volume anônimo do container `tailwind` (veja **Serviços**). Sem a opção, o Compose reaproveitaria o volume antigo, e um `package-lock.json` alterado não chegaria ao container.
 
 ## Serviços
 
@@ -79,10 +82,13 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 |---|---|---|
 | `web` | construída a partir do `Dockerfile` (Python 3.13) | Aplicação Django com o servidor de desenvolvimento na porta 8000 |
 | `db` | `postgres:17` | Banco de dados PostgreSQL, sem porta publicada no host |
+| `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface com o Tailwind CSS e o recompila a cada alteração |
 
 - O código do projeto é montado em `/app` no container `web`. Alterações feitas na máquina recarregam o servidor automaticamente, e arquivos gerados no container, como migrations, aparecem no repositório.
 - Os dados do PostgreSQL ficam no volume `postgres_data`, que `make down` preserva e `make reset-db` remove.
 - O `web` só é iniciado depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
+- O `tailwind` lê o `ui/styles/app.css` e os templates de todos os apps e grava `ui/static/ui/css/app.css`, que o `web` serve como arquivo estático. Uma classe nova num template aparece no CSS sem reiniciar containers. O CSS gerado fica fora do Git.
+- O `tailwind` monta o projeto em `/app`, como o `web`, e guarda as dependências de Node.js num volume anônimo em `/app/node_modules`, para que a montagem do projeto não as esconda. O Node.js só é usado para compilar o CSS: a imagem do `web` não o tem.
 
 ## Variáveis de ambiente
 
@@ -136,12 +142,25 @@ DJANGO_DEFAULT_FROM_EMAIL=Agendamento IFNMG Salinas <conta@gmail.com>
 
 Depois de alterar o `.env`, recrie o container com `make up`. Se o envio falhar durante um cadastro, o usuário continua cadastrado, quem cadastrou é avisado e o próprio usuário pode pedir um novo link em **Esqueci minha senha**.
 
+## Interface
+
+- O visual segue a escala fechada de tokens do `ui/styles/app.css` (cores, espaçamentos, raios, sombras e fontes) e os componentes do app `ui`. A seção 9 do `openspec/conventions.md` explica como usá-los. Testes automáticos recusam valores soltos nos templates e pares de cores abaixo do contraste mínimo.
+- A fonte Open Sans, os ícones Lucide, o símbolo do IF e o htmx são arquivos do próprio projeto, com as licenças ao lado. Nenhuma página depende de servidor externo.
+- As ações de gestão abrem em modal. O [htmx](https://htmx.org/) carrega o modal do servidor e envia o formulário, e o `ui/static/ui/js/modal.js` abre e fecha o `<dialog>`. Sem JavaScript, as mesmas URLs abrem como páginas.
+
 ## Dependências
 
 As dependências Python ficam no `requirements.txt`, com versões fixas, e são instaladas durante a construção da imagem. Para adicionar ou atualizar uma dependência:
 
 1. Edite o `requirements.txt`, fixando a versão com `==`.
 2. Execute `make up` para reconstruir a imagem e recriar o container `web`.
+
+As dependências de Node.js servem só para compilar o CSS. Ficam no `package.json`, com versões exatas, travadas no `package-lock.json`, e são instaladas na construção da imagem do `tailwind`. Para adicionar uma:
+
+```bash
+make npm cmd="install --save-exact pacote@1.2.3"
+make up
+```
 
 ## Permissões de arquivos em hosts Linux
 
@@ -157,13 +176,16 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 
 ```text
 .
-├── compose.yaml       # serviços web e db
-├── Dockerfile         # imagem de desenvolvimento da aplicação
+├── compose.yaml       # serviços web, db e tailwind
+├── Dockerfile         # imagens de desenvolvimento da aplicação e da compilação do CSS
 ├── Makefile           # atalhos para os comandos do dia a dia
 ├── requirements.txt   # dependências Python com versões fixas
+├── package.json       # dependências de Node.js da compilação do CSS
+├── package-lock.json
 ├── manage.py
 ├── config/            # configuração do projeto Django
 ├── accounts/          # usuários, perfis, permissões e autenticação
+├── ui/                # layouts, componentes, tokens, ícones e regras de texto e visual
 ├── openspec/          # Constitution, convenções, specs e changes do OpenSpec
 └── sources/           # texto do TCC
 ```

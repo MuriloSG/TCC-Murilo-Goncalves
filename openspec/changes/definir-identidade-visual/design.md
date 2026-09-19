@@ -556,6 +556,21 @@ Alternativas consideradas:
 - **SPA ou framework de componentes:** contraria o P1, que define a apresentação com templates do Django.
 - **Nome "Cancelar" para sair do modal:** "cancelar" é ação do domínio (RF08). Por isso o botão se chama "Fechar".
 
+## Notas de implementação
+
+Ajustes feitos na implementação, depois da conferência no navegador (seção 10 das tasks):
+
+- **Título do modal em `h1`.** O modal usa `h1` com a classe `modal-title` (tamanho de `h2`), e não `h2`. Sem JavaScript, o mesmo fragmento é a página inteira, e toda página precisa de um `h1`. Com o modal aberto, o resto da página fica inerte.
+- **Fechar o modal.** Os controles "Fechar" do modal são `type="button"` com `data-modal-close`, tratados pelo `modal.js`, e não `formmethod="dialog"`: o htmx intercepta o `submit` do formulário e não garante o fechamento nativo. Na página completa, sem JavaScript, os dois controles são links para a tela de origem (`ModalView.get_close_url`).
+- **Foco no modal.** O `modal.js` põe o foco no primeiro campo com erro ou, sem erro, no primeiro campo do formulário. Antes, o foco ia para o botão de ícone "Fechar", e o primeiro espaço digitado fechava o modal. O foco também passa do último controle para o primeiro, e vice-versa, porque o `<dialog>` do Chromium deixava o Tab sair para a interface do navegador.
+- **Lista de perfis.** Código e nome ficam numa só coluna "Perfil" (nome como link e código abaixo, como a coluna de pessoa da lista de usuários). Com cinco colunas, a tabela passava da largura da página entre 640 e 1100 px. As células usam 16 px de margem lateral abaixo de 1024 px e 24 px a partir daí.
+- **Tokens de largura.** Além de `modal`, `form` e `page`, os tokens de largura incluem `menu` (14 rem, largura mínima do menu suspenso) e `sidebar` (17 rem, barra lateral). O `--palette-white` representa o #FFFFFF dos tokens.
+- **Tons de selo e mensagem.** As classes de tom são `tone-success`, `tone-warning`, `tone-error` e `tone-info`, usadas com `badge` e `alert`.
+- **Ações de linha.** As tags `row_action` e `action_list` montam as ações de cada linha, já filtradas pelas permissões, para o `row_actions.html`. Abaixo de 640 px, as ações do "Mais ações" aparecem como botões com contorno, a partir de uma segunda lista oculta nas larguras maiores, porque um `<details>` fechado não pode ser aberto por CSS.
+- **Ícone `search`.** Não foi copiado nesta Change, porque só a busca da Change `filtrar-lista-de-usuarios` o usa.
+- **Formulários de edição.** A conferência no navegador mostrou que os formulários de edição (usuário, perfil, troca de perfil e permissões) abriam vazios: o `FormView` sempre passa `initial`, e o `setdefault` dos formulários não tinha efeito. A correção foi feita num commit próprio, antes desta Change, com testes em `accounts/tests/test_form_initial.py`.
+- **Anti-enumeração na recuperação de senha.** O `hx-headers` com o token CSRF fica só no `ui/layouts/app.html`. No `base.html`, o token mudava a cada resposta e as páginas de envio do link deixavam de ser idênticas para e-mails cadastrados e não cadastrados.
+
 ## Risks / Trade-offs
 
 - [Cores sem manual oficial podem divergir do padrão da Rede Federal] → a origem de cada valor está no D3. Se o manual for obtido, os valores são trocados num só arquivo e o teste de contraste confere as escalas de novo.

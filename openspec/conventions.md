@@ -157,8 +157,18 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 
 - Antes de desenhar ou implementar qualquer tela nova, pedir ao autor uma imagem de referência da tela.
 - A referência é adaptada, e não copiada:
-  - cores, tipografia, espaçamentos, raios e componentes vêm da paleta e dos tokens da prévia visual (`previa.html` da Change `definir-identidade-visual`, que vai para `openspec/changes/archive/` quando a Change for arquivada);
+  - cores, tipografia, espaçamentos, raios e componentes vêm dos tokens e dos componentes do app `ui` (seção 9.9) e da prévia visual (`previa.html` da Change `definir-identidade-visual`, que vai para `openspec/changes/archive/` quando a Change for arquivada);
   - os textos seguem as seções 9.1 a 9.5;
   - o visual segue as seções 9.6 e 9.7;
   - elementos da referência que não existem no sistema (notificações, módulos futuros, marcas que não são a oficial) ficam de fora.
 - O que foi adaptado e o que foi retirado da referência fica registrado no `design.md` da Change da tela.
+
+### 9.9 Tokens, componentes e layouts do app `ui`
+
+- **Tokens:** a escala fechada fica no `ui/styles/app.css` (`@theme`). Nos templates, use só utilitários com esses nomes (`bg-surface`, `text-text-muted`, `gap-4`, `rounded-lg`, `max-w-modal`). A paleta (`--palette-*`) não é usada diretamente: cada cor entra por um token com função. Um token de cor novo exige um par em `ui/contrast.py` ou a justificativa da isenção.
+- **Componentes:** use as classes de `@layer components` do `app.css` (`btn-primary`, `btn-secondary`, `btn-danger`, `icon-btn`, `link`, `card`, `card-head`, `card-foot`, `data-table`, `person`, `avatar`, `badge`, `count`, `alert`, `menu`, `modal` e as demais) e os templates de `ui/templates/ui/components/` (`messages.html`, `badge.html`, `row_actions.html`, `modal.html`, `confirm_modal.html`) em vez de repetir classes utilitárias. Um visual que se repete vira componente no `app.css`, e não uma sequência de utilitários copiada entre templates.
+- **Ícones:** `{% icon "nome" "size-4" %}` da biblioteca `ui`, com os SVGs de `ui/templates/ui/icons/`. Um ícone novo do Lucide é copiado para essa pasta sem `width`, `height` e comentários.
+- **Formulários:** `{{ form }}` já usa o renderizador do projeto (`ui.forms.FormRenderer`), com rótulo, "(opcional)", ajuda, erros e os atributos ARIA. Não monte campos à mão, exceto quando o campo leva ícone (`{% include "ui/forms/field.html" with field=... icon="mail" %}`).
+- **Layouts:** páginas autenticadas estendem `ui/layouts/app.html` e preenchem `title`, `crumbs`, `page_head` e `content`. Login e recuperação de senha estendem `ui/layouts/auth.html`.
+- **Ações em modal:** a view herda de `ui.views.ModalView` (pelas classes base de `accounts/views.py`), define `modal_template_name` com um fragmento que estende `ui/components/modal.html` ou `confirm_modal.html`, e o `template_name` da página completa inclui o mesmo fragmento. O link que abre a ação tem `href` e `hx-get` para a mesma URL e `hx-target="#modal"`.
+- **Verificação:** `ui/tests/test_template_classes.py` recusa `style=`, valores arbitrários e classes fora da escala, e `ui/tests/test_contrast.py` recusa pares de cores abaixo do mínimo.

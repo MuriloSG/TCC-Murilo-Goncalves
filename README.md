@@ -49,6 +49,7 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 
 - Os perfis do sistema, `ADMINISTRADOR` e `DOCENTE`, são criados pelas migrations e não podem ser excluídos.
 - Usuários são cadastrados pela interface, em **Usuários**, por quem tem a permissão. O novo usuário recebe por e-mail um link para definir a própria senha. Ninguém define a senha de outra pessoa.
+- Usuários também podem ser cadastrados e atualizados em lote por uma planilha CSV, em **Usuários › Importar usuários**, por quem tem a permissão `USUARIO.IMPORTAR`. O arquivo usa UTF-8 e `;`, com as colunas `E-mail`, `Nome` e `Perfil` (código do perfil), e o modelo pode ser baixado na própria tela. O sistema mostra uma prévia sem gravar nada e só aplica a importação quando todas as linhas estão corretas e nada mudou desde a prévia.
 - Qualquer usuário ativo recupera o acesso em **Esqueci minha senha**, na página de login. O link vale por 3 dias e pode ser usado uma única vez.
 - Só o superadmin acessa **Perfis**, onde cria perfis personalizados e define as permissões de cada um. Um perfil novo não concede nenhuma permissão até que ele as escolha.
 - **Depois de cada módulo novo**, o superadmin deve revisar os perfis personalizados: as permissões novas chegam apenas aos perfis do sistema, conforme a configuração padrão do módulo.
@@ -113,8 +114,10 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 | `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |
 | `DJANGO_OUTBOX_POLL_INTERVAL` | `5` | Segundos que o `worker` espera quando não há e-mail para enviar |
 | `DJANGO_OUTBOX_BATCH_SIZE` | `20` | E-mails enviados pelo `worker` a cada ciclo |
+| `DJANGO_IMPORT_MAX_ROWS` | `1000` | Linhas de dados aceitas numa importação por planilha |
+| `DJANGO_IMPORT_MAX_FILE_SIZE` | `1048576` | Tamanho máximo, em bytes, do arquivo de uma importação |
 
-`POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco. As variáveis do outbox não estão no `compose.yaml`: sem elas, valem os padrões da tabela, e elas podem ser definidas no `.env`.
+`POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco. As variáveis do outbox e da importação não estão no `compose.yaml`: sem elas, valem os padrões da tabela, e elas podem ser definidas no `.env`.
 
 Os valores padrão estão no `compose.yaml` e permitem subir o ambiente sem nenhuma configuração. Para sobrescrever um valor, crie um arquivo `.env` na raiz do projeto, que é ignorado pelo Git:
 
@@ -196,6 +199,7 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 ├── accounts/          # usuários, perfis, permissões e autenticação
 ├── ui/                # layouts, componentes, tokens, ícones e regras de texto e visual
 ├── outbox/            # envio dos e-mails disparados pelo sistema, pelo worker
+├── imports/           # motor de importação de planilhas CSV
 ├── openspec/          # Constitution, convenções, specs e changes do OpenSpec
 └── sources/           # texto do TCC
 ```

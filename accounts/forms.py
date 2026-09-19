@@ -88,7 +88,7 @@ class UserUpdateForm(forms.Form):
     email = email_field()
 
     def __init__(self, *args, target, executor, **kwargs):
-        kwargs.setdefault('initial', {'name': target.name, 'email': target.email})
+        kwargs['initial'] = {'name': target.name, 'email': target.email} | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
         if target.is_superadmin and not (executor.is_active and executor.is_superadmin):
             self.fields['email'].widget.attrs['readonly'] = True
@@ -99,7 +99,7 @@ class UserRoleForm(forms.Form):
     role = role_choice_field()
 
     def __init__(self, *args, target, **kwargs):
-        kwargs.setdefault('initial', {'role': target.role})
+        kwargs['initial'] = {'role': target.role} | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
 
     def clean_role(self):
@@ -153,7 +153,7 @@ class RoleUpdateForm(forms.Form):
     description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea)
 
     def __init__(self, *args, target, **kwargs):
-        kwargs.setdefault('initial', {'name': target.name, 'description': target.description})
+        kwargs['initial'] = {'name': target.name, 'description': target.description} | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
 
 
@@ -161,6 +161,7 @@ class RolePermissionsForm(forms.Form):
     permissions = permission_choice_field()
 
     def __init__(self, *args, target, **kwargs):
-        kwargs.setdefault('initial', {'permissions': list(target.permissions.values_list('code', flat=True))})
+        current = {'permissions': list(target.permissions.values_list('code', flat=True))}
+        kwargs['initial'] = current | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
         self.fields['permissions'].widget.choices = grantable_permission_choices()

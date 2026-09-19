@@ -23,14 +23,14 @@
 
 ## 4. Motor: model, prévia e confirmação
 
-- [ ] 4.1 Criar os models `Import` e `ImportRow` e a migration `0001_initial` (D6)
-- [ ] 4.2 Implementar a execução com savepoint do domínio, savepoint por linha, `lock` e `check_file` (D7)
-- [ ] 4.3 Implementar a normalização e a comparação do plano (D8)
-- [ ] 4.4 Implementar `Import.objects.preview`, `Import.confirm` e `Import.discard` com as transições, a trava da importação, a divergência e o contador (D7, D9, D10)
-- [ ] 4.5 Escrever os testes do motor com uma definição de teste: prévia sem alterar dados, todos os erros de uma vez, erro de banco numa linha, erro do arquivo, plano idêntico, divergência sem e com erros, falha no meio da confirmação, erro inesperado na prévia e na confirmação, situações finais, `created_object` só na conclusão e plano determinístico
-- [ ] 4.6 Testar confirmações simultâneas com `TransactionTestCase` e `serialized_rollback = True`
-- [ ] 4.7 Testar que nenhum módulo de `imports` importa `accounts`
-- [ ] 4.8 Commit
+- [x] 4.1 Criar os models `Import` e `ImportRow` e a migration `0001_initial` (D6)
+- [x] 4.2 Implementar a execução com savepoint do domínio, savepoint por linha, `lock` e `check_file` (D7)
+- [x] 4.3 Implementar a normalização e a comparação do plano (D8)
+- [x] 4.4 Implementar `Import.objects.preview`, `Import.confirm` e `Import.discard` com as transições, a trava da importação, a divergência e o contador (D7, D9, D10)
+- [x] 4.5 Escrever os testes do motor com uma definição de teste: prévia sem alterar dados, todos os erros de uma vez, erro de banco numa linha, erro do arquivo, plano idêntico, divergência sem e com erros, falha no meio da confirmação, erro inesperado na prévia e na confirmação, situações finais, `created_object` só na conclusão e plano determinístico
+- [x] 4.6 Testar confirmações simultâneas com `TransactionTestCase` e `serialized_rollback = True`
+- [x] 4.7 Testar que nenhum módulo de `imports` importa `accounts`
+- [x] 4.8 Commit
 
 ## 5. Importação de usuários
 

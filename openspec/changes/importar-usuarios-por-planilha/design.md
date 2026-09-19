@@ -65,12 +65,13 @@ Alternativa considerada: **registro central com telas genéricas parametrizadas 
 | `kind` | `'USUARIO'` |
 | `columns` | `Column('E-mail')`, `Column('Nome')`, `Column('Perfil')`, todas obrigatórias |
 | `identifier` e `normalize_identifier(value)` | `'E-mail'` e `UserManager.normalize_email` |
+| `execution()` | Contexto em volta de todas as linhas e de `check_file`: `deferred_administrative_continuity()` (D11) |
 | `lock(rows, executor)` | Trava os usuários ativos (`lock_active_users`) e os usuários com os e-mails do arquivo, em ordem de `pk` |
 | `execute_row(values, executor)` | Devolve um `RowPlan` |
 | `check_file(executor)` | Verifica a continuidade administrativa e devolve os erros do arquivo |
 | Rótulos | Ações, campos (`name` → "Nome", `role` → "Perfil"), avisos e códigos de erro |
 
-`RowPlan` é uma dataclass com `action`, `target`, `changes`, `warnings` e `errors`. Cada erro é um `RowError(column, code, message)`. O motor oferece `errors_from_validation(error, columns_by_field)`, que traduz uma `ValidationError` do model para erros de coluna usando o mapa `{'email': 'E-mail', 'name': 'Nome', 'role': 'Perfil'}` declarado pela definição. Assim, a mensagem exibida é a mesma da tela.
+`RowPlan` é uma dataclass com `action`, `target`, `changes`, `warnings`, `errors` e `created`. `created` é a chave do registro criado pela linha, fica fora da comparação e só é gravado na conclusão. Cada erro é um `RowError(column, code, message)`. O motor oferece `errors_from_validation(error, columns_by_field)`, que traduz uma `ValidationError` do model para erros de coluna usando o mapa `{'email': 'E-mail', 'name': 'Nome', 'role': 'Perfil'}` declarado pela definição. Assim, a mensagem exibida é a mesma da tela.
 
 Nesta versão, `Column` só tem o rótulo. O atributo `required` entra junto com a primeira coluna opcional (D1).
 

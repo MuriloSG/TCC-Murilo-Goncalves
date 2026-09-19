@@ -5,6 +5,7 @@ execução de uma linha, verificações do arquivo e rótulos. O motor trata o p
 como dado e não interpreta o seu conteúdo.
 """
 
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 from django.core.exceptions import NON_FIELD_ERRORS
@@ -26,13 +27,18 @@ class RowError:
 
 @dataclass
 class RowPlan:
-    """Decisão sobre uma linha: ação, alvo, mudanças, avisos e erros (D8)."""
+    """Decisão sobre uma linha: ação, alvo, mudanças, avisos e erros (D8).
+
+    `created` é a chave do registro criado pela linha. Fica fora da comparação e só
+    é gravado na conclusão, porque a chave gerada na prévia desaparece no rollback.
+    """
 
     action: str | None = None
     target: str | None = None
     changes: dict = field(default_factory=dict)
     warnings: list = field(default_factory=list)
     errors: list = field(default_factory=list)
+    created: str | None = None
 
 
 class ImportDefinition:
@@ -46,6 +52,10 @@ class ImportDefinition:
 
     def normalize_identifier(self, value):
         return value.strip()
+
+    def execution(self):
+        """Contexto aberto em volta de todas as linhas e das verificações do arquivo."""
+        return nullcontext()
 
     def lock(self, rows, executor):
         """Trava o que a execução vai ler, antes da primeira linha."""

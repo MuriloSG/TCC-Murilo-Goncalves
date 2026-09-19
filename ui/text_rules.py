@@ -226,8 +226,9 @@ def visible_template_source(source):
 class VisibleTextParser(HTMLParser):
     """Coleta o texto visível de um HTML como Fragment(text, line, element).
 
-    Além do conteúdo, coleta os atributos placeholder, title, alt e aria-label, e o
-    value de <input type="submit|button">. O texto de um elemento de
+    Além do conteúdo, coleta os atributos placeholder, title, alt, aria-label e
+    data-label, e o value de <input type="submit|button">. O data-label repete o
+    cabeçalho da coluna na tabela empilhada e segue a regra de maiúsculas de th. O texto de um elemento de
     CAPITALIZED_ELEMENTS é reunido num único trecho, mesmo com tags dentro dele, e
     o trecho leva o nome desse elemento. Fora deles, cada trecho leva a tag em que
     está. A declaração <!DOCTYPE>, os comentários HTML, <script> e <style> são
@@ -265,6 +266,8 @@ class VisibleTextParser(HTMLParser):
         for name in self.TEXT_ATTRIBUTES:
             if attributes.get(name):
                 self.add(attributes[name], line, element)
+        if attributes.get('data-label'):
+            self.add(attributes['data-label'], line, 'th')
         if tag == 'input' and attributes.get('type') in ('submit', 'button') and attributes.get('value'):
             self.add(attributes['value'], line, 'button')
         if tag in self.VOID_ELEMENTS:

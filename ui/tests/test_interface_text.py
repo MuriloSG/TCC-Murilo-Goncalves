@@ -1,49 +1,15 @@
 """Verificação do texto exibido em todos os templates e módulos Python do projeto."""
 
 import re
-from importlib import import_module
-from pathlib import Path
 
-from django.apps import apps
 from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
 from django.test import Client, SimpleTestCase, TestCase
 
 from accounts.models import Role, User
-from ui import text_rules
+from ui.tests.files import python_files, template_files
 from ui.text_rules import find_violations, html_fragments, python_fragments, template_fragments
-
-
-def project_roots():
-    """Diretórios dos apps do projeto e do pacote de configuração, sem bibliotecas instaladas."""
-    base = Path(settings.BASE_DIR)
-    roots = [Path(config.path) for config in apps.get_app_configs() if Path(config.path).is_relative_to(base)]
-    roots.append(Path(import_module(settings.SETTINGS_MODULE).__file__).parent)
-    return roots
-
-
-def template_files():
-    directories = [root / 'templates' for root in project_roots()]
-    directories += [Path(directory) for engine in settings.TEMPLATES for directory in engine['DIRS']]
-    for directory in directories:
-        if directory.is_dir():
-            yield from sorted(path for path in directory.rglob('*') if path.suffix in ('.html', '.txt'))
-
-
-def python_files():
-    """Módulos do projeto, exceto testes, migrations e o text_rules.
-
-    O text_rules fica de fora porque guarda as expressões proibidas como dado.
-    """
-    rules = Path(text_rules.__file__).resolve()
-    for root in project_roots():
-        for path in sorted(root.rglob('*.py')):
-            parts = path.relative_to(root).parts
-            if {'tests', 'migrations'} & set(parts[:-1]) or parts[-1].startswith('test'):
-                continue
-            if path.resolve() != rules:
-                yield path
 
 
 def describe(label, fragments):
@@ -115,6 +81,8 @@ class TemplateExtractionTests(SimpleTestCase):
         self.assertEqual(len(self.violations('<input placeholder="Informe o email">')), 1)
         self.assertEqual(len(self.violations('<input type="submit" value="Salvar Dados">')), 1)
         self.assertEqual(self.violations('<input type="email" name="email">'), [])
+        self.assertEqual(len(self.violations('<td data-label="Usuários Vinculados">1</td>')), 1)
+        self.assertEqual(self.violations('<td data-label="Usuários vinculados">1</td>'), [])
 
     def test_template_txt_e_todo_visivel(self):
         self.assertEqual(

@@ -22,11 +22,11 @@
 
 ## 4. Tokens e contraste
 
-- [ ] 4.1 Criar `ui/styles/app.css` com `@import "tailwindcss"`, as variáveis `--palette-*` dos degraus usados, o `@theme` com os grupos padrão zerados e os tokens do D5, e o `@font-face` da Open Sans (D5, D9)
-- [ ] 4.2 Criar `ui/contrast.py` com `CONTRAST_PAIRS` da tabela do D6, a lista de isentos com a justificativa, a leitura das variáveis do `app.css` e o cálculo WCAG 2.x (D6)
-- [ ] 4.3 Escrever `ui/tests/test_contrast.py`: todos os pares acima do mínimo, todo token de cor coberto por um par ou isento, e um caso que troca o valor do texto secundário por #7B7677 numa cópia do `app.css` e espera a falha com 4,47:1 (cenário da spec)
-- [ ] 4.4 Criar `ui/class_rules.py`, que monta os valores aceitos a partir dos tokens do `app.css`, verifica as classes e só aceita `shadow-overlay` nas classes de camada flutuante (D5, D13)
-- [ ] 4.5 Escrever `ui/tests/test_template_classes.py`, que percorre os templates do projeto e falha em `style=`, valores arbitrários, cores fora dos tokens, passos fora da escala e sombra fora de camada flutuante, com os cenários da spec
+- [x] 4.1 Criar `ui/styles/app.css` com `@import "tailwindcss"`, as variáveis `--palette-*` dos degraus usados, o `@theme` com os grupos padrão zerados e os tokens do D5, e o `@font-face` da Open Sans (D5, D9)
+- [x] 4.2 Criar `ui/contrast.py` com `CONTRAST_PAIRS` da tabela do D6, a lista de isentos com a justificativa, a leitura das variáveis do `app.css` e o cálculo WCAG 2.x (D6)
+- [x] 4.3 Escrever `ui/tests/test_contrast.py`: todos os pares acima do mínimo, todo token de cor coberto por um par ou isento, e um caso que troca o valor do texto secundário por #7B7677 numa cópia do `app.css` e espera a falha com 4,47:1 (cenário da spec)
+- [x] 4.4 Criar `ui/class_rules.py`, que monta os valores aceitos a partir dos tokens do `app.css`, verifica as classes e só aceita `shadow-overlay` nas classes de camada flutuante (D5, D13)
+- [x] 4.5 Escrever `ui/tests/test_template_classes.py`, que percorre os templates do projeto e falha em `style=`, valores arbitrários, cores fora dos tokens, passos fora da escala e sombra fora de camada flutuante, com os cenários da spec
 
 ## 5. Componentes
 
@@ -34,7 +34,7 @@
 - [ ] 5.2 Criar `ui/forms.py` com o `FormRenderer` e os templates `ui/forms/form.html` e `ui/forms/field.html` com rótulo, "(opcional)", ajuda, erros, `aria-describedby` e `aria-invalid`, e configurar `FORM_RENDERER` e `django.forms` em `INSTALLED_APPS` (D11)
 - [ ] 5.3 Criar `ui/components/messages.html` com tom, ícone e `role` por tipo de mensagem, `ui/components/badge.html` e `ui/components/row_actions.html`, com botões de ícone, dica, `aria-label` e o menu "Mais ações" (D7, D10, D11)
 - [ ] 5.4 Criar `ui/templatetags/ui.py` com as tags `icon` e `nav_link` e o filtro `initials` (D10, D12)
-- [ ] 5.5 Acrescentar `data-label` à lista de atributos verificados pelo teste de texto (D12)
+- [x] 5.5 Acrescentar `data-label` à lista de atributos verificados pelo teste de texto (D12)
 
 ## 6. Modais com htmx
 

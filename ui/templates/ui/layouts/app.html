@@ -9,7 +9,7 @@
     <aside class="sidebar" id="menu-lateral">
       <a class="brand" href="{% url 'home' %}">
         <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
-        <span><span class="brand-name">Agendamento de espaços</span><span class="brand-campus">IFNMG Campus Salinas</span></span>
+        <span class="brand-name">SaliSpace</span>
       </a>
       {% include "ui/components/navigation.html" %}
       {% if user.is_authenticated %}
@@ -24,7 +24,7 @@
     <div class="topbar">
       <a class="brand" href="{% url 'home' %}">
         <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
-        <span><span class="brand-name">Agendamento de espaços</span><span class="brand-campus">IFNMG Campus Salinas</span></span>
+        <span class="brand-name">SaliSpace</span>
       </a>
       <details class="topbar-menu">
         <summary>{% icon "menu" %}Menu</summary>

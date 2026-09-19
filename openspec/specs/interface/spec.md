@@ -54,11 +54,11 @@ Nenhuma informação de estado DEVE (MUST) depender só da cor. Selos de estado 
 - **THEN** a mensagem de sucesso tem `role="status"`, um ícone e o texto
 
 ### Requirement: Identidade institucional
-A barra lateral e a barra do topo no celular DEVEM (MUST) exibir o símbolo oficial do IF, recortado da versão colorida RGB sem alteração de cor, ao lado do nome do sistema em texto, num link para a página inicial. A barra lateral DEVE (MUST) também mostrar "IFNMG Campus Salinas" em texto. O painel da página de login DEVE (MUST) exibir o logo horizontal completo na versão negativa oficial, derivado da versão negativa RGB, sem outra cor além do branco, com a arte em pelo menos 48 px de altura, sem distorção e com texto alternativo que identifique a instituição. A fonte da interface DEVE (MUST) ser a Open Sans, servida pelo próprio sistema junto com o arquivo da licença. Nenhuma página DEVE (MUST) depender de requisição a servidor externo para fonte, ícone, estilo ou script.
+A barra lateral e a barra do topo no celular DEVEM (MUST) exibir o símbolo oficial do IF, recortado da versão colorida RGB sem alteração de cor, ao lado do nome do sistema, "SaliSpace", em texto, numa única linha e num link para a página inicial. A barra lateral NÃO DEVE (MUST NOT) repetir o nome do campus, que aparece na página de login. O painel da página de login DEVE (MUST) exibir o logo horizontal completo na versão negativa oficial, derivado da versão negativa RGB, sem outra cor além do branco, com a arte em pelo menos 48 px de altura, sem distorção e com texto alternativo que identifique a instituição. A fonte da interface DEVE (MUST) ser a Open Sans, servida pelo próprio sistema junto com o arquivo da licença. Nenhuma página DEVE (MUST) depender de requisição a servidor externo para fonte, ícone, estilo ou script.
 
 #### Scenario: Barra lateral
 - **WHEN** um usuário autenticado abre qualquer página
-- **THEN** a barra lateral contém o símbolo do IF e os textos "Agendamento de espaços" e "IFNMG Campus Salinas", num link para a página inicial
+- **THEN** a barra lateral contém o símbolo do IF e o texto "SaliSpace", num link para a página inicial
 
 #### Scenario: Página de login
 - **WHEN** um visitante abre a página de login

@@ -59,8 +59,8 @@ class AppLayoutTests(LayoutTestCase):
         content = response.content.decode()
         sidebar = content[content.index('<aside class="sidebar" id="menu-lateral">'):content.index('</aside>')]
         self.assertRegex(sidebar, r'<a class="brand" href="/inicio/">\s*<img src="/static/ui/img/simbolo-if.png" alt=""')
-        self.assertIn('<span class="brand-name">Agendamento de espaços</span>', sidebar)
-        self.assertIn('<span class="brand-campus">IFNMG Campus Salinas</span>', sidebar)
+        self.assertIn('<span class="brand-name">SaliSpace</span>', sidebar)
+        self.assertNotIn('IFNMG Campus Salinas', sidebar)
         self.assertIn('<nav class="side-nav" aria-label="Principal">', sidebar)
 
     def test_primeiro_focavel_e_o_link_para_o_conteudo(self):
@@ -173,7 +173,7 @@ class AuthLayoutTests(LayoutTestCase):
             'alt="Instituto Federal Norte de Minas Gerais, Campus Salinas" width="813" height="225">',
             html=True,
         )
-        self.assertContains(response, '<p class="auth-title">Agendamento de espaços</p>', html=True)
+        self.assertContains(response, '<p class="auth-title">SaliSpace</p>', html=True)
         self.assertContains(response, '<h1>Entrar</h1>', html=True)
         self.assertNotContains(response, 'class="sidebar"')
         self.assertEqual(parse(response).focusable[0][1].get('href'), '#conteudo')

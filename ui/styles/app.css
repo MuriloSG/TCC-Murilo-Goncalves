@@ -1694,22 +1694,15 @@
 
     & img {
       width: auto;
-      height: var(--spacing-10);
+      height: var(--spacing-8);
       flex: none;
     }
   }
 
   .brand-name {
-    display: block;
+    font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
-    line-height: var(--text-sm--line-height);
-  }
-
-  .brand-campus {
-    display: block;
-    color: var(--color-on-sidebar-muted);
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
+    line-height: var(--text-lg--line-height);
   }
 
   .nav-label {
@@ -1878,10 +1871,6 @@
     & .brand {
       padding-right: calc(var(--spacing-16) * 2);
       padding-left: 0;
-    }
-
-    & .brand-campus {
-      display: none;
     }
 
     & .who-role {

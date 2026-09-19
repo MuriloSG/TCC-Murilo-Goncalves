@@ -305,6 +305,7 @@ class RolePermissionsView(RoleFormView):
     permission_required = permissions.ROLE_CHANGE_PERMISSIONS
     form_class = RolePermissionsForm
     title = 'Permissões do perfil'
+    submit_label = 'Salvar permissões'
 
     def get_form_kwargs(self):
         return super().get_form_kwargs() | {'target': self.target}

@@ -27,6 +27,8 @@ CONTRAST_PAIRS = [
     ('action', 'surface', 4.5, 'Link sobre a superfície'),
     ('focus', 'surface', 3, 'Contorno de foco sobre a superfície'),
     ('focus', 'page', 3, 'Contorno de foco sobre a página'),
+    ('action', 'page', 4.5, 'Contagem de permissões selecionadas'),
+    ('warning-text', 'page', 4.5, 'Aviso de alterações não salvas'),
     ('on-fill', 'danger', 4.5, 'Botão destrutivo'),
     ('on-fill', 'danger-hover', 4.5, 'Botão destrutivo no hover'),
     ('danger', 'surface', 4.5, 'Ação destrutiva do menu e erro de campo'),

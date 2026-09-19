@@ -147,12 +147,14 @@ class UserRoleForm(forms.Form):
 
 
 def grantable_permission_choices():
-    """Permissões do catálogo que podem ser concedidas, agrupadas por recurso (D4, D21)."""
+    """Permissões do catálogo que podem ser concedidas, agrupadas por recurso (D4, D21).
+
+    Cada grupo leva o nome do recurso na interface, e cada opção tem o código
+    como valor e a descrição como rótulo.
+    """
     groups = {}
     for permission in Permission.objects.exclude(code__in=SUPERADMIN_RESERVED_PERMISSIONS).order_by('code'):
-        groups.setdefault(permission.resource, []).append(
-            (permission.code, f'{permission.code} · {permission.description}'),
-        )
+        groups.setdefault(permission.resource_label, []).append((permission.code, permission.description))
     return list(groups.items())
 
 

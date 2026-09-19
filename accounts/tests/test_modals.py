@@ -22,7 +22,7 @@ class ModalTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertNotIn('<html', content)
-        self.assertTrue(content.lstrip().startswith('<dialog class="modal"'), content[:200])
+        self.assertRegex(content.lstrip()[:60], r'^<dialog class="modal[ "]')
         self.assertIn('aria-labelledby="modal-title"', content)
         self.assertIn('data-modal-close', content)
 

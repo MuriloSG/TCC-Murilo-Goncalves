@@ -574,23 +574,165 @@
     }
   }
 
-  .check-groups {
+  .checklist {
     display: grid;
-    gap: var(--spacing-4);
+    gap: var(--spacing-2);
 
-    & fieldset {
-      display: grid;
+    & [data-state="all"] .when-none,
+    & [data-state="none"] .when-all {
+      display: none;
     }
+  }
 
-    & legend {
-      margin-bottom: var(--spacing-1);
-      color: var(--color-text-muted);
-      font-size: var(--text-xs);
-      line-height: var(--text-xs--line-height);
+  .checklist-top {
+    display: grid;
+    gap: var(--spacing-3);
+    padding-bottom: var(--spacing-2);
+    background: var(--color-surface);
+  }
+
+  dialog .checklist-top {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .checklist-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) var(--spacing-4);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-lg);
+    background: var(--color-page);
+
+    & strong {
+      color: var(--color-action);
       font-weight: var(--font-weight-semibold);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
     }
+  }
+
+  .checklist-unsaved {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--color-warning-text);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .checklist-dot {
+    width: var(--spacing-2);
+    height: var(--spacing-2);
+    border-radius: var(--radius-full);
+    background: currentColor;
+  }
+
+  .checklist-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-3);
+
+    & .control {
+      flex: 1;
+      min-width: calc(var(--spacing-16) * 3);
+    }
+
+    & .control > input {
+      padding-left: var(--spacing-12);
+    }
+
+    @variant max-sm {
+      & > * {
+        width: 100%;
+      }
+    }
+  }
+
+  .checklist-group {
+    border-top: 1px solid var(--color-divider);
+    interpolate-size: allow-keywords;
+
+    &::details-content {
+      block-size: 0;
+      overflow-y: clip;
+      transition: block-size var(--motion-base) ease, content-visibility var(--motion-base) allow-discrete;
+    }
+
+    &[open]::details-content {
+      block-size: auto;
+    }
+
+    & > summary {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      min-height: var(--spacing-12);
+      padding-inline: var(--spacing-2);
+      border-radius: var(--radius-md);
+      font-weight: var(--font-weight-semibold);
+      transition: background-color var(--motion-fast) ease;
+
+      &:hover {
+        background: var(--color-page);
+      }
+
+      & > svg {
+        width: var(--spacing-5);
+        height: var(--spacing-5);
+        flex: none;
+        margin-left: auto;
+        color: var(--color-text-muted);
+        transition: rotate var(--motion-base) ease;
+      }
+    }
+
+    &[open] > summary > svg {
+      rotate: 180deg;
+    }
+  }
+
+  .checklist-options {
+    display: grid;
+    padding: 0 var(--spacing-2) var(--spacing-3) var(--spacing-4);
+  }
+
+  .check-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) ease;
+
+    &:hover {
+      background: var(--color-page);
+    }
+
+    & input {
+      width: var(--spacing-5);
+      height: var(--spacing-5);
+      flex: none;
+      margin: 0;
+      accent-color: var(--color-action);
+    }
+
+    & strong {
+      font-weight: var(--font-weight-semibold);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .checklist-empty {
+    padding: var(--spacing-4) var(--spacing-2);
+    color: var(--color-text-muted);
   }
 
   .form-fields {
@@ -1292,8 +1434,16 @@
     }
   }
 
-  .modal-page {
+  .modal-page,
+  dialog.modal-wide {
     max-width: var(--container-form);
+  }
+
+  dialog.modal .modal-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--color-surface);
   }
 
   .modal-head {

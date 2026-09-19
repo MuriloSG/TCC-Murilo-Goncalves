@@ -14,12 +14,12 @@
 
 ## 3. Motor: leitura
 
-- [ ] 3.1 Criar o app `imports`, registrá-lo em `INSTALLED_APPS` e acrescentar `IMPORT_MAX_FILE_SIZE` e `IMPORT_MAX_ROWS` ao `settings.py`, lidos de variáveis de ambiente (D2, D5)
-- [ ] 3.2 Criar `ImportDefinition`, `Column`, `RowPlan`, `RowError` e `errors_from_validation` em `imports/definitions.py` (D4)
-- [ ] 3.3 Implementar `read_csv` com tamanho, UTF-8 com BOM, separador `;`, conferência do cabeçalho, mensagem do separador vírgula, numeração pela linha inicial, linhas vazias, limite de linhas e arquivo sem dados (D5)
-- [ ] 3.4 Implementar no motor as verificações de linha: células a mais, células a menos, célula obrigatória vazia ou só com espaços e identificador repetido citando as linhas
-- [ ] 3.5 Escrever os testes de leitura com os cenários da spec `importacao-planilhas`, incluindo aspas com `;` e quebra de linha
-- [ ] 3.6 Commit
+- [x] 3.1 Criar o app `imports`, registrá-lo em `INSTALLED_APPS` e acrescentar `IMPORT_MAX_FILE_SIZE` e `IMPORT_MAX_ROWS` ao `settings.py`, lidos de variáveis de ambiente (D2, D5)
+- [x] 3.2 Criar `ImportDefinition`, `Column`, `RowPlan`, `RowError` e `errors_from_validation` em `imports/definitions.py` (D4)
+- [x] 3.3 Implementar `read_csv` com tamanho, UTF-8 com BOM, separador `;`, conferência do cabeçalho, mensagem do separador vírgula, numeração pela linha inicial, linhas vazias, limite de linhas e arquivo sem dados (D5)
+- [x] 3.4 Implementar no motor as verificações de linha: células a mais, células a menos, célula obrigatória vazia ou só com espaços e identificador repetido citando as linhas
+- [x] 3.5 Escrever os testes de leitura com os cenários da spec `importacao-planilhas`, incluindo aspas com `;` e quebra de linha
+- [x] 3.6 Commit
 
 ## 4. Motor: model, prévia e confirmação
 

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'accounts',
     'ui',
     'outbox',
+    'imports',
     'allauth',
     'allauth.account',
 ]
@@ -191,3 +192,6 @@ OUTBOX_RETRY_DELAYS = [
 ]
 OUTBOX_POLL_INTERVAL = float(os.environ.get('DJANGO_OUTBOX_POLL_INTERVAL', '5'))
 OUTBOX_BATCH_SIZE = int(os.environ.get('DJANGO_OUTBOX_BATCH_SIZE', '20'))
+
+IMPORT_MAX_FILE_SIZE = int(os.environ.get('DJANGO_IMPORT_MAX_FILE_SIZE', str(1024 * 1024)))
+IMPORT_MAX_ROWS = int(os.environ.get('DJANGO_IMPORT_MAX_ROWS', '1000'))

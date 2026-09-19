@@ -13,7 +13,6 @@
   <div class="page-head">
     <div>
       <h1 class="page-title">{{ role.name }}</h1>
-      <p class="page-description">Dados do perfil e permissões que ele concede.</p>
     </div>
     <div class="page-actions">
       {% if perms.PERFIL.EXCLUIR and not role.is_system %}<a class="btn-danger" href="{% url 'role_delete' role.pk %}" hx-get="{% url 'role_delete' role.pk %}" hx-target="#modal">{% icon "trash-2" %}Excluir perfil</a>{% endif %}
@@ -25,12 +24,6 @@
 
 {% block content %}
   <section class="card" aria-labelledby="dados-perfil">
-    <div class="card-head">
-      <div>
-        <h2 class="card-title" id="dados-perfil">Dados do perfil</h2>
-        <p class="card-description">Código, tipo, descrição e usuários vinculados.</p>
-      </div>
-    </div>
     <dl class="detail-grid">
       <div><dt>Código do perfil</dt><dd>{{ role.code }}</dd></div>
       <div><dt>Tipo</dt><dd>{{ role.is_system|yesno:"Perfil do sistema,Perfil personalizado" }}</dd></div>
@@ -43,7 +36,6 @@
     <div class="card-head">
       <div>
         <h2 class="card-title" id="permissoes-perfil">Permissões concedidas <span class="count">{{ permissions|length }}</span></h2>
-        <p class="card-description">Agrupadas por módulo do sistema. Selecione um módulo para mostrar ou ocultar as permissões dele.</p>
       </div>
     </div>
     <div class="card-body">

@@ -93,6 +93,7 @@ A verificação compara palavras, sem interpretar o sentido: um termo proibido �
 - "Por favor" e "com sucesso".
 - Reticências e gerúndio vago ("Carregando informações...") quando existe estado concreto para mostrar.
 - Texto de preenchimento, lorem ipsum, números ou depoimentos fictícios.
+- Subtítulo descritivo abaixo do título da página ou do card quando só repete o que o título e o conteúdo já mostram ("Nome, e-mail, perfil e situação de cada usuário.").
 
 ### 9.3 Texto: obrigatório
 

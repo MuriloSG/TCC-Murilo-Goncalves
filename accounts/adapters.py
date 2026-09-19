@@ -4,6 +4,16 @@ from allauth.core import ratelimit
 
 
 class AccountAdapter(DefaultAccountAdapter):
+    """Adaptador do allauth com as mensagens de erro reescritas nas regras de texto (D5)."""
+
+    error_messages = DefaultAccountAdapter.error_messages | {
+        'email_password_mismatch': 'E-mail ou senha incorretos. Confira os dados ou use "Esqueci minha senha".',
+        'too_many_login_attempts': (
+            'Tentativas de login demais em pouco tempo. Aguarde alguns minutos e tente de novo.'
+        ),
+        'rate_limited': 'Solicitações demais em pouco tempo. Aguarde alguns minutos e tente de novo.',
+    }
+
     def is_open_for_signup(self, request):
         return False
 

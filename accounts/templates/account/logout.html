@@ -3,11 +3,12 @@
 {% block title %}Sair{% endblock %}
 
 {% block content %}
-  <h1>Sair</h1>
-  <p>Deseja encerrar a sessão?</p>
+  <h1>Sair do sistema?</h1>
+  <p>A sessão neste navegador é encerrada. Para voltar, entre de novo com o e-mail e a senha.</p>
   <form method="post" action="{% url 'account_logout' %}">
     {% csrf_token %}
     {{ redirect_field }}
     <button type="submit">Sair</button>
   </form>
+  <p><a href="{% url 'home' %}">Fechar</a></p>
 {% endblock %}

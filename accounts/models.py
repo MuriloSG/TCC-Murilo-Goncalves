@@ -22,7 +22,8 @@ class AdministrativeContinuityViolation(ValidationError):
         super().__init__(
             message
             or 'Operação recusada: o sistema ficaria sem nenhum usuário ativo '
-            'com capacidade administrativa.',
+            'com capacidade administrativa. Antes, garanta que outro usuário ativo '
+            'tenha as permissões de gestão de usuários.',
             code='administrative_continuity',
         )
 

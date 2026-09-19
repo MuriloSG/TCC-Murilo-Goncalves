@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{{ action|capfirst }} usuário{% endblock %}
+{% block title %}{{ action|capfirst }} {{ target.name }}?{% endblock %}
 
 {% block content %}
-  <h1>{{ action|capfirst }} usuário</h1>
-  <p>Deseja {{ action }} {{ target.name }} ({{ target.email }})?</p>
+  <h1>{{ action|capfirst }} {{ target.name }}?</h1>
   {% if action == 'desativar' %}
-    <p>O usuário deixa de conseguir entrar no sistema. Os dados dele continuam guardados e ele pode ser reativado depois.</p>
+    <p>O usuário {{ target.email }} deixa de conseguir entrar no sistema. Os dados dele continuam guardados, e ele pode ser reativado depois.</p>
+  {% else %}
+    <p>O usuário {{ target.email }} volta a poder entrar no sistema com a senha que já tinha.</p>
   {% endif %}
   <form method="post">
     {% csrf_token %}
-    <button type="submit">{{ action|capfirst }}</button>
+    <button type="submit">{{ action|capfirst }} usuário</button>
   </form>
-  <p><a href="{% url 'user_list' %}">Cancelar</a></p>
+  <p><a href="{% url 'user_list' %}">Fechar</a></p>
 {% endblock %}

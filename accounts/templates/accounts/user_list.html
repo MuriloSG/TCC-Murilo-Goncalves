@@ -22,7 +22,7 @@
         <tr>
           <td>{{ item.name }}{% if item.is_superadmin %} (superadmin){% endif %}</td>
           <td>{{ item.email }}</td>
-          <td>{{ item.roles.all.0.name|default:"—" }}</td>
+          <td>{{ item.roles.all.0.name|default:"Sem perfil" }}</td>
           <td>{{ item.is_active|yesno:"Ativo,Inativo" }}</td>
           <td>
             {% if perms.USUARIO.EDITAR %}<a href="{% url 'user_update' item.pk %}">Editar</a>{% endif %}

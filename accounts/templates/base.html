@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %} · Agendamento de Espaços · IFNMG Salinas</title>
+  <title>{% block title %}{% endblock %} · Agendamento de espaços · IFNMG Salinas</title>
 </head>
 <body>
   <header>
-    <p>Agendamento de Espaços · IFNMG Campus Salinas</p>
+    <p>Agendamento de espaços · IFNMG Campus Salinas</p>
     {% if user.is_authenticated %}
       <nav><a href="{% url 'home' %}">Início</a></nav>
       <form method="post" action="{% url 'account_logout' %}">

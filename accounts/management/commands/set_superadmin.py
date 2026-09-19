@@ -5,13 +5,13 @@ from accounts.models import User
 
 
 class Command(BaseCommand):
-    help = 'Concede ou remove o superadmin de um usuário, identificado pelo e-mail.'
+    help = 'Concede ou retira o superadmin de um usuário, identificado pelo e-mail.'
 
     def add_arguments(self, parser):
         parser.add_argument('email', help='E-mail do usuário.')
         action = parser.add_mutually_exclusive_group(required=True)
         action.add_argument('--grant', action='store_true', help='Concede o superadmin.')
-        action.add_argument('--revoke', action='store_true', help='Remove o superadmin.')
+        action.add_argument('--revoke', action='store_true', help='Retira o superadmin.')
 
     def handle(self, *args, **options):
         email = User.objects.normalize_email(options['email'])

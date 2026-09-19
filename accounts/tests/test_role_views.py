@@ -282,7 +282,7 @@ class PermissionsTests(RoleViewsTestCase):
 class DeleteTests(RoleViewsTestCase):
     def test_get_only_asks_for_confirmation(self):
         response = self.client.get(self.url('delete'))
-        self.assertContains(response, 'Deseja excluir o perfil COORDENACAO')
+        self.assertContains(response, 'O perfil COORDENACAO é excluído')
         self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
 
     def test_deletes_custom_role_without_users_keeping_the_catalog(self):

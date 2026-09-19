@@ -148,6 +148,23 @@ Hoje nenhuma tela mostra data ou hora. O módulo é criado nesta Change mesmo as
 
 Os demais textos já seguem as regras e não mudam. A lista final é a que o teste aprovar.
 
+A verificação apontou, na implementação, textos que o levantamento inicial não tinha listado:
+
+| Local | Atual | Novo |
+|---|---|---|
+| `403.html`, título | Acesso negado | Acesso restrito ("negar" é sinônimo proibido de "rejeitar") |
+| `base.html`, título e cabeçalho | Agendamento de Espaços | Agendamento de espaços |
+| `account/logout.html`, consequência | sem consequência nem saída | A sessão neste navegador é encerrada. Para voltar, entre de novo com o e-mail e a senha. / link "Fechar" |
+| Rótulo do e-mail na recuperação de senha (allauth) | Email: | E-mail: |
+| Senhas diferentes na definição de senha (allauth) | Você deve digitar a mesma senha todas as vezes. | As duas senhas informadas são diferentes. Digite a mesma senha nos dois campos. |
+| Ajuda dos comandos `create_superadmin` e `set_superadmin` | é pedido no terminal / remove o superadmin | é solicitado no terminal / retira o superadmin |
+
+A mensagem de senhas diferentes vem do `PasswordVerificationMixin` do allauth. A subclasse `PasswordResetKeyForm`, registrada em `ACCOUNT_FORMS["reset_password_from_key"]`, faz a mesma comparação com o texto novo. As mensagens dos validadores de senha do Django ("Esta senha é muito comum.") já seguem as regras e não mudam.
+
+Os códigos de permissão (`RECURSO.ACAO`, `USUARIO.CRIAR`) aparecem nas telas e nas mensagens de validação, mas são dado. `find_violations` os tira da comparação, para que "RECURSO" não seja lido como o sinônimo proibido de "espaço".
+
+Além de percorrer os arquivos, `test_interface_text.py` renderiza as telas de `accounts` e as rotas expostas do allauth, com erros de formulário, e aplica as regras ao HTML resultante e ao e-mail de senha. Assim os textos que vêm do Django e do allauth também são verificados. A regra de maiúsculas fica de fora nesse caso, porque as telas trazem nomes de pessoas.
+
 **"Fechar" em vez de "Voltar".** A primeira versão desta Change usava o link "Voltar". Com a decisão de levar as ações para modais (Change `definir-identidade-visual`, D16), o controle de saída passou a ser "Fechar" desde já, para que o texto não mude duas vezes. Na página de confirmação, que continua existindo sem JavaScript, "Fechar" leva de volta à tela de origem.
 
 ## Risks / Trade-offs

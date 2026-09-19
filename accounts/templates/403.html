@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Acesso negado{% endblock %}
+{% block title %}Acesso restrito{% endblock %}
 
 {% block content %}
-  <h1>Acesso negado</h1>
-  <p>Você não tem permissão para acessar esta página. Se precisar desse acesso, fale com um administrador do sistema.</p>
+  <h1>Acesso restrito</h1>
+  <p>Esta página exige uma permissão que o seu perfil não concede. Para obter acesso, procure um administrador do sistema.</p>
   {% if user.is_authenticated %}
     <p><a href="{% url 'home' %}">Voltar para o início</a></p>
   {% else %}

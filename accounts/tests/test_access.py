@@ -29,7 +29,7 @@ class DeniedAccessTests(AccessTestCase):
         teacher = self.register('docente@ifnmg.edu.br', self.teacher)
         response = self.client_for(teacher).get('/usuarios/novo/')
         self.assertEqual(response.status_code, 403)
-        self.assertContains(response, 'Acesso negado', status_code=403)
+        self.assertContains(response, 'Acesso restrito', status_code=403)
 
     def test_denial_comes_before_the_continuity_rule(self):
         viewer = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])

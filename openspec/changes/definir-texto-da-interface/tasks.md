@@ -7,12 +7,12 @@
 
 ## 2. Verificação dos templates e das strings Python
 
-- [ ] 2.1 Implementar em `ui/text_rules.py` a extração do texto visível dos templates com o `Lexer` do Django e o `HTMLParser`: tokens de bloco e comentário descartados, variáveis como `VAR`, atributos `placeholder`, `title`, `alt`, `aria-label` e `value` de botões, e o elemento de cada trecho, com a linha de origem (D2)
-- [ ] 2.2 Tratar os templates `.txt` como texto integralmente visível (D2)
-- [ ] 2.3 Implementar a extração das strings Python com `ast`: constantes e partes constantes de f-strings com pelo menos um espaço, sem docstrings e sem argumentos de `logger.*`, excluindo `tests/` e `migrations/` (D3)
-- [ ] 2.4 Escrever `ui/tests/test_interface_text.py`, que percorre os templates e os módulos dos apps do projeto (sem bibliotecas instaladas) e falha listando arquivo, linha e trecho de cada violação
-- [ ] 2.5 Incluir em `test_interface_text.py` os cenários da spec sobre a extração: `{% if a != b %}` e `<!DOCTYPE html>` sem violação, e palavra proibida em docstring sem violação
-- [ ] 2.6 Rodar `make test` e registrar a lista de violações atual, que orienta as seções 3 e 4
+- [x] 2.1 Implementar em `ui/text_rules.py` a extração do texto visível dos templates com o `Lexer` do Django e o `HTMLParser`: tokens de bloco e comentário descartados, variáveis como `VAR`, atributos `placeholder`, `title`, `alt`, `aria-label` e `value` de botões, e o elemento de cada trecho, com a linha de origem (D2)
+- [x] 2.2 Tratar os templates `.txt` como texto integralmente visível (D2)
+- [x] 2.3 Implementar a extração das strings Python com `ast`: constantes e partes constantes de f-strings com pelo menos um espaço, sem docstrings e sem argumentos de `logger.*`, excluindo `tests/` e `migrations/` (D3)
+- [x] 2.4 Escrever `ui/tests/test_interface_text.py`, que percorre os templates e os módulos dos apps do projeto (sem bibliotecas instaladas) e falha listando arquivo, linha e trecho de cada violação
+- [x] 2.5 Incluir em `test_interface_text.py` os cenários da spec sobre a extração: `{% if a != b %}` e `<!DOCTYPE html>` sem violação, e palavra proibida em docstring sem violação
+- [x] 2.6 Rodar `make test` e registrar a lista de violações atual, que orienta as seções 3 e 4
 
 ## 3. Formatos brasileiros
 
@@ -23,22 +23,22 @@
 
 ## 4. Revisão dos textos de `accounts`
 
-- [ ] 4.1 Reescrever `403.html`, `accounts/home.html`, `accounts/user_list.html` e `accounts/role_detail.html` conforme a tabela do D7
-- [ ] 4.2 Reescrever `accounts/user_status_confirm.html` e `accounts/role_confirm_delete.html` no padrão de confirmação: título com a pergunta e o nome, consequência, botão com verbo e objeto e link "Fechar" (D7)
-- [ ] 4.3 Reescrever `account/logout.html`, `account/password_reset.html`, `account/password_reset_done.html` e `account/email/password_reset_key_message.txt` conforme o D7
-- [ ] 4.4 Ajustar a mensagem de continuidade administrativa em `accounts/models.py` para incluir a orientação do que fazer (D7)
-- [ ] 4.5 Criar as sobrescritas `account/messages/logged_in.txt` (vazia), `logged_out.txt` ("Sessão encerrada.") e `password_changed.txt` (vazia) em `accounts/templates` (D5)
-- [ ] 4.6 Sobrescrever em `AccountAdapter.error_messages` as chaves `email_password_mismatch`, `too_many_login_attempts` e `rate_limited`, e levantar as mensagens dos validadores de senha exibidas em `password_reset_from_key`, sobrescrevendo as que violarem as regras (D5)
-- [ ] 4.7 Definir `error_messages` do campo de e-mail em `UserCreateForm` e `UserUpdateForm`, e criar em `accounts/forms.py` as subclasses dos formulários de login e de recuperação do allauth com a mesma mensagem, registradas em `ACCOUNT_FORMS` (D5)
-- [ ] 4.8 Atualizar os testes existentes de `accounts` que comparam os textos alterados
+- [x] 4.1 Reescrever `403.html`, `accounts/home.html`, `accounts/user_list.html` e `accounts/role_detail.html` conforme a tabela do D7
+- [x] 4.2 Reescrever `accounts/user_status_confirm.html` e `accounts/role_confirm_delete.html` no padrão de confirmação: título com a pergunta e o nome, consequência, botão com verbo e objeto e link "Fechar" (D7)
+- [x] 4.3 Reescrever `account/logout.html`, `account/password_reset.html`, `account/password_reset_done.html` e `account/email/password_reset_key_message.txt` conforme o D7
+- [x] 4.4 Ajustar a mensagem de continuidade administrativa em `accounts/models.py` para incluir a orientação do que fazer (D7)
+- [x] 4.5 Criar as sobrescritas `account/messages/logged_in.txt` (vazia), `logged_out.txt` ("Sessão encerrada.") e `password_changed.txt` (vazia) em `accounts/templates` (D5)
+- [x] 4.6 Sobrescrever em `AccountAdapter.error_messages` as chaves `email_password_mismatch`, `too_many_login_attempts` e `rate_limited`, e levantar as mensagens dos validadores de senha exibidas em `password_reset_from_key`, sobrescrevendo as que violarem as regras (D5)
+- [x] 4.7 Definir `error_messages` do campo de e-mail em `UserCreateForm` e `UserUpdateForm`, e criar em `accounts/forms.py` as subclasses dos formulários de login e de recuperação do allauth com a mesma mensagem, registradas em `ACCOUNT_FORMS` (D5)
+- [x] 4.8 Atualizar os testes existentes de `accounts` que comparam os textos alterados
 
 ## 5. Testes de comportamento dos textos
 
-- [ ] 5.1 Testar que as chaves sobrescritas existem em `DefaultAccountAdapter.error_messages` e que todas as mensagens sobrescritas passam em `find_violations` (Risks)
-- [ ] 5.2 Testar os fluxos: login não gera mensagem, logout mostra "Sessão encerrada.", credenciais incorretas mostram a mensagem nova, e a redefinição de senha não mostra "com sucesso"
-- [ ] 5.3 Testar que o e-mail inválido no cadastro de usuário, no login e na recuperação mostra "Informe um e-mail válido."
-- [ ] 5.4 Testar a página 403, a página inicial, a confirmação de desativação (título "Desativar <nome>?", botão "Desativar usuário" e link "Fechar"), a confirmação de exclusão de perfil e o detalhe de perfil sem descrição ("Sem descrição"), conforme os cenários da spec
-- [ ] 5.5 Rodar `make test` com a suíte inteira passando, sem violações apontadas por `test_interface_text.py`
+- [x] 5.1 Testar que as chaves sobrescritas existem em `DefaultAccountAdapter.error_messages` e que todas as mensagens sobrescritas passam em `find_violations` (Risks)
+- [x] 5.2 Testar os fluxos: login não gera mensagem, logout mostra "Sessão encerrada.", credenciais incorretas mostram a mensagem nova, e a redefinição de senha não mostra "com sucesso"
+- [x] 5.3 Testar que o e-mail inválido no cadastro de usuário, no login e na recuperação mostra "Informe um e-mail válido."
+- [x] 5.4 Testar a página 403, a página inicial, a confirmação de desativação (título "Desativar <nome>?", botão "Desativar usuário" e link "Fechar"), a confirmação de exclusão de perfil e o detalhe de perfil sem descrição ("Sem descrição"), conforme os cenários da spec
+- [x] 5.5 Rodar `make test` com a suíte inteira passando, sem violações apontadas por `test_interface_text.py`
 
 ## 6. Documentação
 

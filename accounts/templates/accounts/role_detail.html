@@ -10,7 +10,7 @@
     <dt>Tipo</dt>
     <dd>{{ role.is_system|yesno:"Do sistema,Personalizado" }}</dd>
     <dt>Descrição</dt>
-    <dd>{{ role.description|default:"—" }}</dd>
+    <dd>{{ role.description|default:"Sem descrição" }}</dd>
     <dt>Usuários vinculados</dt>
     <dd>{{ role.user_count }}</dd>
   </dl>

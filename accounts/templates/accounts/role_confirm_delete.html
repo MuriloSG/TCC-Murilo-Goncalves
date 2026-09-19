@@ -1,14 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Excluir perfil{% endblock %}
+{% block title %}Excluir o perfil {{ target.name }}?{% endblock %}
 
 {% block content %}
-  <h1>Excluir perfil</h1>
-  <p>Deseja excluir o perfil {{ target.code }} ({{ target.name }})?</p>
-  <p>As permissões do catálogo não são afetadas. A exclusão é recusada se o perfil for do sistema ou tiver usuários vinculados.</p>
+  <h1>Excluir o perfil {{ target.name }}?</h1>
+  <p>O perfil {{ target.code }} é excluído de forma definitiva, sem afetar o catálogo de permissões. A exclusão é recusada se o perfil for do sistema ou tiver usuários vinculados.</p>
   <form method="post">
     {% csrf_token %}
-    <button type="submit">Excluir</button>
+    <button type="submit">Excluir perfil</button>
   </form>
-  <p><a href="{% url 'role_detail' target.pk %}">Cancelar</a></p>
+  <p><a href="{% url 'role_detail' target.pk %}">Fechar</a></p>
 {% endblock %}

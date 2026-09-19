@@ -20,7 +20,7 @@ class HomeTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get('/inicio/')
         self.assertContains(response, 'Maria Sousa')
-        self.assertContains(response, 'Nenhuma funcionalidade está disponível')
+        self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhuma funcionalidade')
 
     def test_login_redirects_to_home(self):
         self.user.set_password('Senha-forte-123')
@@ -51,4 +51,4 @@ class PermissionDeniedPageTests(TestCase):
         request.user = User(email='maria@ifnmg.edu.br', name='Maria')
         response = permission_denied(request, PermissionDenied())
         self.assertEqual(response.status_code, 403)
-        self.assertIn('Acesso negado', response.content.decode())
+        self.assertIn('Acesso restrito', response.content.decode())

@@ -1,7 +1,50 @@
+from allauth.account import forms as allauth_forms
 from django import forms
 
 from accounts.models import Permission, Role
 from accounts.permissions import SUPERADMIN_RESERVED_PERMISSIONS
+
+
+INVALID_EMAIL_MESSAGE = 'Informe um e-mail válido.'
+PASSWORD_MISMATCH_MESSAGE = 'As duas senhas informadas são diferentes. Digite a mesma senha nos dois campos.'
+
+
+def email_field():
+    return forms.EmailField(label='E-mail', max_length=254, error_messages={'invalid': INVALID_EMAIL_MESSAGE})
+
+
+def use_email_messages(field):
+    """Aplica ao campo de e-mail de um formulário do allauth o rótulo e o erro do projeto (D5)."""
+    field.label = 'E-mail'
+    field.error_messages = field.error_messages | {'invalid': INVALID_EMAIL_MESSAGE}
+
+
+class LoginForm(allauth_forms.LoginForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        use_email_messages(self.fields['login'])
+
+
+class PasswordResetForm(allauth_forms.ResetPasswordForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        use_email_messages(self.fields['email'])
+
+
+class PasswordResetKeyForm(allauth_forms.ResetPasswordKeyForm):
+    """Definição de senha com a mensagem de senhas diferentes nas regras de texto.
+
+    O clean do PasswordVerificationMixin do allauth é pulado porque a mensagem dele
+    fala com o usuário na segunda pessoa. A comparação é a mesma.
+    """
+
+    def clean(self):
+        cleaned_data = super(allauth_forms.PasswordVerificationMixin, self).clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            self.add_error('password2', PASSWORD_MISMATCH_MESSAGE)
+        return cleaned_data
 
 
 def role_choice_field():
@@ -25,7 +68,7 @@ def clean_single_role(form):
 
 class UserCreateForm(forms.Form):
     name = forms.CharField(label='Nome', max_length=150)
-    email = forms.EmailField(label='E-mail', max_length=254)
+    email = email_field()
     role = role_choice_field()
 
     def clean_role(self):
@@ -42,7 +85,7 @@ class UserUpdateForm(forms.Form):
     """
 
     name = forms.CharField(label='Nome', max_length=150)
-    email = forms.EmailField(label='E-mail', max_length=254)
+    email = email_field()
 
     def __init__(self, *args, target, executor, **kwargs):
         kwargs.setdefault('initial', {'name': target.name, 'email': target.email})

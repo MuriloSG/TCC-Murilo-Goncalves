@@ -122,3 +122,21 @@ class TextRulesTests(SimpleTestCase):
         self.assertAllowed('Código: VAR', 'p')
         self.assertAllowed('Nova senha:', 'label')
 
+
+class AccountAdapterMessagesTests(SimpleTestCase):
+    """As mensagens sobrescritas do allauth existem na versão instalada e seguem as regras."""
+
+    def test_chaves_sobrescritas_existem_no_allauth(self):
+        from allauth.account.adapter import DefaultAccountAdapter
+
+        from accounts.adapters import AccountAdapter
+
+        overridden = {
+            key for key, message in AccountAdapter.error_messages.items()
+            if message != DefaultAccountAdapter.error_messages.get(key)
+        }
+        self.assertEqual(overridden, {'email_password_mismatch', 'too_many_login_attempts', 'rate_limited'})
+        self.assertLessEqual(overridden, DefaultAccountAdapter.error_messages.keys())
+        for key in overridden:
+            with self.subTest(key=key):
+                self.assertEqual(find_violations(str(AccountAdapter.error_messages[key])), [])

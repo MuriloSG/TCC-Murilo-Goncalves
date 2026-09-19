@@ -11,8 +11,8 @@ class Command(BaseCommand):
     help = 'Cria um usuário ativo, superadmin, com o perfil ADMINISTRADOR.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--email', help='E-mail do superadmin. Se omitido, é pedido no terminal.')
-        parser.add_argument('--name', help='Nome do superadmin. Se omitido, é pedido no terminal.')
+        parser.add_argument('--email', help='E-mail do superadmin. Se omitido, é solicitado no terminal.')
+        parser.add_argument('--name', help='Nome do superadmin. Se omitido, é solicitado no terminal.')
 
     def handle(self, *args, **options):
         email = User.objects.normalize_email(options['email'] or input('E-mail: '))

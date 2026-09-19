@@ -277,7 +277,7 @@ class ChangeRoleTests(UserViewsTestCase):
 class StatusTests(UserViewsTestCase):
     def test_get_only_asks_for_confirmation(self):
         response = self.client.get(self.url('deactivate'))
-        self.assertContains(response, 'Deseja desativar')
+        self.assertContains(response, '<h1>Desativar Maria Sousa?</h1>', html=True)
         self.assertTrue(self.reload(self.target).is_active)
 
     def test_deactivates_and_reactivates_by_post(self):

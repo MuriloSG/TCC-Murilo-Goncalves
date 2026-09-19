@@ -102,6 +102,11 @@ LOGOUT_REDIRECT_URL = 'account_login'
 
 
 ACCOUNT_ADAPTER = 'accounts.adapters.AccountAdapter'
+ACCOUNT_FORMS = {
+    'login': 'accounts.forms.LoginForm',
+    'reset_password': 'accounts.forms.PasswordResetForm',
+    'reset_password_from_key': 'accounts.forms.PasswordResetKeyForm',
+}
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*']
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None

@@ -37,6 +37,61 @@ def first_name(name):
     return parts[0] if parts else ''
 
 
+SAMPLE_NOTIFICATIONS = [
+    {
+        'icon': 'calendar-check',
+        'tone': 'success',
+        'title': 'Reserva aprovada',
+        'text': 'Laboratório de Informática 2 em 22/09, das 10:00 às 12:00.',
+        'time': 'Há 5 minutos',
+        'unread': True,
+    },
+    {
+        'icon': 'calendar-plus',
+        'tone': 'info',
+        'title': 'Nova solicitação de reserva',
+        'text': 'João Lima solicitou o Auditório para 24/09, das 14:00 às 17:00.',
+        'time': 'Há 1 hora',
+        'unread': True,
+    },
+    {
+        'icon': 'calendar-x',
+        'tone': 'error',
+        'title': 'Reserva cancelada',
+        'text': 'A reserva da Sala 12 em 20/09 foi cancelada pelo solicitante.',
+        'time': 'Ontem, 16:40',
+        'unread': False,
+    },
+    {
+        'icon': 'wrench',
+        'tone': 'warning',
+        'title': 'Manutenção programada',
+        'text': 'O Laboratório de Química fica fechado para reservas de 25/09 a 27/09.',
+        'time': '17/09, 09:15',
+        'unread': False,
+    },
+    {
+        'icon': 'shield-check',
+        'tone': 'info',
+        'title': 'Perfil de acesso alterado',
+        'text': 'Seu perfil passou a ser Administrador.',
+        'time': '15/09, 11:02',
+        'unread': False,
+    },
+]
+
+
+@register.inclusion_tag('ui/components/notifications.html')
+def notifications():
+    """Sino e painel de notificações com dados fixos de exemplo.
+
+    Os dados são estáticos até que o domínio de notificações exista; o
+    painel serve para validar a interface.
+    """
+    unread = sum(1 for item in SAMPLE_NOTIFICATIONS if item['unread'])
+    return {'items': SAMPLE_NOTIFICATIONS, 'unread': unread}
+
+
 @register.simple_tag
 def row_action(url_name, pk, label, icon_name, when=True, danger=False):
     """Ação de uma linha de tabela para ui/components/row_actions.html.

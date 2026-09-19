@@ -96,6 +96,28 @@ class AppLayoutTests(LayoutTestCase):
         self.assertIn('<span class="who-role">Administrador</span>', dropdown)
         self.assertRegex(menu, r'<a href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal"><svg[^>]*>.*?</svg>\s*Sair</a>')
 
+    def test_sino_de_notificacoes_no_cabecalho_e_no_celular(self):
+        content = self.client.get('/inicio/').content.decode()
+        header = content[content.index('<header class="header">'):content.index('</header>')]
+        topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
+        for area in (header, topbar):
+            with self.subTest(area=area[:30]):
+                self.assertIn('<details class="menu notifications" data-notifications>', area)
+                self.assertIn('<summary class="icon-btn" aria-label="Notificações, 2 não lidas">', area)
+                self.assertIn('<span class="notifications-count" aria-hidden="true">2</span>', area)
+        self.assertLess(header.index('data-notifications'), header.index('user-menu'))
+
+    def test_painel_de_notificacoes_lista_os_exemplos(self):
+        content = self.client.get('/inicio/').content.decode()
+        panel = content[content.index('<div class="notifications-panel">'):]
+        panel = panel[:panel.index('</details>')]
+        self.assertEqual(panel.count('<li class="notification'), 5)
+        self.assertEqual(panel.count('<li class="notification is-unread">'), 2)
+        self.assertIn('<p class="notification-title">Reserva aprovada<span class="sr-only"> (não lida)</span></p>', panel)
+        self.assertRegex(panel, r'<button class="notifications-read-all" type="button" data-read-all hidden>')
+        self.assertIn('<div class="notifications-filter" data-filter hidden>', panel)
+        self.assertIn('<p class="notifications-empty" data-empty hidden>Nenhuma notificação não lida.</p>', panel)
+
     def test_menu_do_celular_sem_javascript(self):
         response = self.client.get('/inicio/')
         content = response.content.decode()

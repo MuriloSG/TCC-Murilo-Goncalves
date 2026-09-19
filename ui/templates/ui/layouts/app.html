@@ -26,6 +26,7 @@
         <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
         <span class="brand-name">SaliSpace</span>
       </a>
+      {% if user.is_authenticated %}{% notifications %}{% endif %}
       <details class="topbar-menu">
         <summary>{% icon "menu" %}Menu</summary>
         <div class="topbar-panel">
@@ -53,6 +54,7 @@
           </ol>
         </nav>
         {% if user.is_authenticated %}
+          {% notifications %}
           <details class="menu user-menu">
             <summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">{{ user.name|initials }}</span></summary>
             <div class="menu-list">

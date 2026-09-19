@@ -1,0 +1,27 @@
+{% load ui %}<details class="menu notifications" data-notifications>
+  <summary class="icon-btn" aria-label="Notificações{% if unread %}, {{ unread }} não lida{{ unread|pluralize }}{% endif %}">{% icon "bell" %}{% if unread %}<span class="notifications-count" aria-hidden="true">{{ unread }}</span>{% endif %}</summary>
+  <div class="notifications-panel">
+    <div class="notifications-head">
+      <p class="notifications-title">Notificações</p>
+      <button class="notifications-read-all" type="button" data-read-all hidden>{% icon "check-check" "size-4" %}Marcar todas como lidas</button>
+    </div>
+    <div class="notifications-filter" data-filter hidden>
+      <button type="button" aria-pressed="true" data-show="all">Todas</button>
+      <button type="button" aria-pressed="false" data-show="unread">Não lidas{% if unread %} <span class="notifications-filter-count">{{ unread }}</span>{% endif %}</button>
+    </div>
+    <ul class="notifications-list">
+      {% for item in items %}
+        <li class="notification{% if item.unread %} is-unread{% endif %}">
+          <span class="notification-icon tone-{{ item.tone }}">{% icon item.icon %}</span>
+          <div class="notification-body">
+            <p class="notification-title">{{ item.title }}{% if item.unread %}<span class="sr-only"> (não lida)</span>{% endif %}</p>
+            <p class="notification-text">{{ item.text }}</p>
+            <p class="notification-time">{{ item.time }}</p>
+          </div>
+          {% if item.unread %}<span class="notification-dot" aria-hidden="true"></span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="notifications-empty" data-empty hidden>Nenhuma notificação não lida.</p>
+  </div>
+</details>

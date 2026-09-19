@@ -22,23 +22,31 @@
     </aside>
 
     <div class="topbar">
+      <details class="topbar-menu">
+        <summary class="icon-btn" aria-label="Menu">{% icon "menu" %}</summary>
+        <div class="topbar-panel">
+          <div class="topbar-panel-head">
+            <a class="brand" href="{% url 'home' %}">
+              <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+              <span class="brand-name">SaliSpace</span>
+            </a>
+            <button class="icon-btn" type="button" data-drawer-close aria-label="Fechar menu" hidden>{% icon "x" %}</button>
+          </div>
+          {% include "ui/components/navigation.html" %}
+          {% if user.is_authenticated %}
+            <div class="topbar-user">
+              <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+              <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
+              <a class="icon-btn" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal" aria-label="Sair">{% icon "log-out" %}</a>
+            </div>
+          {% endif %}
+        </div>
+      </details>
       <a class="brand" href="{% url 'home' %}">
         <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
         <span class="brand-name">SaliSpace</span>
       </a>
       {% if user.is_authenticated %}{% notifications %}{% endif %}
-      <details class="topbar-menu">
-        <summary>{% icon "menu" %}Menu</summary>
-        <div class="topbar-panel">
-          {% include "ui/components/navigation.html" %}
-          {% if user.is_authenticated %}
-            <div class="topbar-user">
-              <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user.role.name|default:"Sem perfil" }}</span></span>
-              <a class="btn-secondary" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal">{% icon "log-out" %}Sair</a>
-            </div>
-          {% endif %}
-        </div>
-      </details>
     </div>
 
     <div>

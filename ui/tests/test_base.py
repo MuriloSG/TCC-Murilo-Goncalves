@@ -122,10 +122,13 @@ class AppLayoutTests(LayoutTestCase):
         response = self.client.get('/inicio/')
         content = response.content.decode()
         topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
-        self.assertRegex(topbar, r'<details class="topbar-menu">\s*<summary><svg[^>]*>.*?</svg>\s*Menu</summary>')
+        self.assertRegex(topbar, r'<details class="topbar-menu">\s*<summary class="icon-btn" aria-label="Menu"><svg')
+        self.assertLess(topbar.index('<details class="topbar-menu">'), topbar.index('<span class="brand-name">'))
         self.assertIn('<nav class="side-nav" aria-label="Principal">', topbar)
-        self.assertRegex(topbar, r'<a class="btn-secondary" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal">')
-        self.assertIn('Sair</a>', topbar)
+        self.assertRegex(
+            topbar, r'<a class="icon-btn" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal" aria-label="Sair">',
+        )
+        self.assertIn('<button class="icon-btn" type="button" data-drawer-close aria-label="Fechar menu" hidden>', topbar)
 
     def test_rodape_da_barra_lateral_com_usuario_e_sair(self):
         content = self.client.get('/inicio/').content.decode()

@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.messages import get_messages
 from django.test import TestCase
 
@@ -114,8 +116,33 @@ class FormModalTests(ModalTestCase):
             with self.subTest(title=title):
                 response = self.client.post(url, valid, headers=HTMX)
                 if success is None:
-                    success = f'/perfis/{Role.objects.get(code="NOVO").pk}/'
+                    continue
                 self.assertClientRedirect(response, success)
+
+    def test_criacao_pelo_htmx_abre_a_etapa_de_permissoes_no_mesmo_modal(self):
+        response = self.client.post('/perfis/novo/', {'code': 'NOVO', 'name': 'Novo perfil', 'description': ''}, headers=HTMX)
+        role = Role.objects.get(code='NOVO')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('HX-Redirect', response)
+        self.assertEqual(
+            json.loads(response['HX-Location']),
+            {'path': f'/perfis/{role.pk}/permissoes/?etapa=2', 'target': '#modal', 'push': 'false'},
+        )
+        step = self.client.get(f'/perfis/{role.pk}/permissoes/?etapa=2', headers=HTMX).content.decode()
+        self.assertIn('data-reload-on-close', step)
+        self.assertIn('<p class="modal-step">Etapa 2 de 2</p>', step)
+        self.assertIn('Permissões do perfil Novo perfil</h1>', step)
+        self.assertIn('Perfil NOVO criado.', step)
+        self.assertIn('action="/perfis/%d/permissoes/?etapa=2"' % role.pk, step)
+        response = self.client.post(f'/perfis/{role.pk}/permissoes/?etapa=2', {'permissions': [permissions.USER_VIEW]}, headers=HTMX)
+        self.assertClientRedirect(response, f'/perfis/{role.pk}/')
+
+    def test_primeira_etapa_da_criacao(self):
+        content = self.client.get('/perfis/novo/', headers=HTMX).content.decode()
+        self.assertIn('<p class="modal-step">Etapa 1 de 2</p>', content)
+        self.assertIn('Criar perfil</button>', content)
+        self.assertNotIn('type="checkbox"', content)
+        self.assertNotIn('data-reload-on-close', content)
 
     def test_cadastro_com_email_ja_usado_mostra_o_erro_no_campo(self):
         response = self.client.post(

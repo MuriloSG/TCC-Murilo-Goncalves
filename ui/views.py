@@ -1,8 +1,9 @@
 """Classe base das views de ação que abrem em modal (D16)."""
 
+import json
 from urllib.parse import urlsplit
 
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic.base import TemplateResponseMixin, View
 from django_htmx.http import HttpResponseClientRedirect
 
@@ -18,6 +19,7 @@ class ModalView(TemplateResponseMixin, View):
 
     modal_template_name = None
     close_url = None
+    continues_in_modal = False
 
     def get_template_names(self):
         if self.request.htmx:
@@ -32,9 +34,17 @@ class ModalView(TemplateResponseMixin, View):
         return super().get_context_data(close_url=self.get_close_url(), **kwargs)
 
     def redirect_to(self, url):
+        """Redireciona para `url`: pelo htmx, recarrega a tela de origem ou, quando
+        a ação continua numa próxima etapa (`continues_in_modal`), abre `url` no
+        mesmo modal, sem mudar o endereço da página.
+        """
         url = str(url)
         if not self.request.htmx:
             return HttpResponseRedirect(url)
+        if self.continues_in_modal:
+            response = HttpResponse()
+            response['HX-Location'] = json.dumps({'path': url, 'target': '#modal', 'push': 'false'})
+            return response
         current = self.request.htmx.current_url_abs_path
         if current and urlsplit(current).path == urlsplit(url).path:
             url = current

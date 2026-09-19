@@ -273,10 +273,17 @@ class RoleFormView(OperationFormView):
 
 
 class RoleCreateView(RoleFormView):
+    """Primeira etapa da criação. Depois dela, as permissões do perfil criado."""
+
     permission_required = permissions.ROLE_CREATE
     form_class = RoleCreateForm
     title = 'Criar perfil'
-    submit_label = 'Criar'
+    submit_label = 'Criar perfil'
+    continues_in_modal = True
+    extra_context = {'step': 1}
+
+    def get_success_url(self):
+        return reverse('role_permissions', args=[self.target.pk]) + '?etapa=2'
 
     def perform(self, data):
         self.target = Role.objects.create_role(
@@ -311,7 +318,11 @@ class RolePermissionsView(RoleFormView):
         return super().get_form_kwargs() | {'target': self.target}
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(user_count=self.target.user_roles.count(), **kwargs)
+        return super().get_context_data(
+            user_count=self.target.user_roles.count(),
+            step=2 if self.request.GET.get('etapa') == '2' else None,
+            **kwargs,
+        )
 
     def perform(self, data):
         self.target.set_permissions(data['permissions'])

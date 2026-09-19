@@ -80,6 +80,12 @@ A criação DEVE (MUST) exigir código e nome, e PODE (MAY) receber descrição 
 - **WHEN** ele cria o perfil `COORDENACAO` escolhendo `USUARIO.VISUALIZAR` e `USUARIO.EDITAR`
 - **THEN** o perfil é gravado e concede exatamente `USUARIO.VISUALIZAR` e `USUARIO.EDITAR`
 
+#### Scenario: Criação em duas etapas na interface
+- **GIVEN** o superadmin ativo autenticado na lista de perfis
+- **WHEN** ele preenche código, nome e descrição e confirma a primeira etapa
+- **THEN** o perfil é gravado sem permissões e a segunda etapa, com a escolha das permissões do perfil criado, abre no mesmo modal
+- **AND** fechar a segunda etapa sem salvar mantém o perfil criado, sem permissões, e atualiza a lista
+
 #### Scenario: Código ausente
 - **GIVEN** o superadmin ativo autenticado
 - **WHEN** ele envia a criação de um perfil sem código

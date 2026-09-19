@@ -175,23 +175,30 @@ def permission_choice_field():
 
 
 class RoleCreateForm(forms.Form):
+    """Primeira etapa da criação de perfil: código, nome e descrição.
+
+    O campo de permissões continua aceito na requisição, como a spec prevê, mas
+    não é exibido: a interface escolhe as permissões na segunda etapa, na tela de
+    permissões do perfil criado.
+    """
+
     code = forms.CharField(
         label='Código',
         max_length=50,
         help_text='Letras maiúsculas sem acento, com palavras separadas por "_". Não pode ser alterado depois.',
     )
     name = forms.CharField(label='Nome', max_length=100)
-    description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea)
+    description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea(attrs={'rows': 3}))
     permissions = permission_choice_field()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['permissions'].widget.choices = grantable_permission_choices()
+        self.fields['permissions'].widget = forms.MultipleHiddenInput()
 
 
 class RoleUpdateForm(forms.Form):
     name = forms.CharField(label='Nome', max_length=100)
-    description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea)
+    description = forms.CharField(label='Descrição', required=False, widget=forms.Textarea(attrs={'rows': 3}))
 
     def __init__(self, *args, target, **kwargs):
         kwargs['initial'] = {'name': target.name, 'description': target.description} | (kwargs.get('initial') or {})

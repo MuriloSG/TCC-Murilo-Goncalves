@@ -654,7 +654,9 @@
   }
 
   .checklist-group {
-    border-top: 1px solid var(--color-divider);
+    overflow: hidden;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-lg);
     interpolate-size: allow-keywords;
 
     &::details-content {
@@ -672,13 +674,18 @@
       align-items: center;
       gap: var(--spacing-3);
       min-height: var(--spacing-12);
-      padding-inline: var(--spacing-2);
-      border-radius: var(--radius-md);
+      padding-inline: var(--spacing-4);
+      border-bottom: 1px solid transparent;
+      background: var(--color-page);
       font-weight: var(--font-weight-semibold);
-      transition: background-color var(--motion-fast) ease;
+      transition: background-color var(--motion-fast) ease, border-color var(--motion-base) ease;
 
       &:hover {
-        background: var(--color-page);
+        background: var(--color-hover);
+      }
+
+      &:focus-visible {
+        outline-offset: -2px;
       }
 
       & > svg {
@@ -691,14 +698,18 @@
       }
     }
 
-    &[open] > summary > svg {
-      rotate: 180deg;
+    &[open] > summary {
+      border-bottom-color: var(--color-divider);
+
+      & > svg {
+        rotate: 180deg;
+      }
     }
   }
 
   .checklist-options {
     display: grid;
-    padding: 0 var(--spacing-2) var(--spacing-3) var(--spacing-4);
+    padding: var(--spacing-2);
   }
 
   .check-option {
@@ -1456,6 +1467,14 @@
     @variant max-sm {
       padding-inline: var(--spacing-4);
     }
+  }
+
+  .modal-step {
+    margin-bottom: var(--spacing-1);
+    color: var(--color-action);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
   }
 
   .modal-title {

@@ -1,10 +1,14 @@
 {% extends "ui/components/modal.html" %}
 
-{% block modal_class %}{% if form.permissions %} modal-wide{% endif %}{% endblock %}
+{% block modal_class %}{% if user_count is not None %} modal-wide{% endif %}{% endblock %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block modal_attributes %}{% if step == 2 %} data-reload-on-close{% endif %}{% endblock %}
 
-{% block description %}{% if user_count is not None %}{{ user_count }} usuário{{ user_count|pluralize }} vinculado{{ user_count|pluralize }} a este perfil. A alteração vale para todos a partir da próxima requisição de cada um.{% elif target %}Perfil {{ target.code }}. O código não pode ser alterado.{% else %}O código identifica o perfil e não pode ser alterado depois.{% endif %}{% endblock %}
+{% block step %}{% if step %}<p class="modal-step">Etapa {{ step }} de 2</p>{% endif %}{% endblock %}
+
+{% block title %}{% if step == 2 %}Permissões do perfil {{ target.name }}{% else %}{{ title }}{% endif %}{% endblock %}
+
+{% block description %}{% if step == 1 %}Informe os dados do perfil. Na próxima etapa, escolha as permissões que ele concede.{% elif step == 2 %}Perfil {{ target.code }} criado. Escolha as permissões que ele concede. Sem nenhuma escolhida, o perfil fica sem acesso até receber permissões.{% elif user_count is not None %}{{ user_count }} usuário{{ user_count|pluralize }} vinculado{{ user_count|pluralize }} a este perfil. A alteração vale para todos a partir da próxima requisição de cada um.{% elif target %}Perfil {{ target.code }}. O código não pode ser alterado.{% else %}O código identifica o perfil e não pode ser alterado depois.{% endif %}{% endblock %}
 
 {% block body %}{{ form }}{% endblock %}
 

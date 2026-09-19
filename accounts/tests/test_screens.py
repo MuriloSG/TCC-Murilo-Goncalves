@@ -121,7 +121,7 @@ class FormScreenTests(ScreensTestCase):
         self.assertIn('Salvar permissões</button>', content)
 
     def test_busca_e_selecao_ficam_ocultas_sem_javascript(self):
-        content = self.client.get('/perfis/novo/').content.decode()
+        content = self.client.get(f'/perfis/{self.role.pk}/permissoes/').content.decode()
         self.assertIn('<div class="checklist-tools" data-checklist-tools hidden>', content)
         self.assertIn('<p class="checklist-unsaved" data-checklist-unsaved hidden>', content)
         self.assertRegex(content, r'<span data-checklist-selected>0</span> de 5</strong>')

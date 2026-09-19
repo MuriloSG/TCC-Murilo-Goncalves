@@ -138,6 +138,10 @@ class CreateTests(RoleViewsTestCase):
     def test_form_offers_only_grantable_permissions_and_no_system_flag(self):
         response = self.client.get('/perfis/novo/')
         self.assertEqual(set(response.context['form'].fields), {'code', 'name', 'description', 'permissions'})
+        self.assertNotContains(response, 'type="checkbox"')
+        self.assertNotContains(response, 'is_system')
+        self.post()
+        response = self.client.get(f'/perfis/{Role.objects.get(code="SECRETARIA").pk}/permissoes/?etapa=2')
         for code in permissions.ADMINISTRATIVE_CAPABILITY:
             self.assertContains(response, f'value="{code}"')
         for code in permissions.SUPERADMIN_RESERVED_PERMISSIONS:
@@ -147,7 +151,7 @@ class CreateTests(RoleViewsTestCase):
     def test_creates_custom_role_without_permissions(self):
         response = self.post(is_system='on')
         role = Role.objects.get(code='SECRETARIA')
-        self.assertRedirects(response, f'/perfis/{role.pk}/')
+        self.assertRedirects(response, f'/perfis/{role.pk}/permissoes/?etapa=2')
         self.assertFalse(role.is_system)
         self.assertEqual(self.codes(role), set())
 

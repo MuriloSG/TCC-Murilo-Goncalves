@@ -48,7 +48,7 @@
 
   document.addEventListener("htmx:beforeRequest", function (event) {
     var container = document.getElementById("modal");
-    if (event.detail.target === container && !container.contains(event.detail.elt)) {
+    if (event.detail.target === container && !container.contains(event.detail.elt) && event.detail.elt !== document.body) {
       opener = event.detail.elt;
       var menu = opener.closest("details[open]");
       if (menu) {
@@ -82,6 +82,10 @@
       keepFocusInside(dialog, key);
     });
     dialog.addEventListener("close", function () {
+      if (dialog.hasAttribute("data-reload-on-close")) {
+        window.location.reload();
+        return;
+      }
       container.replaceChildren();
       if (opener && document.contains(opener)) {
         focusTarget(opener).focus();

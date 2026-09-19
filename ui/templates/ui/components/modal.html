@@ -1,8 +1,9 @@
-{% load ui %}{% if request.htmx %}<dialog class="modal{% block modal_class %}{% endblock %}" aria-labelledby="modal-title" aria-describedby="modal-description">{% else %}<section class="modal modal-page{% block page_class %}{% endblock %}" aria-labelledby="modal-title" aria-describedby="modal-description">{% endif %}
+{% load ui %}{% if request.htmx %}<dialog class="modal{% block modal_class %}{% endblock %}" aria-labelledby="modal-title" aria-describedby="modal-description"{% block modal_attributes %}{% endblock %}>{% else %}<section class="modal modal-page{% block page_class %}{% endblock %}" aria-labelledby="modal-title" aria-describedby="modal-description">{% endif %}
   <form method="post" action="{{ request.get_full_path }}"{% block form_attributes %} hx-post="{{ request.get_full_path }}" hx-target="#modal"{% endblock %}>
     {% csrf_token %}
     <div class="modal-head">
       <div>
+        {% block step %}{% endblock %}
         <h1 class="modal-title" id="modal-title">{% block title %}{% endblock %}</h1>
         {% block intro %}<p class="modal-description" id="modal-description">{% block description %}{% endblock %}</p>{% endblock %}
       </div>

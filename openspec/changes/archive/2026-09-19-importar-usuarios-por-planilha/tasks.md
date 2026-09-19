@@ -56,6 +56,6 @@
 ## 7. Verificação
 
 - [x] 7.1 Medir prévia e confirmação com arquivos de 100, 500, 1.000 e 2.000 linhas no banco `visual_check`, ajustar os limites e registrar os valores em D5
-- [ ] 7.2 Abrir no Excel o modelo baixado e um CSV salvo como "CSV UTF-8" e como "CSV (separado por vírgulas)", e conferir as mensagens de cada caso
+- [ ] 7.2 Abrir no Excel o modelo baixado e um CSV salvo como "CSV UTF-8" e como "CSV (separado por vírgulas)", e conferir as mensagens de cada caso (pendente: conferência manual do autor no Excel, fora do ambiente do projeto)
 - [x] 7.3 Conferir as telas no navegador com Playwright, no banco `visual_check`, em 360 e 1280 px
 - [x] 7.4 Validar a Change com `openspec validate importar-usuarios-por-planilha --strict`

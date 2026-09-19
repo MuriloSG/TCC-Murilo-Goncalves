@@ -70,7 +70,7 @@ class UserListScreenTests(ScreensTestCase):
 class MessagesScreenTests(ScreensTestCase):
     def test_mensagem_de_erro_de_operacao(self):
         response = self.client.post(f'/usuarios/{self.admin.pk}/desativar/', follow=True)
-        alert = re.search(r'<div class="alert tone-error" role="alert">(<svg.*?</svg>)\s*<p>(.*?)</p></div>', response.content.decode(), re.S)
+        alert = re.search(r'<div class="alert tone-error" role="alert">(<svg.*?</svg>)\s*<p>(.*?)</p>', response.content.decode(), re.S)
         self.assertIsNotNone(alert)
         self.assertIn('aria-hidden="true"', alert.group(1))
         self.assertIn('capacidade administrativa', alert.group(2))
@@ -80,7 +80,8 @@ class MessagesScreenTests(ScreensTestCase):
         self.assertRegex(
             response.content.decode(),
             r'<div class="alert tone-success" role="status"><svg[^>]*aria-hidden="true"[^>]*>.*?</svg>\s*'
-            r'<p>Usuário maria@ifnmg.edu.br desativado.</p></div>',
+            r'<p>Usuário maria@ifnmg.edu.br desativado.</p><button class="icon-btn alert-close" type="button" '
+            r'data-message-close aria-label="Fechar mensagem" hidden>',
         )
 
 

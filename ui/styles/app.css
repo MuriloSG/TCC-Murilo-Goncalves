@@ -1386,6 +1386,30 @@
     gap: var(--spacing-3);
   }
 
+  .alert > p {
+    flex: 1;
+  }
+
+  .alert.is-leaving {
+    animation: fade-out var(--motion-fast) ease-in forwards;
+  }
+
+  .alert-close {
+    margin: calc(var(--spacing-3) * -1) calc(var(--spacing-3) * -1) calc(var(--spacing-3) * -1) 0;
+    color: inherit;
+
+    &:hover {
+      background: transparent;
+      color: inherit;
+    }
+
+    & .tip {
+      right: 0;
+      left: auto;
+      translate: 0 0;
+    }
+  }
+
   .modal {
     width: 100%;
     max-width: var(--container-modal);

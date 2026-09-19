@@ -2,13 +2,13 @@
   <div class="messages">
     {% for message in messages %}
       {% if message.level_tag == "error" %}
-        <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>{{ message }}</p></div>
+        <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>{{ message }}</p>{% include "ui/components/message_close.html" %}</div>
       {% elif message.level_tag == "warning" %}
-        <div class="alert tone-warning" role="alert">{% icon "triangle-alert" %}<p>{{ message }}</p></div>
+        <div class="alert tone-warning" role="alert">{% icon "triangle-alert" %}<p>{{ message }}</p>{% include "ui/components/message_close.html" %}</div>
       {% elif message.level_tag == "success" %}
-        <div class="alert tone-success" role="status">{% icon "circle-check" %}<p>{{ message }}</p></div>
+        <div class="alert tone-success" role="status">{% icon "circle-check" %}<p>{{ message }}</p>{% include "ui/components/message_close.html" %}</div>
       {% else %}
-        <div class="alert tone-info" role="status">{% icon "info" %}<p>{{ message }}</p></div>
+        <div class="alert tone-info" role="status">{% icon "info" %}<p>{{ message }}</p>{% include "ui/components/message_close.html" %}</div>
       {% endif %}
     {% endfor %}
   </div>

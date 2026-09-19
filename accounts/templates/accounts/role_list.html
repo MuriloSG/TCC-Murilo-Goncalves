@@ -32,6 +32,7 @@
           <th scope="col">Perfil</th>
           <th scope="col">Tipo</th>
           <th scope="col">Usuários vinculados</th>
+          <th scope="col">Código</th>
           <th scope="col" class="cell-actions">Ações</th>
         </tr>
       </thead>
@@ -39,11 +40,13 @@
         {% for role in roles %}
           <tr>
             <td class="cell-primary" data-label="Perfil">
-              <a class="person-name link" href="{% url 'role_detail' role.pk %}">{{ role.name }}</a>
-              <span class="person-detail">{{ role.code }}</span>
+              <span class="person-detail">{{ role.name }}</span>
             </td>
             <td data-label="Tipo">{{ role.is_system|yesno:"Do sistema,Personalizado" }}</td>
             <td data-label="Usuários vinculados">{{ role.user_count }}</td>
+            <td data-label="Código">
+              <a class="person-name link" href="{% url 'role_detail' role.pk %}">{{ role.code }}</a>
+            </td>
             <td class="cell-actions" data-label="Ações">
               {% row_action "role_update" role.pk "Editar" "pencil" when=perms.PERFIL.EDITAR as edit %}
               {% row_action "role_permissions" role.pk "Alterar permissões" "list-checks" when=perms.PERFIL.ALTERAR_PERMISSOES as change_permissions %}
@@ -57,7 +60,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td class="cell-primary" colspan="4">Nenhum perfil cadastrado.</td></tr>
+          <tr><td class="cell-primary text-center" colspan="5">Nenhum perfil cadastrado.</td></tr>
         {% endfor %}
       </tbody>
     </table>

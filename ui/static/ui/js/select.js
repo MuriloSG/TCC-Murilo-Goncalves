@@ -2,6 +2,8 @@
   "use strict";
 
   var PAGE_SIZE = 10;
+  var MARGIN = 12;
+  var MIN_LIST = 180;
 
   function normalize(text) {
     return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -127,6 +129,52 @@
     this.empty.hidden = visible.length > 0;
     this.more.hidden = !(this.hasMore || this.shown < this.options.length);
     this.highlight(visible.length ? 0 : -1);
+    this.place();
+  };
+
+  State.prototype.place = function () {
+    if (this.panel.hidden) {
+      return;
+    }
+    var anchor = (this.control || this.trigger).getBoundingClientRect();
+    var below = window.innerHeight - anchor.bottom - MARGIN;
+    var above = anchor.top - MARGIN;
+    var chrome = this.panel.offsetHeight - this.list.offsetHeight;
+    var up = below < MIN_LIST + chrome && above > below;
+    if (up) {
+      this.panel.dataset.drop = "up";
+      this.releaseControl();
+    } else {
+      delete this.panel.dataset.drop;
+      this.anchorControl();
+    }
+    var room = (up ? above : below) - chrome;
+    this.list.style.maxHeight = Math.max(MIN_LIST, room) + "px";
+  };
+
+  State.prototype.anchorControl = function () {
+    if (!this.control || this.root.dataset.open === "true") {
+      return;
+    }
+    this.root.style.minHeight = this.control.offsetHeight + "px";
+    this.root.dataset.open = "true";
+  };
+
+  State.prototype.releaseControl = function () {
+    if (!this.control) {
+      return;
+    }
+    delete this.root.dataset.open;
+    this.root.style.minHeight = "";
+  };
+
+  State.prototype.ensureRoom = function () {
+    var element = this.control || this.trigger;
+    var chrome = this.panel.offsetHeight - this.list.offsetHeight;
+    var anchor = element.getBoundingClientRect();
+    if (window.innerHeight - anchor.bottom < MIN_LIST + chrome + MARGIN) {
+      element.scrollIntoView({ block: "center" });
+    }
   };
 
   State.prototype.highlight = function (index) {
@@ -192,14 +240,16 @@
     this.trigger.setAttribute("aria-expanded", "true");
     this.search.value = "";
     this.term = "";
+    this.ensureRoom();
     this.load(false);
+    this.place();
     this.search.focus();
-    this.panel.scrollIntoView({ block: "nearest" });
   };
 
   State.prototype.close = function (focusTrigger) {
     this.panel.hidden = true;
     this.trigger.setAttribute("aria-expanded", "false");
+    this.releaseControl();
     if (focusTrigger) {
       this.trigger.focus();
     }

@@ -45,7 +45,9 @@
 - [x] 4.13 Pôr as pastilhas dentro do campo e fazer o campo crescer, com o `select` nativo de vários valores sem JavaScript (D10)
 - [x] 4.14 Criar a rota de opções de usuários do `notices`, com `NOTIFICACAO.PUBLICAR`, e passar o campo a buscar as opções no servidor (D10)
 - [x] 4.15 Testar a rota nas quatro situações de acesso, a busca no servidor, o limite de 10 por página e a tela sem a lista inteira
-- [x] 4.16 Commit
+- [x] 4.16 Prender a base do campo com o painel embaixo, manter a lista parada nas duas direções e fixar a seta no canto (D10)
+- [x] 4.17 Conferir no navegador, no banco `visual_check`, a lista, as duas etapas e o campo de vários valores em 1280 e 360 px
+- [x] 4.18 Commit
 
 ## 5. Notificação gerada por evento
 

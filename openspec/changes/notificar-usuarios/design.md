@@ -144,6 +144,13 @@ O que ficou, e é o que o autor pediu, é o **próprio componente de seleção a
 
 A rota de opções de usuários da publicação é do app `notices`, com `login_required` na URL e `NOTIFICACAO.PUBLICAR` na view, pela regra da spec `controle-acesso` de que a permissão da rota de opções é a da tela que a consome. A da auditoria continua exigindo `AUDITORIA.VISUALIZAR`: são duas rotas, cada uma do app dono da sua tela, porque uma rota compartilhada teria de aceitar a união das permissões.
 
+**Enquanto o painel está aberto, a lista não se move.** Foi o que a conferência no navegador mostrou: a cada escolha o campo crescia, empurrava o painel para baixo e a direção dele chegava a inverter no meio da interação, o que o autor viu como a tela quebrando. Ficou assim:
+
+- ao abrir, o campo é rolado para uma posição com espaço embaixo, e a altura da lista é limitada ao espaço que existe, com rolagem interna;
+- **com o painel embaixo, a base do campo fica presa** e ele cresce para cima conforme as pastilhas ocupam mais linhas, então a lista não sai do lugar;
+- **com o painel em cima** (quando não há espaço embaixo, como no fim de uma página), o campo volta ao fluxo e cresce para baixo, e a lista também não sai do lugar, porque está ancorada no topo do campo;
+- a seta que abre e fecha fica presa no canto direito do campo, e não depois da última pastilha.
+
 **Preço registrado:** sem JavaScript, a escolha de usuários específicos fica limitada à primeira página de usuários. A spec `interface` proíbe fonte paginada em campo obrigatório justamente por isso, e aqui a exceção é estreita e está escrita na spec: o campo só é exigido quando o destino é "usuários específicos", e as outras duas formas de destinar continuam completas sem JavaScript.
 
 ### D14. Publicação guardada, e a lista só dos comunicados globais
@@ -225,6 +232,8 @@ O painel do cabeçalho já tem forma definida e só troca a origem dos dados. A 
 - **O indicador de etapas** usava `--spacing-7`, que não existe na escala fechada de espaçamentos: a marca da etapa ficava sem tamanho e o número aparecia num oval. Passou a usar `--spacing-8`.
 - **A escolha de usuários** saiu da lista de caixas de seleção para o componente de seleção de vários valores, com as pastilhas dentro do campo e as opções buscadas no servidor (D10).
 - **A tela de notificações** passou a abrir na lista das publicadas, com a criação alcançada a partir dela (D14).
+- **O resumo da revisão** usava a grade de detalhes de duas colunas, que numa coluna estreita quebrava palavra no meio ("Informaç/ão"). Passou a ser uma lista empilhada.
+- **A conferência no navegador** passou a ser feita com o Playwright num container, contra o banco `visual_check`, em 1280 e 360 px, abrindo a lista, as duas etapas e o campo de vários valores. Foi ela que mostrou a inversão da direção do painel e a quebra do resumo.
 
 ## Risks / Trade-offs
 

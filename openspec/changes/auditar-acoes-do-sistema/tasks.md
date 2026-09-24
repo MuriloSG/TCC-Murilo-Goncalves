@@ -17,11 +17,11 @@
 
 ## 3. Autenticação
 
-- [ ] 3.1 Ligar os sinais de login e de logout no `ready()` do app `audit` (D6)
-- [ ] 3.2 Registrar a recusa de login no `AccountAdapter.authenticate`, com o e-mail informado (D6)
-- [ ] 3.3 Registrar a solicitação de recuperação no `PasswordResetForm` e a redefinição pelo sinal do allauth (D6)
-- [ ] 3.4 Testar login, recusa por senha errada, recusa de usuário inativo, logout, solicitação de recuperação com e sem conta e redefinição, e a ausência de senha e de token nos registros
-- [ ] 3.5 Commit
+- [x] 3.1 Ligar os sinais de login e de logout no `ready()` do app `audit` (D6)
+- [x] 3.2 Registrar a recusa de login no `AccountAdapter.authenticate`, com o e-mail informado (D6)
+- [x] 3.3 Registrar a solicitação de recuperação no `PasswordResetForm` e a redefinição pelo sinal do allauth (D6)
+- [x] 3.4 Testar login, recusa por senha errada, recusa de usuário inativo, logout, solicitação de recuperação com e sem conta e redefinição, e a ausência de senha e de token nos registros
+- [x] 3.5 Commit
 
 ## 4. Alterações de dados
 

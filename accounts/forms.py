@@ -3,6 +3,8 @@ from django import forms
 
 from accounts.models import Permission, Role, validate_institutional_email
 from accounts.permissions import SUPERADMIN_RESERVED_PERMISSIONS
+from audit import catalog
+from audit.models import AuditLog
 from ui.forms import GroupedCheckboxSelectMultiple
 
 
@@ -42,6 +44,20 @@ class PasswordResetForm(allauth_forms.ResetPasswordForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         use_email_messages(self.fields['email'])
+
+    def save(self, request, **kwargs):
+        """Registra a solicitação de recuperação na auditoria (D6).
+
+        O registro é o mesmo para um e-mail cadastrado e para um e-mail que não
+        existe, para que a auditoria não revele quais contas existem.
+        """
+        email = super().save(request, **kwargs)
+        AuditLog.objects.record(
+            catalog.PASSWORD_REQUESTED,
+            catalog.AUTHENTICATION,
+            metadata={'email': self.cleaned_data.get('email', '')},
+        )
+        return email
 
 
 class PasswordResetKeyForm(allauth_forms.ResetPasswordKeyForm):

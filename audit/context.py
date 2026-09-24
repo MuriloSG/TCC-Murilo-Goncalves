@@ -47,3 +47,14 @@ def acting_from_import():
     """Mantém o usuário responsável e troca a origem para a importação."""
     with acting_as(replace(current_actor(), origin=catalog.IMPORTED)):
         yield
+
+
+@contextmanager
+def acting_as_user(user):
+    """Ator atual com o usuário identificado, para os sinais de autenticação.
+
+    Numa requisição de login ou de saída, o ator da requisição foi definido antes
+    de a sessão existir, e o usuário responsável é o que o sinal informa.
+    """
+    with acting_as(replace(current_actor(), user=user)):
+        yield

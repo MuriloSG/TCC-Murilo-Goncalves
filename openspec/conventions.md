@@ -124,6 +124,7 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 | Estados de horário | disponível, ocupado | livre, vago, indisponível |
 | Estados da solicitação | pendente, aprovada, rejeitada, cancelada | em análise, aguardando |
 | Pessoas e acesso | docente, administrador, perfil, permissão | professor (como perfil), papel, role, grupo |
+| Parte do sistema a que uma ação se refere | módulo | recurso (reservado ao espaço reservável) |
 
 ### 9.5 Formatos
 

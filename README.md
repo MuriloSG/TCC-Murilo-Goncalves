@@ -168,6 +168,7 @@ Os e-mails que o sistema dispara por conta própria, como o link de definição 
 
 - O visual segue a escala fechada de tokens do `ui/styles/app.css` (cores, espaçamentos, raios, sombras e fontes) e os componentes do app `ui`. A seção 9 do `openspec/conventions.md` explica como usá-los. Testes automáticos recusam valores soltos nos templates e pares de cores abaixo do contraste mínimo.
 - A fonte Open Sans, os ícones Lucide, o símbolo do IF e o htmx são arquivos do próprio projeto, com as licenças ao lado. Nenhuma página depende de servidor externo.
+- Todo campo de escolha usa o componente de seleção do app `ui`: a lista abre ancorada ao campo, com busca e 10 opções por vez, e o `select` nativo continua sendo o campo enviado, então sem JavaScript a tela funciona igual. No filtro por usuário da auditoria, as opções são buscadas e paginadas no servidor, e a página não carrega todos os usuários cadastrados.
 - As ações de gestão abrem em modal. O [htmx](https://htmx.org/) carrega o modal do servidor e envia o formulário, e o `ui/static/ui/js/modal.js` abre e fecha o `<dialog>`. Sem JavaScript, as mesmas URLs abrem como páginas.
 
 ## Dependências

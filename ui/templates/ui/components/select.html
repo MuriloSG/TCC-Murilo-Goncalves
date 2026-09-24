@@ -6,7 +6,7 @@
   <div class="select-panel" id="{{ field.auto_id }}_painel" hidden data-select-panel>
     <div class="select-search" hidden data-select-search-wrap>
       {% icon "search" %}
-      <input type="search" id="{{ field.auto_id }}_busca" placeholder="Buscar" autocomplete="off" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="{{ field.auto_id }}_lista" aria-label="Buscar opção" data-select-search>
+      <input class="select-search-input" type="search" id="{{ field.auto_id }}_busca" placeholder="Buscar" autocomplete="off" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="{{ field.auto_id }}_lista" aria-label="Buscar opção" data-select-search>
     </div>
     <ul class="select-options" id="{{ field.auto_id }}_lista" role="listbox" aria-labelledby="{{ field.auto_id }}_rotulo" data-select-options></ul>
     <p class="select-empty" hidden data-select-empty>Nenhuma opção encontrada.</p>

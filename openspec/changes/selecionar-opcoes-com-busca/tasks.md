@@ -25,16 +25,16 @@
 
 ## 4. Telas
 
-- [ ] 4.1 Conferir o campo de perfil no cadastro e na troca de perfil, dentro do modal
-- [ ] 4.2 Conferir o filtro de situação da lista de usuários, com a atualização pelo htmx
-- [ ] 4.3 Conferir os quatro filtros da auditoria
-- [ ] 4.4 Atualizar os testes de tela que dependem do `select` nativo
-- [ ] 4.5 Rodar `make test` com a suíte inteira passando
-- [ ] 4.6 Commit
+- [x] 4.1 Conferir o campo de perfil no cadastro e na troca de perfil, dentro do modal
+- [x] 4.2 Conferir o filtro de situação da lista de usuários, com a atualização pelo htmx
+- [x] 4.3 Conferir os quatro filtros da auditoria
+- [x] 4.4 Atualizar os testes de tela que dependem do `select` nativo
+- [x] 4.5 Rodar `make test` com a suíte inteira passando
+- [x] 4.6 Commit
 
 ## 5. Documentação e verificação
 
-- [ ] 5.1 Documentar o componente na seção 9.9 das convenções e na seção Interface do `README.md`
-- [ ] 5.2 Conferir no navegador, no banco `visual_check`, em 360 e 1280 px, com teclado, com e sem JavaScript
-- [ ] 5.3 Validar a Change com `openspec validate selecionar-opcoes-com-busca --strict`
-- [ ] 5.4 Commit
+- [x] 5.1 Documentar o componente na seção 9.9 das convenções e na seção Interface do `README.md`
+- [x] 5.2 Conferir no navegador, no banco `visual_check`, em 360 e 1280 px, com teclado, com e sem JavaScript
+- [x] 5.3 Validar a Change com `openspec validate selecionar-opcoes-com-busca --strict`
+- [x] 5.4 Commit

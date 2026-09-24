@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 PAGE_PARAMETER = 'pagina'
 PAGE_SIZE = 5
 ROWS_PAGE_SIZE = 20
+OPTIONS_PAGE_SIZE = 10
 
 
 def paginate(request, items, per_page=PAGE_SIZE):

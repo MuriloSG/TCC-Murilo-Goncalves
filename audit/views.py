@@ -3,15 +3,17 @@
 A lista é somente leitura: não existe rota que altere ou exclua um registro.
 """
 
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, ListView
 
 from accounts import permissions
 from audit import catalog
-from audit.forms import AuditFilterForm
+from audit.forms import AuditFilterForm, user_option_label
 from audit.models import AuditLog
 from ui.pagination import paginate
-from ui.views import ModalView
+from ui.views import ModalView, OptionsView
 
 
 class AuditLogListView(ListView):
@@ -47,3 +49,18 @@ class AuditLogDetailView(ModalView, DetailView):
     modal_template_name = 'audit/log_detail_modal.html'
     context_object_name = 'entry'
     close_url = reverse_lazy('audit_log_list')
+
+
+class UserOptionsView(OptionsView):
+    """Opções do filtro por usuário, paginadas no servidor (D5)."""
+
+    permission_required = permissions.AUDIT_VIEW
+
+    def get_queryset(self, term):
+        users = get_user_model().objects.order_by('name', 'email')
+        if term:
+            users = users.filter(Q(name__icontains=term) | Q(email__icontains=term))
+        return users
+
+    def label(self, user):
+        return user_option_label(user)

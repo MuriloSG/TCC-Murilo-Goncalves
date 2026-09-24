@@ -7,6 +7,8 @@ os ids {id}_helptext e {id}_error. Os templates de ui/forms usam esses mesmos id
 from django import forms
 from django.forms.renderers import TemplatesSetting
 
+from ui.pagination import OPTIONS_PAGE_SIZE
+
 
 class FormRenderer(TemplatesSetting):
     form_template_name = 'ui/forms/form.html'
@@ -38,3 +40,20 @@ class GroupedCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
         context['widget']['selected_count'] = sum(group['selected'] for group in groups)
         context['widget']['total_count'] = sum(group['total'] for group in groups)
         return context
+
+
+def limit_choices(field, selected=None, page_size=OPTIONS_PAGE_SIZE):
+    """Deixa no campo só a primeira página das opções, mais a escolhida (D5).
+
+    A validação continua usando o queryset inteiro: só a lista que vai para o HTML
+    é limitada, e as demais opções chegam pela rota de opções.
+    """
+    items = list(field.queryset[:page_size])
+    try:
+        chosen = field.queryset.filter(pk=selected).first() if selected else None
+    except (ValueError, TypeError):
+        chosen = None
+    if chosen is not None and chosen not in items:
+        items.insert(0, chosen)
+    choices = [] if field.empty_label is None else [('', field.empty_label)]
+    field.widget.choices = choices + [(item.pk, field.label_from_instance(item)) for item in items]

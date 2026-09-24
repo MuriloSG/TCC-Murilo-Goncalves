@@ -6,17 +6,22 @@ Um valor inválido é descartado sem mensagem, e a consulta trata o filtro como 
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 
 from audit import catalog
+from ui.forms import limit_choices
 
 INPUT = {'class': 'input'}
 
 
-class UserChoiceField(forms.ModelChoiceField):
-    """Opção com o nome e o e-mail, para distinguir usuários de mesmo nome."""
+def user_option_label(user):
+    """Rótulo de um usuário nas opções, com o nome e o e-mail."""
+    return f'{user.name} ({user.email})'
 
+
+class UserChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, user):
-        return f'{user.name} ({user.email})'
+        return user_option_label(user)
 
 
 def code_filter(label, labels, empty):
@@ -54,7 +59,10 @@ class AuditFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['usuario'].queryset = get_user_model().objects.order_by('name', 'email')
+        field = self.fields['usuario']
+        field.queryset = get_user_model().objects.order_by('name', 'email')
+        field.widget.attrs['data-select-source'] = reverse('audit_user_options')
+        limit_choices(field, self.data.get('usuario'))
 
     def criteria(self):
         """Critérios válidos da consulta, com os valores inválidos trocados por vazio."""

@@ -16,12 +16,12 @@
 
 ## 3. Fonte paginada no servidor
 
-- [ ] 3.1 Criar a view base das rotas de opções no `ui`, com busca, paginação e o formato único da resposta (D5, D6)
-- [ ] 3.2 Criar a rota de opções de usuários no `audit`, com a permissão declarada, e o filtro por usuário usando a fonte paginada (D5, D6)
-- [ ] 3.3 Fazer o `select.js` buscar as páginas seguintes na rota quando o campo declarar a fonte paginada (D5)
-- [ ] 3.4 Testar a rota nas quatro situações de acesso, a busca no servidor, o limite de 10 por página e a página do formulário sem a lista inteira
-- [ ] 3.5 Rodar `make test` com a suíte inteira passando
-- [ ] 3.6 Commit
+- [x] 3.1 Criar a view base das rotas de opções no `ui`, com busca, paginação e o formato único da resposta (D5, D6)
+- [x] 3.2 Criar a rota de opções de usuários no `audit`, com a permissão declarada, e o filtro por usuário usando a fonte paginada (D5, D6)
+- [x] 3.3 Fazer o `select.js` buscar as páginas seguintes na rota quando o campo declarar a fonte paginada (D5)
+- [x] 3.4 Testar a rota nas quatro situações de acesso, a busca no servidor, o limite de 10 por página e a página do formulário sem a lista inteira
+- [x] 3.5 Rodar `make test` com a suíte inteira passando
+- [x] 3.6 Commit
 
 ## 4. Telas
 

@@ -153,6 +153,23 @@ Exibindo 1 a 5 de 57 registros         [Anterior]  Página 1 de 12  [Próxima]
 - Abaixo de 640 px a tabela vira blocos empilhados, como as demais.
 - A tela declara `audit_resource`, então consultar a auditoria também é auditado.
 
+**Detalhe do registro, a partir da referência do autor (seção 9.8 das convenções).** O autor enviou uma referência do modal de detalhe. O que foi adaptado:
+
+- as seções nomeadas ("Usuário", "Ação", "Valores alterados", "Informações adicionais" e "Informações de rede"), que substituem a lista corrida de campos;
+- os rótulos em maiúsculas, pequenos e em cinza, com o mesmo tratamento que o cabeçalho das tabelas já usa;
+- os campos em duas colunas a partir de 640 px, e uma coluna abaixo disso;
+- o painel com fundo da página e borda fina em volta dos blocos técnicos;
+- a ação e o módulo em pastilha (`.chip`), sem tom de cor;
+- o valor anterior em cinza, a seta e o valor novo em destaque, numa linha só.
+
+O que foi retirado:
+
+- **tema escuro**, trocado pela superfície clara e pelo verde institucional;
+- **pastilhas coloridas por ação e por módulo** (azul e roxo na referência): a seção 9.7 exige que toda cor tenha função definida, e o tom colorido é do selo de estado. Ação e módulo são categoria, e ficam em pastilha neutra;
+- **ícones ao lado dos títulos das seções e do título do modal**: ícone decorativo ao lado de título é proibido pela seção 9.6;
+- **fonte monoespaçada e botão "Copiar"** no IP e no cliente: não há token de fonte monoespaçada na escala fechada, e o botão exigiria JavaScript próprio;
+- **ícone de localização ao lado do IP**, pelo mesmo motivo dos ícones decorativos.
+
 ### D13. Ordem dos middlewares
 
 `AuditMiddleware` entra no fim da lista, depois de `PermissionMiddleware`. A fase de requisição dele é a última a rodar, então o ator já está definido quando a view e as operações do model executam, e o `process_view` dele roda depois do que decide o acesso.

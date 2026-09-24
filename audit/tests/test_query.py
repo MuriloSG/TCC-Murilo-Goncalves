@@ -155,11 +155,11 @@ class DetailTests(AuditQueryTestCase):
         response = self.client.get(f'/auditoria/{entry.pk}/')
         self.assertContains(response, 'Alteração')
         self.assertContains(response, 'Usuários')
-        self.assertContains(response, '<span class="pair-key">Nome</span>')
+        self.assertContains(response, '<dt>Nome</dt>')
         self.assertContains(response, '<span class="pair-before">Docente</span>')
-        self.assertContains(response, '<span class="pair-after">Docente Silva</span>')
-        self.assertContains(response, '<span class="pair-key">Rota</span>')
-        self.assertContains(response, '<span class="pair-after">user_update</span>')
+        self.assertContains(response, 'Docente Silva')
+        self.assertContains(response, '<dt>Rota</dt>')
+        self.assertContains(response, 'user_update')
         self.assertContains(response, str(self.plain.pk))
 
     def test_detail_opens_as_a_modal_with_htmx(self):

@@ -85,6 +85,62 @@ def resolve_recipients(destination, role=None, users=()):
     raise UnknownDestination(destination)
 
 
+class NoticeQuerySet(models.QuerySet):
+    def global_ones(self):
+        return self.filter(destination=catalog.ALL_USERS)
+
+
+class Notice(models.Model):
+    """Uma publicação manual: o que foi publicado, para quem e por quem (D14).
+
+    As notificações entregues continuam guardando o próprio título e a própria
+    mensagem, e esta publicação existe para a lista das notificações publicadas e
+    para o registro da auditoria. Uma notificação gerada por evento não tem
+    publicação.
+    """
+
+    type = models.CharField('tipo', max_length=50)
+    title = models.CharField('título', max_length=TITLE_MAX_LENGTH)
+    message = models.TextField('mensagem', max_length=MESSAGE_MAX_LENGTH)
+    destination = models.CharField('destino', max_length=20)
+    recipients_count = models.PositiveIntegerField('destinatários alcançados', default=0)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='published_notices',
+        verbose_name='publicada por',
+    )
+    created_at = models.DateTimeField('publicada em', auto_now_add=True)
+
+    objects = NoticeQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = 'notificação publicada'
+        verbose_name_plural = 'notificações publicadas'
+        ordering = ['-created_at', '-pk']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def label(self):
+        return catalog.label(self.type)
+
+    @property
+    def icon(self):
+        return catalog.icon(self.type)
+
+    @property
+    def tone(self):
+        return catalog.tone(self.type)
+
+    @property
+    def destination_label(self):
+        return catalog.DESTINATION_LABELS.get(self.destination, self.destination)
+
+
 class NotificationQuerySet(models.QuerySet):
     def for_user(self, user):
         return self.filter(recipient=user)
@@ -110,7 +166,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
             announce_change([recipient])
         return notification
 
-    def publish(self, notice_type, title, message, recipients, target_url=''):
+    def publish(self, notice_type, title, message, recipients, target_url='', notice=None):
         """Entrega a mesma notificação a cada destinatário e devolve quantos foram alcançados.
 
         Os destinatários são resolvidos por quem chama e percorridos aqui uma única
@@ -131,6 +187,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
             self.bulk_create(
                 self.model(
                     recipient=person,
+                    notice=notice,
                     type=prototype.type,
                     title=prototype.title,
                     message=prototype.message,
@@ -141,36 +198,48 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
             announce_change(people)
         return len(people)
 
-    def publish_manually(self, notice_type, title, message, destination, role=None, users=()):
-        """Publica um comunicado e registra a publicação na auditoria (D7, D9).
+    def publish_manually(self, notice_type, title, message, destination, role=None, users=(), published_by=None):
+        """Publica um comunicado, guarda a publicação e a registra na auditoria (D7, D9, D14).
 
         Os destinatários são resolvidos aqui, no momento da publicação, e não na
         revisão: a quantidade registrada é a do conjunto alcançado agora. A
-        publicação inteira, as notificações e o registro da auditoria ficam na
-        mesma transação, e um único registro descreve a publicação, com a
-        quantidade de destinatários, em vez de um registro por destinatário.
+        publicação, as notificações e o registro da auditoria ficam na mesma
+        transação, e um único registro descreve a publicação, com a quantidade de
+        destinatários, em vez de um registro por destinatário. Devolve a publicação.
         """
         validate_type(notice_type)
         if not catalog.is_manual(notice_type):
             raise NotPublishedManually(notice_type)
         with transaction.atomic(using=self.db):
-            reached = self.publish(
+            notice = Notice(
+                type=notice_type,
+                title=(title or '').strip(),
+                message=(message or '').strip(),
+                destination=destination,
+                published_by=published_by,
+            )
+            notice.full_clean(exclude=['published_by'])
+            notice.save(using=self.db)
+            notice.recipients_count = self.publish(
                 notice_type,
                 title,
                 message,
                 resolve_recipients(destination, role=role, users=users),
+                notice=notice,
             )
+            notice.save(using=self.db, update_fields=['recipients_count'])
             AuditLog.objects.record(
                 audit_catalog.PUBLISH,
                 audit_catalog.NOTICE,
+                resource_id=notice.pk,
                 metadata={
-                    'titulo': (title or '').strip(),
-                    'tipo': notice_type,
-                    'destino': destination,
-                    'destinatarios': reached,
+                    'titulo': notice.title,
+                    'tipo': notice.type,
+                    'destino': notice.destination,
+                    'destinatarios': notice.recipients_count,
                 },
             )
-        return reached
+        return notice
 
     def unread_count(self, user):
         return self.for_user(user).unread().count()
@@ -187,6 +256,14 @@ class Notification(models.Model):
         on_delete=models.CASCADE,
         related_name='notifications',
         verbose_name='destinatário',
+    )
+    notice = models.ForeignKey(
+        'Notice',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications',
+        verbose_name='publicação',
     )
     type = models.CharField('tipo', max_length=50)
     title = models.CharField('título', max_length=TITLE_MAX_LENGTH)

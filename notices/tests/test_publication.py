@@ -31,21 +31,23 @@ class PublicationAuditTests(TestCase):
         return AuditLog.objects.filter(resource=audit_catalog.NOTICE)
 
     def test_publication_records_one_entry_with_the_reached_count(self):
-        reached = self.publish(catalog.ALL_USERS)
-        self.assertEqual(reached, 3)
+        notice = self.publish(catalog.ALL_USERS)
+        self.assertEqual(notice.recipients_count, 3)
+        self.assertEqual(notice.published_by, None)
         self.assertEqual(self.records().count(), 1)
         record = self.records().get()
         self.assertEqual(record.action, audit_catalog.PUBLISH)
         self.assertEqual(record.user, self.ana)
         self.assertEqual(record.origin, audit_catalog.INTERFACE)
         self.assertEqual(record.metadata['destinatarios'], 3)
+        self.assertEqual(record.resource_id, str(notice.pk))
         self.assertEqual(record.metadata['destino'], catalog.ALL_USERS)
         self.assertEqual(record.metadata['tipo'], catalog.INFORMATION)
         self.assertEqual(record.metadata['titulo'], 'Nova versão do sistema')
 
     def test_recipients_are_resolved_at_the_publication(self):
         self.bruno.deactivate()
-        self.assertEqual(self.publish(catalog.ROLE, role=self.docente), 1)
+        self.assertEqual(self.publish(catalog.ROLE, role=self.docente).recipients_count, 1)
         self.assertEqual(self.records().get().metadata['destinatarios'], 1)
 
     def test_refused_publication_records_nothing(self):

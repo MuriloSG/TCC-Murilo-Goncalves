@@ -5,6 +5,6 @@
     {% if perms.USUARIO.VISUALIZAR %}{% nav_link "user_list" "Usuários" "users" prefix="user_" %}{% endif %}
     {% if perms.PERFIL.VISUALIZAR %}{% nav_link "role_list" "Perfis" "shield-check" prefix="role_" %}{% endif %}
     {% if perms.AUDITORIA.VISUALIZAR %}{% nav_link "audit_log_list" "Auditoria" "scroll-text" prefix="audit_" %}{% endif %}
-    {% if perms.NOTIFICACAO.PUBLICAR %}{% nav_link "notice_create" "Notificações" "bell" prefix="notice_" %}{% endif %}
+    {% if perms.NOTIFICACAO.PUBLICAR %}{% nav_link "notice_list" "Notificações" "bell" prefix="notice_" %}{% endif %}
   </ul>
 </nav>

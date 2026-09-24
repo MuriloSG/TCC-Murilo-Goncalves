@@ -15,7 +15,7 @@
     <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</label>
     {% if icon %}
       <div class="control">{% icon icon %}{{ field }}</div>
-    {% elif field.widget_type == "select" %}
+    {% elif field.widget_type == "select" or field.widget_type == "selectmultiple" %}
       {% include "ui/components/select.html" %}
     {% else %}
       {{ field }}

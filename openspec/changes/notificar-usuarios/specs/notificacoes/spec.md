@@ -81,7 +81,7 @@ Uma publicação DEVE (MUST) destinar a notificação de uma destas formas: a to
 - **THEN** ele não tem esse comunicado
 
 ### Requirement: Publicação manual de comunicado
-Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, informando título, mensagem, tipo e destinatários. O título e a mensagem DEVEM (MUST) ser obrigatórios, com os limites de tamanho definidos num único ponto do código, e o texto DEVE (MUST) seguir a spec `texto-interface`. O tipo DEVE (MUST) ser escolhido entre os tipos do catálogo marcados como publicáveis manualmente; um tipo gerado por evento NÃO DEVE (MUST NOT) aparecer nessa escolha nem ser aceito no envio. A escolha do perfil DEVE (MUST) usar o componente de seleção da spec `interface`. A escolha de usuários específicos DEVE (MUST) usar a lista de seleção com busca, a mesma das permissões de um perfil, porque o componente de seleção escolhe um valor só, e DEVE (MUST) oferecer apenas usuários ativos. A publicação DEVE (MUST) ser feita somente por requisição POST com token CSRF válido, depois da revisão, e DEVE (MUST) criar todas as notificações numa única transação, de modo que uma falha não deixe parte dos destinatários notificados. Uma publicação recusada por validação ou por regra de negócio NÃO DEVE (MUST NOT) criar nenhuma notificação. A publicação NÃO DEVE (MUST NOT) enviar e-mail nem qualquer outra mensagem fora do sistema.
+Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, informando título, mensagem, tipo e destinatários. O título e a mensagem DEVEM (MUST) ser obrigatórios, com os limites de tamanho definidos num único ponto do código, e o texto DEVE (MUST) seguir a spec `texto-interface`. O tipo DEVE (MUST) ser escolhido entre os tipos do catálogo marcados como publicáveis manualmente; um tipo gerado por evento NÃO DEVE (MUST NOT) aparecer nessa escolha nem ser aceito no envio. A escolha do perfil e a escolha de usuários específicos DEVEM (MUST) usar o componente de seleção da spec `interface`, esta última na forma de vários valores, e a escolha de usuários DEVE (MUST) oferecer apenas usuários ativos. A publicação DEVE (MUST) ser feita somente por requisição POST com token CSRF válido, depois da revisão, e DEVE (MUST) guardar a publicação e criar todas as notificações numa única transação, de modo que uma falha não deixe parte dos destinatários notificados. A publicação guardada DEVE (MUST) conter o tipo, o título, a mensagem, a forma de destinar, a quantidade de destinatários alcançados, quem publicou e a data e a hora, e cada notificação entregue DEVE (MUST) apontar para ela. Uma notificação gerada por evento NÃO DEVE (MUST NOT) ter publicação. Uma publicação recusada por validação ou por regra de negócio NÃO DEVE (MUST NOT) criar nenhuma notificação. A publicação NÃO DEVE (MUST NOT) enviar e-mail nem qualquer outra mensagem fora do sistema.
 
 #### Scenario: Comunicado publicado
 - **GIVEN** um usuário autorizado e 8 usuários ativos
@@ -111,6 +111,16 @@ Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, info
 - **GIVEN** uma publicação para 100 destinatários que falha depois de criar parte das notificações
 - **WHEN** a transação é desfeita
 - **THEN** nenhum dos 100 usuários tem a notificação
+
+#### Scenario: Publicação guardada
+- **GIVEN** um usuário autorizado e 8 usuários ativos
+- **WHEN** ele publica um comunicado para todos os usuários elegíveis
+- **THEN** existe uma publicação com o título, a mensagem, o tipo, a forma de destinar, a quantidade 8, ele como quem publicou e a data e a hora
+- **AND** as 8 notificações entregues apontam para essa publicação
+
+#### Scenario: Notificação de evento sem publicação
+- **WHEN** a notificação da troca de perfil é criada
+- **THEN** ela não tem publicação
 
 #### Scenario: Publicação não gera e-mail
 - **WHEN** um comunicado é publicado para todos os usuários elegíveis
@@ -153,16 +163,43 @@ A publicação manual DEVE (MUST) acontecer no fluxo criar, revisar, publicar e 
 - **WHEN** as duas páginas são usadas com o JavaScript desligado
 - **THEN** o formulário, a revisão e a publicação funcionam pelos envios comuns do formulário
 
+### Requirement: Lista das notificações publicadas
+A funcionalidade de notificações DEVE (MUST) abrir numa lista das notificações publicadas, e a criação de uma notificação DEVE (MUST) ser alcançada a partir dela. A lista DEVE (MUST) exibir somente as publicações destinadas a todos os usuários elegíveis, que são os comunicados do sistema; as publicações direcionadas a um perfil ou a usuários específicos NÃO DEVEM (MUST NOT) aparecer nela, e continuam registradas na auditoria, conforme a spec `auditoria`. A lista DEVE (MUST) exibir, de cada publicação, o título, a mensagem, o tipo, a quantidade de destinatários alcançados, quem publicou e a data e a hora, da mais recente para a mais antiga, paginada conforme a spec `interface`. Quando não houver nenhuma publicação global, a lista DEVE (MUST) informar isso em texto, sem ilustração. A lista NÃO DEVE (MUST NOT) alterar dados, e o acesso a ela DEVE (MUST) ser auditado como o das demais funcionalidades.
+
+#### Scenario: Lista antes da criação
+- **WHEN** um usuário autorizado abre as notificações pela navegação
+- **THEN** ele vê a lista das notificações publicadas e o controle que leva à criação de uma notificação
+
+#### Scenario: Só as publicações globais
+- **GIVEN** um comunicado publicado para todos os usuários elegíveis, um publicado para um perfil e um publicado para usuários específicos
+- **WHEN** a lista é exibida
+- **THEN** só o comunicado publicado para todos aparece
+
+#### Scenario: Conteúdo de cada linha
+- **GIVEN** um comunicado publicado por Ana para 8 usuários elegíveis
+- **WHEN** a lista é exibida
+- **THEN** a linha mostra o título, a mensagem, o tipo, "8 usuários", Ana e a data e a hora no formato dd/mm/aaaa e 24 horas
+
+#### Scenario: Lista vazia
+- **GIVEN** nenhuma publicação global
+- **WHEN** a lista é exibida
+- **THEN** ela informa em texto que não há notificação publicada para todos os usuários
+
+#### Scenario: Lista paginada
+- **GIVEN** 6 publicações globais
+- **WHEN** a lista é acessada sem o parâmetro de página
+- **THEN** ela mostra as 5 mais recentes, com o rodapé de paginação da spec `interface`
+
 ### Requirement: Autorização da publicação de notificações
-A publicação manual de notificações DEVE (MUST) exigir autenticação e a permissão `NOTIFICACAO.PUBLICAR`, conforme a spec `controle-acesso`, em todas as etapas do fluxo e em todos os métodos HTTP. Um visitante não autenticado DEVE (MUST) ser redirecionado para o login, e um usuário autenticado sem a permissão DEVE (MUST) receber 403, inclusive nas rotas de opções que alimentam a escolha dos destinatários. O item de navegação e os controles que levam à publicação DEVEM (MUST) aparecer somente para quem tem a permissão, sem que isso substitua a verificação no servidor. A área de notificações do próprio usuário DEVE (MUST) exigir somente autenticação, e NÃO DEVE (MUST NOT) depender de nenhuma permissão.
+A lista das notificações publicadas e a publicação manual DEVEM (MUST) exigir autenticação e a permissão `NOTIFICACAO.PUBLICAR`, conforme a spec `controle-acesso`, em todas as etapas do fluxo e em todos os métodos HTTP. Um visitante não autenticado DEVE (MUST) ser redirecionado para o login, e um usuário autenticado sem a permissão DEVE (MUST) receber 403, inclusive nas rotas de opções que alimentam a escolha dos destinatários. O item de navegação e os controles que levam à publicação DEVEM (MUST) aparecer somente para quem tem a permissão, sem que isso substitua a verificação no servidor. A área de notificações do próprio usuário DEVE (MUST) exigir somente autenticação, e NÃO DEVE (MUST NOT) depender de nenhuma permissão.
 
 #### Scenario: Visitante não autenticado
-- **WHEN** um visitante acessa diretamente a URL de publicação
+- **WHEN** um visitante acessa diretamente a URL da lista ou a da publicação
 - **THEN** ele é redirecionado para a página de login com a indicação da página solicitada
 
 #### Scenario: Usuário sem a permissão
 - **GIVEN** um usuário ativo autenticado, sem superadmin, cujo perfil não concede `NOTIFICACAO.PUBLICAR`
-- **WHEN** ele acessa a criação, a revisão ou envia o POST da publicação
+- **WHEN** ele acessa a lista, a criação, a revisão ou envia o POST da publicação
 - **THEN** a requisição é recusada com 403 em todas elas e nenhuma notificação é criada
 - **AND** a navegação não mostra o controle de publicar
 

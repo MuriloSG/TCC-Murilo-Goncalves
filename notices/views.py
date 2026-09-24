@@ -17,11 +17,14 @@ from django.urls import reverse, reverse_lazy
 from django.views.generic.base import TemplateView, View
 from django.views.generic.edit import FormView
 
+from audit import catalog as audit_catalog
+
 from accounts import permissions
 from accounts.utils import add_operation_error
 from notices import catalog
 from notices.forms import NoticeForm
-from notices.models import MESSAGE_MAX_LENGTH, Notification, resolve_recipients
+from notices.models import MESSAGE_MAX_LENGTH, Notice, Notification, resolve_recipients
+from ui.pagination import paginate
 from notices.utils import panel_context, redirect_target
 
 
@@ -57,6 +60,25 @@ class NotificationsPanelView(TemplateView):
 
     def get_context_data(self, **kwargs):
         return panel_context(self.request)
+
+
+class NoticeListView(TemplateView):
+    """Notificações publicadas para todos os usuários (D14).
+
+    Só as publicações globais entram na lista: são os comunicados do sistema. As
+    publicações direcionadas a um perfil ou a usuários específicos ficam na
+    consulta da auditoria, com quem publicou e quantas pessoas alcançou.
+    """
+
+    permission_required = permissions.NOTICE_PUBLISH
+    audit_resource = audit_catalog.NOTICE
+    template_name = 'notices/notice_list.html'
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            page=paginate(self.request, Notice.objects.global_ones()),
+            **kwargs,
+        )
 
 
 class NoticeCreateView(FormView):
@@ -95,24 +117,26 @@ class NoticePublishView(FormView):
     template_name = 'notices/notice_review.html'
     form_class = NoticeForm
     http_method_names = ['post']
-    success_url = reverse_lazy('home')
+    success_url = reverse_lazy('notice_list')
 
     def form_valid(self, form):
         data = form.cleaned_data
         try:
-            reached = Notification.objects.publish_manually(
+            notice = Notification.objects.publish_manually(
                 data['type'],
                 data['title'],
                 data['message'],
                 data['destination'],
                 role=data.get('role'),
                 users=data.get('users') or (),
+                published_by=self.request.user,
             )
         except ValidationError as error:
             add_operation_error(form, error)
             return self.form_invalid(form)
+        reached = notice.recipients_count
         people = 'destinatário' if reached == 1 else 'destinatários'
-        messages.success(self.request, f'Notificação "{data["title"]}" publicada para {reached} {people}.')
+        messages.success(self.request, f'Notificação "{notice.title}" publicada para {reached} {people}.')
         return HttpResponseRedirect(self.get_success_url())
 
     def form_invalid(self, form):

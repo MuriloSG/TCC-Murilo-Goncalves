@@ -35,6 +35,15 @@
 - [x] 4.6 Testar cada rota nas quatro situações de acesso, a volta da revisão sem perder os dados, a mudança de destinatários entre a revisão e a publicação e a ausência de envio de e-mail
 - [x] 4.7 Commit
 
+## 4.8 Lista e ajustes da referência
+
+- [x] 4.8 Acrescentar a seleção de vários valores ao componente de seleção do `ui`, com o gatilho, os escolhidos abaixo do campo e o `select` nativo `multiple` sem JavaScript (D10)
+- [x] 4.9 Guardar a publicação com o tipo, o título, a mensagem, o destino, a quantidade alcançada e quem publicou, e ligar cada notificação a ela (D14)
+- [x] 4.10 Criar a lista das notificações publicadas, só com as globais, paginada, com o controle que leva à criação (D14)
+- [x] 4.11 Corrigir o tamanho da marca das etapas, que usava um espaçamento fora da escala (D13)
+- [x] 4.12 Testar a lista nas quatro situações de acesso, a exclusão das publicações direcionadas, o estado vazio, a paginação e o registro do acesso
+- [x] 4.13 Commit
+
 ## 5. Notificação gerada por evento
 
 - [x] 5.1 Criar o registro de eventos no `notices`, sem importar app de domínio (D5)

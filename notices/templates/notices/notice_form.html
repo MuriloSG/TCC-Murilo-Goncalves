@@ -5,7 +5,7 @@
 
 {% block crumbs %}
   <li><a href="{% url 'home' %}">Início</a></li>
-  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'notice_create' %}">Notificações</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'notice_list' %}">Notificações</a></li>
   <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Nova notificação</span></li>
 {% endblock %}
 
@@ -62,7 +62,7 @@
         </div>
       </div>
       <div class="card-foot card-actions">
-        <a class="btn-secondary" href="{% url 'home' %}">{% icon "x" %}Fechar</a>
+        <a class="btn-secondary" href="{% url 'notice_list' %}">{% icon "x" %}Fechar</a>
         <button class="btn-primary" type="submit">{% icon "arrow-right" %}Continuar para revisão</button>
       </div>
     </section>

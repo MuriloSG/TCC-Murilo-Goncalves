@@ -127,13 +127,21 @@ A publicação manual é registrada, com um único registro por publicação, co
 
 A notificação criada por um evento não gera registro próprio, porque a operação que a originou já é auditada.
 
-### D10. Escolha de vários usuários pela lista com busca, e não por rota de opções
+### D10. Seleção de vários valores no próprio componente de seleção
 
-A escolha de usuários específicos precisa de vários valores no mesmo campo, e o componente de seleção da Change `selecionar-opcoes-com-busca` escolhe um valor só (a seleção múltipla está explicitamente fora do escopo dela). O que o projeto já tem para escolher vários é a lista de seleção com busca das permissões de um perfil, e é ela que a publicação usa, generalizada para dizer de que lista se trata (os textos do resumo, da busca e do estado vazio passaram a ser do campo).
+A escolha de usuários específicos precisa de vários valores no mesmo campo, e o componente de seleção da Change `selecionar-opcoes-com-busca` escolhia um valor só (a seleção múltipla ficou fora do escopo dela). A primeira tentativa reaproveitou a lista de caixas de seleção das permissões, e ela não serve: o grupo sem nome deixa o `details` sem `summary`, e o navegador desenha um rótulo próprio ("Saiba mais"), além de a lista inteira de usuários ficar aberta na página.
 
-Consequência: nenhuma rota de opções nova entra nesta Change, e a frase da spec `controle-acesso` sobre a rota de opções de usuários da auditoria continua valendo como está. A escolha do perfil de destino, que é de um valor só, usa o componente de seleção normalmente.
+A saída é a que o autor pediu: **o próprio componente de seleção passa a aceitar vários valores**, sem biblioteca de terceiros. É o mesmo gatilho, o mesmo painel, a mesma busca e as mesmas 10 opções por vez; o que muda é que escolher não fecha o painel, cada escolhida fica marcada na lista, o gatilho informa quantas são e os escolhidos aparecem abaixo do campo, cada um com o controle que o retira. O campo enviado continua sendo o `select` nativo, agora `multiple`, e sem JavaScript é ele que aparece.
 
-**Preço:** a lista de usuários ativos chega inteira à página, como a de permissões já chega. Com a escala do campus é aceitável, e a busca do próprio componente resolve a navegação; se a base crescer muito, a saída é a seleção múltipla com fonte paginada, que é uma Change do componente, e não desta tela.
+Nenhuma rota de opções nova entra nesta Change, e a frase da spec `controle-acesso` sobre a rota de opções de usuários da auditoria continua valendo como está. O campo de usuários usa a fonte fixa; o dia em que a base crescer a ponto de pesar, ele declara a fonte paginada que o componente já sabe consumir, sem mudar a tela.
+
+### D14. Publicação guardada, e a lista só dos comunicados globais
+
+A tela de notificações abre numa lista, e a criação sai dela, como nas demais funcionalidades do sistema. Para a lista existir, a publicação passou a ser um registro próprio: tipo, título, mensagem, forma de destinar, quantidade alcançada, quem publicou e quando, com cada notificação entregue apontando para ele.
+
+Isso não desfaz a D2: a notificação continua guardando o próprio título e a própria mensagem, e continua sendo uma linha por destinatário, com o estado de leitura de cada um. A publicação é o registro do ato de publicar, e não a fonte do que o destinatário lê, o que mantém a notificação legível mesmo se a publicação mudar de ideia sobre o texto no futuro. Ela também dá à auditoria um identificador de recurso, que antes não existia.
+
+**Só as publicações globais aparecem na lista**, porque a lista é a dos comunicados do sistema. Uma publicação direcionada a um perfil ou a poucas pessoas é uma mensagem para aquelas pessoas, e não um comunicado; quem precisa conferir o que foi publicado para quem tem a consulta da auditoria, que registra todas as publicações com o responsável e a quantidade alcançada.
 
 ### D11. Tempo real: gravar, confirmar, avisar, e a tela busca
 
@@ -200,6 +208,12 @@ O painel do cabeçalho já tem forma definida e só troca a origem dos dados. A 
 - **O botão "Cancelar"**: a seção 9.3 reserva "cancelar" à ação do domínio (cancelar reserva). O controle que sai do formulário é "Fechar", e o que volta da revisão é "Voltar".
 - **O texto "Comunicação interna" acima do título** e a seta de voltar ao lado da trilha: a trilha de navegação do layout já cumpre esse papel.
 - **O item "Configurações" da navegação**, que não existe no sistema.
+
+**Corrigido depois da primeira conferência do autor:**
+
+- **O indicador de etapas** usava `--spacing-7`, que não existe na escala fechada de espaçamentos: a marca da etapa ficava sem tamanho e o número aparecia num oval. Passou a usar `--spacing-8`.
+- **A escolha de usuários** saiu da lista de caixas de seleção para o componente de seleção de vários valores (D10).
+- **A tela de notificações** passou a abrir na lista das publicadas, com a criação alcançada a partir dela (D14).
 
 ## Risks / Trade-offs
 

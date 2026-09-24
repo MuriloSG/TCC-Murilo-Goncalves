@@ -10,7 +10,6 @@ from django import forms
 from accounts.models import Role, User
 from notices import catalog
 from notices.models import MESSAGE_MAX_LENGTH, TITLE_MAX_LENGTH, resolve_recipients
-from ui.forms import GroupedCheckboxSelectMultiple
 
 
 class UserChoiceField(forms.ModelMultipleChoiceField):
@@ -52,11 +51,12 @@ class NoticeForm(forms.Form):
         queryset=User.objects.filter(is_active=True).order_by('name'),
         required=False,
         help_text='Usado quando os destinatários são usuários específicos. Só usuários ativos aparecem aqui.',
-        widget=GroupedCheckboxSelectMultiple(
-            summary_label='usuários selecionados',
-            search_label='Buscar usuário',
-            empty_label='Nenhum usuário encontrado para a busca.',
-            show_values=False,
+        widget=forms.SelectMultiple(
+            attrs={
+                'data-select-none': 'Nenhum usuário escolhido',
+                'data-select-one': 'usuário escolhido',
+                'data-select-many': 'usuários escolhidos',
+            },
         ),
     )
 

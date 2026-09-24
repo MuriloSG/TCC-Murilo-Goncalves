@@ -1,3 +1,27 @@
+## ADDED Requirements
+
+### Requirement: Seleção de vários valores no componente de seleção
+O componente de seleção DEVE (MUST) aceitar a escolha de vários valores no mesmo campo, com o mesmo gatilho, o mesmo painel, a mesma busca e a mesma exibição de 10 opções por vez da escolha de um valor só. O gatilho DEVE (MUST) informar quantos valores estão escolhidos, e o componente DEVE (MUST) listar os valores escolhidos abaixo do campo, cada um com um controle que o retira, com o nome da ação no rótulo acessível. Escolher uma opção NÃO DEVE (MUST NOT) fechar o painel, e cada opção escolhida DEVE (MUST) ser marcada na lista por sinal visível, e não só pela cor. O campo enviado ao servidor DEVE (MUST) continuar sendo o `select` nativo com vários valores, com o mesmo nome e os mesmos valores que ele enviaria. Sem JavaScript, o campo DEVE (MUST) ser o `select` nativo de vários valores, com todas as opções e o mesmo envio. Os controles DEVEM (MUST) ter área de toque de pelo menos 44x44 px.
+
+#### Scenario: Escolha de vários valores
+- **GIVEN** o campo de usuários da publicação de notificações
+- **WHEN** o usuário abre a lista e escolhe dois usuários
+- **THEN** os dois aparecem marcados na lista, o painel continua aberto e o gatilho informa "2 usuários escolhidos"
+
+#### Scenario: Valores escolhidos abaixo do campo
+- **GIVEN** dois usuários escolhidos
+- **WHEN** o campo é exibido
+- **THEN** os dois aparecem abaixo dele, cada um com o controle que o retira, cujo rótulo acessível traz o nome do usuário
+
+#### Scenario: Retirar um valor escolhido
+- **GIVEN** dois usuários escolhidos
+- **WHEN** o usuário aciona o controle que retira o primeiro
+- **THEN** ele sai dos escolhidos, o gatilho informa "1 usuário escolhido" e o campo enviado fica só com o segundo
+
+#### Scenario: Campo de vários valores sem JavaScript
+- **WHEN** a mesma tela é aberta com o JavaScript desligado
+- **THEN** o campo é o `select` nativo de vários valores, com todas as opções, e o envio do formulário funciona igual
+
 ## MODIFIED Requirements
 
 ### Requirement: Layout base e navegação responsivos

@@ -18,6 +18,9 @@
     this.empty = root.querySelector("[data-select-empty]");
     this.more = root.querySelector("[data-select-more]");
     this.check = root.querySelector("[data-select-check]");
+    this.remove = root.querySelector("[data-select-remove]");
+    this.chips = root.querySelector("[data-select-chips]");
+    this.multiple = this.native.multiple;
     this.source = this.native.dataset.selectSource || "";
     this.options = [];
     this.shown = 0;
@@ -33,14 +36,63 @@
     });
   };
 
+  State.prototype.selectedOptions = function () {
+    return Array.prototype.filter.call(this.native.options, function (option) {
+      return option.selected && option.value !== "";
+    });
+  };
+
+  State.prototype.isChosen = function (value) {
+    return this.selectedOptions().some(function (option) {
+      return option.value === value;
+    });
+  };
+
   State.prototype.selectedLabel = function () {
-    var option = this.native.options[this.native.selectedIndex];
-    return option ? option.text : "";
+    var chosen = this.selectedOptions();
+    if (!this.multiple) {
+      var option = this.native.options[this.native.selectedIndex];
+      return option ? option.text : "";
+    }
+    var data = this.native.dataset;
+    if (!chosen.length) {
+      return data.selectNone || "";
+    }
+    if (chosen.length === 1) {
+      return "1 " + (data.selectOne || "");
+    }
+    return chosen.length + " " + (data.selectMany || "");
+  };
+
+  State.prototype.updateChips = function () {
+    var state = this;
+    if (!this.chips) {
+      return;
+    }
+    var chosen = this.selectedOptions();
+    this.chips.textContent = "";
+    this.chips.hidden = !chosen.length;
+    chosen.forEach(function (option) {
+      var chip = document.createElement("li");
+      chip.className = "select-chip";
+      var label = document.createElement("span");
+      label.textContent = option.text;
+      var button = document.createElement("button");
+      button.className = "select-chip-remove";
+      button.type = "button";
+      button.dataset.value = option.value;
+      button.setAttribute("aria-label", "Retirar " + option.text);
+      button.appendChild(state.remove.content.cloneNode(true));
+      chip.appendChild(label);
+      chip.appendChild(button);
+      state.chips.appendChild(chip);
+    });
   };
 
   State.prototype.updateTrigger = function () {
     this.trigger.querySelector("[data-select-value]").textContent = this.selectedLabel();
-    this.trigger.dataset.empty = this.native.value === "" ? "true" : "false";
+    this.trigger.dataset.empty = this.selectedOptions().length ? "false" : "true";
+    this.updateChips();
   };
 
   State.prototype.optionId = function (index) {
@@ -56,13 +108,13 @@
       item.className = "select-option";
       item.id = state.optionId(index);
       item.setAttribute("role", "option");
-      item.setAttribute("aria-selected", option.valor === state.native.value ? "true" : "false");
+      item.setAttribute("aria-selected", state.isChosen(option.valor) ? "true" : "false");
       item.dataset.value = option.valor;
       var label = document.createElement("span");
       label.textContent = option.rotulo;
       label.title = option.rotulo;
       item.appendChild(label);
-      if (option.valor === state.native.value) {
+      if (state.isChosen(option.valor)) {
         item.appendChild(state.check.content.cloneNode(true));
       }
       state.list.appendChild(item);
@@ -149,10 +201,41 @@
   };
 
   State.prototype.choose = function (value) {
-    this.native.value = value;
+    if (!this.multiple) {
+      this.native.value = value;
+      this.announce();
+      this.close(true);
+      return;
+    }
+    var option = Array.prototype.find.call(this.native.options, function (candidate) {
+      return candidate.value === value;
+    });
+    if (!option) {
+      option = new Option(this.options.find(function (candidate) {
+        return candidate.valor === value;
+      }).rotulo, value);
+      this.native.add(option);
+    }
+    option.selected = !option.selected;
+    this.announce();
+    this.render();
+  };
+
+  State.prototype.discard = function (value) {
+    Array.prototype.forEach.call(this.native.options, function (option) {
+      if (option.value === value) {
+        option.selected = false;
+      }
+    });
+    this.announce();
+    if (!this.panel.hidden) {
+      this.render();
+    }
+  };
+
+  State.prototype.announce = function () {
     this.native.dispatchEvent(new Event("change", { bubbles: true }));
     this.updateTrigger();
-    this.close(true);
   };
 
   function stateFor(element) {
@@ -194,6 +277,11 @@
       } else {
         state.close(true);
       }
+      return;
+    }
+    var chip = event.target.closest(".select-chip-remove");
+    if (chip) {
+      stateFor(chip).discard(chip.dataset.value);
       return;
     }
     var option = event.target.closest(".select-option");
@@ -239,7 +327,11 @@
       event.preventDefault();
       var item = state.list.querySelectorAll(".select-option")[state.active];
       if (item) {
+        var position = state.active;
         state.choose(item.dataset.value);
+        if (state.multiple) {
+          state.highlight(position);
+        }
       }
     } else if (event.key === "Escape") {
       event.preventDefault();

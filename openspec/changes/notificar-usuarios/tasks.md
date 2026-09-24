@@ -8,13 +8,13 @@
 
 ## 2. Persistência e mecanismo de notificações
 
-- [ ] 2.1 Criar o app `notices` e o `notices/catalog.py` com os tipos `COMUNICADO` e `PERFIL_ALTERADO`, com rótulo, ícone, tom e publicável manualmente (D1, D4)
-- [ ] 2.2 Criar o model da notificação e a migration de esquema, com destinatário, tipo, título, mensagem, destino, estado de leitura e data (D2, D3)
-- [ ] 2.3 Criar as operações do model: criar para um destinatário, publicar para um conjunto, marcar como lida, marcar todas como lidas e contar não lidas, cada uma numa transação (D2)
-- [ ] 2.4 Criar a resolução dos destinatários, com as três formas de destinar e a elegibilidade pela situação do usuário (D6)
-- [ ] 2.5 Recusar tipo fora do catálogo e publicação sem destinatários, com `ValidationError` (D4)
-- [ ] 2.6 Testar a entrega por destinatário, a leitura individual, a elegibilidade, a recusa por tipo e por conjunto vazio, a transação desfeita e a notificação continuando disponível depois de sair, entrar e reiniciar a aplicação
-- [ ] 2.7 Commit
+- [x] 2.1 Criar o app `notices` e o `notices/catalog.py` com os tipos `COMUNICADO` e `PERFIL_ALTERADO`, com rótulo, ícone, tom e publicável manualmente (D1, D4)
+- [x] 2.2 Criar o model da notificação e a migration de esquema, com destinatário, tipo, título, mensagem, destino, estado de leitura e data (D2, D3)
+- [x] 2.3 Criar as operações do model: criar para um destinatário, publicar para um conjunto, marcar como lida, marcar todas como lidas e contar não lidas, cada uma numa transação (D2)
+- [x] 2.4 Criar a resolução dos destinatários, com as três formas de destinar e a elegibilidade pela situação do usuário (D6)
+- [x] 2.5 Recusar tipo fora do catálogo e publicação sem destinatários, com `ValidationError` (D4)
+- [x] 2.6 Testar a entrega por destinatário, a leitura individual, a elegibilidade, a recusa por tipo e por conjunto vazio, a transação desfeita e a notificação continuando disponível depois de sair, entrar e reiniciar a aplicação
+- [x] 2.7 Commit
 
 ## 3. Permissão e auditoria
 

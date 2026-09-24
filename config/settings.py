@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'outbox',
     'imports',
     'audit',
+    'notices',
     'allauth',
     'allauth.account',
 ]

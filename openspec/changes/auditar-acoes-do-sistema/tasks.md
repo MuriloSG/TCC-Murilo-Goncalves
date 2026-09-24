@@ -46,7 +46,7 @@
 
 ## 6. Documentação e verificação
 
-- [ ] 6.1 Documentar a auditoria no `README.md`: o que é registrado, quem consulta e a permissão nova
-- [ ] 6.2 Conferir a tela de auditoria no navegador, no banco `visual_check`, em 360 e 1280 px, com e sem JavaScript
-- [ ] 6.3 Validar a Change com `openspec validate auditar-acoes-do-sistema --strict`
-- [ ] 6.4 Commit
+- [x] 6.1 Documentar a auditoria no `README.md`: o que é registrado, quem consulta e a permissão nova
+- [x] 6.2 Conferir a tela de auditoria no navegador, no banco `visual_check`, em 360 e 1280 px, com e sem JavaScript
+- [x] 6.3 Validar a Change com `openspec validate auditar-acoes-do-sistema --strict`
+- [x] 6.4 Commit

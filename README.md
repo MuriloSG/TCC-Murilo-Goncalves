@@ -54,6 +54,16 @@ A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capaci
 - Só o superadmin acessa **Perfis**, onde cria perfis personalizados e define as permissões de cada um. Um perfil novo não concede nenhuma permissão até que ele as escolha.
 - **Depois de cada módulo novo**, o superadmin deve revisar os perfis personalizados: as permissões novas chegam apenas aos perfis do sistema, conforme a configuração padrão do módulo.
 
+## Auditoria
+
+O sistema registra as ações numa tabela única, do login ao encerramento da sessão. Cada registro guarda quem fez, o que fez, sobre qual módulo e registro, quando, de onde (interface, sistema ou importação), o endereço IP e o cliente. Alterações de dados guardam também os valores anteriores e posteriores dos campos que mudaram. Senhas e tokens nunca são gravados.
+
+São auditados: entrada, entrada recusada e saída; solicitação de recuperação e redefinição de senha; acesso às telas de usuários, perfis, importações e auditoria; cadastro, alteração, troca de perfil, desativação e reativação de usuário; criação, alteração, mudança de permissões e exclusão de perfil; prévia, confirmação e descarte de importações; download do modelo de planilha; e as ações automáticas do `worker`, como o envio de cada e-mail.
+
+Quem tem a permissão `AUDITORIA.VISUALIZAR` consulta os registros em **Auditoria**, com filtros por usuário, ação, módulo, identificador do registro, período e origem, do mais recente para o mais antigo. O perfil `ADMINISTRADOR` recebe essa permissão pela migration, e o superadmin pode concedê-la a outros perfis.
+
+Os registros são somente de inclusão: a aplicação recusa qualquer alteração ou exclusão, e não existe tela, rota ou comando que os modifique.
+
 ## Comandos
 
 | Comando | Equivalente Docker Compose | O que faz |
@@ -200,6 +210,7 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 ├── ui/                # layouts, componentes, tokens, ícones e regras de texto e visual
 ├── outbox/            # envio dos e-mails disparados pelo sistema, pelo worker
 ├── imports/           # motor de importação de planilhas CSV
+├── audit/             # registro centralizado das ações e consulta da auditoria
 ├── openspec/          # Constitution, convenções, specs e changes do OpenSpec
 └── sources/           # texto do TCC
 ```

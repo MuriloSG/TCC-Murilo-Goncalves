@@ -78,7 +78,17 @@ FIELD_LABELS = {
     'code': 'Código',
     'description': 'Descrição',
     'permissions': 'Permissões',
-    'file_name': 'Arquivo',
+    'superadmin': 'Superadmin',
+    'arquivo': 'Arquivo',
+    'linhas': 'Linhas',
+    'situacao': 'Situação',
+    'cadastrados': 'Cadastrados',
+    'atualizados': 'Atualizados',
+    'sem_alteracao': 'Sem alteração',
+    'rota': 'Rota',
+    'caminho': 'Caminho',
+    'tipo': 'Tipo',
+    'referencia': 'Referência',
 }
 
 

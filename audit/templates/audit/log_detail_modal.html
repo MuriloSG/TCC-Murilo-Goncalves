@@ -9,25 +9,28 @@
 
 {% block body %}
   <dl class="record-list">
-    <div><dt>Usuário</dt><dd>{{ entry.user.name|default:"Sistema" }}{% if entry.user %} <span>{{ entry.user.email }}</span>{% endif %}</dd></div>
+    <div><dt>Usuário</dt><dd>{{ entry.user.name|default:"Sistema" }}{% if entry.user %} <span class="record-technical">{{ entry.user.email }}</span>{% endif %}</dd></div>
     <div><dt>Ação</dt><dd>{{ entry.action_label }}</dd></div>
     <div><dt>Módulo</dt><dd>{{ entry.resource_label }}</dd></div>
     <div><dt>Identificador do registro</dt><dd>{{ entry.resource_id|default:"Sem identificador" }}</dd></div>
     <div><dt>Data e hora</dt><dd>{{ entry.created_at|date:"DATETIME_FORMAT" }}</dd></div>
     <div><dt>Origem</dt><dd>{{ entry.origin_label }}</dd></div>
     <div><dt>Endereço IP</dt><dd>{{ entry.ip_address|default:"Não informado" }}</dd></div>
-    <div><dt>Cliente</dt><dd>{{ entry.user_agent|default:"Não informado" }}</dd></div>
     {% if entry.changes %}
-      <div>
+      <div class="record-wide">
         <dt>Valores alterados</dt>
         <dd>{% for change in entry.changes %}<span>{{ change.label }}: {{ change.before }} → {{ change.after }}</span>{% endfor %}</dd>
       </div>
     {% endif %}
     {% if entry.details %}
-      <div>
+      <div class="record-wide">
         <dt>Informações adicionais</dt>
         <dd>{% for detail in entry.details %}<span>{{ detail.label }}: {{ detail.value }}</span>{% endfor %}</dd>
       </div>
     {% endif %}
+    <div class="record-wide">
+      <dt>Cliente</dt>
+      <dd class="record-technical">{{ entry.user_agent|default:"Não informado" }}</dd>
+    </div>
   </dl>
 {% endblock %}

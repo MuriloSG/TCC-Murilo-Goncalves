@@ -156,7 +156,7 @@ class DetailTests(AuditQueryTestCase):
         self.assertContains(response, 'Alteração')
         self.assertContains(response, 'Usuários')
         self.assertContains(response, 'Nome: Docente → Docente Silva')
-        self.assertContains(response, 'rota: user_update')
+        self.assertContains(response, 'Rota: user_update')
         self.assertContains(response, str(self.plain.pk))
 
     def test_detail_opens_as_a_modal_with_htmx(self):

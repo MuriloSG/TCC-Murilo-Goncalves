@@ -919,8 +919,18 @@
     display: grid;
     gap: var(--spacing-4);
 
+    @variant sm {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--spacing-6);
+
+      & > .record-wide {
+        grid-column: 1 / -1;
+      }
+    }
+
     & > div {
       display: grid;
+      align-content: start;
       gap: var(--spacing-1);
       min-width: 0;
     }
@@ -938,6 +948,12 @@
 
     & dd > span {
       display: block;
+    }
+
+    & .record-technical {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      line-height: var(--text-sm--line-height);
     }
   }
 

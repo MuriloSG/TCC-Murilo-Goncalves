@@ -308,7 +308,8 @@ class ContinuityGuardTests(ContinuityTestCase):
                 RolePermission.objects.filter(role=self.administrator).delete()
         self.assertEqual(
             set(self.administrator.permissions.values_list('code', flat=True)),
-            permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT, permissions.AUDIT_VIEW},
+            permissions.ADMINISTRATIVE_CAPABILITY
+            | {permissions.USER_IMPORT, permissions.AUDIT_VIEW, permissions.NOTICE_PUBLISH},
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 

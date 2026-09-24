@@ -16,6 +16,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
+from audit import catalog as audit_catalog
+from audit.models import AuditLog
 from notices import catalog
 
 TITLE_MAX_LENGTH = 120
@@ -36,6 +38,14 @@ class UnknownDestination(ValidationError):
         super().__init__(
             {'destination': f'Forma de destinar fora do catálogo: {code}.'},
             code='unknown_destination',
+        )
+
+
+class NotPublishedManually(ValidationError):
+    def __init__(self, code):
+        super().__init__(
+            {'type': f'Este tipo de notificação não é publicado manualmente: {code}.'},
+            code='not_manual',
         )
 
 
@@ -127,6 +137,37 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
                 for person in people
             )
         return len(people)
+
+    def publish_manually(self, notice_type, title, message, destination, role=None, users=()):
+        """Publica um comunicado e registra a publicação na auditoria (D7, D9).
+
+        Os destinatários são resolvidos aqui, no momento da publicação, e não na
+        revisão: a quantidade registrada é a do conjunto alcançado agora. A
+        publicação inteira, as notificações e o registro da auditoria ficam na
+        mesma transação, e um único registro descreve a publicação, com a
+        quantidade de destinatários, em vez de um registro por destinatário.
+        """
+        validate_type(notice_type)
+        if not catalog.TYPES[notice_type]['manual']:
+            raise NotPublishedManually(notice_type)
+        with transaction.atomic(using=self.db):
+            reached = self.publish(
+                notice_type,
+                title,
+                message,
+                resolve_recipients(destination, role=role, users=users),
+            )
+            AuditLog.objects.record(
+                audit_catalog.PUBLISH,
+                audit_catalog.NOTICE,
+                metadata={
+                    'titulo': (title or '').strip(),
+                    'tipo': notice_type,
+                    'destino': destination,
+                    'destinatarios': reached,
+                },
+            )
+        return reached
 
     def unread_count(self, user):
         return self.for_user(user).unread().count()

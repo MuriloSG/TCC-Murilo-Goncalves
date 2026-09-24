@@ -18,11 +18,11 @@
 
 ## 3. Permissão e auditoria
 
-- [ ] 3.1 Acrescentar `NOTIFICACAO.PUBLICAR` ao `accounts/permissions.py` e a migration de dados que a concede ao perfil `ADMINISTRADOR` sem alterar os demais perfis
-- [ ] 3.2 Acrescentar a ação `PUBLICAR` e o módulo `NOTIFICACAO` ao `audit/catalog.py`, sem migration de esquema (D9)
-- [ ] 3.3 Registrar a publicação na auditoria, com o título, o tipo, a forma de destinar e a quantidade de destinatários alcançados, num único registro (D9)
-- [ ] 3.4 Testar o catálogo de permissões instalado, a migration sobre instalação existente, o registro da publicação e a ausência de registro na marcação de leitura e nas notificações de evento
-- [ ] 3.5 Commit
+- [x] 3.1 Acrescentar `NOTIFICACAO.PUBLICAR` ao `accounts/permissions.py` e a migration de dados que a concede ao perfil `ADMINISTRADOR` sem alterar os demais perfis
+- [x] 3.2 Acrescentar a ação `PUBLICAR` e o módulo `NOTIFICACAO` ao `audit/catalog.py`, sem migration de esquema (D9)
+- [x] 3.3 Registrar a publicação na auditoria, com o título, o tipo, a forma de destinar e a quantidade de destinatários alcançados, num único registro (D9)
+- [x] 3.4 Testar o catálogo de permissões instalado, a migration sobre instalação existente, o registro da publicação e a ausência de registro na marcação de leitura e nas notificações de evento
+- [x] 3.5 Commit
 
 ## 4. Publicação manual
 

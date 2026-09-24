@@ -23,6 +23,7 @@ DEACTIVATE = 'DESATIVAR'
 IMPORT = 'IMPORTAR'
 DISCARD = 'DESCARTAR'
 EXPORT = 'EXPORTAR'
+PUBLISH = 'PUBLICAR'
 SEND = 'ENVIAR'
 FAIL = 'FALHAR'
 
@@ -41,6 +42,7 @@ ACTION_LABELS = {
     IMPORT: 'Importação',
     DISCARD: 'Descarte',
     EXPORT: 'Exportação',
+    PUBLISH: 'Publicação',
     SEND: 'Envio',
     FAIL: 'Falha no envio',
 }
@@ -51,6 +53,7 @@ ROLE = 'PERFIL'
 USER_IMPORT = 'IMPORTACAO_USUARIO'
 EMAIL = 'EMAIL'
 AUDIT = 'AUDITORIA'
+NOTICE = 'NOTIFICACAO'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -59,6 +62,7 @@ RESOURCE_LABELS = {
     USER_IMPORT: 'Importações de usuários',
     EMAIL: 'E-mails',
     AUDIT: 'Auditoria',
+    NOTICE: 'Notificações',
 }
 
 INTERFACE = 'INTERFACE'
@@ -89,6 +93,9 @@ FIELD_LABELS = {
     'caminho': 'Caminho',
     'tipo': 'Tipo',
     'referencia': 'Referência',
+    'titulo': 'Título',
+    'destino': 'Destino',
+    'destinatarios': 'Destinatários',
 }
 
 

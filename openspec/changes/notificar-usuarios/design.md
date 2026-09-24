@@ -52,18 +52,31 @@ O preço é o espaço e o tempo de gravar N linhas numa publicação. Com a esca
 
 Copiar o texto também resolve o objeto relacionado que deixa de existir: a notificação continua legível, porque descreve o fato do momento em que ele aconteceu, e não busca o objeto para se montar.
 
-### D3. A biblioteca cuida da persistência, e a spec não depende da API dela
+### D3. Model próprio, porque a biblioteca não roda neste ambiente
 
-O autor pretende usar a `django-notifications-hq` como persistência e gerenciamento das notificações. Ela não está instalada, então nada neste projeto depende hoje da API dela, e a spec `notificacoes` descreve só o comportamento esperado do sistema: tipos do catálogo, destinatários, uma notificação por destinatário, leitura individual, publicação com revisão e eventos declarados pelo app dono.
+**Verificação feita em 24/09/2026, no container do projeto (Python 3.13.15, Django 5.2.17):**
+
+- a última versão publicada da `django-notifications-hq` é a **1.8.3, de outubro de 2023**, e declara suporte até o **Django 4.1**;
+- instalada no container, ela falha já no `import`, com `ModuleNotFoundError: No module named 'distutils'`, porque o `notifications/base/models.py` usa `distutils.version.StrictVersion` e o `distutils` saiu do Python 3.12;
+- mesmo com isso resolvido, o `Meta.index_together` do model abstrato e a operação `AlterIndexTogether` da migration `0008` foram removidos no Django 5.1;
+- ela ainda traz `jsonfield` e `pytz`, desnecessárias desde que o Django tem `JSONField` nativo (3.1) e suporte a fuso próprio (4.0).
+
+**Decisão: a opção 2, o model próprio no `notices`**, com os campos da spec. Usar a biblioteca exigiria um fork mantido pelo projeto ou baixar o Python e o Django, o que contraria P1 da Constitution e o ambiente já especificado. A spec `notificacoes` foi escrita sem depender da API de biblioteca nenhuma, então nenhum requisito muda por causa desta decisão, e é por isso que ela coube na implementação.
+
+O texto abaixo fica registrado como a avaliação que levou à decisão.
+
+### D3.1. A persistência não depende da API de uma biblioteca
+
+A intenção inicial era usar a `django-notifications-hq` como persistência e gerenciamento das notificações. Nada neste projeto depende da API dela, e a spec `notificacoes` descreve só o comportamento esperado do sistema: tipos do catálogo, destinatários, uma notificação por destinatário, leitura individual, publicação com revisão e eventos declarados pelo app dono.
 
 **A biblioteca não resolve o tempo real.** Ela grava e gerencia notificações; a atualização do sino sem recarregar é outra camada, tratada em D11, e nenhuma decisão sobre a biblioteca dispensa essa infraestrutura. Versões dela chegaram a oferecer endpoints de consulta para o navegador buscar a contagem de tempos em tempos, o que é sondagem, e não entrega imediata. De todo modo, rota da biblioteca não é exposta aqui.
 
-Na implementação, duas saídas atendem à spec:
+Duas saídas atendiam à spec:
 
 1. **Adotar a biblioteca como persistência**, adaptando-a: o app `notices` expõe as operações do projeto (criar, publicar, marcar como lida, contar não lidas) e a biblioteca fica atrás delas. Nesse caso, DEVEM valer: nenhuma rota, view, template, API nem comando da biblioteca é exposto; o vocabulário dela (`verb`, `level`, `actor`, `target`) fica dentro do app, e o que aparece na interface é o catálogo de tipos do projeto, em português; a versão instalada é fixada no `requirements.txt`; e o que a biblioteca não oferecer (a resolução de destinatários, a revisão, a contagem de alcançados para a auditoria) é do projeto.
 2. **Model próprio no `notices`**, com os campos da spec.
 
-Recomendação: verificar, ao implementar, a versão compatível com o Django 5.2, o que ela exige de `INSTALLED_APPS` e de migrations, como ela trata o destinatário e o estado de leitura e se ela convive com o servidor ASGI escolhido em D11; se a adaptação couber sem expor a API dela e sem trazer rotas e telas próprias, adotar a opção 1; caso contrário, a opção 2, que atende à mesma spec. A decisão não muda nenhum requisito, e é por isso que ela pode ficar para a implementação.
+A verificação acima eliminou a opção 1, e o projeto segue com a opção 2.
 
 Nas duas saídas vale a Constitution: acesso ao banco pelo ORM (P3), mudanças por migrations (P3) e regras de negócio no model (P2, seção 5 das convenções).
 
@@ -132,7 +145,7 @@ Três decisões seguram essa ordem:
 2. **O evento não carrega a notificação.** Ele diz apenas que as notificações daquele usuário mudaram. A interface então pede ao servidor o fragmento do sino, numa requisição autenticada comum, e mostra o que vier. Assim a autorização continua num único ponto, o navegador nunca fica com um conteúdo que o servidor não confirmou, e a reconexão é resolvida pelo mesmo caminho, sem fila de eventos perdidos nem numeração de mensagens.
 3. **Um destino por usuário.** O evento vai para o destinatário, e a separação é do servidor: cada sessão autenticada escuta só o destino do próprio usuário, e o servidor nunca manda para um destino coletivo do qual o navegador teria de filtrar o que é seu.
 
-**Tecnologia.** A escolha fica no design da implementação, e o que a spec exige dela é: alcançar só o destinatário, atualizar dentro do limite configurado e subir pelo mesmo `docker compose up`. As saídas consideradas:
+**Tecnologia: WebSocket com Django Channels**, decidido com o autor em 24/09/2026. O que a spec exige do canal é alcançar só o destinatário, atualizar dentro do limite configurado e subir pelo mesmo `docker compose up`. As saídas consideradas:
 
 | Saída | O que exige | Observação |
 |---|---|---|
@@ -140,7 +153,7 @@ Três decisões seguram essa ordem:
 | **Eventos enviados pelo servidor (SSE)** | servidor ASGI e uma forma de acordar a conexão quando houver aviso | protocolo mais simples, de mão única, que é o que o sino precisa; menos peças que o WebSocket |
 | **Sondagem pelo htmx** | nada de novo | não é entrega imediata: o atraso é o intervalo escolhido, e cada usuário conectado gera requisições o tempo todo |
 
-Recomendação: **WebSocket com Channels**, que é a intenção do autor e a saída com entrega imediata de verdade, servindo HTTP e WebSocket pelo mesmo container `web` em ASGI, com o destino por usuário e a camada de canal configurada por variável de ambiente. A sondagem pelo htmx fica registrada como o caminho de contingência se a infraestrutura de canal não puder ser mantida na hospedagem: ela atende ao requisito de não recarregar a página, com atraso, e nenhuma outra parte da Change muda, porque o que a interface faz ao ser avisada é sempre pedir o fragmento ao servidor.
+O escolhido foi o **WebSocket com Channels**, a saída com entrega imediata de verdade, servindo HTTP e WebSocket pelo mesmo container `web` em ASGI, com o destino por usuário e a camada de canal configurada por variável de ambiente. A sondagem pelo htmx fica registrada como o caminho de contingência se a infraestrutura de canal não puder ser mantida na hospedagem: ela atende ao requisito de não recarregar a página, com atraso, e nenhuma outra parte da Change muda, porque o que a interface faz ao ser avisada é sempre pedir o fragmento ao servidor.
 
 **Melhoria progressiva.** Sem JavaScript não há canal, e o sino continua correto a cada renderização da página, como o resto do projeto faz com o componente de seleção e os modais. O tempo real é a camada de cima, e nunca a condição para a funcionalidade existir.
 
@@ -185,6 +198,4 @@ Não há dado a migrar: nenhuma notificação existe hoje.
 
 ## Open Questions
 
-- Adotar a `django-notifications-hq` como persistência ou usar um model próprio (D3). Decisão da implementação, depois de verificar a versão compatível com o Django 5.2 e a convivência dela com o servidor ASGI.
-- Tecnologia do canal de tempo real e a camada de mensagens que ele exigir (D11). Decisão da implementação, com o WebSocket por Channels como recomendação e a sondagem pelo htmx como contingência.
 - Referência visual da tela de publicação e da página de notificações (D13).

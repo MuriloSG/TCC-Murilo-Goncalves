@@ -55,7 +55,7 @@ Esta Change depende da Change `selecionar-opcoes-com-busca`, que cria o componen
 - **`audit`:** a ação `PUBLICAR` e o módulo `NOTIFICACAO` no catálogo, sem migration de esquema.
 - **Tempo real:** o canal, a rota do fragmento do sino consultado depois do evento e a configuração do limite de tempo; o `ui` passa a ouvir o canal e a reconciliar na reconexão.
 - **Ambiente:** o `compose.yaml`, o `Dockerfile` e o `Makefile` acompanham o servidor e os serviços que o canal exigir.
-- **Dependências novas, a acrescentar na implementação:** `django-notifications-hq`, hoje não instalada, para a persistência das notificações (D3), e a infraestrutura de tempo real, que a biblioteca não oferece (D11). Nenhuma delas é instalada nesta etapa. A spec descreve o comportamento esperado do sistema, e não a API de nenhuma biblioteca.
+- **Dependências novas:** as do canal de tempo real (D11). A persistência fica num model do próprio projeto: a `django-notifications-hq` foi verificada e não roda com o Python 3.13 e o Django 5.2 deste ambiente (D3). A spec descreve o comportamento esperado do sistema, e não a API de nenhuma biblioteca.
 
 ## Alinhamento com o TCC
 

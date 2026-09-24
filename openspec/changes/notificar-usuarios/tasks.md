@@ -1,15 +1,15 @@
 ## 1. Referência visual e decisões de tecnologia
 
 - [ ] 1.1 Receber do autor a imagem de referência da tela de publicação e da página de notificações (D13)
-- [ ] 1.2 Verificar a versão da `django-notifications-hq` compatível com o Django 5.2, o que ela exige de `INSTALLED_APPS` e de migrations, como ela trata destinatário e leitura e se ela convive com o servidor ASGI (D3)
-- [ ] 1.3 Decidir entre adotar a biblioteca como persistência e usar model próprio, e registrar a decisão no `design.md` (D3)
-- [ ] 1.4 Decidir a tecnologia do canal de tempo real e a camada de mensagens, com o WebSocket por Channels como recomendação, e registrar a decisão no `design.md` (D11)
+- [x] 1.2 Verificar a versão da `django-notifications-hq` compatível com o Django 5.2, o que ela exige de `INSTALLED_APPS` e de migrations, como ela trata destinatário e leitura e se ela convive com o servidor ASGI (D3)
+- [x] 1.3 Decidir entre adotar a biblioteca como persistência e usar model próprio, e registrar a decisão no `design.md` (D3)
+- [x] 1.4 Decidir a tecnologia do canal de tempo real e a camada de mensagens, com o WebSocket por Channels como recomendação, e registrar a decisão no `design.md` (D11)
 - [ ] 1.5 Registrar no `design.md` o que foi adaptado e o que foi retirado da referência visual (seção 9.8 das convenções)
 
 ## 2. Persistência e mecanismo de notificações
 
 - [ ] 2.1 Criar o app `notices` e o `notices/catalog.py` com os tipos `COMUNICADO` e `PERFIL_ALTERADO`, com rótulo, ícone, tom e publicável manualmente (D1, D4)
-- [ ] 2.2 Criar o model da notificação e a migration de esquema, com destinatário, tipo, título, mensagem, destino, estado de leitura e data, e acrescentar a dependência escolhida ao `requirements.txt` (D2, D3)
+- [ ] 2.2 Criar o model da notificação e a migration de esquema, com destinatário, tipo, título, mensagem, destino, estado de leitura e data (D2, D3)
 - [ ] 2.3 Criar as operações do model: criar para um destinatário, publicar para um conjunto, marcar como lida, marcar todas como lidas e contar não lidas, cada uma numa transação (D2)
 - [ ] 2.4 Criar a resolução dos destinatários, com as três formas de destinar e a elegibilidade pela situação do usuário (D6)
 - [ ] 2.5 Recusar tipo fora do catálogo e publicação sem destinatários, com `ValidationError` (D4)

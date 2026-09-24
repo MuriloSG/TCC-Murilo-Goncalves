@@ -77,9 +77,26 @@ O gatilho é um `button` com `role="combobox"`, `aria-expanded`, `aria-controls`
 - `app.css`: as classes do componente, na camada de componentes.
 - `ui/forms/field.html`: passa a incluir o componente no lugar do `.select-wrap`.
 
-### D9. Visual
+### D9. Visual, a partir da referência do autor
 
-O desenho da lista vem da referência que o autor vai enviar, adaptada aos tokens e componentes do app `ui`, conforme a seção 9.8. Até lá valem as regras já em vigor: superfície, borda e sombra do menu suspenso, foco visível, transição curta de abrir e fechar, e nenhuma cor fora dos tokens. O que for adaptado e o que for retirado da referência entra nesta seção.
+A referência enviada mostra um select pesquisável em cinza claro: gatilho retangular com borda fina e canto arredondado, com o texto de espera à esquerda e a seta à direita; o painel logo abaixo, separado por um espaço, com a mesma largura, borda, canto arredondado e sombra; a busca no topo do painel, com a lupa à esquerda e uma divisória abaixo dela; e as opções em texto simples, sem ícone, com espaçamento generoso entre elas.
+
+O que foi adaptado:
+
+- o gatilho reaproveita a altura, a borda, o raio e o preenchimento dos campos do projeto (`.input`), para ficar igual aos demais controles do formulário;
+- o painel usa a superfície, a borda, o raio e a sombra do menu suspenso (`.menu-list`), que já é a camada flutuante do projeto;
+- a busca usa o ícone `search` do Lucide e a mesma normalização sem acentos da seleção de permissões;
+- as opções ficam com pelo menos 44 px de altura, pela regra de alvo de toque, e ganham realce no foco do teclado e no ponteiro;
+- o espaçamento entre gatilho e painel é o mesmo do menu suspenso.
+
+O que foi retirado ou trocado:
+
+- o cinza claro da referência dá lugar aos tokens do projeto, e o foco visível verde entra sobre o gatilho, a busca e a opção em destaque;
+- a sombra grande e difusa da referência vira `--shadow-overlay`, a mesma do modal e do menu (a seção 9.6 proíbe sombra grande e difusa);
+- "Pesquisar..." vira "Buscar", porque a seção 9.2 proíbe reticências;
+- o texto de espera é o do próprio campo ("Selecione o perfil", "Todos os usuários"), e não um exemplo;
+- a opção escolhida ganha marca com o ícone `check`, além do realce, porque estado não pode ser indicado só pela cor (seção 9.7);
+- o estado vazio da busca e o controle "Mostrar mais", que a referência não mostra, entram conforme D3 e D4.
 
 ## Risks / Trade-offs
 

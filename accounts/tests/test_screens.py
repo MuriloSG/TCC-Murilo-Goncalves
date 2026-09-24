@@ -121,9 +121,9 @@ class FormScreenTests(ScreensTestCase):
     def test_campo_opcional(self):
         response = self.client.get('/perfis/novo/')
         self.assertContains(
-            response, '<label for="id_description">Descrição <span class="optional">(opcional)</span></label>', html=True,
+            response, '<label id="id_description_rotulo" for="id_description">Descrição <span class="optional">(opcional)</span></label>', html=True,
         )
-        self.assertContains(response, '<label for="id_name">Nome</label>', html=True)
+        self.assertContains(response, '<label id="id_name_rotulo" for="id_name">Nome</label>', html=True)
 
     def test_ajuda_associada_ao_campo(self):
         response = self.client.get('/perfis/novo/')
@@ -152,9 +152,13 @@ class FormScreenTests(ScreensTestCase):
         self.assertIn('<p class="checklist-unsaved" data-checklist-unsaved hidden>', content)
         self.assertRegex(content, r'<span data-checklist-selected>0</span> de 7</strong>')
 
-    def test_selecao_com_icone(self):
-        response = self.client.get('/usuarios/novo/')
-        self.assertRegex(response.content.decode(), r'<div class="select-wrap"><select name="role"')
+    def test_campo_de_escolha_usa_o_componente(self):
+        content = self.client.get('/usuarios/novo/').content.decode()
+        self.assertRegex(content, r'<div class="select" data-select>')
+        self.assertRegex(content, r'<div class="select-native select-wrap"><select name="role"')
+        self.assertIn('data-select-trigger', content)
+        self.assertIn('data-select-search', content)
+        self.assertIn('role="listbox"', content)
 
 
 class RoleScreenTests(ScreensTestCase):

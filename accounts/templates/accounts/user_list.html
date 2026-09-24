@@ -35,9 +35,9 @@
           <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar por nome ou e-mail</label>
           {% icon "search" %}{{ filters.busca }}
         </div>
-        <div class="select-wrap">
-          <label class="sr-only" for="{{ filters.situacao.id_for_label }}">Situação</label>
-          {{ filters.situacao }}{% icon "chevron-down" %}
+        <div>
+          <label class="sr-only" id="{{ filters.situacao.auto_id }}_rotulo" for="{{ filters.situacao.id_for_label }}">Situação</label>
+          {% include "ui/components/select.html" with field=filters.situacao %}
         </div>
         <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Buscar</button></noscript>
       </form>

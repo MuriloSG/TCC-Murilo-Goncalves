@@ -12,11 +12,11 @@
   </div>
 {% else %}
   <div class="field">
-    <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</label>
+    <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</label>
     {% if icon %}
       <div class="control">{% icon icon %}{{ field }}</div>
     {% elif field.widget_type == "select" %}
-      <div class="select-wrap">{{ field }}{% icon "chevron-down" %}</div>
+      {% include "ui/components/select.html" %}
     {% else %}
       {{ field }}
     {% endif %}

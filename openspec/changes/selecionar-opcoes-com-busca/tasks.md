@@ -1,18 +1,18 @@
 ## 1. Referência visual
 
-- [ ] 1.1 Receber do autor a imagem de referência da lista suspensa (D9)
-- [ ] 1.2 Registrar no `design.md` o que foi adaptado e o que foi retirado da referência (seção 9.8 das convenções)
+- [x] 1.1 Receber do autor a imagem de referência da lista suspensa (D9)
+- [x] 1.2 Registrar no `design.md` o que foi adaptado e o que foi retirado da referência (seção 9.8 das convenções)
 
 ## 2. Componente
 
-- [ ] 2.1 Criar `ui/templates/ui/components/select.html`, com o `select` nativo, o gatilho, a busca, a lista e o estado vazio (D1, D2)
-- [ ] 2.2 Criar as classes do componente no `app.css`, com a lista ancorada ao campo e o foco visível (D2, D9)
-- [ ] 2.3 Criar `ui/static/ui/js/select.js`: abrir e fechar, escolher, sincronizar o `select` nativo e religar depois das trocas do htmx (D1)
-- [ ] 2.4 Implementar a busca sem acentos e a exibição de 10 em 10, com "Mostrar mais" e o carregamento ao rolar (D3, D4)
-- [ ] 2.5 Implementar o teclado e o ARIA do padrão combobox (D7)
-- [ ] 2.6 Passar o `ui/forms/field.html` a usar o componente no lugar do `.select-wrap` (D8)
-- [ ] 2.7 Testar a renderização do componente, o campo sem JavaScript e as regras de classe e de texto
-- [ ] 2.8 Commit
+- [x] 2.1 Criar `ui/templates/ui/components/select.html`, com o `select` nativo, o gatilho, a busca, a lista e o estado vazio (D1, D2)
+- [x] 2.2 Criar as classes do componente no `app.css`, com a lista ancorada ao campo e o foco visível (D2, D9)
+- [x] 2.3 Criar `ui/static/ui/js/select.js`: abrir e fechar, escolher, sincronizar o `select` nativo e religar depois das trocas do htmx (D1)
+- [x] 2.4 Implementar a busca sem acentos e a exibição de 10 em 10, com "Mostrar mais" e o carregamento ao rolar (D3, D4)
+- [x] 2.5 Implementar o teclado e o ARIA do padrão combobox (D7)
+- [x] 2.6 Passar o `ui/forms/field.html` a usar o componente no lugar do `.select-wrap` (D8)
+- [x] 2.7 Testar a renderização do componente, o campo sem JavaScript e as regras de classe e de texto
+- [x] 2.8 Commit
 
 ## 3. Fonte paginada no servidor
 

@@ -205,7 +205,7 @@ class AuthLayoutTests(LayoutTestCase):
 
     def test_campos_do_login_com_icone(self):
         response = self.client.get('/contas/login/')
-        self.assertContains(response, '<label for="id_login">E-mail institucional</label>', html=True)
+        self.assertContains(response, '<label id="id_login_rotulo" for="id_login">E-mail institucional</label>', html=True)
         self.assertContains(response, 'name="login" autocomplete="email" placeholder=""')
         self.assertEqual(response.content.decode().count('<div class="control">'), 2)
         self.assertContains(response, 'Para obter acesso, procure um administrador do sistema.')

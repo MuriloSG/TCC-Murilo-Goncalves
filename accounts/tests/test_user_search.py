@@ -105,7 +105,7 @@ class ListSearchViewTests(SearchTestCase):
         self.assertRegex(content, r'<input type="search" name="busca" value="ana"')
         self.assertIn('<option value="inativos" selected>Inativos</option>', content)
         self.assertIn('<label class="sr-only" for="id_busca">Buscar por nome ou e-mail</label>', content)
-        self.assertIn('<label class="sr-only" for="id_situacao">Situação</label>', content)
+        self.assertIn('<label class="sr-only" id="id_situacao_rotulo" for="id_situacao">Situação</label>', content)
         self.assertRegex(content, r'(?s)<noscript><button class="btn-secondary" type="submit">.*Buscar</button></noscript>')
 
     def test_atualizacao_pelo_htmx_responde_so_a_tabela(self):

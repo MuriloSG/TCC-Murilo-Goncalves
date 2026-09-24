@@ -47,7 +47,7 @@ class AuthenticationMessagesTests(TestCase):
         self.assertContains(response, INVALID_EMAIL)
         response = self.client.post('/contas/senha/recuperar/', {'email': 'ana'})
         self.assertContains(response, INVALID_EMAIL)
-        self.assertContains(response, '<label for="id_email">E-mail</label>', html=True)
+        self.assertContains(response, '<label id="id_email_rotulo" for="id_email">E-mail</label>', html=True)
 
 
 class PasswordResetTextTests(TestCase):

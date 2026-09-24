@@ -25,31 +25,31 @@
     </div>
     <form class="filter-bar" method="get" action="{% url 'audit_log_list' %}">
       <div class="field">
-        <label for="{{ filters.usuario.id_for_label }}">Usuário</label>
-        <div class="select-wrap">{{ filters.usuario }}{% icon "chevron-down" %}</div>
+        <label id="{{ filters.usuario.auto_id }}_rotulo" for="{{ filters.usuario.id_for_label }}">Usuário</label>
+        {% include "ui/components/select.html" with field=filters.usuario %}
       </div>
       <div class="field">
-        <label for="{{ filters.acao.id_for_label }}">Ação</label>
-        <div class="select-wrap">{{ filters.acao }}{% icon "chevron-down" %}</div>
+        <label id="{{ filters.acao.auto_id }}_rotulo" for="{{ filters.acao.id_for_label }}">Ação</label>
+        {% include "ui/components/select.html" with field=filters.acao %}
       </div>
       <div class="field">
-        <label for="{{ filters.recurso.id_for_label }}">Módulo</label>
-        <div class="select-wrap">{{ filters.recurso }}{% icon "chevron-down" %}</div>
+        <label id="{{ filters.recurso.auto_id }}_rotulo" for="{{ filters.recurso.id_for_label }}">Módulo</label>
+        {% include "ui/components/select.html" with field=filters.recurso %}
       </div>
       <div class="field">
-        <label for="{{ filters.origem.id_for_label }}">Origem</label>
-        <div class="select-wrap">{{ filters.origem }}{% icon "chevron-down" %}</div>
+        <label id="{{ filters.origem.auto_id }}_rotulo" for="{{ filters.origem.id_for_label }}">Origem</label>
+        {% include "ui/components/select.html" with field=filters.origem %}
       </div>
       <div class="field">
-        <label for="{{ filters.registro.id_for_label }}">Identificador do registro</label>
+        <label id="{{ filters.registro.auto_id }}_rotulo" for="{{ filters.registro.id_for_label }}">Identificador do registro</label>
         {{ filters.registro }}
       </div>
       <div class="field">
-        <label for="{{ filters.de.id_for_label }}">De</label>
+        <label id="{{ filters.de.auto_id }}_rotulo" for="{{ filters.de.id_for_label }}">De</label>
         {{ filters.de }}
       </div>
       <div class="field">
-        <label for="{{ filters.ate.id_for_label }}">Até</label>
+        <label id="{{ filters.ate.auto_id }}_rotulo" for="{{ filters.ate.id_for_label }}">Até</label>
         {{ filters.ate }}
       </div>
       <div class="filter-actions">

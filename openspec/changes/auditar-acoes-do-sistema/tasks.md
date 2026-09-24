@@ -1,12 +1,12 @@
 ## 1. Mecanismo de auditoria
 
-- [ ] 1.1 Criar o app `audit`, com `catalog.py` (ações, recursos, origens e rótulos) e registrá-lo em `INSTALLED_APPS` (D4)
-- [ ] 1.2 Criar o model `AuditLog`, com os campos, a ordenação e os índices, e a migration inicial (D1)
-- [ ] 1.3 Criar `AuditLog.objects.record`, com a recusa de código fora do catálogo e a retirada dos campos sensíveis (D2, D8)
-- [ ] 1.4 Criar `audit/context.py` com o ator, o padrão do sistema e os gerenciadores de contexto (D3)
-- [ ] 1.5 Recusar alteração e exclusão de registros no model e no queryset (D10)
-- [ ] 1.6 Testar o mecanismo: campos gravados, ator padrão, código inválido, campo sensível descartado, alteração e exclusão recusadas
-- [ ] 1.7 Commit
+- [x] 1.1 Criar o app `audit`, com `catalog.py` (ações, recursos, origens e rótulos) e registrá-lo em `INSTALLED_APPS` (D4)
+- [x] 1.2 Criar o model `AuditLog`, com os campos, a ordenação e os índices, e a migration inicial (D1)
+- [x] 1.3 Criar `AuditLog.objects.record`, com a recusa de código fora do catálogo e a retirada dos campos sensíveis (D2, D8)
+- [x] 1.4 Criar `audit/context.py` com o ator, o padrão do sistema e os gerenciadores de contexto (D3)
+- [x] 1.5 Recusar alteração e exclusão de registros no model e no queryset (D10)
+- [x] 1.6 Testar o mecanismo: campos gravados, ator padrão, código inválido, campo sensível descartado, alteração e exclusão recusadas
+- [x] 1.7 Commit
 
 ## 2. Ator da requisição e acesso às funcionalidades
 

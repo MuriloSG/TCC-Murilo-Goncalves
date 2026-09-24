@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'ui',
     'outbox',
     'imports',
+    'audit',
     'allauth',
     'allauth.account',
 ]

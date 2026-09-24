@@ -1,17 +1,22 @@
 ## ADDED Requirements
 
 ### Requirement: Seleção de vários valores no componente de seleção
-O componente de seleção DEVE (MUST) aceitar a escolha de vários valores no mesmo campo, com o mesmo gatilho, o mesmo painel, a mesma busca e a mesma exibição de 10 opções por vez da escolha de um valor só. O gatilho DEVE (MUST) informar quantos valores estão escolhidos, e o componente DEVE (MUST) listar os valores escolhidos abaixo do campo, cada um com um controle que o retira, com o nome da ação no rótulo acessível. Escolher uma opção NÃO DEVE (MUST NOT) fechar o painel, e cada opção escolhida DEVE (MUST) ser marcada na lista por sinal visível, e não só pela cor. O campo enviado ao servidor DEVE (MUST) continuar sendo o `select` nativo com vários valores, com o mesmo nome e os mesmos valores que ele enviaria. Sem JavaScript, o campo DEVE (MUST) ser o `select` nativo de vários valores, com todas as opções e o mesmo envio. Os controles DEVEM (MUST) ter área de toque de pelo menos 44x44 px.
+O componente de seleção DEVE (MUST) aceitar a escolha de vários valores no mesmo campo, com o mesmo gatilho, o mesmo painel, a mesma busca e a mesma exibição de 10 opções por vez da escolha de um valor só. Os valores escolhidos DEVEM (MUST) aparecer dentro do próprio campo, como pastilhas, cada uma com um controle que a retira, com o nome do valor no rótulo acessível desse controle. O campo DEVE (MUST) crescer em altura conforme as pastilhas ocupam mais de uma linha, sem cortar nenhuma e sem rolagem horizontal. Enquanto nada estiver escolhido, o campo DEVE (MUST) mostrar o texto que convida a escolher, e a quantidade de escolhidos DEVE (MUST) continuar disponível no nome acessível do campo. Um campo de vários valores PODE (MAY) usar fonte paginada no servidor. Escolher uma opção NÃO DEVE (MUST NOT) fechar o painel, e cada opção escolhida DEVE (MUST) ser marcada na lista por sinal visível, e não só pela cor. O campo enviado ao servidor DEVE (MUST) continuar sendo o `select` nativo com vários valores, com o mesmo nome e os mesmos valores que ele enviaria. Sem JavaScript, o campo DEVE (MUST) ser o `select` nativo de vários valores, com todas as opções e o mesmo envio. Os controles DEVEM (MUST) ter área de toque de pelo menos 44x44 px.
 
 #### Scenario: Escolha de vários valores
 - **GIVEN** o campo de usuários da publicação de notificações
 - **WHEN** o usuário abre a lista e escolhe dois usuários
 - **THEN** os dois aparecem marcados na lista, o painel continua aberto e o gatilho informa "2 usuários escolhidos"
 
-#### Scenario: Valores escolhidos abaixo do campo
+#### Scenario: Valores escolhidos dentro do campo
 - **GIVEN** dois usuários escolhidos
 - **WHEN** o campo é exibido
-- **THEN** os dois aparecem abaixo dele, cada um com o controle que o retira, cujo rótulo acessível traz o nome do usuário
+- **THEN** os dois aparecem como pastilhas dentro do campo, cada uma com o controle que a retira, cujo rótulo acessível traz o nome do usuário
+
+#### Scenario: Campo cresce com as escolhas
+- **GIVEN** um campo com largura para três pastilhas por linha
+- **WHEN** sete valores são escolhidos
+- **THEN** o campo passa a ocupar as linhas necessárias, com todas as pastilhas visíveis e sem rolagem horizontal
 
 #### Scenario: Retirar um valor escolhido
 - **GIVEN** dois usuários escolhidos
@@ -67,3 +72,28 @@ Todas as páginas autenticadas DEVEM (MUST) estender um único layout com barra 
 - **WHEN** a página é exibida com 360 px de largura
 - **THEN** a navegação e o botão "Sair" ficam recolhidos atrás do botão "Menu" e são exibidos ao acioná-lo, mesmo com o JavaScript desligado
 
+
+## MODIFIED Requirements
+
+### Requirement: Fonte de opções paginada no servidor
+Um campo PODE (MAY) declarar que as opções vêm de uma fonte paginada no servidor, escolha ele um valor ou vários. Nesse caso, a página do formulário NÃO DEVE (MUST NOT) conter todas as opções: DEVE (MUST) conter apenas as opções escolhidas e a primeira página. As demais DEVEM (MUST) ser buscadas numa rota de opções, que DEVE (MUST) aceitar os parâmetros de busca e de página, devolver no máximo 10 opções por página, no mesmo formato para qualquer fonte, e informar se há mais páginas. A busca DEVE (MUST) ser aplicada no servidor, sobre a fonte inteira, e não sobre a página carregada. Um campo obrigatório de formulário NÃO DEVE (MUST NOT) usar fonte paginada, porque sem JavaScript ele ficaria limitado à primeira página; um campo exigido somente quando outro campo tem determinado valor PODE (MAY) usá-la, desde que as demais formas de preencher a tela continuem completas sem JavaScript e a limitação fique registrada no design. As rotas de opções DEVEM (MUST) exigir autenticação e a permissão declarada na view, conforme a spec `controle-acesso`.
+
+#### Scenario: Página do formulário sem a lista inteira
+- **GIVEN** uma fonte paginada com 300 opções
+- **WHEN** a tela que usa o campo é renderizada
+- **THEN** o HTML contém as opções escolhidas e no máximo 10 opções
+
+#### Scenario: Busca no servidor
+- **GIVEN** uma fonte paginada com 300 opções, das quais 3 contêm "silva"
+- **WHEN** a busca "silva" é feita no campo
+- **THEN** a rota de opções devolve as 3 opções correspondentes, e não só as que já estavam carregadas
+
+#### Scenario: Páginas seguintes
+- **WHEN** a segunda página da rota de opções é pedida
+- **THEN** ela devolve as 10 opções seguintes e a indicação de que há mais, quando houver
+
+#### Scenario: Campo de vários valores com fonte paginada
+- **GIVEN** o campo de usuários da publicação de notificações, com 300 usuários ativos e 2 escolhidos
+- **WHEN** a tela é renderizada
+- **THEN** o HTML contém os 2 escolhidos e no máximo 10 opções
+- **AND** as demais chegam pela rota de opções, 10 por vez, com a busca feita no servidor

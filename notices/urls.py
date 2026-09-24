@@ -21,6 +21,11 @@ urlpatterns = [
         name='notice_create',
     ),
     path(
+        'notificacoes/opcoes/usuarios/',
+        login_required(views.NoticeUserOptionsView.as_view()),
+        name='notice_user_options',
+    ),
+    path(
         'notificacoes/publicar/',
         login_required(views.NoticePublishView.as_view()),
         name='notice_publish',

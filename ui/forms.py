@@ -43,17 +43,21 @@ class GroupedCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
 
 
 def limit_choices(field, selected=None, page_size=OPTIONS_PAGE_SIZE):
-    """Deixa no campo só a primeira página das opções, mais a escolhida (D5).
+    """Deixa no campo só a primeira página das opções, mais as escolhidas (D5).
 
-    A validação continua usando o queryset inteiro: só a lista que vai para o HTML
+    `selected` é um valor ou vários, conforme o campo escolha um ou vários. A
+    validação continua usando o queryset inteiro: só a lista que vai para o HTML
     é limitada, e as demais opções chegam pela rota de opções.
     """
     items = list(field.queryset[:page_size])
+    values = selected if isinstance(selected, (list, tuple, set)) else [selected]
+    values = [value for value in values if value not in (None, '')]
     try:
-        chosen = field.queryset.filter(pk=selected).first() if selected else None
+        chosen = list(field.queryset.filter(pk__in=values)) if values else []
     except (ValueError, TypeError):
-        chosen = None
-    if chosen is not None and chosen not in items:
-        items.insert(0, chosen)
-    choices = [] if field.empty_label is None else [('', field.empty_label)]
+        chosen = []
+    for item in reversed(chosen):
+        if item not in items:
+            items.insert(0, item)
+    choices = [] if getattr(field, 'empty_label', None) is None else [('', field.empty_label)]
     field.widget.choices = choices + [(item.pk, field.label_from_instance(item)) for item in items]

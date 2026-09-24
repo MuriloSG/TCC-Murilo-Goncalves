@@ -127,13 +127,24 @@ A publicação manual é registrada, com um único registro por publicação, co
 
 A notificação criada por um evento não gera registro próprio, porque a operação que a originou já é auditada.
 
-### D10. Seleção de vários valores no próprio componente de seleção
+### D10. Seleção de vários valores no próprio componente de seleção, com as opções vindas do servidor
 
-A escolha de usuários específicos precisa de vários valores no mesmo campo, e o componente de seleção da Change `selecionar-opcoes-com-busca` escolhia um valor só (a seleção múltipla ficou fora do escopo dela). A primeira tentativa reaproveitou a lista de caixas de seleção das permissões, e ela não serve: o grupo sem nome deixa o `details` sem `summary`, e o navegador desenha um rótulo próprio ("Saiba mais"), além de a lista inteira de usuários ficar aberta na página.
+A escolha de usuários específicos precisa de vários valores no mesmo campo, e o componente de seleção da Change `selecionar-opcoes-com-busca` escolhia um valor só (a seleção múltipla ficou fora do escopo dela). Duas tentativas foram descartadas pelo autor, e as duas ensinaram algo:
 
-A saída é a que o autor pediu: **o próprio componente de seleção passa a aceitar vários valores**, sem biblioteca de terceiros. É o mesmo gatilho, o mesmo painel, a mesma busca e as mesmas 10 opções por vez; o que muda é que escolher não fecha o painel, cada escolhida fica marcada na lista, o gatilho informa quantas são e os escolhidos aparecem abaixo do campo, cada um com o controle que o retira. O campo enviado continua sendo o `select` nativo, agora `multiple`, e sem JavaScript é ele que aparece.
+1. **A lista de caixas de seleção das permissões.** O grupo sem nome deixa o `details` sem `summary`, e o navegador desenha um rótulo próprio ("Saiba mais"); além disso, a lista inteira de usuários fica aberta dentro da página.
+2. **O componente com as pastilhas abaixo do campo.** As escolhas ficavam fora do controle, empurrando o painel, e as opções continuavam todas no HTML: com uma base de centenas de usuários, a tela pesava e o painel invadia o resto da página.
 
-Nenhuma rota de opções nova entra nesta Change, e a frase da spec `controle-acesso` sobre a rota de opções de usuários da auditoria continua valendo como está. O campo de usuários usa a fonte fixa; o dia em que a base crescer a ponto de pesar, ele declara a fonte paginada que o componente já sabe consumir, sem mudar a tela.
+O que ficou, e é o que o autor pediu, é o **próprio componente de seleção aceitando vários valores**, sem biblioteca de terceiros:
+
+- **as escolhas ficam dentro do campo**, como pastilhas, e o campo cresce em altura conforme elas ocupam mais linhas, como o select2 faz;
+- cada pastilha tem o controle que a retira, com o nome do usuário no rótulo acessível;
+- o painel, a busca e as 10 opções por vez são os mesmos da escolha de um valor, e escolher não fecha o painel;
+- **as opções vêm do servidor**, pela rota de opções que o componente já sabia consumir: a página nunca carrega a lista inteira, e a busca corre sobre todos os usuários, e não sobre o que já foi carregado;
+- o campo enviado continua sendo o `select` nativo, agora `multiple`, e sem JavaScript é ele que aparece.
+
+A rota de opções de usuários da publicação é do app `notices`, com `login_required` na URL e `NOTIFICACAO.PUBLICAR` na view, pela regra da spec `controle-acesso` de que a permissão da rota de opções é a da tela que a consome. A da auditoria continua exigindo `AUDITORIA.VISUALIZAR`: são duas rotas, cada uma do app dono da sua tela, porque uma rota compartilhada teria de aceitar a união das permissões.
+
+**Preço registrado:** sem JavaScript, a escolha de usuários específicos fica limitada à primeira página de usuários. A spec `interface` proíbe fonte paginada em campo obrigatório justamente por isso, e aqui a exceção é estreita e está escrita na spec: o campo só é exigido quando o destino é "usuários específicos", e as outras duas formas de destinar continuam completas sem JavaScript.
 
 ### D14. Publicação guardada, e a lista só dos comunicados globais
 
@@ -212,7 +223,7 @@ O painel do cabeçalho já tem forma definida e só troca a origem dos dados. A 
 **Corrigido depois da primeira conferência do autor:**
 
 - **O indicador de etapas** usava `--spacing-7`, que não existe na escala fechada de espaçamentos: a marca da etapa ficava sem tamanho e o número aparecia num oval. Passou a usar `--spacing-8`.
-- **A escolha de usuários** saiu da lista de caixas de seleção para o componente de seleção de vários valores (D10).
+- **A escolha de usuários** saiu da lista de caixas de seleção para o componente de seleção de vários valores, com as pastilhas dentro do campo e as opções buscadas no servidor (D10).
 - **A tela de notificações** passou a abrir na lista das publicadas, com a criação alcançada a partir dela (D14).
 
 ## Risks / Trade-offs

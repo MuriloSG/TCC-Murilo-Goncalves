@@ -11,6 +11,7 @@ a publicação grava.
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse, reverse_lazy
@@ -26,6 +27,7 @@ from notices.forms import NoticeForm
 from notices.models import MESSAGE_MAX_LENGTH, Notice, Notification, resolve_recipients
 from ui.pagination import paginate
 from notices.utils import panel_context, redirect_target
+from ui.views import OptionsView
 
 
 class NotificationOpenView(View):
@@ -79,6 +81,25 @@ class NoticeListView(TemplateView):
             page=paginate(self.request, Notice.objects.global_ones()),
             **kwargs,
         )
+
+
+class NoticeUserOptionsView(OptionsView):
+    """Opções de usuários da escolha de destinatários, buscadas no servidor (D10).
+
+    A lista de usuários não chega inteira à página: o componente de seleção pede
+    10 por vez a esta rota, que aplica a busca sobre a base toda.
+    """
+
+    permission_required = permissions.NOTICE_PUBLISH
+
+    def get_queryset(self, term):
+        people = resolve_recipients(catalog.ALL_USERS).order_by('name')
+        if term:
+            people = people.filter(Q(name__icontains=term) | Q(email__icontains=term))
+        return people
+
+    def label(self, item):
+        return f'{item.name} ({item.email})'
 
 
 class NoticeCreateView(FormView):

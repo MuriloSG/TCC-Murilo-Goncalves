@@ -6,10 +6,12 @@ revisão não guarde nada no servidor.
 """
 
 from django import forms
+from django.urls import reverse_lazy
 
 from accounts.models import Role, User
 from notices import catalog
 from notices.models import MESSAGE_MAX_LENGTH, TITLE_MAX_LENGTH, resolve_recipients
+from ui.forms import limit_choices
 
 
 class UserChoiceField(forms.ModelMultipleChoiceField):
@@ -53,12 +55,17 @@ class NoticeForm(forms.Form):
         help_text='Usado quando os destinatários são usuários específicos. Só usuários ativos aparecem aqui.',
         widget=forms.SelectMultiple(
             attrs={
-                'data-select-none': 'Nenhum usuário escolhido',
+                'data-select-none': 'Escolher usuários',
                 'data-select-one': 'usuário escolhido',
                 'data-select-many': 'usuários escolhidos',
+                'data-select-source': reverse_lazy('notice_user_options'),
             },
         ),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        limit_choices(self.fields['users'], self.data.getlist('users') if self.data else None)
 
     def type_options(self):
         """Cada tipo do catálogo com a descrição que aparece no cartão de escolha."""

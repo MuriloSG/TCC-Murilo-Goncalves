@@ -81,7 +81,7 @@ Uma publicação DEVE (MUST) destinar a notificação de uma destas formas: a to
 - **THEN** ele não tem esse comunicado
 
 ### Requirement: Publicação manual de comunicado
-Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, informando título, mensagem, tipo e destinatários. O título e a mensagem DEVEM (MUST) ser obrigatórios, com os limites de tamanho definidos num único ponto do código, e o texto DEVE (MUST) seguir a spec `texto-interface`. O tipo DEVE (MUST) ser escolhido entre os tipos do catálogo marcados como publicáveis manualmente; um tipo gerado por evento NÃO DEVE (MUST NOT) aparecer nessa escolha nem ser aceito no envio. A escolha do perfil e a escolha de usuários específicos DEVEM (MUST) usar o componente de seleção da spec `interface`, esta última na forma de vários valores, e a escolha de usuários DEVE (MUST) oferecer apenas usuários ativos. A publicação DEVE (MUST) ser feita somente por requisição POST com token CSRF válido, depois da revisão, e DEVE (MUST) guardar a publicação e criar todas as notificações numa única transação, de modo que uma falha não deixe parte dos destinatários notificados. A publicação guardada DEVE (MUST) conter o tipo, o título, a mensagem, a forma de destinar, a quantidade de destinatários alcançados, quem publicou e a data e a hora, e cada notificação entregue DEVE (MUST) apontar para ela. Uma notificação gerada por evento NÃO DEVE (MUST NOT) ter publicação. Uma publicação recusada por validação ou por regra de negócio NÃO DEVE (MUST NOT) criar nenhuma notificação. A publicação NÃO DEVE (MUST NOT) enviar e-mail nem qualquer outra mensagem fora do sistema.
+Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, informando título, mensagem, tipo e destinatários. O título e a mensagem DEVEM (MUST) ser obrigatórios, com os limites de tamanho definidos num único ponto do código, e o texto DEVE (MUST) seguir a spec `texto-interface`. O tipo DEVE (MUST) ser escolhido entre os tipos do catálogo marcados como publicáveis manualmente; um tipo gerado por evento NÃO DEVE (MUST NOT) aparecer nessa escolha nem ser aceito no envio. A escolha do perfil e a escolha de usuários específicos DEVEM (MUST) usar o componente de seleção da spec `interface`, esta última na forma de vários valores e com as opções buscadas no servidor, 10 por vez, de modo que a lista de usuários não chegue inteira à página. A escolha de usuários DEVE (MUST) oferecer apenas usuários ativos, e a busca DEVE (MUST) ser feita no servidor, por nome ou por e-mail, sobre todos eles. Sem JavaScript, essa escolha fica limitada à primeira página de usuários; destinar a todos os usuários elegíveis e destinar a um perfil continuam completos sem JavaScript. A publicação DEVE (MUST) ser feita somente por requisição POST com token CSRF válido, depois da revisão, e DEVE (MUST) guardar a publicação e criar todas as notificações numa única transação, de modo que uma falha não deixe parte dos destinatários notificados. A publicação guardada DEVE (MUST) conter o tipo, o título, a mensagem, a forma de destinar, a quantidade de destinatários alcançados, quem publicou e a data e a hora, e cada notificação entregue DEVE (MUST) apontar para ela. Uma notificação gerada por evento NÃO DEVE (MUST NOT) ter publicação. Uma publicação recusada por validação ou por regra de negócio NÃO DEVE (MUST NOT) criar nenhuma notificação. A publicação NÃO DEVE (MUST NOT) enviar e-mail nem qualquer outra mensagem fora do sistema.
 
 #### Scenario: Comunicado publicado
 - **GIVEN** um usuário autorizado e 8 usuários ativos
@@ -92,6 +92,16 @@ Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, info
 #### Scenario: Publicação sem título
 - **WHEN** a publicação é enviada sem o título
 - **THEN** o formulário é exibido com o erro no campo e nenhuma notificação é criada
+
+#### Scenario: Escolha de usuários sem carregar todos
+- **GIVEN** 300 usuários ativos
+- **WHEN** a tela de criação é renderizada
+- **THEN** o HTML contém no máximo 10 usuários, e os demais chegam pela rota de opções
+
+#### Scenario: Busca de usuários no servidor
+- **GIVEN** 300 usuários ativos, dos quais 3 têm "silva" no nome ou no e-mail
+- **WHEN** a busca "silva" é feita no campo de usuários
+- **THEN** os 3 são oferecidos, ainda que nenhum deles estivesse na primeira página
 
 #### Scenario: Tipo gerado por evento na publicação manual
 - **WHEN** a publicação é enviada com um tipo que o catálogo não marca como publicável manualmente

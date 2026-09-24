@@ -1,8 +1,17 @@
 {% load ui %}<div class="select{% if field.widget_type == "selectmultiple" %} select-many{% endif %}" data-select>
   <div class="select-native select-wrap">{{ field }}{% icon "chevron-down" %}</div>
-  <button class="select-trigger" type="button" id="{{ field.auto_id }}_gatilho" aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field.auto_id }}_painel" aria-labelledby="{{ field.auto_id }}_rotulo {{ field.auto_id }}_gatilho" hidden data-select-trigger>
-    <span class="select-value" data-select-value></span>{% icon "chevron-down" %}
-  </button>
+  {% if field.widget_type == "selectmultiple" %}
+    <div class="select-control" hidden data-select-control>
+      <ul class="select-chips" role="list" data-select-chips></ul>
+      <button class="select-trigger" type="button" id="{{ field.auto_id }}_gatilho" aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field.auto_id }}_painel" aria-labelledby="{{ field.auto_id }}_rotulo {{ field.auto_id }}_gatilho" data-select-trigger>
+        <span class="select-value" data-select-value></span>{% icon "chevron-down" %}
+      </button>
+    </div>
+  {% else %}
+    <button class="select-trigger" type="button" id="{{ field.auto_id }}_gatilho" aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field.auto_id }}_painel" aria-labelledby="{{ field.auto_id }}_rotulo {{ field.auto_id }}_gatilho" hidden data-select-trigger>
+      <span class="select-value" data-select-value></span>{% icon "chevron-down" %}
+    </button>
+  {% endif %}
   <div class="select-panel" id="{{ field.auto_id }}_painel" hidden data-select-panel>
     <div class="select-search" hidden data-select-search-wrap>
       {% icon "search" %}
@@ -12,7 +21,6 @@
     <p class="select-empty" hidden data-select-empty>Nenhuma opção encontrada.</p>
     <button class="select-more" type="button" hidden data-select-more>Mostrar mais</button>
   </div>
-  {% if field.widget_type == "selectmultiple" %}<ul class="select-chips" hidden data-select-chips></ul>{% endif %}
   <template data-select-check>{% icon "check" "size-4" %}</template>
   <template data-select-remove>{% icon "x" "size-4" %}</template>
 </div>

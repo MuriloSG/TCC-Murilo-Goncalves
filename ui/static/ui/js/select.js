@@ -20,6 +20,7 @@
     this.check = root.querySelector("[data-select-check]");
     this.remove = root.querySelector("[data-select-remove]");
     this.chips = root.querySelector("[data-select-chips]");
+    this.control = root.querySelector("[data-select-control]");
     this.multiple = this.native.multiple;
     this.source = this.native.dataset.selectSource || "";
     this.options = [];
@@ -71,7 +72,6 @@
     }
     var chosen = this.selectedOptions();
     this.chips.textContent = "";
-    this.chips.hidden = !chosen.length;
     chosen.forEach(function (option) {
       var chip = document.createElement("li");
       chip.className = "select-chip";
@@ -90,8 +90,13 @@
   };
 
   State.prototype.updateTrigger = function () {
-    this.trigger.querySelector("[data-select-value]").textContent = this.selectedLabel();
-    this.trigger.dataset.empty = this.selectedOptions().length ? "false" : "true";
+    var chosen = this.selectedOptions().length;
+    var value = this.trigger.querySelector("[data-select-value]");
+    value.textContent = this.selectedLabel();
+    this.trigger.dataset.empty = chosen ? "false" : "true";
+    if (this.multiple) {
+      value.classList.toggle("sr-only", chosen > 0);
+    }
     this.updateChips();
   };
 
@@ -259,7 +264,11 @@
       var state = new State(element);
       element.selectState = state;
       element.querySelector(".select-native").hidden = true;
-      state.trigger.hidden = false;
+      if (state.control) {
+        state.control.hidden = false;
+      } else {
+        state.trigger.hidden = false;
+      }
       state.searchWrap.hidden = state.native.options.length <= PAGE_SIZE && !state.source;
       state.updateTrigger();
       state.native.addEventListener("change", function () {

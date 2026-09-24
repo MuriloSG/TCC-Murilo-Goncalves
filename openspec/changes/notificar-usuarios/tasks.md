@@ -42,7 +42,10 @@
 - [x] 4.10 Criar a lista das notificações publicadas, só com as globais, paginada, com o controle que leva à criação (D14)
 - [x] 4.11 Corrigir o tamanho da marca das etapas, que usava um espaçamento fora da escala (D13)
 - [x] 4.12 Testar a lista nas quatro situações de acesso, a exclusão das publicações direcionadas, o estado vazio, a paginação e o registro do acesso
-- [x] 4.13 Commit
+- [x] 4.13 Pôr as pastilhas dentro do campo e fazer o campo crescer, com o `select` nativo de vários valores sem JavaScript (D10)
+- [x] 4.14 Criar a rota de opções de usuários do `notices`, com `NOTIFICACAO.PUBLICAR`, e passar o campo a buscar as opções no servidor (D10)
+- [x] 4.15 Testar a rota nas quatro situações de acesso, a busca no servidor, o limite de 10 por página e a tela sem a lista inteira
+- [x] 4.16 Commit
 
 ## 5. Notificação gerada por evento
 

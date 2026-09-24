@@ -5,7 +5,13 @@ from django.test import TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from notices import catalog
+from notices.models import Notification
 from ui.contrast import STYLES
+
+
+def notify(user, title):
+    return Notification.objects.notify(user, catalog.NOTICE, title, 'Mensagem do comunicado.')
 
 
 class FocusableParser(HTMLParser):
@@ -97,6 +103,8 @@ class AppLayoutTests(LayoutTestCase):
         self.assertRegex(menu, r'<a href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal"><svg[^>]*>.*?</svg>\s*Sair</a>')
 
     def test_sino_de_notificacoes_no_cabecalho_e_no_celular(self):
+        notify(self.admin, 'Comunicado do sistema')
+        notify(self.admin, 'Outro comunicado')
         content = self.client.get('/inicio/').content.decode()
         header = content[content.index('<header class="header">'):content.index('</header>')]
         topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
@@ -107,16 +115,30 @@ class AppLayoutTests(LayoutTestCase):
                 self.assertIn('<span class="notifications-count" aria-hidden="true">2</span>', area)
         self.assertLess(header.index('data-notifications'), header.index('user-menu'))
 
-    def test_painel_de_notificacoes_lista_os_exemplos(self):
+    def test_painel_lista_as_notificacoes_do_usuario(self):
+        lida = notify(self.admin, 'Comunicado lido')
+        lida.mark_as_read()
+        notify(self.admin, 'Comunicado novo')
         content = self.client.get('/inicio/').content.decode()
         panel = content[content.index('<div class="notifications-panel">'):]
         panel = panel[:panel.index('</details>')]
-        self.assertEqual(panel.count('<li class="notification'), 5)
-        self.assertEqual(panel.count('<li class="notification is-unread">'), 2)
-        self.assertIn('<p class="notification-title">Reserva aprovada<span class="sr-only"> (não lida)</span></p>', panel)
-        self.assertRegex(panel, r'<button class="notifications-read-all" type="button" data-read-all hidden>')
+        self.assertEqual(panel.count('<li class="notification'), 2)
+        self.assertEqual(panel.count('<li class="notification is-unread">'), 1)
+        self.assertIn(
+            '<span class="notification-title">Comunicado novo<span class="sr-only"> (não lida)</span></span>',
+            panel,
+        )
         self.assertIn('<div class="notifications-filter" data-filter hidden>', panel)
         self.assertIn('<p class="notifications-empty" data-empty hidden>Nenhuma notificação não lida.</p>', panel)
+        self.assertRegex(panel, r'<button class="notifications-read-all" type="submit">')
+
+    def test_painel_sem_notificacoes(self):
+        content = self.client.get('/inicio/').content.decode()
+        panel = content[content.index('<div class="notifications-panel">'):]
+        panel = panel[:panel.index('</details>')]
+        self.assertIn('<p class="notifications-empty">Nenhuma notificação.</p>', panel)
+        self.assertNotIn('<li class="notification', panel)
+        self.assertNotIn('notifications-read-all', panel)
 
     def test_menu_do_celular_sem_javascript(self):
         response = self.client.get('/inicio/')

@@ -2630,6 +2630,14 @@
     min-width: 0;
   }
 
+  .notification-open {
+    display: grid;
+    gap: calc(var(--spacing-1) / 2);
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
   .notification-title {
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);

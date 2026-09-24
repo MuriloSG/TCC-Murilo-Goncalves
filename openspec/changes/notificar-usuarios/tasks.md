@@ -43,11 +43,11 @@
 
 ## 6. Área de notificações do usuário
 
-- [ ] 6.1 Passar o sino e o painel do `ui` a receber as notificações e a contagem do usuário autenticado, e retirar o `SAMPLE_NOTIFICATIONS` e os testes dele (D12)
+- [x] 6.1 Passar o sino e o painel do `ui` a receber as notificações e a contagem do usuário autenticado, e retirar o `SAMPLE_NOTIFICATIONS` e os testes dele (D12)
 - [ ] 6.2 Criar a página de notificações, paginada conforme a spec `interface`, com o estado vazio em texto
-- [ ] 6.3 Criar as rotas de abrir e de marcar como lida, por POST com CSRF, e a de marcar todas como lidas, só com `login_required` (D8)
+- [x] 6.3 Criar as rotas de abrir e de marcar como lida, por POST com CSRF, e a de marcar todas como lidas, só com `login_required` (D8)
 - [ ] 6.4 Criar a rota que devolve o fragmento do sino com a contagem e a lista do usuário autenticado, só com `login_required` (D11)
-- [ ] 6.5 Ajustar o `notifications.js` para o filtro entre todas e não lidas sobre os dados reais, mantendo o funcionamento sem JavaScript
+- [x] 6.5 Ajustar o `notifications.js` para o filtro entre todas e não lidas sobre os dados reais, mantendo o funcionamento sem JavaScript
 - [ ] 6.6 Testar a contagem, a abertura marcando como lida, o destino, a marcação de todas, a notificação de outro usuário recusada, a marcação sem CSRF e o comportamento sem JavaScript
 - [ ] 6.7 Rodar `make test` com a suíte inteira passando
 - [ ] 6.8 Commit

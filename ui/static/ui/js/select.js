@@ -60,6 +60,7 @@
       item.dataset.value = option.valor;
       var label = document.createElement("span");
       label.textContent = option.rotulo;
+      label.title = option.rotulo;
       item.appendChild(label);
       if (option.valor === state.native.value) {
         item.appendChild(state.check.content.cloneNode(true));

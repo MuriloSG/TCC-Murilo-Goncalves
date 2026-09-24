@@ -8,9 +8,15 @@ from django import forms
 from django.contrib.auth import get_user_model
 
 from audit import catalog
-from audit.models import AuditLog
 
 INPUT = {'class': 'input'}
+
+
+class UserChoiceField(forms.ModelChoiceField):
+    """Opção com o nome e o e-mail, para distinguir usuários de mesmo nome."""
+
+    def label_from_instance(self, user):
+        return f'{user.name} ({user.email})'
 
 
 def code_filter(label, labels, empty):
@@ -27,7 +33,7 @@ def date_filter(label):
 
 
 class AuditFilterForm(forms.Form):
-    usuario = forms.ModelChoiceField(
+    usuario = UserChoiceField(
         label='Usuário',
         queryset=None,
         required=False,
@@ -48,9 +54,7 @@ class AuditFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['usuario'].queryset = (
-            get_user_model().objects.filter(pk__in=AuditLog.objects.values('user')).order_by('name', 'email')
-        )
+        self.fields['usuario'].queryset = get_user_model().objects.order_by('name', 'email')
 
     def criteria(self):
         """Critérios válidos da consulta, com os valores inválidos trocados por vazio."""

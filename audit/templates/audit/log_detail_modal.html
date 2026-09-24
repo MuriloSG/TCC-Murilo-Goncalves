@@ -19,13 +19,21 @@
     {% if entry.changes %}
       <div class="record-wide">
         <dt>Valores alterados</dt>
-        <dd>{% for change in entry.changes %}<span>{{ change.label }}: {{ change.before }} → {{ change.after }}</span>{% endfor %}</dd>
+        <dd class="record-pairs">
+          {% for change in entry.changes %}
+            <span><span class="pair-key">{{ change.label }}</span><span class="pair-before">{{ change.before }}</span>{% icon "arrow-right" "size-4" %}<span class="pair-after">{{ change.after }}</span></span>
+          {% endfor %}
+        </dd>
       </div>
     {% endif %}
     {% if entry.details %}
       <div class="record-wide">
         <dt>Informações adicionais</dt>
-        <dd>{% for detail in entry.details %}<span>{{ detail.label }}: {{ detail.value }}</span>{% endfor %}</dd>
+        <dd class="record-pairs">
+          {% for detail in entry.details %}
+            <span><span class="pair-key">{{ detail.label }}</span><span class="pair-after">{{ detail.value }}</span></span>
+          {% endfor %}
+        </dd>
       </div>
     {% endif %}
     <div class="record-wide">

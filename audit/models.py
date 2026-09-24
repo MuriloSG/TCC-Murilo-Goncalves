@@ -45,12 +45,42 @@ def sanitize(values):
     }
 
 
+def describe(value):
+    """Valor de um campo do registro como texto, para a tela de detalhe."""
+    if value is None or value == '':
+        return 'Sem valor'
+    if isinstance(value, bool):
+        return 'Sim' if value else 'Não'
+    if isinstance(value, (list, tuple)):
+        return ', '.join(str(item) for item in value) if value else 'Sem valor'
+    return str(value)
+
+
 class AuditLogQuerySet(models.QuerySet):
     def update(self, **values):
         raise AuditLogProtected()
 
     def delete(self):
         raise AuditLogProtected()
+
+    def search(self, user=None, action='', resource='', origin='', resource_id='', start=None, end=None):
+        """Aplica os filtros da consulta, descartando os critérios vazios ou desconhecidos."""
+        queryset = self
+        if user is not None:
+            queryset = queryset.filter(user=user)
+        if action in catalog.ACTION_LABELS:
+            queryset = queryset.filter(action=action)
+        if resource in catalog.RESOURCE_LABELS:
+            queryset = queryset.filter(resource=resource)
+        if origin in catalog.ORIGIN_LABELS:
+            queryset = queryset.filter(origin=origin)
+        if resource_id:
+            queryset = queryset.filter(resource_id=resource_id)
+        if start is not None:
+            queryset = queryset.filter(created_at__date__gte=start)
+        if end is not None:
+            queryset = queryset.filter(created_at__date__lte=end)
+        return queryset
 
 
 class AuditLogManager(models.Manager.from_queryset(AuditLogQuerySet)):
@@ -147,3 +177,22 @@ class AuditLog(models.Model):
     @property
     def origin_label(self):
         return catalog.label(catalog.ORIGIN_LABELS, self.origin)
+
+    def changes(self):
+        """Campos alterados, com o rótulo, o valor anterior e o posterior."""
+        fields = list(self.new_values) + [field for field in self.old_values if field not in self.new_values]
+        return [
+            {
+                'label': catalog.label(catalog.FIELD_LABELS, field),
+                'before': describe(self.old_values.get(field)),
+                'after': describe(self.new_values.get(field)),
+            }
+            for field in fields
+        ]
+
+    def details(self):
+        """Informações adicionais da operação, com o rótulo e o valor."""
+        return [
+            {'label': catalog.label(catalog.FIELD_LABELS, field), 'value': describe(value)}
+            for field, value in self.metadata.items()
+        ]

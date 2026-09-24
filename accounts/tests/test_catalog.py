@@ -14,6 +14,7 @@ USER_CODES = {
     'USUARIO.ALTERAR_SITUACAO',
 }
 IMPORT_CODE = 'USUARIO.IMPORTAR'
+AUDIT_CODE = 'AUDITORIA.VISUALIZAR'
 ROLE_CODES = {
     'PERFIL.VISUALIZAR',
     'PERFIL.CRIAR',
@@ -36,10 +37,11 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.ROLE_EDIT, 'PERFIL.EDITAR')
         self.assertEqual(permissions.ROLE_CHANGE_PERMISSIONS, 'PERFIL.ALTERAR_PERMISSOES')
         self.assertEqual(permissions.ROLE_DELETE, 'PERFIL.EXCLUIR')
+        self.assertEqual(permissions.AUDIT_VIEW, 'AUDITORIA.VISUALIZAR')
 
-    def test_all_permissions_has_the_eleven_codes(self):
-        self.assertEqual(permissions.ALL_PERMISSIONS, USER_CODES | {IMPORT_CODE} | ROLE_CODES)
-        self.assertEqual(len(permissions.ALL_PERMISSIONS), 11)
+    def test_all_permissions_has_the_twelve_codes(self):
+        self.assertEqual(permissions.ALL_PERMISSIONS, USER_CODES | {IMPORT_CODE, AUDIT_CODE} | ROLE_CODES)
+        self.assertEqual(len(permissions.ALL_PERMISSIONS), 12)
 
     def test_codes_follow_the_format(self):
         for code in permissions.ALL_PERMISSIONS:
@@ -50,6 +52,8 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.ADMINISTRATIVE_CAPABILITY, USER_CODES)
         self.assertNotIn(IMPORT_CODE, permissions.ADMINISTRATIVE_CAPABILITY)
         self.assertNotIn(IMPORT_CODE, permissions.SUPERADMIN_RESERVED_PERMISSIONS)
+        self.assertNotIn(AUDIT_CODE, permissions.ADMINISTRATIVE_CAPABILITY)
+        self.assertNotIn(AUDIT_CODE, permissions.SUPERADMIN_RESERVED_PERMISSIONS)
 
     def test_reserved_permissions_are_exactly_role_permissions(self):
         self.assertEqual(permissions.SUPERADMIN_RESERVED_PERMISSIONS, ROLE_CODES)
@@ -68,7 +72,7 @@ class InitialCatalogTests(TestCase):
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))
-        self.assertEqual(Permission.objects.count(), 11)
+        self.assertEqual(Permission.objects.count(), 12)
 
     def test_reserved_permissions_exist_in_database(self):
         codes = set(Permission.objects.values_list('code', flat=True))
@@ -86,10 +90,10 @@ class InitialCatalogTests(TestCase):
             with self.subTest(code=code):
                 self.assertTrue(Role.objects.get(code=code).is_system)
 
-    def test_administrator_grants_administrative_capability_and_import(self):
+    def test_administrator_grants_administrative_capability_import_and_audit(self):
         administrator = Role.objects.get(code='ADMINISTRADOR')
         codes = set(administrator.permissions.values_list('code', flat=True))
-        self.assertEqual(codes, set(permissions.ADMINISTRATIVE_CAPABILITY) | {IMPORT_CODE})
+        self.assertEqual(codes, set(permissions.ADMINISTRATIVE_CAPABILITY) | {IMPORT_CODE, AUDIT_CODE})
 
     def test_teacher_grants_no_permission(self):
         teacher = Role.objects.get(code='DOCENTE')
@@ -120,3 +124,22 @@ class ImportPermissionMigrationTests(TestCase):
         self.assertNotIn('USUARIO.EDITAR', administrator_codes)
         self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'USUARIO.VISUALIZAR'})
         self.assertEqual(Permission.objects.filter(code=IMPORT_CODE).count(), 1)
+
+
+class AuditPermissionMigrationTests(TestCase):
+    def test_grants_audit_to_administrator_keeping_other_grants(self):
+        migration = import_module('accounts.migrations.0004_audit_permission')
+        administrator = Role.objects.get(code='ADMINISTRADOR')
+        coordination = Role.objects.create(code='COORDENACAO', name='Coordenação')
+        Permission.objects.filter(code=AUDIT_CODE).delete()
+        RolePermission.objects.filter(role=administrator, permission__code='USUARIO.EDITAR').delete()
+        RolePermission.objects.create(role=coordination, permission=Permission.objects.get(code='USUARIO.VISUALIZAR'))
+
+        migration.add_audit_permission(apps, None)
+        migration.add_audit_permission(apps, None)
+
+        administrator_codes = set(administrator.permissions.values_list('code', flat=True))
+        self.assertIn(AUDIT_CODE, administrator_codes)
+        self.assertNotIn('USUARIO.EDITAR', administrator_codes)
+        self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'USUARIO.VISUALIZAR'})
+        self.assertEqual(Permission.objects.filter(code=AUDIT_CODE).count(), 1)

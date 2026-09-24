@@ -61,7 +61,7 @@ class InactiveUserTests(AuthorizationTestCase):
 class RolePermissionsTests(AuthorizationTestCase):
     def test_administrator_holds_user_permissions(self):
         user = self.create_user('admin@ifnmg.edu.br', self.administrator)
-        granted = permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT}
+        granted = permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT, permissions.AUDIT_VIEW}
         self.assertEqual(user.effective_permissions(), granted)
         for code in granted:
             with self.subTest(code=code):
@@ -115,7 +115,7 @@ class RolePermissionsTests(AuthorizationTestCase):
         self.assertFalse(user.has_module_perms('PERFIL'))
 
     def test_decision_does_not_depend_on_role_code_or_name(self):
-        granted = permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT}
+        granted = permissions.ADMINISTRATIVE_CAPABILITY | {permissions.USER_IMPORT, permissions.AUDIT_VIEW}
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)
         coordinator = self.create_user('coord@ifnmg.edu.br', self.coordination)

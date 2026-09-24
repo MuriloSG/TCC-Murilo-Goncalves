@@ -1,0 +1,103 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Auditoria{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Auditoria</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Auditoria</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-auditoria">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-auditoria">Registros <span class="count">{{ page.paginator.count }}</span></h2>
+      </div>
+    </div>
+    <form class="filter-bar" method="get" action="{% url 'audit_log_list' %}">
+      <div class="field">
+        <label for="{{ filters.usuario.id_for_label }}">Usuário</label>
+        <div class="select-wrap">{{ filters.usuario }}{% icon "chevron-down" %}</div>
+      </div>
+      <div class="field">
+        <label for="{{ filters.acao.id_for_label }}">Ação</label>
+        <div class="select-wrap">{{ filters.acao }}{% icon "chevron-down" %}</div>
+      </div>
+      <div class="field">
+        <label for="{{ filters.recurso.id_for_label }}">Módulo</label>
+        <div class="select-wrap">{{ filters.recurso }}{% icon "chevron-down" %}</div>
+      </div>
+      <div class="field">
+        <label for="{{ filters.origem.id_for_label }}">Origem</label>
+        <div class="select-wrap">{{ filters.origem }}{% icon "chevron-down" %}</div>
+      </div>
+      <div class="field">
+        <label for="{{ filters.registro.id_for_label }}">Identificador do registro</label>
+        {{ filters.registro }}
+      </div>
+      <div class="field">
+        <label for="{{ filters.de.id_for_label }}">De</label>
+        {{ filters.de }}
+      </div>
+      <div class="field">
+        <label for="{{ filters.ate.id_for_label }}">Até</label>
+        {{ filters.ate }}
+      </div>
+      <div class="filter-actions">
+        <button class="btn-secondary" type="submit">{% icon "search" %}Filtrar</button>
+      </div>
+    </form>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Data e hora</th>
+          <th scope="col">Usuário</th>
+          <th scope="col">Ação</th>
+          <th scope="col">Módulo</th>
+          <th scope="col">Origem</th>
+          <th scope="col" class="cell-actions">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+          <tr>
+            <td class="cell-primary" data-label="Data e hora">{{ entry.created_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+            <td data-label="Usuário">{{ entry.user.name|default:"Sistema" }}</td>
+            <td data-label="Ação">{{ entry.action_label }}</td>
+            <td data-label="Módulo">
+              {{ entry.resource_label }}
+              {% if entry.resource_id %}<span class="person-detail">Registro {{ entry.resource_id }}</span>{% endif %}
+            </td>
+            <td data-label="Origem">{{ entry.origin_label }}</td>
+            <td class="cell-actions" data-label="Ações">
+              <div class="row-actions">
+                <a class="icon-btn" href="{% url 'audit_log_detail' entry.pk %}" hx-get="{% url 'audit_log_detail' entry.pk %}" hx-target="#modal" aria-label="Ver detalhes">{% icon "arrow-right" %}<span class="label">Ver detalhes</span><span class="tip" role="tooltip">Ver detalhes</span></a>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td class="cell-primary" colspan="6">
+              {% if filtered %}
+                <p>Nenhum registro de auditoria encontrado para os filtros.</p>
+                <p><a class="link" href="{% url 'audit_log_list' %}">Limpar filtros</a></p>
+              {% else %}
+                Nenhum registro de auditoria.
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "ui/components/pagination.html" with noun="registro" noun_plural="registros" %}
+  </section>
+{% endblock %}

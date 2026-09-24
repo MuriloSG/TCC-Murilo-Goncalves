@@ -35,14 +35,14 @@
 
 ## 5. Consulta
 
-- [ ] 5.1 Acrescentar `AUDITORIA.VISUALIZAR` ao catálogo de permissões e o rótulo do recurso, com a migration de dados que a concede ao `ADMINISTRADOR` (D12)
-- [ ] 5.2 Criar o formulário de filtros e a consulta com os parâmetros da URL, a ordem e a paginação (D12)
-- [ ] 5.3 Criar a lista de auditoria com o cartão, a tabela, o estado vazio e o rodapé de paginação, e a rota com `login_required` (D12)
-- [ ] 5.4 Criar o detalhe do registro em modal, somente leitura (D12)
-- [ ] 5.5 Acrescentar o item "Auditoria" à navegação e o ícone do Lucide (D12)
-- [ ] 5.6 Testar as rotas nas quatro situações (anônimo, sem permissão, com permissão e POST sem CSRF), cada filtro, a combinação de filtros com a página, o filtro inválido, a ordem e o estado vazio
-- [ ] 5.7 Rodar `make test` com a suíte inteira passando
-- [ ] 5.8 Commit
+- [x] 5.1 Acrescentar `AUDITORIA.VISUALIZAR` ao catálogo de permissões e o rótulo do recurso, com a migration de dados que a concede ao `ADMINISTRADOR` (D12)
+- [x] 5.2 Criar o formulário de filtros e a consulta com os parâmetros da URL, a ordem e a paginação (D12)
+- [x] 5.3 Criar a lista de auditoria com o cartão, a tabela, o estado vazio e o rodapé de paginação, e a rota com `login_required` (D12)
+- [x] 5.4 Criar o detalhe do registro em modal, somente leitura (D12)
+- [x] 5.5 Acrescentar o item "Auditoria" à navegação e o ícone do Lucide (D12)
+- [x] 5.6 Testar as rotas nas quatro situações (anônimo, sem permissão, com permissão e POST sem CSRF), cada filtro, a combinação de filtros com a página, o filtro inválido, a ordem e o estado vazio
+- [x] 5.7 Rodar `make test` com a suíte inteira passando
+- [x] 5.8 Commit
 
 ## 6. Documentação e verificação
 

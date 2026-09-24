@@ -36,10 +36,10 @@
 
 ## 5. Notificação gerada por evento
 
-- [ ] 5.1 Criar o registro de eventos no `notices`, sem importar app de domínio (D5)
-- [ ] 5.2 Declarar o evento da troca de perfil no `accounts`, notificando o usuário afetado na mesma transação da operação (D5, D6)
-- [ ] 5.3 Testar a notificação criada na troca, a ausência dela na operação recusada, a transação desfeita e o evento para usuário inativo
-- [ ] 5.4 Commit
+- [x] 5.1 Criar o registro de eventos no `notices`, sem importar app de domínio (D5)
+- [x] 5.2 Declarar o evento da troca de perfil no `accounts`, notificando o usuário afetado na mesma transação da operação (D5, D6)
+- [x] 5.3 Testar a notificação criada na troca, a ausência dela na operação recusada, a transação desfeita e o evento para usuário inativo
+- [x] 5.4 Commit
 
 ## 6. Área de notificações do usuário
 

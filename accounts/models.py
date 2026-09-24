@@ -15,8 +15,10 @@ from accounts.permissions import (
     RESOURCE_LABELS,
     SUPERADMIN_RESERVED_PERMISSIONS,
 )
+from accounts import notifications
 from audit import catalog
 from audit.models import AuditLog
+from notices.events import announce
 from outbox.models import OutboxEntry
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
@@ -327,6 +329,8 @@ class User(AbstractBaseUser):
                 {'role': previous.code if previous else None},
                 {'role': role.code},
             )
+            if previous is None or previous.pk != role.pk:
+                announce(notifications.ROLE_CHANGED, user=self, role=role)
         self.__dict__.pop('_effective_permissions_cache', None)
 
     def update_details(self, executor, name, email):

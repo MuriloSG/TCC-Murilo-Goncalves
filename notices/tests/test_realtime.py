@@ -79,7 +79,7 @@ class AnnounceTests(TestCase):
 
     def notify(self, recipient=None):
         return Notification.objects.notify(
-            recipient or self.ana, catalog.NOTICE, 'Nova versão do sistema', 'Mensagem.',
+            recipient or self.ana, catalog.INFORMATION, 'Nova versão do sistema', 'Mensagem.',
         )
 
     def test_event_is_sent_only_after_the_commit(self):
@@ -99,7 +99,7 @@ class AnnounceTests(TestCase):
     def test_publication_announces_each_recipient(self):
         with self.captureOnCommitCallbacks(execute=True):
             Notification.objects.publish(
-                catalog.NOTICE, 'Nova versão do sistema', 'Mensagem.', [self.ana, self.bruno],
+                catalog.INFORMATION, 'Nova versão do sistema', 'Mensagem.', [self.ana, self.bruno],
             )
         self.assertEqual(receive(TEST_CHANNEL), {'type': CHANGED})
 

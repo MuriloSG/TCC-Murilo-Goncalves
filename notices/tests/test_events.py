@@ -27,7 +27,7 @@ class RegistryTests(SimpleTestCase):
             register('EVENTO_DE_TESTE', another)
 
     def test_delivery_has_an_optional_target(self):
-        delivery = Delivery(recipient=None, type=catalog.NOTICE, title='Título', message='Mensagem.')
+        delivery = Delivery(recipient=None, type=catalog.INFORMATION, title='Título', message='Mensagem.')
         self.assertEqual(delivery.target_url, '')
 
 

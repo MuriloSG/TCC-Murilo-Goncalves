@@ -84,12 +84,16 @@ Nas duas saídas vale a Constitution: acesso ao banco pelo ORM (P3), mudanças p
 
 Cada tipo é um código em português gravado como dado, com rótulo, ícone (Lucide) e tom (`info`, `success`, `warning`, `error`) usados só na interface, e a indicação de ser publicável manualmente. Criar uma notificação de um tipo fora do catálogo é recusado, como na auditoria. Acrescentar um tipo é acrescentar a entrada, sem migration de esquema.
 
-Nesta Change o catálogo tem o que a Change usa:
+Nesta Change o catálogo tem o que a Change usa. Os três tipos manuais são os que a tela de publicação oferece:
 
-| Código | Publicável manualmente | Origem |
-|---|---|---|
-| `COMUNICADO` | sim | publicação manual |
-| `PERFIL_ALTERADO` | não | evento da troca de perfil |
+| Código | Rótulo | Tom | Publicável manualmente | Origem |
+|---|---|---|---|---|
+| `INFORMACAO` | Informação | info | sim | publicação manual |
+| `SUCESSO` | Sucesso | success | sim | publicação manual |
+| `AVISO` | Aviso | warning | sim | publicação manual |
+| `PERFIL_ALTERADO` | Perfil alterado | info | não | evento da troca de perfil |
+
+O tom não é um campo à parte escolhido por quem publica: ele vem do tipo, o que mantém a cor com função definida (spec `interface`) e impede um comunicado "de sucesso" com a cor de erro.
 
 Os tipos dos módulos futuros (solicitação criada, reserva aprovada, recusada, cancelada) entram pelas Changes deles, o que é exatamente o teste de que o mecanismo é genérico.
 
@@ -123,13 +127,13 @@ A publicação manual é registrada, com um único registro por publicação, co
 
 A notificação criada por um evento não gera registro próprio, porque a operação que a originou já é auditada.
 
-### D10. Rota de opções por tela, e não por dado
+### D10. Escolha de vários usuários pela lista com busca, e não por rota de opções
 
-A Change `selecionar-opcoes-com-busca` escreveu na spec `controle-acesso` que "a rota de opções de usuários exige `AUDITORIA.VISUALIZAR`, porque só a consulta da auditoria a usa". A escolha de destinatários específicos passa a ser um segundo consumidor de opções de usuários, com outra permissão, e a frase deixa de valer.
+A escolha de usuários específicos precisa de vários valores no mesmo campo, e o componente de seleção da Change `selecionar-opcoes-com-busca` escolhe um valor só (a seleção múltipla está explicitamente fora do escopo dela). O que o projeto já tem para escolher vários é a lista de seleção com busca das permissões de um perfil, e é ela que a publicação usa, generalizada para dizer de que lista se trata (os textos do resumo, da busca e do estado vazio passaram a ser do campo).
 
-A regra geral daquela Change, a de que a permissão da rota é a da tela que consome as opções, continua, e o delta desta Change torna explícito o que ela implica: cada tela declara a própria rota, no app dono da tela. A de usuários do `audit` exige `AUDITORIA.VISUALIZAR`; a de usuários do `notices` exige `NOTIFICACAO.PUBLICAR`. Uma rota única compartilhada entre as duas teria de aceitar a união das permissões e daria a quem só publica notificações o mesmo acesso concedido a quem consulta a auditoria.
+Consequência: nenhuma rota de opções nova entra nesta Change, e a frase da spec `controle-acesso` sobre a rota de opções de usuários da auditoria continua valendo como está. A escolha do perfil de destino, que é de um valor só, usa o componente de seleção normalmente.
 
-A escolha do perfil de destino usa a rota de opções de perfis, que exige só autenticação, pela razão já registrada naquela spec: a escolha de um perfil num formulário não exige `PERFIL.VISUALIZAR`.
+**Preço:** a lista de usuários ativos chega inteira à página, como a de permissões já chega. Com a escala do campus é aceitável, e a busca do próprio componente resolve a navegação; se a base crescer muito, a saída é a seleção múltipla com fonte paginada, que é uma Change do componente, e não desta tela.
 
 ### D11. Tempo real: gravar, confirmar, avisar, e a tela busca
 
@@ -177,7 +181,25 @@ O escolhido foi o **WebSocket com Channels**, a saída com entrega imediata de v
 
 ### D13. Visual, a partir da referência do autor
 
-A tela de publicação e a página de notificações são telas novas: a referência é pedida ao autor antes de desenhá-las, e o que for adaptado e o que for retirado dela fica registrado aqui na implementação, conforme a seção 9.8 das convenções. O painel do cabeçalho já tem forma definida e só troca a origem dos dados.
+O painel do cabeçalho já tem forma definida e só troca a origem dos dados. A referência das duas etapas da publicação chegou em 24/09/2026, e a da página de notificações ainda não.
+
+**Adaptado da referência:**
+
+- **Página completa, em duas etapas**, com o indicador "1 Criar" e "2 Revisar" no alto, à direita. É o que motivou o ajuste do requisito da revisão na spec: o padrão de ação de gestão em modal não serve a um fluxo de duas telas com prévia, e a importação de planilhas já é um precedente de prévia em página.
+- **Cartão "Detalhes da comunicação"** com o título, a mensagem, o tipo e os destinatários, e o rodapé com os controles da etapa.
+- **Tipo em três cartões de escolha** (Informação, Sucesso, Aviso), que viraram os três tipos publicáveis manualmente do catálogo (D4), em vez de um campo de aparência.
+- **Contagem de destinatários abaixo da escolha** ("124 usuários ativos"), com o ícone de pessoas, e o "Total estimado" no resumo da revisão, que é exatamente a quantidade informativa que a spec descreve.
+- **Contador de caracteres da mensagem**, com o limite de 240 da referência.
+- **Revisão em dois cartões:** a prévia da notificação como o destinatário vai vê-la e o resumo com destinatários, total estimado e os controles.
+- **Item "Notificações" na navegação**, hoje apontando para a publicação e visível a quem tem `NOTIFICACAO.PUBLICAR`. Quando a página de notificações do usuário existir, o item passa a levar a ela, para todo usuário autenticado, e é também para lá que a publicação vai levar depois do sucesso, que agora volta à página inicial com a mensagem.
+
+**Retirado da referência:**
+
+- **O cartão "Orientação"**, com "Seja claro e objetivo" e "Pense no público": é conselho e frase de efeito, que a seção 9.2 das convenções não aceita. O que era necessário virou ajuda dos campos.
+- **Os placeholders de exemplo** ("Ex.: Nova atualização do sistema"): o projeto já retirou o exemplo do placeholder do e-mail no login, e a orientação fica no rótulo e na ajuda do campo.
+- **O botão "Cancelar"**: a seção 9.3 reserva "cancelar" à ação do domínio (cancelar reserva). O controle que sai do formulário é "Fechar", e o que volta da revisão é "Voltar".
+- **O texto "Comunicação interna" acima do título** e a seta de voltar ao lado da trilha: a trilha de navegação do layout já cumpre esse papel.
+- **O item "Configurações" da navegação**, que não existe no sistema.
 
 ## Risks / Trade-offs
 

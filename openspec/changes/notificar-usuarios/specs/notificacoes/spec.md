@@ -81,7 +81,7 @@ Uma publicação DEVE (MUST) destinar a notificação de uma destas formas: a to
 - **THEN** ele não tem esse comunicado
 
 ### Requirement: Publicação manual de comunicado
-Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, informando título, mensagem, tipo e destinatários. O título e a mensagem DEVEM (MUST) ser obrigatórios, com os limites de tamanho definidos num único ponto do código, e o texto DEVE (MUST) seguir a spec `texto-interface`. O tipo DEVE (MUST) ser escolhido entre os tipos do catálogo marcados como publicáveis manualmente; um tipo gerado por evento NÃO DEVE (MUST NOT) aparecer nessa escolha nem ser aceito no envio. A escolha do perfil e a escolha de usuários específicos DEVEM (MUST) usar o componente de seleção da spec `interface`. A publicação DEVE (MUST) ser feita somente por requisição POST com token CSRF válido, depois da revisão, e DEVE (MUST) criar todas as notificações numa única transação, de modo que uma falha não deixe parte dos destinatários notificados. Uma publicação recusada por validação ou por regra de negócio NÃO DEVE (MUST NOT) criar nenhuma notificação. A publicação NÃO DEVE (MUST NOT) enviar e-mail nem qualquer outra mensagem fora do sistema.
+Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, informando título, mensagem, tipo e destinatários. O título e a mensagem DEVEM (MUST) ser obrigatórios, com os limites de tamanho definidos num único ponto do código, e o texto DEVE (MUST) seguir a spec `texto-interface`. O tipo DEVE (MUST) ser escolhido entre os tipos do catálogo marcados como publicáveis manualmente; um tipo gerado por evento NÃO DEVE (MUST NOT) aparecer nessa escolha nem ser aceito no envio. A escolha do perfil DEVE (MUST) usar o componente de seleção da spec `interface`. A escolha de usuários específicos DEVE (MUST) usar a lista de seleção com busca, a mesma das permissões de um perfil, porque o componente de seleção escolhe um valor só, e DEVE (MUST) oferecer apenas usuários ativos. A publicação DEVE (MUST) ser feita somente por requisição POST com token CSRF válido, depois da revisão, e DEVE (MUST) criar todas as notificações numa única transação, de modo que uma falha não deixe parte dos destinatários notificados. Uma publicação recusada por validação ou por regra de negócio NÃO DEVE (MUST NOT) criar nenhuma notificação. A publicação NÃO DEVE (MUST NOT) enviar e-mail nem qualquer outra mensagem fora do sistema.
 
 #### Scenario: Comunicado publicado
 - **GIVEN** um usuário autorizado e 8 usuários ativos
@@ -117,21 +117,30 @@ Um usuário autorizado DEVE (MUST) poder publicar um comunicado do sistema, info
 - **THEN** nenhum envio de e-mail é registrado no outbox
 
 ### Requirement: Revisão antes da publicação
-A publicação manual DEVE (MUST) acontecer no fluxo criar, revisar, publicar e sucesso, com a criação e a revisão abertas em modal, conforme o padrão de ações de gestão da spec `interface`, e com o mesmo conteúdo exibido como página quando a mesma URL é acessada sem JavaScript. A revisão DEVE (MUST) exibir a prévia da notificação como o destinatário vai vê-la, com o título, a mensagem, o ícone e o tom do tipo escolhido, e DEVE (MUST) informar a quantidade de destinatários que serão alcançados e a forma de destinar. A revisão DEVE (MUST) oferecer o controle para voltar e corrigir os dados, sem perdê-los, e o controle que publica. A quantidade exibida na revisão DEVE (MUST) ser informativa: a publicação DEVE (MUST) resolver os destinatários de novo no momento em que é confirmada, e a quantidade registrada DEVE (MUST) ser a do conjunto alcançado.
+A publicação manual DEVE (MUST) acontecer no fluxo criar, revisar, publicar e sucesso, em duas páginas completas, e NÃO DEVE (MUST NOT) abrir em modal: são duas etapas com conteúdo extenso, como a prévia da importação de planilhas, e não uma ação de gestão de um registro da tela atual. As duas páginas DEVEM (MUST) indicar em qual etapa o usuário está e quais são as etapas do fluxo. A etapa de revisão DEVE (MUST) receber o que foi preenchido na etapa anterior sem gravar nada, e nenhuma notificação DEVE (MUST) existir antes da publicação. A revisão DEVE (MUST) exibir a prévia da notificação como o destinatário vai vê-la, com o título, a mensagem, o ícone e o tom do tipo escolhido, e DEVE (MUST) informar a quantidade de destinatários que serão alcançados e a forma de destinar. A revisão DEVE (MUST) oferecer o controle para voltar e corrigir os dados, sem perdê-los, e o controle que publica. A quantidade exibida na revisão DEVE (MUST) ser informativa: a publicação DEVE (MUST) resolver os destinatários de novo no momento em que é confirmada, e a quantidade registrada DEVE (MUST) ser a do conjunto alcançado.
+
+#### Scenario: Etapas do fluxo
+- **WHEN** o usuário autorizado abre a criação de uma notificação
+- **THEN** a página mostra a etapa atual e as etapas do fluxo, com "Criar" como a atual e "Revisar" como a seguinte
+- **AND** ao avançar, a revisão mostra "Criar" como concluída e "Revisar" como a atual
 
 #### Scenario: Prévia e quantidade na revisão
 - **GIVEN** 12 usuários ativos com o perfil `DOCENTE`
 - **WHEN** o usuário autorizado preenche o comunicado para o perfil `DOCENTE` e avança para a revisão
 - **THEN** a revisão mostra a notificação como o destinatário vai vê-la e informa que 12 destinatários serão alcançados
 
+#### Scenario: Revisão não grava nada
+- **WHEN** a revisão de um comunicado é exibida
+- **THEN** nenhuma notificação existe ainda
+
 #### Scenario: Voltar da revisão para corrigir
 - **GIVEN** a revisão de um comunicado
 - **WHEN** o usuário aciona o controle de voltar
 - **THEN** o formulário é exibido de novo com o título, a mensagem, o tipo e os destinatários que ele informou
 
-#### Scenario: Revisão sem publicar
+#### Scenario: Revisão abandonada
 - **GIVEN** a revisão de um comunicado exibida
-- **WHEN** o usuário fecha o modal
+- **WHEN** o usuário sai da página sem publicar
 - **THEN** nenhuma notificação é criada
 
 #### Scenario: Destinatários mudam entre a revisão e a publicação
@@ -141,8 +150,8 @@ A publicação manual DEVE (MUST) acontecer no fluxo criar, revisar, publicar e 
 - **THEN** existem 11 notificações e a quantidade registrada é 11
 
 #### Scenario: Fluxo sem JavaScript
-- **WHEN** as URLs da criação e da revisão são acessadas sem o cabeçalho `HX-Request`
-- **THEN** cada uma responde com a página completa, com o mesmo conteúdo do modal e o mesmo POST
+- **WHEN** as duas páginas são usadas com o JavaScript desligado
+- **THEN** o formulário, a revisão e a publicação funcionam pelos envios comuns do formulário
 
 ### Requirement: Autorização da publicação de notificações
 A publicação manual de notificações DEVE (MUST) exigir autenticação e a permissão `NOTIFICACAO.PUBLICAR`, conforme a spec `controle-acesso`, em todas as etapas do fluxo e em todos os métodos HTTP. Um visitante não autenticado DEVE (MUST) ser redirecionado para o login, e um usuário autenticado sem a permissão DEVE (MUST) receber 403, inclusive nas rotas de opções que alimentam a escolha dos destinatários. O item de navegação e os controles que levam à publicação DEVEM (MUST) aparecer somente para quem tem a permissão, sem que isso substitua a verificação no servidor. A área de notificações do próprio usuário DEVE (MUST) exigir somente autenticação, e NÃO DEVE (MUST NOT) depender de nenhuma permissão.

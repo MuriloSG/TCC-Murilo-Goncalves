@@ -1,30 +1,32 @@
 {% load ui %}<div class="checklist" data-checklist{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
   <div class="checklist-top">
     <div class="checklist-summary">
-      <p><strong><span data-checklist-selected>{{ widget.selected_count }}</span> de {{ widget.total_count }}</strong> permissões selecionadas</p>
+      <p><strong><span data-checklist-selected>{{ widget.selected_count }}</span> de {{ widget.total_count }}</strong> {{ widget.summary_label }}</p>
       <p class="checklist-unsaved" data-checklist-unsaved hidden><span class="checklist-dot" aria-hidden="true"></span>Alterações não salvas</p>
     </div>
     <div class="checklist-tools" data-checklist-tools hidden>
       <div class="control">
-        <label class="sr-only" for="{{ widget.name }}-busca">Buscar permissão</label>
-        {% icon "search" %}<input class="input" type="search" id="{{ widget.name }}-busca" placeholder="Buscar permissão" data-checklist-search>
+        <label class="sr-only" for="{{ widget.name }}-busca">{{ widget.search_label }}</label>
+        {% icon "search" %}<input class="input" type="search" id="{{ widget.name }}-busca" placeholder="{{ widget.search_label }}" data-checklist-search>
       </div>
       <button class="btn-secondary" type="button" data-checklist-toggle data-state="none"><span class="when-none">Selecionar todas</span><span class="when-all">Limpar seleção</span></button>
     </div>
   </div>
   {% for group in widget.groups %}
     <details class="checklist-group" open>
-      <summary>
-        <span class="checklist-group-name">{{ group.name }}</span>
-        <span class="count" data-checklist-group-count>{{ group.selected }}/{{ group.total }}</span>
-        {% icon "chevron-down" %}
-      </summary>
+      {% if group.name %}
+        <summary>
+          <span class="checklist-group-name">{{ group.name }}</span>
+          <span class="count" data-checklist-group-count>{{ group.selected }}/{{ group.total }}</span>
+          {% icon "chevron-down" %}
+        </summary>
+      {% endif %}
       <div class="checklist-options">
         {% for option in group.options %}
-          <label class="check-option"><input type="{{ option.type }}" name="{{ option.name }}" value="{{ option.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" with widget=option %}><span><strong>{{ option.value }}</strong> <span class="perm-description">{{ option.label }}</span></span></label>
+          <label class="check-option"><input type="{{ option.type }}" name="{{ option.name }}" value="{{ option.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" with widget=option %}><span>{% if widget.show_values %}<strong>{{ option.value }}</strong> <span class="perm-description">{{ option.label }}</span>{% else %}{{ option.label }}{% endif %}</span></label>
         {% endfor %}
       </div>
     </details>
   {% endfor %}
-  <p class="checklist-empty" data-checklist-empty hidden>Nenhuma permissão encontrada para a busca.</p>
+  <p class="checklist-empty" data-checklist-empty hidden>{{ widget.empty_label }}</p>
 </div>

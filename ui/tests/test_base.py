@@ -11,7 +11,7 @@ from ui.contrast import STYLES
 
 
 def notify(user, title):
-    return Notification.objects.notify(user, catalog.NOTICE, title, 'Mensagem do comunicado.')
+    return Notification.objects.notify(user, catalog.INFORMATION, title, 'Mensagem do comunicado.')
 
 
 class FocusableParser(HTMLParser):

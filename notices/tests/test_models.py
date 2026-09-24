@@ -30,8 +30,12 @@ class CatalogTests(SimpleTestCase):
                 self.assertTrue(data['icon'])
                 self.assertIn(data['tone'], {'info', 'success', 'warning', 'error'})
 
-    def test_only_the_notice_is_published_manually(self):
-        self.assertEqual(catalog.manual_choices(), [(catalog.NOTICE, 'Comunicado')])
+    def test_manual_types_are_the_three_of_the_publication(self):
+        self.assertEqual(
+            catalog.manual_choices(),
+            [(catalog.INFORMATION, 'Informação'), (catalog.SUCCESS, 'Sucesso'), (catalog.WARNING, 'Aviso')],
+        )
+        self.assertFalse(catalog.is_manual(catalog.ROLE_CHANGED))
 
     def test_destinations(self):
         self.assertEqual(
@@ -66,7 +70,7 @@ class DeliveryTests(TestCase):
 
     def publish(self, recipients):
         return Notification.objects.publish(
-            catalog.NOTICE,
+            catalog.INFORMATION,
             'Nova versão do sistema',
             'Uma versão nova do sistema foi disponibilizada.',
             recipients,
@@ -94,7 +98,7 @@ class DeliveryTests(TestCase):
             with self.subTest(recipient=notification.recipient):
                 self.assertEqual(notification.title, 'Nova versão do sistema')
                 self.assertEqual(notification.message, 'Uma versão nova do sistema foi disponibilizada.')
-                self.assertEqual(notification.type, catalog.NOTICE)
+                self.assertEqual(notification.type, catalog.INFORMATION)
 
     def test_type_outside_the_catalog_is_refused(self):
         with self.assertRaises(UnknownNoticeType):
@@ -108,7 +112,7 @@ class DeliveryTests(TestCase):
 
     def test_title_longer_than_the_limit_is_refused(self):
         with self.assertRaises(ValidationError):
-            Notification.objects.publish(catalog.NOTICE, 'x' * 121, 'Mensagem', [self.ana])
+            Notification.objects.publish(catalog.INFORMATION, 'x' * 121, 'Mensagem', [self.ana])
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_undone_transaction_leaves_no_notification(self):
@@ -132,8 +136,8 @@ class DeliveryTests(TestCase):
         self.assertEqual(Notification.objects.for_user(daniel).count(), 0)
 
     def test_most_recent_first(self):
-        Notification.objects.notify(self.ana, catalog.NOTICE, 'Primeira', 'Mensagem.')
-        Notification.objects.notify(self.ana, catalog.NOTICE, 'Segunda', 'Mensagem.')
+        Notification.objects.notify(self.ana, catalog.INFORMATION, 'Primeira', 'Mensagem.')
+        Notification.objects.notify(self.ana, catalog.INFORMATION, 'Segunda', 'Mensagem.')
         self.assertEqual(
             list(Notification.objects.for_user(self.ana).values_list('title', flat=True)),
             ['Segunda', 'Primeira'],
@@ -188,11 +192,11 @@ class ReadingTests(TestCase):
 
     def test_unread_count(self):
         for title in ('Uma', 'Outra', 'Mais uma'):
-            Notification.objects.notify(self.ana, catalog.NOTICE, title, 'Mensagem.')
+            Notification.objects.notify(self.ana, catalog.INFORMATION, title, 'Mensagem.')
         self.assertEqual(Notification.objects.unread_count(self.ana), 3)
 
     def test_mark_as_read_changes_the_state_once(self):
-        notification = Notification.objects.notify(self.ana, catalog.NOTICE, 'Uma', 'Mensagem.')
+        notification = Notification.objects.notify(self.ana, catalog.INFORMATION, 'Uma', 'Mensagem.')
         self.assertTrue(notification.mark_as_read())
         read_at = notification.read_at
         self.assertFalse(notification.mark_as_read())
@@ -201,7 +205,7 @@ class ReadingTests(TestCase):
 
     def test_mark_all_as_read(self):
         for title in ('Uma', 'Outra'):
-            Notification.objects.notify(self.ana, catalog.NOTICE, title, 'Mensagem.')
+            Notification.objects.notify(self.ana, catalog.INFORMATION, title, 'Mensagem.')
         self.assertEqual(Notification.objects.mark_all_as_read(self.ana), 2)
         self.assertEqual(Notification.objects.unread_count(self.ana), 0)
         self.assertEqual(Notification.objects.mark_all_as_read(self.ana), 0)

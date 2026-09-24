@@ -22,7 +22,7 @@ from notices import catalog
 from notices.realtime import announce_change
 
 TITLE_MAX_LENGTH = 120
-MESSAGE_MAX_LENGTH = 500
+MESSAGE_MAX_LENGTH = 240
 TARGET_MAX_LENGTH = 200
 
 
@@ -151,7 +151,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
         quantidade de destinatários, em vez de um registro por destinatário.
         """
         validate_type(notice_type)
-        if not catalog.TYPES[notice_type]['manual']:
+        if not catalog.is_manual(notice_type):
             raise NotPublishedManually(notice_type)
         with transaction.atomic(using=self.db):
             reached = self.publish(

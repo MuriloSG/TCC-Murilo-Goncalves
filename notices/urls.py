@@ -11,6 +11,16 @@ from notices import views
 
 urlpatterns = [
     path(
+        'notificacoes/nova/',
+        login_required(views.NoticeCreateView.as_view()),
+        name='notice_create',
+    ),
+    path(
+        'notificacoes/publicar/',
+        login_required(views.NoticePublishView.as_view()),
+        name='notice_publish',
+    ),
+    path(
         'notificacoes/<int:pk>/abrir/',
         login_required(views.NotificationOpenView.as_view()),
         name='notification_open',

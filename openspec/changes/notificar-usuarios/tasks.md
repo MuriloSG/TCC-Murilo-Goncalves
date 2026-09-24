@@ -1,10 +1,11 @@
 ## 1. Referência visual e decisões de tecnologia
 
-- [ ] 1.1 Receber do autor a imagem de referência da tela de publicação e da página de notificações (D13)
+- [x] 1.1 Receber do autor a imagem de referência da tela de publicação (D13)
+- [ ] 1.6 Receber do autor a imagem de referência da página de notificações (D13)
 - [x] 1.2 Verificar a versão da `django-notifications-hq` compatível com o Django 5.2, o que ela exige de `INSTALLED_APPS` e de migrations, como ela trata destinatário e leitura e se ela convive com o servidor ASGI (D3)
 - [x] 1.3 Decidir entre adotar a biblioteca como persistência e usar model próprio, e registrar a decisão no `design.md` (D3)
 - [x] 1.4 Decidir a tecnologia do canal de tempo real e a camada de mensagens, com o WebSocket por Channels como recomendação, e registrar a decisão no `design.md` (D11)
-- [ ] 1.5 Registrar no `design.md` o que foi adaptado e o que foi retirado da referência visual (seção 9.8 das convenções)
+- [x] 1.5 Registrar no `design.md` o que foi adaptado e o que foi retirado da referência visual (seção 9.8 das convenções)
 
 ## 2. Persistência e mecanismo de notificações
 
@@ -26,13 +27,13 @@
 
 ## 4. Publicação manual
 
-- [ ] 4.1 Criar o formulário da publicação, com título, mensagem, tipo publicável manualmente e destinatários, com os limites de tamanho num único ponto do código
-- [ ] 4.2 Criar as views de criar, revisar e publicar sobre a `ModalView`, com a revisão em `continues_in_modal` e a publicação por POST com CSRF (D7)
-- [ ] 4.3 Criar as rotas em `notices/urls.py`, com `login_required`, e a permissão `NOTIFICACAO.PUBLICAR` declarada em cada view
-- [ ] 4.4 Criar a rota de opções de usuários do `notices`, com a permissão `NOTIFICACAO.PUBLICAR`, e usar o componente de seleção na escolha do perfil e dos usuários (D10)
-- [ ] 4.5 Criar os templates da criação, da revisão com a prévia e a quantidade de destinatários, e a mensagem de sucesso
-- [ ] 4.6 Testar cada rota nas quatro situações de acesso, o fluxo com e sem htmx, a volta da revisão sem perder os dados, a mudança de destinatários entre a revisão e a publicação e a ausência de envio de e-mail
-- [ ] 4.7 Commit
+- [x] 4.1 Criar o formulário da publicação, com título, mensagem, tipo publicável manualmente e destinatários, com os limites de tamanho num único ponto do código
+- [x] 4.2 Criar as views de criar, revisar e publicar em páginas completas, com a revisão recebendo os dados da etapa anterior sem gravar nada e a publicação por POST com CSRF (D7, D13)
+- [x] 4.3 Criar as rotas em `notices/urls.py`, com `login_required`, e a permissão `NOTIFICACAO.PUBLICAR` declarada em cada view
+- [x] 4.4 Usar o componente de seleção na escolha do perfil e a lista de seleção com busca na escolha dos usuários, generalizando os textos dela (D10)
+- [x] 4.5 Criar os templates das duas etapas, com o indicador de etapas, a prévia e a quantidade de destinatários, e a mensagem de sucesso
+- [x] 4.6 Testar cada rota nas quatro situações de acesso, a volta da revisão sem perder os dados, a mudança de destinatários entre a revisão e a publicação e a ausência de envio de e-mail
+- [x] 4.7 Commit
 
 ## 5. Notificação gerada por evento
 

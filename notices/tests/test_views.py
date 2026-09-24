@@ -19,7 +19,7 @@ class NotificationViewTestCase(TestCase):
     def notify(self, recipient=None, target_url=''):
         return Notification.objects.notify(
             recipient or self.ana,
-            catalog.NOTICE,
+            catalog.INFORMATION,
             'Nova versão do sistema',
             'Uma versão nova do sistema foi disponibilizada.',
             target_url=target_url,

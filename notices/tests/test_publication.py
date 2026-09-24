@@ -20,7 +20,7 @@ class PublicationAuditTests(TestCase):
     def publish(self, destination, **kwargs):
         with acting_as(Actor(user=self.ana, origin=audit_catalog.INTERFACE)):
             return Notification.objects.publish_manually(
-                catalog.NOTICE,
+                catalog.INFORMATION,
                 'Nova versão do sistema',
                 'Uma versão nova do sistema foi disponibilizada.',
                 destination,
@@ -40,7 +40,7 @@ class PublicationAuditTests(TestCase):
         self.assertEqual(record.origin, audit_catalog.INTERFACE)
         self.assertEqual(record.metadata['destinatarios'], 3)
         self.assertEqual(record.metadata['destino'], catalog.ALL_USERS)
-        self.assertEqual(record.metadata['tipo'], catalog.NOTICE)
+        self.assertEqual(record.metadata['tipo'], catalog.INFORMATION)
         self.assertEqual(record.metadata['titulo'], 'Nova versão do sistema')
 
     def test_recipients_are_resolved_at_the_publication(self):

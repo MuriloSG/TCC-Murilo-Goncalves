@@ -16,6 +16,11 @@ urlpatterns = [
         name='notification_open',
     ),
     path(
+        'notificacoes/sino/',
+        login_required(views.NotificationsPanelView.as_view()),
+        name='notifications_panel',
+    ),
+    path(
         'notificacoes/lidas/',
         login_required(views.NotificationsReadAllView.as_view()),
         name='notifications_read_all',

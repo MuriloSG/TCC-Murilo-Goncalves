@@ -1,4 +1,4 @@
-{% load ui %}<details class="menu notifications" data-notifications>
+{% load ui %}<details class="menu notifications" data-notifications data-notifications-panel="{% url 'notifications_panel' %}" data-notifications-channel="/ws/notificacoes/">
   <summary class="icon-btn" aria-label="Notificações{% if unread %}, {{ unread }} não lida{{ unread|pluralize }}{% endif %}">{% icon "bell" %}{% if unread %}<span class="notifications-count" aria-hidden="true">{{ unread }}</span>{% endif %}</summary>
   <div class="notifications-panel">
     <div class="notifications-head">

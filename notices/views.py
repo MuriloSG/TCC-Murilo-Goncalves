@@ -7,10 +7,10 @@ um formulário comum, que recarrega a tela de origem.
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.views.generic.base import View
+from django.views.generic.base import TemplateView, View
 
 from notices.models import Notification
-from notices.utils import redirect_target
+from notices.utils import panel_context, redirect_target
 
 
 class NotificationOpenView(View):
@@ -32,3 +32,16 @@ class NotificationsReadAllView(View):
     def post(self, request):
         Notification.objects.mark_all_as_read(request.user)
         return HttpResponseRedirect(redirect_target(request))
+
+
+class NotificationsPanelView(TemplateView):
+    """Fragmento do sino com o estado gravado do usuário autenticado (D11).
+
+    É o que a interface busca depois de um aviso do canal de tempo real e ao
+    reconectar: o evento diz que as notificações mudaram, e o conteúdo vem daqui.
+    """
+
+    template_name = 'ui/components/notifications.html'
+
+    def get_context_data(self, **kwargs):
+        return panel_context(self.request)

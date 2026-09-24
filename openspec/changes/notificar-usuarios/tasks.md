@@ -46,7 +46,7 @@
 - [x] 6.1 Passar o sino e o painel do `ui` a receber as notificações e a contagem do usuário autenticado, e retirar o `SAMPLE_NOTIFICATIONS` e os testes dele (D12)
 - [ ] 6.2 Criar a página de notificações, paginada conforme a spec `interface`, com o estado vazio em texto
 - [x] 6.3 Criar as rotas de abrir e de marcar como lida, por POST com CSRF, e a de marcar todas como lidas, só com `login_required` (D8)
-- [ ] 6.4 Criar a rota que devolve o fragmento do sino com a contagem e a lista do usuário autenticado, só com `login_required` (D11)
+- [x] 6.4 Criar a rota que devolve o fragmento do sino com a contagem e a lista do usuário autenticado, só com `login_required` (D11)
 - [x] 6.5 Ajustar o `notifications.js` para o filtro entre todas e não lidas sobre os dados reais, mantendo o funcionamento sem JavaScript
 - [ ] 6.6 Testar a contagem, a abertura marcando como lida, o destino, a marcação de todas, a notificação de outro usuário recusada, a marcação sem CSRF e o comportamento sem JavaScript
 - [ ] 6.7 Rodar `make test` com a suíte inteira passando
@@ -54,14 +54,14 @@
 
 ## 7. Tempo real
 
-- [ ] 7.1 Acrescentar a infraestrutura do canal escolhida em 1.4, com o servidor ASGI e a camada de mensagens configurados por variável de ambiente (D11)
-- [ ] 7.2 Acrescentar ao `compose.yaml`, ao `Dockerfile` e ao `Makefile` o que o canal exigir, mantendo o ambiente subindo com um `docker compose up`
-- [ ] 7.3 Criar o destino por usuário e a autenticação da conexão pela sessão, de modo que um usuário só receba os eventos dele (D11)
-- [ ] 7.4 Disparar o aviso no `transaction.on_commit` da operação que grava a notificação, com o evento informando só que as notificações do usuário mudaram (D11)
-- [ ] 7.5 Fazer o `notifications.js` pedir o fragmento do sino ao ser avisado e ao reconectar, e definir o limite de tempo da atualização em configuração (D11)
-- [ ] 7.6 Testar o aviso depois da confirmação da transação, o evento restrito ao destinatário, a publicação concluída com o canal falhando e o fragmento do sino devolvendo o estado gravado
-- [ ] 7.7 Rodar `make test` com a suíte inteira passando
-- [ ] 7.8 Commit
+- [x] 7.1 Acrescentar a infraestrutura do canal escolhida em 1.4, com o servidor ASGI e a camada de mensagens configurados por variável de ambiente (D11)
+- [x] 7.2 Acrescentar ao `compose.yaml`, ao `Dockerfile` e ao `Makefile` o que o canal exigir, mantendo o ambiente subindo com um `docker compose up`
+- [x] 7.3 Criar o destino por usuário e a autenticação da conexão pela sessão, de modo que um usuário só receba os eventos dele (D11)
+- [x] 7.4 Disparar o aviso no `transaction.on_commit` da operação que grava a notificação, com o evento informando só que as notificações do usuário mudaram (D11)
+- [x] 7.5 Fazer o `notifications.js` pedir o fragmento do sino ao ser avisado e ao reconectar, e definir o limite de tempo da atualização em configuração (D11)
+- [x] 7.6 Testar o aviso depois da confirmação da transação, o evento restrito ao destinatário, a publicação concluída com o canal falhando e o fragmento do sino devolvendo o estado gravado
+- [x] 7.7 Rodar `make test` com a suíte inteira passando
+- [x] 7.8 Commit
 
 ## 8. Documentação e verificação
 

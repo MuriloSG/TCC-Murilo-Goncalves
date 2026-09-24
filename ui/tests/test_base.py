@@ -110,7 +110,12 @@ class AppLayoutTests(LayoutTestCase):
         topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
         for area in (header, topbar):
             with self.subTest(area=area[:30]):
-                self.assertIn('<details class="menu notifications" data-notifications>', area)
+                self.assertIn(
+                    '<details class="menu notifications" data-notifications'
+                    ' data-notifications-panel="/notificacoes/sino/"'
+                    ' data-notifications-channel="/ws/notificacoes/">',
+                    area,
+                )
                 self.assertIn('<summary class="icon-btn" aria-label="Notificações, 2 não lidas">', area)
                 self.assertIn('<span class="notifications-count" aria-hidden="true">2</span>', area)
         self.assertLess(header.index('data-notifications'), header.index('user-menu'))

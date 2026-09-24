@@ -19,6 +19,7 @@ from django.utils import timezone
 from audit import catalog as audit_catalog
 from audit.models import AuditLog
 from notices import catalog
+from notices.realtime import announce_change
 
 TITLE_MAX_LENGTH = 120
 MESSAGE_MAX_LENGTH = 500
@@ -106,6 +107,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
         notification.full_clean()
         with transaction.atomic(using=self.db):
             notification.save(using=self.db)
+            announce_change([recipient])
         return notification
 
     def publish(self, notice_type, title, message, recipients, target_url=''):
@@ -136,6 +138,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
                 )
                 for person in people
             )
+            announce_change(people)
         return len(people)
 
     def publish_manually(self, notice_type, title, message, destination, role=None, users=()):

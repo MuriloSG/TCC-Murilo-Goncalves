@@ -1,6 +1,7 @@
 from django.test import Client, TestCase
 
 from accounts.models import Role, User
+from audit.models import AuditLog
 from notices import catalog
 from notices.models import Notification
 
@@ -117,3 +118,31 @@ class ReadAllTests(NotificationViewTestCase):
         response = self.client.get('/notificacoes/lidas/')
         self.assertEqual(response.status_code, 405)
         self.assertEqual(Notification.objects.unread_count(self.ana), 1)
+
+
+class PanelTests(NotificationViewTestCase):
+    def test_anonymous_goes_to_login(self):
+        self.client.logout()
+        response = self.client.get('/notificacoes/sino/')
+        self.assertRedirects(
+            response,
+            '/contas/login/?next=/notificacoes/sino/',
+            fetch_redirect_response=False,
+        )
+
+    def test_fragment_has_the_notifications_of_the_user(self):
+        self.notify()
+        self.notify(recipient=self.bruno)
+        content = self.client.get('/notificacoes/sino/').content.decode()
+        self.assertTrue(content.startswith('<details class="menu notifications"'))
+        self.assertIn('<span class="notifications-count" aria-hidden="true">1</span>', content)
+        self.assertEqual(content.count('<li class="notification'), 1)
+
+    def test_fragment_without_notifications(self):
+        content = self.client.get('/notificacoes/sino/').content.decode()
+        self.assertIn('<p class="notifications-empty">Nenhuma notificação.</p>', content)
+
+    def test_fragment_is_not_recorded_as_access(self):
+        before = AuditLog.objects.count()
+        self.client.get('/notificacoes/sino/')
+        self.assertEqual(AuditLog.objects.count(), before)

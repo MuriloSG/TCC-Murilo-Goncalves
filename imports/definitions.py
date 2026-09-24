@@ -43,6 +43,7 @@ class RowPlan:
 
 class ImportDefinition:
     kind = ''
+    audit_resource = ''
     columns = ()
     identifier = ''
     columns_by_field = {}

@@ -19,6 +19,7 @@ from accounts.models import (
     lock_active_users,
     validate_institutional_email,
 )
+from audit import catalog
 from imports.definitions import Column, ImportDefinition, RowError, RowPlan, errors_from_validation
 
 INACTIVE_USER = 'inactive_user'
@@ -30,6 +31,7 @@ def permission_error(column, action):
 
 class UserImport(ImportDefinition):
     kind = 'USUARIO'
+    audit_resource = catalog.USER_IMPORT
     columns = (Column('E-mail'), Column('Nome'), Column('Perfil'))
     identifier = 'E-mail'
     columns_by_field = {'email': 'E-mail', 'name': 'Nome', 'role': 'Perfil'}

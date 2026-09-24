@@ -25,13 +25,13 @@
 
 ## 4. Alterações de dados
 
-- [ ] 4.1 Registrar as operações de `User`: cadastro, edição, troca de perfil, desativação e reativação (D7, D9)
-- [ ] 4.2 Registrar as operações de `Role`: criação, edição, alteração de permissões e exclusão (D7, D9)
-- [ ] 4.3 Registrar a prévia, a confirmação, o descarte e o download do modelo nas importações, e trocar a origem para `IMPORTACAO` na execução das linhas (D3, D7)
-- [ ] 4.4 Registrar o envio e a falha definitiva no worker do outbox (D11)
-- [ ] 4.5 Testar cada operação: valores anteriores e posteriores só com os campos alterados, operação sem mudança e operação recusada sem registro, prévia sem registro das linhas, confirmação com registro por usuário e origem `IMPORTACAO`, envio e falha do worker sem usuário responsável
-- [ ] 4.6 Rodar `make test` com a suíte inteira passando
-- [ ] 4.7 Commit
+- [x] 4.1 Registrar as operações de `User`: cadastro, edição, troca de perfil, desativação e reativação (D7, D9)
+- [x] 4.2 Registrar as operações de `Role`: criação, edição, alteração de permissões e exclusão (D7, D9)
+- [x] 4.3 Registrar a prévia, a confirmação, o descarte e o download do modelo nas importações, e trocar a origem para `IMPORTACAO` na execução das linhas (D3, D7)
+- [x] 4.4 Registrar o envio e a falha definitiva no worker do outbox (D11)
+- [x] 4.5 Testar cada operação: valores anteriores e posteriores só com os campos alterados, operação sem mudança e operação recusada sem registro, prévia sem registro das linhas, confirmação com registro por usuário e origem `IMPORTACAO`, envio e falha do worker sem usuário responsável
+- [x] 4.6 Rodar `make test` com a suíte inteira passando
+- [x] 4.7 Commit
 
 ## 5. Consulta
 

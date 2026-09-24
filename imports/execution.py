@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
 
+from audit.context import acting_from_import
 from imports.definitions import RowError, RowPlan, errors_from_validation
 
 DATABASE_ERROR = RowError(
@@ -91,8 +92,13 @@ def execute_row(definition, row, executor):
 
 
 def run(definition, rows, executor):
-    """Trava, executa cada linha e as verificações do arquivo, e devolve o Plan."""
-    with definition.execution():
+    """Trava, executa cada linha e as verificações do arquivo, e devolve o Plan.
+
+    As linhas rodam com a origem de importação na auditoria: o responsável continua
+    sendo o executor, e os registros das operações de domínio mostram que vieram de
+    uma planilha (D3 da Change auditar-acoes-do-sistema).
+    """
+    with definition.execution(), acting_from_import(executor):
         definition.lock(rows, executor)
         plan = Plan(rows=[(row, execute_row(definition, row, executor)) for row in rows])
         plan.file_errors = list(definition.check_file(executor))

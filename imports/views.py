@@ -17,6 +17,8 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
+from audit import catalog
+from audit.models import AuditLog
 from imports.definitions import ImportDefinition
 from imports.forms import ImportUploadForm
 from imports.models import Import, ImportRow
@@ -133,6 +135,11 @@ class ImportTemplateView(View):
         header = ';'.join(column.label for column in self.screens.definition.columns)
         response = HttpResponse('﻿' + header + '\r\n', content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="{self.screens.template_file_name}"'
+        AuditLog.objects.record(
+            catalog.EXPORT,
+            self.screens.definition.audit_resource,
+            metadata={'arquivo': self.screens.template_file_name},
+        )
         return response
 
 
@@ -229,7 +236,7 @@ class ImportDiscardView(ModalView, TemplateView):
 
     def post(self, request, *args, **kwargs):
         try:
-            self.target.discard(request.user)
+            self.target.discard(self.screens.definition, request.user)
         except ValidationError as error:
             for message in error.messages:
                 messages.error(request, message)

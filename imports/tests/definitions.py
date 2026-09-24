@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import connection
 
+from audit import catalog
 from imports.definitions import Column, ImportDefinition, RowError, RowPlan
 
 FORBIDDEN = 'PROIBIDO'
@@ -17,6 +18,7 @@ class GroupImport(ImportDefinition):
     """
 
     kind = 'GRUPO'
+    audit_resource = catalog.USER_IMPORT
     columns = (Column('Nome'),)
     identifier = 'Nome'
     columns_by_field = {'name': 'Nome'}

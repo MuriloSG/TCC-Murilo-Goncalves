@@ -135,18 +135,18 @@ class ConfirmTests(ImportTestCase):
         concluded.confirm(self.definition, self.executor)
         with_errors = self.preview('ERRO')
         discarded = self.preview('Técnicos')
-        discarded.discard(self.executor)
+        discarded.discard(self.definition, self.executor)
         for importation in (concluded, with_errors, discarded):
             with self.subTest(status=importation.status):
                 with self.assertRaises(ValidationError):
                     importation.confirm(self.definition, self.executor)
                 with self.assertRaises(ValidationError):
-                    importation.discard(self.executor)
+                    importation.discard(self.definition, self.executor)
         self.assertEqual(list(Group.objects.values_list('name', flat=True)), ['Docentes'])
 
     def test_discard(self):
         importation = self.preview('Docentes')
-        importation.discard(self.other)
+        importation.discard(self.definition, self.other)
         self.assertEqual((importation.status, importation.resolved_by), ('DESCARTADA', self.other))
         self.assertFalse(Group.objects.exists())
 

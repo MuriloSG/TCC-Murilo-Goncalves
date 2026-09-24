@@ -43,9 +43,9 @@ def acting_as(actor):
 
 
 @contextmanager
-def acting_from_import():
-    """Mantém o usuário responsável e troca a origem para a importação."""
-    with acting_as(replace(current_actor(), origin=catalog.IMPORTED)):
+def acting_from_import(user):
+    """Origem de importação, com quem executou a planilha como responsável."""
+    with acting_as(replace(current_actor(), user=user, origin=catalog.IMPORTED)):
         yield
 
 

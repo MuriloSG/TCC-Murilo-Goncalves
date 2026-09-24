@@ -10,10 +10,22 @@ import logging
 
 from django.db import transaction
 
+from audit import catalog
+from audit.models import AuditLog
 from outbox.handlers import get_handler
 from outbox.models import OutboxEntry
 
 logger = logging.getLogger('outbox')
+
+
+def record(action, entry):
+    """Registra a ação automática do worker, sem usuário responsável (D11)."""
+    AuditLog.objects.record(
+        action,
+        catalog.EMAIL,
+        resource_id=entry.pk,
+        metadata={'tipo': entry.kind, 'referencia': entry.reference},
+    )
 
 
 def process(entry):
@@ -21,6 +33,7 @@ def process(entry):
     if handler is None:
         entry.mark_failed(f'Tipo de envio sem tratador registrado: {entry.kind}.')
         logger.error('Envio %s falhou: tipo %s sem tratador registrado.', entry.pk, entry.kind)
+        record(catalog.FAIL, entry)
         return
     try:
         with transaction.atomic():
@@ -30,6 +43,7 @@ def process(entry):
     except Exception as error:
         entry.register_failure(error)
         if entry.status == OutboxEntry.Status.FAILED:
+            record(catalog.FAIL, entry)
             logger.error(
                 'Envio %s falhou na tentativa %s e não será tentado de novo: %s',
                 entry.pk, entry.attempts, entry.last_error,
@@ -41,6 +55,7 @@ def process(entry):
         entry.mark_discarded()
     else:
         entry.mark_sent()
+        record(catalog.SEND, entry)
 
 
 def process_next():

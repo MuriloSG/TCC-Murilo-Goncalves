@@ -34,11 +34,12 @@ class ActorTests(SimpleTestCase):
             self.assertEqual(current_actor().ip_address, '10.0.0.1')
         self.assertEqual(current_actor(), Actor())
 
-    def test_import_origin_keeps_the_user(self):
-        with acting_as(Actor(user='ana', origin=catalog.INTERFACE)):
-            with acting_from_import():
+    def test_import_origin_keeps_the_executor(self):
+        with acting_as(Actor(user='ana', ip_address='10.0.0.1', origin=catalog.INTERFACE)):
+            with acting_from_import('ana'):
                 self.assertEqual(current_actor().origin, catalog.IMPORTED)
                 self.assertEqual(current_actor().user, 'ana')
+                self.assertEqual(current_actor().ip_address, '10.0.0.1')
             self.assertEqual(current_actor().origin, catalog.INTERFACE)
 
 

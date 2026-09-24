@@ -92,6 +92,8 @@ Cada operação que já concentra a regra de negócio chama `record` dentro da p
 | `User.update_details` | `ALTERAR` | `USUARIO` | só os campos que mudaram |
 | `User.change_role` | `ALTERAR` | `USUARIO` | código do perfil anterior e do novo |
 | `User.deactivate` / `reactivate` | `DESATIVAR` / `ATIVAR` | `USUARIO` | sem valores |
+| `User.objects.create_superadmin` | `CRIAR` | `USUARIO` | e-mail, nome, perfil e a marca de superadmin |
+| `User.set_superadmin` | `ALTERAR` | `USUARIO` | marca de superadmin antes e depois |
 | `Role.objects.create_role` | `CRIAR` | `PERFIL` | código, nome, descrição e permissões concedidas |
 | `Role.update_details` | `ALTERAR` | `PERFIL` | só os campos que mudaram |
 | `Role.set_permissions` | `ALTERAR` | `PERFIL` | listas de permissões antes e depois |
@@ -100,6 +102,8 @@ Cada operação que já concentra a regra de negócio chama `record` dentro da p
 | `Import.confirm` concluída | `IMPORTAR` | `IMPORTACAO_USUARIO` | totais aplicados |
 | `Import.discard` | `DESCARTAR` | `IMPORTACAO_USUARIO` | sem valores |
 | `ImportTemplateView` | `EXPORTAR` | recurso da tela | nome do arquivo |
+
+Os dois comandos de gerenciamento do superadmin passam por essas mesmas operações e, por rodarem fora de uma requisição, deixam registros com a origem `SISTEMA`.
 
 Uma operação sem efeito não registra nada: `update_details` chamado com os mesmos dados e `set_permissions` sem diferença não geram registro, porque não houve alteração.
 

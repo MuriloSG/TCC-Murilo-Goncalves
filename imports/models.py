@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
+from audit import catalog
+from audit.models import AuditLog
 from imports.execution import comparable, run
 from imports.reader import SourceRow
 
@@ -39,6 +41,16 @@ class ImportManager(models.Manager):
             ImportRow.objects.bulk_create(
                 ImportRow(parent=importation, line_number=row.line_number, values=row.values, **plan_fields(row_plan))
                 for row, row_plan in plan.rows
+            )
+            AuditLog.objects.record(
+                catalog.CREATE,
+                definition.audit_resource,
+                resource_id=importation.pk,
+                metadata={
+                    'arquivo': importation.file_name,
+                    'situacao': importation.status,
+                    'linhas': len(plan.rows),
+                },
             )
         return importation
 
@@ -136,6 +148,18 @@ class Import(models.Model):
                 current.resolved_by = executor
                 current.resolved_at = timezone.now()
                 current.save(update_fields=['status', 'resolved_by', 'resolved_at'])
+                summary = current.summary()
+                AuditLog.objects.record(
+                    catalog.IMPORT,
+                    definition.audit_resource,
+                    resource_id=current.pk,
+                    metadata={
+                        'arquivo': current.file_name,
+                        'cadastrados': summary['create'],
+                        'atualizados': summary['update'],
+                        'sem_alteracao': summary['unchanged'],
+                    },
+                )
                 concluded = True
             else:
                 transaction.savepoint_rollback(savepoint)
@@ -151,13 +175,19 @@ class Import(models.Model):
         self.refresh_from_db()
         return concluded
 
-    def discard(self, executor):
+    def discard(self, definition, executor):
         with transaction.atomic():
             current = self.lock_pending()
             current.status = self.Status.DISCARDED
             current.resolved_by = executor
             current.resolved_at = timezone.now()
             current.save(update_fields=['status', 'resolved_by', 'resolved_at'])
+            AuditLog.objects.record(
+                catalog.DISCARD,
+                definition.audit_resource,
+                resource_id=current.pk,
+                metadata={'arquivo': current.file_name},
+            )
         self.refresh_from_db()
 
     def comparable(self, rows=None):

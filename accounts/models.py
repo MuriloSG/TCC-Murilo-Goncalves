@@ -15,6 +15,8 @@ from accounts.permissions import (
     RESOURCE_LABELS,
     SUPERADMIN_RESERVED_PERMISSIONS,
 )
+from audit import catalog
+from audit.models import AuditLog
 from outbox.models import OutboxEntry
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
@@ -205,6 +207,12 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
             user.save(using=self.db)
             UserRole.objects.using(self.db).create(user=user, role=role)
             OutboxEntry.objects.using(self.db).enqueue(PASSWORD_LINK, user.pk)
+            AuditLog.objects.record(
+                catalog.CREATE,
+                catalog.USER,
+                resource_id=user.pk,
+                new_values={'email': user.email, 'name': user.name, 'role': role.code},
+            )
         return user
 
     def create_superadmin(self, email, name, password):
@@ -220,6 +228,12 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
             role = Role.objects.using(self.db).get(code=ADMINISTRATOR_ROLE)
             user.save(using=self.db)
             UserRole.objects.using(self.db).create(user=user, role=role)
+            AuditLog.objects.record(
+                catalog.CREATE,
+                catalog.USER,
+                resource_id=user.pk,
+                new_values={'email': user.email, 'name': user.name, 'role': role.code, 'superadmin': True},
+            )
         return user
 
 
@@ -305,7 +319,14 @@ class User(AbstractBaseUser):
         if role is None:
             raise role_required_error()
         with administrative_continuity():
+            previous = self.role
             UserRole.objects.update_or_create(user=self, defaults={'role': role})
+            AuditLog.objects.record_changes(
+                catalog.USER,
+                self.pk,
+                {'role': previous.code if previous else None},
+                {'role': role.code},
+            )
         self.__dict__.pop('_effective_permissions_cache', None)
 
     def update_details(self, executor, name, email):
@@ -325,21 +346,40 @@ class User(AbstractBaseUser):
                 self.full_clean()
                 self.save(update_fields=['name', 'email'])
                 EmailAddress.objects.filter(user=self).exclude(email__iexact=self.email).delete()
+                AuditLog.objects.record_changes(
+                    catalog.USER,
+                    self.pk,
+                    {'name': previous[0], 'email': previous[1]},
+                    {'name': self.name, 'email': self.email},
+                )
             except BaseException:
                 self.name, self.email = previous
                 raise
 
     def deactivate(self):
-        self._apply_guarded(is_active=False)
+        with transaction.atomic():
+            changed = self.is_active
+            self._apply_guarded(is_active=False)
+            if changed:
+                AuditLog.objects.record(catalog.DEACTIVATE, catalog.USER, resource_id=self.pk)
 
     def reactivate(self):
-        self._apply(is_active=True)
+        with transaction.atomic():
+            changed = not self.is_active
+            self._apply(is_active=True)
+            if changed:
+                AuditLog.objects.record(catalog.ACTIVATE, catalog.USER, resource_id=self.pk)
 
     def set_superadmin(self, value):
-        if value:
-            self._apply(is_superadmin=True)
-        else:
-            self._apply_guarded(is_superadmin=False)
+        with transaction.atomic():
+            previous = self.is_superadmin
+            if value:
+                self._apply(is_superadmin=True)
+            else:
+                self._apply_guarded(is_superadmin=False)
+            AuditLog.objects.record_changes(
+                catalog.USER, self.pk, {'superadmin': previous}, {'superadmin': value},
+            )
 
     def _apply(self, **values):
         previous = {field: getattr(self, field) for field in values}
@@ -379,6 +419,17 @@ class RoleManager(models.Manager):
             role.save(using=self.db)
             RolePermission.objects.using(self.db).bulk_create(
                 RolePermission(role=role, permission=permission) for permission in granted
+            )
+            AuditLog.objects.record(
+                catalog.CREATE,
+                catalog.ROLE,
+                resource_id=role.pk,
+                new_values={
+                    'code': role.code,
+                    'name': role.name,
+                    'description': role.description,
+                    'permissions': sorted(permission.code for permission in granted),
+                },
             )
         return role
 
@@ -436,6 +487,12 @@ class Role(models.Model):
         try:
             self.full_clean()
             self.save(update_fields=['name', 'description'])
+            AuditLog.objects.record_changes(
+                catalog.ROLE,
+                self.pk,
+                {'name': previous[0], 'description': previous[1]},
+                {'name': self.name, 'description': self.description},
+            )
         except BaseException:
             self.name, self.description = previous
             raise
@@ -452,6 +509,12 @@ class Role(models.Model):
             RolePermission.objects.bulk_create(
                 RolePermission(role=self, permission=granted[code]) for code in added
             )
+            AuditLog.objects.record_changes(
+                catalog.ROLE,
+                self.pk,
+                {'permissions': sorted(current)},
+                {'permissions': sorted(granted)},
+            )
             if removed & ADMINISTRATIVE_CAPABILITY:
                 ensure_administrative_continuity()
 
@@ -463,6 +526,12 @@ class Role(models.Model):
             count = role.user_roles.count()
             if count:
                 raise RoleInUse(count)
+            AuditLog.objects.record(
+                catalog.DELETE,
+                catalog.ROLE,
+                resource_id=role.pk,
+                old_values={'code': role.code, 'name': role.name, 'description': role.description},
+            )
             role.delete()
 
 

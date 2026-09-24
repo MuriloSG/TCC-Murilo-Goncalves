@@ -75,6 +75,19 @@ class AuditLogManager(models.Manager.from_queryset(AuditLogQuerySet)):
             user_agent=(actor.user_agent or '')[:USER_AGENT_MAX_LENGTH],
         )
 
+    def record_changes(self, resource, resource_id, previous, current):
+        """Registra a alteração só com os campos que mudaram, e nada quando nada mudou."""
+        changed = {field: value for field, value in current.items() if previous.get(field) != value}
+        if not changed:
+            return None
+        return self.record(
+            catalog.UPDATE,
+            resource,
+            resource_id=resource_id,
+            old_values={field: previous.get(field) for field in changed},
+            new_values=changed,
+        )
+
 
 class AuditLog(models.Model):
     """Ação registrada: quem fez, o que fez, sobre o quê, quando e de onde."""

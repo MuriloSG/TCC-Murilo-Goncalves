@@ -59,6 +59,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
     'accounts.middleware.PermissionMiddleware',
+    'audit.middleware.AuditMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

@@ -10,10 +10,10 @@
 
 ## 2. Ator da requisição e acesso às funcionalidades
 
-- [ ] 2.1 Criar `AuditMiddleware`, que define o ator da requisição e registra `ACESSO` (D3, D5) e registrá-lo no fim de `MIDDLEWARE` (D13)
-- [ ] 2.2 Declarar `audit_resource` nas views de usuários, perfis e importações (D5)
-- [ ] 2.3 Testar o acesso: registro no GET da lista, ausência de registro nas requisições do htmx, no 403, no POST e na página inicial, e IP e cliente gravados
-- [ ] 2.4 Commit
+- [x] 2.1 Criar `AuditMiddleware`, que define o ator da requisição e registra `ACESSO` (D3, D5) e registrá-lo no fim de `MIDDLEWARE` (D13)
+- [x] 2.2 Declarar `audit_resource` nas views de usuários, perfis e importações (D5)
+- [x] 2.3 Testar o acesso: registro no GET da lista, ausência de registro nas requisições do htmx, no 403, no POST e na página inicial, e IP e cliente gravados
+- [x] 2.4 Commit
 
 ## 3. Autenticação
 

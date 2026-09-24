@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
+from audit import catalog
 from imports.views import (
     ImportConfirmView,
     ImportDetailView,
@@ -124,6 +125,7 @@ class UserListView(ListView):
     """
 
     permission_required = permissions.USER_VIEW
+    audit_resource = catalog.USER
     template_name = 'accounts/user_list.html'
     table_template_name = 'accounts/partials/user_table.html'
     table_target = 'tabela-usuarios'
@@ -157,6 +159,7 @@ class UserListView(ListView):
 
 class UserCreateView(OperationFormView):
     permission_required = permissions.USER_CREATE
+    audit_resource = catalog.USER
     template_name = 'accounts/user_form.html'
     modal_template_name = 'accounts/user_form_modal.html'
     success_url = reverse_lazy('user_list')
@@ -174,6 +177,7 @@ class UserCreateView(OperationFormView):
 
 class UserUpdateView(OperationFormView):
     permission_required = permissions.USER_EDIT
+    audit_resource = catalog.USER
     model = User
     template_name = 'accounts/user_form.html'
     modal_template_name = 'accounts/user_form_modal.html'
@@ -191,6 +195,7 @@ class UserUpdateView(OperationFormView):
 
 class UserRoleView(OperationFormView):
     permission_required = permissions.USER_CHANGE_ROLE
+    audit_resource = catalog.USER
     model = User
     template_name = 'accounts/user_form.html'
     modal_template_name = 'accounts/user_form_modal.html'
@@ -208,6 +213,7 @@ class UserRoleView(OperationFormView):
 
 class UserStatusView(ConfirmedActionView):
     permission_required = permissions.USER_CHANGE_STATUS
+    audit_resource = catalog.USER
     model = User
     template_name = 'accounts/user_status_confirm.html'
     modal_template_name = 'accounts/user_status_modal.html'
@@ -236,6 +242,7 @@ class UserReactivateView(UserStatusView):
 
 class RoleListView(ListView):
     permission_required = permissions.ROLE_VIEW
+    audit_resource = catalog.ROLE
     template_name = 'accounts/role_list.html'
     context_object_name = 'roles'
 
@@ -251,6 +258,7 @@ class RoleListView(ListView):
 
 class RoleDetailView(DetailView):
     permission_required = permissions.ROLE_VIEW
+    audit_resource = catalog.ROLE
     template_name = 'accounts/role_detail.html'
     context_object_name = 'role'
 
@@ -262,6 +270,7 @@ class RoleDetailView(DetailView):
 
 
 class RoleFormView(OperationFormView):
+    audit_resource = catalog.ROLE
     model = Role
     template_name = 'accounts/role_form.html'
     modal_template_name = 'accounts/role_form_modal.html'
@@ -332,6 +341,7 @@ class RolePermissionsView(RoleFormView):
 
 class RoleDeleteView(ConfirmedActionView):
     permission_required = permissions.ROLE_DELETE
+    audit_resource = catalog.ROLE
     model = Role
     template_name = 'accounts/role_confirm_delete.html'
     modal_template_name = 'accounts/role_delete_modal.html'
@@ -364,11 +374,13 @@ USER_IMPORT_SCREENS = ImportScreens(
 
 class UserImportListView(ImportListView):
     permission_required = permissions.USER_IMPORT
+    audit_resource = catalog.USER_IMPORT
     screens = USER_IMPORT_SCREENS
 
 
 class UserImportUploadView(ImportUploadView):
     permission_required = permissions.USER_IMPORT
+    audit_resource = catalog.USER_IMPORT
     screens = USER_IMPORT_SCREENS
 
 
@@ -379,6 +391,7 @@ class UserImportTemplateView(ImportTemplateView):
 
 class UserImportDetailView(ImportDetailView):
     permission_required = permissions.USER_IMPORT
+    audit_resource = catalog.USER_IMPORT
     screens = USER_IMPORT_SCREENS
 
 
@@ -389,4 +402,5 @@ class UserImportConfirmView(ImportConfirmView):
 
 class UserImportDiscardView(ImportDiscardView):
     permission_required = permissions.USER_IMPORT
+    audit_resource = catalog.USER_IMPORT
     screens = USER_IMPORT_SCREENS

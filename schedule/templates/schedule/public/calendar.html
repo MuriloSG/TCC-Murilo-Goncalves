@@ -1,0 +1,108 @@
+{% extends "ui/layouts/public.html" %}
+{% load ui %}
+
+{% block title %}Horários do campus{% endblock %}
+
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block header %}
+  <div class="public-heading">
+    <h1 class="page-title">Horários do campus</h1>
+  </div>
+  <details class="public-filters" data-public-filters{% if not calendar.has_principal %} open{% endif %}>
+    <summary>{% icon "search" %}<span>Filtros</span>{% if calendar.summary %}<span class="public-summary">{{ calendar.summary }}</span>{% endif %}{% icon "chevron-down" %}</summary>
+    <form class="public-form" method="get" action="{{ calendar_url }}" role="search" hx-get="{{ calendar_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, change[target.tagName=='SELECT']" data-public-form>
+      {% for field in filter_form %}
+        {% if field.widget_type == "select" %}
+          <div class="public-field{% if field.name == "sala" or field.name == "docente" or field.name == "curso" %} is-wide{% endif %}">
+            <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% include "ui/components/select.html" %}
+          </div>
+        {% endif %}
+      {% endfor %}
+      <div class="public-dates">
+        <div class="public-field">
+          <label for="{{ filter_form.inicio.id_for_label }}">{{ filter_form.inicio.label }}</label>
+          {{ filter_form.inicio }}
+        </div>
+        <div class="public-field">
+          <label for="{{ filter_form.fim.id_for_label }}">{{ filter_form.fim.label }}</label>
+          {{ filter_form.fim }}
+        </div>
+      </div>
+      <button class="btn-primary public-submit" type="submit">{% icon "search" %}Mostrar</button>
+    </form>
+  </details>
+{% endblock %}
+
+{% block content %}
+  <section class="card timetable public-calendar" id="calendario" aria-labelledby="calendario-titulo" data-public-calendar>
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="calendario-titulo">Semestre {{ calendar.semester_code }}</h2>
+        {% if week.is_dated %}<p class="timetable-range">{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}</p>{% endif %}
+      </div>
+    </div>
+    {% if calendar.date_error %}
+      <div class="timetable-notice">
+        <div class="alert tone-error" role="alert" id="erro-datas">{% icon "circle-x" %}<p>{{ calendar.date_error }}</p></div>
+      </div>
+    {% endif %}
+    {% if calendar.notice %}
+      <div class="timetable-notice">
+        <div class="alert tone-info" role="status">{% icon "info" %}<p>{{ calendar.notice }}</p></div>
+      </div>
+    {% endif %}
+    {% if calendar.message %}
+      <p class="timetable-empty" role="status">{{ calendar.message }}</p>
+    {% elif week.rows %}
+      {% if week.is_dated %}
+        <div class="timetable-status">
+          <nav class="timetable-nav public-nav" aria-label="Intervalos">
+            {% if previous_url %}
+              <a class="btn-secondary" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}Anterior</a>
+            {% else %}
+              <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}Anterior</span>
+            {% endif %}
+            <a class="btn-secondary" href="{{ today_url }}" hx-get="{{ today_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
+            {% if following_url %}
+              <a class="btn-secondary" href="{{ following_url }}" hx-get="{{ following_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true">Próximo{% icon "chevron-right" %}</a>
+            {% else %}
+              <span class="btn-secondary" aria-disabled="true">Próximo{% icon "chevron-right" %}</span>
+            {% endif %}
+          </nav>
+        </div>
+      {% endif %}
+      <div class="timetable-scroll is-month is-public" tabindex="0" role="region" aria-label="Calendário{% if week.is_dated %} de {{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}{% endif %}" data-public-scroll>
+        <table class="timetable-grid is-month is-public">
+          <caption class="sr-only">Calendário do semestre {{ calendar.semester_code }}{% if calendar.summary %}, {{ calendar.summary }}{% endif %}</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="timetable-corner">Horário</th>
+              {% for day in week.days %}
+                <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"{% if day.is_today %} id="hoje"{% endif %}>{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in week.rows %}
+              <tr>
+                <th scope="row" class="timetable-time"><span>{{ row.start|time:"H:i" }}</span><span>{{ row.end|time:"H:i" }}</span></th>
+                {% for day, cell in row.day_cells %}
+                  {% if cell.is_continued %}
+                  {% elif cell.is_outside %}
+                    <td class="timetable-outside{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">Fora do semestre</td>
+                  {% elif cell %}
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/public/entry.html" %}</td>
+                  {% else %}
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, {{ calendar.free_label }}</span></td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

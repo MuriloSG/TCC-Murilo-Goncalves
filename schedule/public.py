@@ -1,0 +1,424 @@
+"""Consulta e montagem do calendário público do ensalamento (Change calendario-publico).
+
+Tudo o que a página pública expõe sai deste módulo. Ele lê só as alocações do ensalamento
+acadêmico e nunca chama `occupancy()` nem `grid_sources()`, para que reservas, exceções ou
+outras fontes futuras de ocupação não cheguem à página pública (D3). Os templates recebem
+só `PublicEntry` e a estrutura da Grade, sem referência a model e sem IDs (D5).
+
+A quantidade de consultas é fixa: no máximo oito, qualquer que seja o intervalo (D10).
+"""
+
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+from types import SimpleNamespace
+from urllib.parse import urlencode
+
+from django.db.models import Prefetch
+from django.db.models.functions import Lower
+
+from accounts.models import User
+from schedule.models import Allocation, Course, Space, Stage, Teacher
+from schedule.timetable import (
+    WEEKDAYS,
+    Row,
+    build_week,
+    clamp,
+    current_semester_code,
+    group_label,
+    imported_semesters,
+    monday_of,
+    natural_key,
+    semester_slots,
+    week_dates,
+)
+
+MAX_DAYS = 31
+MAX_LENGTH = 200
+STAGES = {'graduacao': Stage.UNDERGRADUATE, 'ensino-medio': Stage.SECONDARY}
+STAGE_CHOICES = [('graduacao', Stage.UNDERGRADUATE.label), ('ensino-medio', Stage.SECONDARY.label)]
+
+CHOOSE_MESSAGE = 'Escolha uma sala, um docente ou um curso.'
+BOTH_DATES_MESSAGE = 'Informe a data inicial e a data final.'
+INVALID_DATE_MESSAGE = 'Informe uma data válida.'
+ORDER_MESSAGE = 'A data final deve ser igual ou posterior à data inicial.'
+LIMIT_MESSAGE = f'Escolha um intervalo de até {MAX_DAYS} dias.'
+COMBINED_EMPTY_MESSAGE = 'Nenhuma aula encontrada com estes filtros.'
+
+
+@dataclass(frozen=True)
+class PublicTeacher:
+    """Docente no card: o nome do ensalamento e, quando houver correspondência, o e-mail."""
+
+    name: str
+    email: str = ''
+
+
+@dataclass(frozen=True)
+class PublicEntry:
+    """Uma aula no calendário público, só com os campos que o card mostra."""
+
+    subject: str
+    group_label: str
+    space: str
+    teachers: tuple
+    stage: str
+
+    @property
+    def is_undergraduate(self):
+        return self.stage == Stage.UNDERGRADUATE
+
+    @property
+    def stage_label(self):
+        return Stage(self.stage).label
+
+
+@dataclass(frozen=True)
+class Cluster:
+    """Aulas de uma célula com a mesma sala, disciplina e docentes: turmas juntas quando mais de uma."""
+
+    entries: tuple
+
+    @property
+    def is_joint(self):
+        return len(self.entries) > 1
+
+
+@dataclass
+class PublicCell:
+    """Bloco de faixas seguidas com as mesmas aulas, agrupadas em `Cluster`, sem a marca de choque."""
+
+    clusters: list
+    start: object
+    end: object
+    span: int = 1
+    is_continued = False
+    is_outside = False
+
+
+@dataclass
+class Options:
+    """Opções dos filtros de um semestre, só com nome e código."""
+
+    semesters: list = field(default_factory=list)
+    spaces: list = field(default_factory=list)
+    teachers: list = field(default_factory=list)
+    courses: list = field(default_factory=list)
+
+
+def semester_options(semester):
+    """Salas, docentes e cursos com alocação no semestre, em três consultas (D6).
+
+    As salas inativas entram quando têm alocação no semestre. Os docentes vêm de `Teacher`,
+    nunca da tabela de usuários (D4).
+    """
+    if semester is None:
+        return [], [], []
+    spaces = sorted(
+        Space.objects.filter(allocations__semester=semester).distinct().only('name'),
+        key=natural_key,
+    )
+    teachers = list(
+        Teacher.objects.filter(allocations__semester=semester).distinct().only('name').order_by('name'),
+    )
+    courses = list(
+        Course.objects.filter(class_groups__allocations__semester=semester).distinct().only('name', 'stage').order_by('name'),
+    )
+    return spaces, teachers, courses
+
+
+def chosen(value, records):
+    """Registro cujo nome é o valor informado, sem diferenciar a caixa; o resto é descartado."""
+    value = (value or '').strip()
+    if not value or len(value) > MAX_LENGTH:
+        return None
+    key = value.casefold()
+    return next((record for record in records if record.name.casefold() == key), None)
+
+
+def teacher_emails(names):
+    """E-mails dos usuários ativos cujo `username` corresponde exatamente ao nome do docente (D4).
+
+    Uma consulta, só com `username` e `email`, pelo índice de `Lower('username')`.
+    """
+    keys = {name.lower() for name in names}
+    if not keys:
+        return {}
+    found = (
+        User.objects.annotate(key=Lower('username'))
+        .filter(key__in=keys, is_active=True)
+        .values_list('key', 'email')
+    )
+    return dict(found)
+
+
+def public_allocations(semester, space=None, teacher=None, course=None, stage=None):
+    """Alocações do semestre com os filtros aplicados no banco, só com as colunas do card."""
+    queryset = Allocation.objects.filter(semester=semester)
+    if space is not None:
+        queryset = queryset.filter(space=space)
+    if teacher is not None:
+        queryset = queryset.filter(teachers=teacher)
+    if course is not None:
+        queryset = queryset.filter(class_group__course=course)
+    if stage is not None:
+        queryset = queryset.filter(class_group__course__stage=stage)
+    return list(
+        queryset.select_related('subject', 'time_slot', 'space', 'class_group__course')
+        .only(
+            'weekday',
+            'subject', 'subject__name',
+            'time_slot', 'time_slot__start_time', 'time_slot__end_time',
+            'space', 'space__name',
+            'class_group', 'class_group__label',
+            'class_group__course', 'class_group__course__name', 'class_group__course__stage',
+        )
+        .prefetch_related(Prefetch('teachers', queryset=Teacher.objects.only('name').order_by('name')))
+        .order_by(),
+    )
+
+
+def entries_of(allocations):
+    """Aulas do card de cada alocação, com os e-mails dos docentes numa consulta só."""
+    names = {teacher.name for allocation in allocations for teacher in allocation.teachers.all()}
+    emails = teacher_emails(names)
+    result = []
+    for allocation in allocations:
+        teachers = tuple(
+            PublicTeacher(name=teacher.name, email=emails.get(teacher.name.lower(), ''))
+            for teacher in sorted(allocation.teachers.all(), key=lambda item: item.name)
+        )
+        result.append((allocation, PublicEntry(
+            subject=allocation.subject.name,
+            group_label=group_label(allocation.class_group),
+            space=allocation.space.name if allocation.space else '',
+            teachers=teachers,
+            stage=allocation.class_group.course.stage,
+        )))
+    return result
+
+
+def entry_order(entry):
+    """Sala na ordem natural, com as aulas sem sala por último, depois curso e turma."""
+    return (not entry.space, natural_key(SimpleNamespace(name=entry.space)), entry.group_label.casefold(), entry.subject.casefold())
+
+
+def clusters_of(entries):
+    """Agrupa as aulas da célula pela mesma sala, disciplina e docentes (D9)."""
+    groups = {}
+    for entry in sorted(entries, key=entry_order):
+        key = (entry.space.casefold(), entry.subject.casefold(), frozenset(teacher.name.casefold() for teacher in entry.teachers))
+        groups.setdefault(key, []).append(entry)
+    return [Cluster(entries=tuple(items)) for items in groups.values()]
+
+
+def publish(week):
+    """Troca as células da Grade pelas públicas, que não classificam choque."""
+    for day in week.days:
+        day.cells = [
+            PublicCell(clusters=clusters_of(cell.entries), start=cell.start, end=cell.end, span=cell.span)
+            if cell and not cell.is_continued and not cell.is_outside else cell
+            for cell in day.cells
+        ]
+    week.rows = [
+        Row(start=row.start, end=row.end, cells=[day.cells[index] for day in week.days], days=week.days)
+        for index, row in enumerate(week.rows)
+    ]
+    return week
+
+
+def typical_week(semester, allocations, today):
+    slots = semester_slots(semester)
+    by_day_slot = {}
+    for allocation, entry in entries_of(allocations):
+        slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
+        by_day_slot.setdefault((allocation.weekday, slot), []).append(entry)
+    return publish(build_week(slots, sorted_entries(by_day_slot), today))
+
+
+def sorted_entries(by_day_slot):
+    return {key: sorted(entries, key=entry_order) for key, entries in by_day_slot.items()}
+
+
+def dated_week(semester, allocations, dates, today):
+    """Grade datada: cada alocação em cada data do seu dia da semana dentro do período."""
+    slots = semester_slots(semester)
+    by_weekday = {}
+    for allocation, entry in entries_of(allocations):
+        by_weekday.setdefault(allocation.weekday, []).append((allocation, entry))
+    by_day_slot = {}
+    for day in dates:
+        if not semester.contains(day):
+            continue
+        for allocation, entry in by_weekday.get(WEEKDAYS[day.weekday()], []):
+            slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
+            by_day_slot.setdefault((day, slot), []).append(entry)
+    return publish(build_week(slots, sorted_entries(by_day_slot), today, dates=dates, semester=semester))
+
+
+def weekdays_between(start, end):
+    days = []
+    day = start
+    while day <= end:
+        if day.weekday() < len(WEEKDAYS):
+            days.append(day)
+        day += timedelta(days=1)
+    return days
+
+
+def default_range(semester, today):
+    """Segunda e sexta da semana de hoje, levada para dentro do período do semestre (D7)."""
+    start = monday_of(clamp(semester, today, today))
+    dates = week_dates(start)
+    return dates[0], dates[-1]
+
+
+def parse_day(value):
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def read_range(params):
+    """Datas da URL: (início, fim, erro). Sem as duas, (None, None, None) para usar o padrão."""
+    start_text = (params.get('inicio') or '').strip()[:MAX_LENGTH]
+    end_text = (params.get('fim') or '').strip()[:MAX_LENGTH]
+    if not start_text and not end_text:
+        return None, None, None
+    if not start_text or not end_text:
+        return None, None, BOTH_DATES_MESSAGE
+    start, end = parse_day(start_text), parse_day(end_text)
+    if start is None or end is None:
+        return None, None, INVALID_DATE_MESSAGE
+    if end < start:
+        return start, end, ORDER_MESSAGE
+    if (end - start).days + 1 > MAX_DAYS:
+        return start, end, LIMIT_MESSAGE
+    return start, end, None
+
+
+def weeks_covered(start, end):
+    return ((end - monday_of(start)).days // 7) + 1
+
+
+def touches(semester, start, end):
+    return start <= semester.end_date and end >= semester.start_date
+
+
+@dataclass
+class PublicCalendar:
+    """Tudo o que o template público recebe: filtros normalizados, estado e a Grade."""
+
+    semester_code: str
+    options: Options
+    space: object = None
+    teacher: object = None
+    course: object = None
+    stage_key: str = ''
+    start: object = None
+    end: object = None
+    dates_enabled: bool = False
+    date_error: str = ''
+    message: str = ''
+    notice: str = ''
+    week: object = None
+    free_label: str = 'sem aula'
+    previous_query: str = ''
+    following_query: str = ''
+    today_query: str = ''
+
+    @property
+    def has_principal(self):
+        return any(record is not None for record in (self.space, self.teacher, self.course))
+
+    @property
+    def summary(self):
+        """Resumo dos filtros escolhidos, mostrado no grupo recolhível "Filtros"."""
+        parts = [record.name for record in (self.space, self.teacher, self.course) if record is not None]
+        if self.stage_key:
+            parts.append(STAGES[self.stage_key].label)
+        return ', '.join(parts)
+
+    def query(self, start=None, end=None):
+        """Parâmetros da URL dos filtros, com as datas informadas ou nenhuma, sem IDs."""
+        values = {
+            'semestre': self.semester_code,
+            'sala': self.space.name if self.space else '',
+            'docente': self.teacher.name if self.teacher else '',
+            'curso': self.course.name if self.course else '',
+            'nivel': self.stage_key,
+        }
+        if start is not None:
+            values.update(inicio=start.isoformat(), fim=end.isoformat())
+        return urlencode({key: value for key, value in values.items() if value})
+
+
+def empty_message(calendar):
+    principals = [record for record in (calendar.space, calendar.teacher, calendar.course) if record is not None]
+    if len(principals) == 1 and not calendar.stage_key:
+        if calendar.teacher is not None:
+            return f'Nenhuma aula de {calendar.teacher.name} neste intervalo.'
+        if calendar.course is not None:
+            return f'Nenhuma aula do curso {calendar.course.name} neste intervalo.'
+        return f'Nenhuma aula na sala {calendar.space.name} neste intervalo.'
+    return COMBINED_EMPTY_MESSAGE
+
+
+def public_calendar(params, today):
+    """Lê os filtros da URL e monta o calendário público, consultando as aulas só quando pode (D7, D8)."""
+    semesters = {semester.code: semester for semester in imported_semesters()}
+    current = current_semester_code(today)
+    codes = sorted(set(semesters) | {current}, reverse=True)
+    code = (params.get('semestre') or '').strip()
+    code = code if code in codes else current
+    semester = semesters.get(code)
+    spaces, teachers, courses = semester_options(semester)
+    stage_key = (params.get('nivel') or '').strip()
+    calendar = PublicCalendar(
+        semester_code=code,
+        options=Options(semesters=codes, spaces=spaces, teachers=teachers, courses=courses),
+        space=chosen(params.get('sala'), spaces),
+        teacher=chosen(params.get('docente'), teachers),
+        course=chosen(params.get('curso'), courses),
+        stage_key=stage_key if stage_key in STAGES else '',
+    )
+    if semester is None:
+        calendar.message = f'Nenhum horário publicado no semestre {code}.'
+        return calendar
+    calendar.dates_enabled = semester.has_period
+    if semester.has_period:
+        start, end, error = read_range(params)
+        if start is None and error is None:
+            start, end = default_range(semester, today)
+        calendar.start, calendar.end, calendar.date_error = start, end, error or ''
+        calendar.today_query = calendar.query()
+    if not calendar.has_principal:
+        calendar.message = CHOOSE_MESSAGE
+        return calendar
+    if calendar.date_error:
+        return calendar
+    calendar.free_label = 'disponível' if calendar.space is not None and calendar.teacher is None and calendar.course is None and not calendar.stage_key else 'sem aula'
+    if semester.has_period and not touches(semester, calendar.start, calendar.end):
+        calendar.message = (
+            f'O intervalo escolhido está fora do semestre {code}, de '
+            f'{semester.start_date:%d/%m/%Y} a {semester.end_date:%d/%m/%Y}.'
+        )
+        return calendar
+    allocations = public_allocations(
+        semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key),
+    )
+    if semester.has_period:
+        calendar.week = dated_week(semester, allocations, weekdays_between(calendar.start, calendar.end), today)
+        shift = timedelta(days=7 * weeks_covered(calendar.start, calendar.end))
+        previous = (calendar.start - shift, calendar.end - shift)
+        following = (calendar.start + shift, calendar.end + shift)
+        if touches(semester, *previous):
+            calendar.previous_query = calendar.query(*previous)
+        if touches(semester, *following):
+            calendar.following_query = calendar.query(*following)
+    else:
+        calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'
+        calendar.week = typical_week(semester, allocations, today)
+    if not calendar.week.has_activities:
+        calendar.message = empty_message(calendar)
+    return calendar

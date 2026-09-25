@@ -112,3 +112,45 @@ class SpaceAssociateForm(forms.Form):
         field.widget.choices = [('', field.empty_label)] + [
             (space.pk, field.label_from_instance(space)) for space in sorted(Space.objects.all(), key=natural_key)
         ]
+
+
+class PublicCalendarFilterForm(forms.Form):
+    """Filtros do calendário público, só para exibir os valores já normalizados (D6 e D13).
+
+    A leitura e a validação dos parâmetros ficam em `schedule.public`, que descarta sem
+    mensagem o valor fora das opções. As opções são nomes e códigos, nunca IDs.
+    """
+
+    semestre = forms.ChoiceField(label='Semestre', required=False, widget=forms.Select(attrs={'class': 'input'}))
+    sala = forms.ChoiceField(label='Sala', required=False, widget=forms.Select(attrs={'class': 'input'}))
+    docente = forms.ChoiceField(label='Docente', required=False, widget=forms.Select(attrs={'class': 'input'}))
+    curso = forms.ChoiceField(label='Curso', required=False, widget=forms.Select(attrs={'class': 'input'}))
+    nivel = forms.ChoiceField(label='Nível', required=False, widget=forms.Select(attrs={'class': 'input'}))
+    inicio = forms.DateField(
+        label='Data inicial', required=False, widget=forms.DateInput(attrs={'class': 'input', 'type': 'date'}, format='%Y-%m-%d'),
+    )
+    fim = forms.DateField(
+        label='Data final', required=False, widget=forms.DateInput(attrs={'class': 'input', 'type': 'date'}, format='%Y-%m-%d'),
+    )
+
+    def __init__(self, calendar, stage_choices, *args, **kwargs):
+        options = calendar.options
+        super().__init__(*args, initial={
+            'semestre': calendar.semester_code,
+            'sala': calendar.space.name if calendar.space else '',
+            'docente': calendar.teacher.name if calendar.teacher else '',
+            'curso': calendar.course.name if calendar.course else '',
+            'nivel': calendar.stage_key,
+            'inicio': calendar.start,
+            'fim': calendar.end,
+        }, **kwargs)
+        self.fields['semestre'].choices = [(code, code) for code in options.semesters]
+        self.fields['sala'].choices = [('', 'Todas as salas'), *[(space.name, space.name) for space in options.spaces]]
+        self.fields['docente'].choices = [('', 'Todos os docentes'), *[(teacher.name, teacher.name) for teacher in options.teachers]]
+        self.fields['curso'].choices = [('', 'Todos os cursos'), *[(course.name, course.name) for course in options.courses]]
+        self.fields['nivel'].choices = [('', 'Todos os níveis'), *stage_choices]
+        for name in ('inicio', 'fim'):
+            self.fields[name].disabled = not calendar.dates_enabled
+            if calendar.date_error:
+                self.fields[name].widget.attrs['aria-invalid'] = 'true'
+                self.fields[name].widget.attrs['aria-describedby'] = 'erro-datas'

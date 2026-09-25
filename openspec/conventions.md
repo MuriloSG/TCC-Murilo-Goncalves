@@ -35,6 +35,7 @@ A referência de implementação é o app `accounts`.
 - As permissões são constantes do catálogo no `permissions.py` do app, no formato `RECURSO.ACAO`, e entram no banco por migration de dados.
 - Views e templates **nunca** decidem acesso pelo código, pelo nome ou pela marca de sistema do perfil, nem por `is_superadmin`. O único ponto de decisão é `User.has_perm`.
 - Nos templates, `perms.RECURSO.ACAO` serve **só** para mostrar ou esconder links e botões.
+- **Rota pública** (Change `calendario-publico`): a única rota aberta sem login além do fluxo de autenticação é `calendario/`. Ela tem view, formulário, consulta, templates e layout (`ui/layouts/public.html`) próprios, não declara `permission_required` nem `audit_resource`, não lê `request.user` e só aceita GET e HEAD. Nenhuma view autenticada é aberta por reaproveitamento. Rate limit e cache da rota pública ficam no proxy de produção, e não no código.
 
 ## 5. Organização do código
 
@@ -154,6 +155,7 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 - Foco visível no teclado, alvo de toque de pelo menos 44x44 px e layout funcional a partir de 360 px de largura.
 - Tabelas densas e legíveis. Abaixo de 640 px, cada linha vira um bloco empilhado de rótulo e valor.
 - Grade de horários (a Grade do ensalamento): é um quadro de faixas por dias, e não uma tabela de registros, e não vira blocos empilhados. Quando os dias não cabem na largura, a Grade rola na horizontal dentro da própria área, rotulada e focável, com a coluna de horários e a linha dos dias fixas (`position: sticky`), e a página nunca rola na horizontal. A visão semanal abaixo de 640 px continua como lista por dia; a mensal continua como Grade.
+- No calendário público, a Grade é a mesma em qualquer largura, sem a lista por dia: abaixo de 640 px ela rola na horizontal só dentro da própria área, com as colunas fixas, e abre rolada até "Hoje".
 - Visualizações diferentes da mesma consulta (por exemplo, semana e mês da Grade) são escolhidas por um campo de seleção junto dos filtros, e não por abas, e a troca mantém os demais filtros.
 - Lista compacta (`data-table compact-rows`), para listas de pessoas em que cada linha se identifica pelo nome: abaixo de 640 px, a linha mostra o avatar, o nome e o e-mail, uma linha de resumo com as células `cell-meta` (perfil e selo de situação) sem rótulos, e um único botão "Mais ações" (`row-menu`, ícone `ellipsis-vertical`) com todas as ações da linha. O template passa essa lista a `row_actions.html` em `compact`. Acima de 640 px, a tabela fica igual às demais. É usada na lista de usuários.
 - Só os tokens da escala fechada (cores, espaçamentos, raios, sombras e tamanhos de fonte). Nada de `style=`, valores arbitrários do Tailwind (`p-[13px]`, `bg-[#...]`) ou cores fora dos tokens nos templates.

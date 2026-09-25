@@ -4,7 +4,7 @@ from django.apps import apps
 from django.test import SimpleTestCase, TestCase
 
 from accounts import permissions
-from accounts.models import Permission, Role, RolePermission
+from accounts.models import Permission, Role, RolePermission, User
 
 USER_CODES = {
     'USUARIO.VISUALIZAR',
@@ -21,6 +21,7 @@ SPACE_ALLOCATION_VIEW_CODE = 'ENSALAMENTO.VISUALIZAR'
 SPACE_ALLOCATION_CODE = 'ENSALAMENTO.IMPORTAR'
 SPACE_ALLOCATION_DELETE_CODE = 'ENSALAMENTO.EXCLUIR_IMPORTACAO'
 NEW_CODES = [SPACE_ALLOCATION_VIEW_CODE, IMPORT_DELETE_CODE, SPACE_ALLOCATION_DELETE_CODE]
+SPACE_CODES = {'ESPACO.VISUALIZAR', 'ESPACO.CRIAR', 'ESPACO.EDITAR', 'ESPACO.ALTERAR_SITUACAO', 'ESPACO.EXCLUIR'}
 ROLE_CODES = {
     'PERFIL.VISUALIZAR',
     'PERFIL.CRIAR',
@@ -49,13 +50,18 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.SPACE_ALLOCATION_VIEW, 'ENSALAMENTO.VISUALIZAR')
         self.assertEqual(permissions.SPACE_ALLOCATION_IMPORT, 'ENSALAMENTO.IMPORTAR')
         self.assertEqual(permissions.SPACE_ALLOCATION_IMPORT_DELETE, 'ENSALAMENTO.EXCLUIR_IMPORTACAO')
+        self.assertEqual(permissions.SPACE_VIEW, 'ESPACO.VISUALIZAR')
+        self.assertEqual(permissions.SPACE_CREATE, 'ESPACO.CRIAR')
+        self.assertEqual(permissions.SPACE_EDIT, 'ESPACO.EDITAR')
+        self.assertEqual(permissions.SPACE_CHANGE_STATUS, 'ESPACO.ALTERAR_SITUACAO')
+        self.assertEqual(permissions.SPACE_DELETE, 'ESPACO.EXCLUIR')
 
-    def test_all_permissions_has_the_seventeen_codes(self):
+    def test_all_permissions_has_the_twenty_two_codes(self):
         self.assertEqual(
             permissions.ALL_PERMISSIONS,
-            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE} | ROLE_CODES,
+            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE} | SPACE_CODES | ROLE_CODES,
         )
-        self.assertEqual(len(permissions.ALL_PERMISSIONS), 17)
+        self.assertEqual(len(permissions.ALL_PERMISSIONS), 22)
 
     def test_codes_follow_the_format(self):
         for code in permissions.ALL_PERMISSIONS:
@@ -88,7 +94,7 @@ class InitialCatalogTests(TestCase):
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))
-        self.assertEqual(Permission.objects.count(), 17)
+        self.assertEqual(Permission.objects.count(), 22)
 
     def test_reserved_permissions_exist_in_database(self):
         codes = set(Permission.objects.values_list('code', flat=True))
@@ -112,7 +118,8 @@ class InitialCatalogTests(TestCase):
         self.assertEqual(
             codes,
             set(permissions.ADMINISTRATIVE_CAPABILITY)
-            | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE},
+            | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE}
+            | SPACE_CODES,
         )
 
     def test_teacher_grants_no_permission(self):
@@ -201,3 +208,29 @@ class SpaceAllocationPermissionsMigrationTests(TestCase):
         self.assertNotIn('USUARIO.EDITAR', administrator_codes)
         self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'USUARIO.VISUALIZAR'})
         self.assertEqual(Permission.objects.filter(code__in=NEW_CODES).count(), 3)
+
+
+class SpacePermissionsMigrationTests(TestCase):
+    def test_grants_the_space_permissions_to_administrator_keeping_other_grants(self):
+        migration = import_module('accounts.migrations.0009_space_permissions')
+        administrator = Role.objects.get(code='ADMINISTRADOR')
+        coordination = Role.objects.create(code='COORDENACAO', name='Coordenação')
+        Permission.objects.filter(code__in=SPACE_CODES).delete()
+        RolePermission.objects.filter(role=administrator, permission__code='USUARIO.EDITAR').delete()
+        RolePermission.objects.create(role=coordination, permission=Permission.objects.get(code='USUARIO.VISUALIZAR'))
+
+        migration.add_permissions(apps, None)
+        migration.add_permissions(apps, None)
+
+        administrator_codes = set(administrator.permissions.values_list('code', flat=True))
+        self.assertLessEqual(SPACE_CODES, administrator_codes)
+        self.assertNotIn('USUARIO.EDITAR', administrator_codes)
+        self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'USUARIO.VISUALIZAR'})
+        self.assertEqual(Permission.objects.filter(code__in=SPACE_CODES).count(), 5)
+
+    def test_space_permissions_can_be_granted_to_a_custom_role(self):
+        superadmin = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'Senha-forte-123')
+        coordination = Role.objects.create_role('COORDENACAO', 'Coordenação')
+        coordination.set_permissions([Permission.objects.get(code='ESPACO.CRIAR')])
+        self.assertTrue(superadmin.is_superadmin)
+        self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'ESPACO.CRIAR'})

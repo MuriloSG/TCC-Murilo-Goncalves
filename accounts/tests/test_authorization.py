@@ -69,7 +69,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.SPACE_ALLOCATION_VIEW,
             permissions.SPACE_ALLOCATION_IMPORT,
             permissions.SPACE_ALLOCATION_IMPORT_DELETE,
-        }
+        } | permissions.SPACE_PERMISSIONS
         self.assertEqual(user.effective_permissions(), granted)
         for code in granted:
             with self.subTest(code=code):
@@ -131,7 +131,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.SPACE_ALLOCATION_VIEW,
             permissions.SPACE_ALLOCATION_IMPORT,
             permissions.SPACE_ALLOCATION_IMPORT_DELETE,
-        }
+        } | permissions.SPACE_PERMISSIONS
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)
         coordinator = self.create_user('coord@ifnmg.edu.br', self.coordination)

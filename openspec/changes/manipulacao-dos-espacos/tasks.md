@@ -48,9 +48,9 @@
 
 ## 6. Permissões do recurso `ESPACO`
 
-- [ ] 6.1 Acrescentar `ESPACO.VISUALIZAR`, `ESPACO.CRIAR`, `ESPACO.EDITAR`, `ESPACO.ALTERAR_SITUACAO` e `ESPACO.EXCLUIR` a `accounts/permissions.py`, com o rótulo "Espaços" do recurso, e a migration de dados que as concede ao `ADMINISTRADOR` sem alterar as demais concessões
-- [ ] 6.2 Testar a migration numa instalação com concessões alteradas pelo superadmin e a concessão a um perfil personalizado
-- [ ] 6.3 Commit
+- [x] 6.1 Acrescentar `ESPACO.VISUALIZAR`, `ESPACO.CRIAR`, `ESPACO.EDITAR`, `ESPACO.ALTERAR_SITUACAO` e `ESPACO.EXCLUIR` a `accounts/permissions.py`, com o rótulo "Espaços" do recurso, e a migration de dados que as concede ao `ADMINISTRADOR` sem alterar as demais concessões
+- [x] 6.2 Testar a migration numa instalação com concessões alteradas pelo superadmin e a concessão a um perfil personalizado
+- [x] 6.3 Commit
 
 ## 7. Importação: leitura e classificação dos espaços
 

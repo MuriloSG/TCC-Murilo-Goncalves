@@ -11,7 +11,7 @@ from typing import Callable
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views import View
@@ -33,7 +33,8 @@ class ImportScreens:
     """Descrição das telas de uma importação: definição, textos e prefixo das rotas.
 
     As rotas do app seguem o prefixo: `<prefixo>_list`, `_upload`, `_template`,
-    `_detail`, `_confirm` e `_discard`.
+    `_detail`, `_confirm` e `_discard`. A rota do modelo existe só quando a importação
+    tem modelo.
     """
 
     definition: ImportDefinition
@@ -42,9 +43,14 @@ class ImportScreens:
     section_url_name: str
     list_title: str
     upload_title: str
-    template_file_name: str
     empty_message: str
     concluded_message: Callable
+    template_file_name: str | None = None
+
+    @property
+    def has_template(self):
+        """O modelo é oferecido só quando a importação o declara e o arquivo tem nome."""
+        return self.definition.has_template and self.template_file_name is not None
 
     def url(self, name, *args):
         return reverse(f'{self.url_prefix}_{name}', args=args)
@@ -56,7 +62,7 @@ def screens_context(screens):
         'section_url': reverse(screens.section_url_name),
         'list_url': screens.url('list'),
         'upload_url': screens.url('upload'),
-        'template_url': screens.url('template'),
+        'template_url': screens.url('template') if screens.has_template else None,
     }
 
 
@@ -127,12 +133,15 @@ class ImportUploadView(ModalView, FormView):
 
 
 class ImportTemplateView(View):
-    """Modelo em UTF-8 com BOM, separado por ";", só com o cabeçalho (D18)."""
+    """Modelo em UTF-8 com BOM, separado por ";", só com o cabeçalho (D18).
+
+    A rota só existe nas importações que têm modelo, e por isso a view não confere nada.
+    """
 
     screens = None
 
     def get(self, request, *args, **kwargs):
-        header = ';'.join(column.label for column in self.screens.definition.columns)
+        header = ';'.join(column.label for column in self.screens.definition.file_columns())
         response = HttpResponse('﻿' + header + '\r\n', content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="{self.screens.template_file_name}"'
         AuditLog.objects.record(
@@ -141,6 +150,33 @@ class ImportTemplateView(View):
             metadata={'arquivo': self.screens.template_file_name},
         )
         return response
+
+
+def chosen_row_filter(definition, slug):
+    """Recorte escolhido na consulta, ou 404 quando a importação não o declara."""
+    chosen = next((item for item in definition.row_filters if item.slug == slug), None)
+    if chosen is None:
+        raise Http404('Recorte desconhecido.')
+    return chosen
+
+
+def row_filters(definition, importation, screens):
+    """Recortes das linhas oferecidos na prévia, cada um com a sua quantidade."""
+    detail_url = screens.url('detail', importation.pk)
+    found = []
+    for item in definition.row_filters:
+        total = importation.rows.filter(**{f'values__{item.column}': item.value}).count()
+        if total:
+            found.append({'slug': item.slug, 'label': item.label, 'total': total, 'url': f'{detail_url}?linhas={item.slug}'})
+    return found
+
+
+def upload_values(definition, importation):
+    """Valores dos campos próprios do envio, iguais em todas as linhas, exibidos uma vez."""
+    if not definition.upload_fields:
+        return []
+    first = importation.rows.values_list('values', flat=True).first() or {}
+    return [(label, first.get(label, '')) for label in definition.upload_fields]
 
 
 def load_importation(screens, pk):
@@ -161,34 +197,45 @@ class ImportDetailView(DetailView):
         context = super().get_context_data(**kwargs, **screens_context(self.screens))
         importation = self.object
         definition = self.screens.definition
-        only_errors = self.request.GET.get('linhas') == 'erros'
+        chosen = self.request.GET.get('linhas', '')
+        only_errors = chosen == 'erros'
+        columns = [column.label for column in definition.columns]
         rows = importation.rows.all()
         if only_errors:
             rows = rows.exclude(errors=[])
+        elif chosen:
+            found = chosen_row_filter(definition, chosen)
+            rows = rows.filter(**{f'values__{found.column}': found.value})
+            columns = list(found.columns) or columns
         summary = importation.summary()
         page = paginate(self.request, rows, ROWS_PAGE_SIZE)
         importation.tone, importation.icon = status_badge(importation.status)
         context.update(
             summary=summary,
             only_errors=only_errors,
-            columns=[column.label for column in definition.columns],
+            chosen_filter=chosen,
+            row_filters=row_filters(definition, importation, self.screens),
+            columns=columns,
+            upload_values=upload_values(definition, importation),
             page=page,
-            rows=[self.describe(row, definition) for row in page.object_list],
+            rows=[self.describe(row, definition, columns) for row in page.object_list],
             confirm_url=self.screens.url('confirm', importation.pk),
             discard_url=self.screens.url('discard', importation.pk),
             detail_url=self.screens.url('detail', importation.pk),
         )
         return context
 
-    def describe(self, row, definition):
+    def describe(self, row, definition, columns):
         return {
             'line_number': row.line_number,
-            'cells': [(column.label, row.values.get(column.label, '')) for column in definition.columns],
+            'cells': [(label, row.values.get(label, '')) for label in columns],
             'action': 'Com erro' if row.errors else definition.action_labels.get(row.action, 'Sem ação'),
             'changes': [
                 f'{definition.field_labels.get(name, name)}: {before} → {after}'
-                for name, (before, after) in row.changes.items()
                 if row.action == ImportRow.Action.UPDATE
+                else f'{definition.field_labels.get(name, name)}: {after}'
+                for name, (before, after) in row.changes.items()
+                if row.action in (ImportRow.Action.UPDATE, ImportRow.Action.CREATE)
             ],
             'warnings': [definition.warning_labels.get(code, code) for code in row.warnings],
             'errors': [

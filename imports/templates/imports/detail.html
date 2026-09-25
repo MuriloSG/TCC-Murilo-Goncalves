@@ -43,6 +43,9 @@
     <dl class="detail-grid">
       <div><dt>Situação</dt><dd>{% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}</dd></div>
       <div><dt>Enviada por</dt><dd>{{ importation.created_by.name }}, em {{ importation.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+      {% for label, value in upload_values %}
+        <div><dt>{{ label }}</dt><dd>{{ value|default:"Vazio" }}</dd></div>
+      {% endfor %}
       <div><dt>Resultado</dt><dd>{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged errors=summary.errors %}</dd></div>
       <div><dt>Prévias refeitas</dt><dd>{% if importation.revalidation_count %}{{ importation.revalidation_count }} vez{{ importation.revalidation_count|pluralize:"es" }}, porque os dados mudaram antes da confirmação{% else %}Nenhuma{% endif %}</dd></div>
       {% if importation.resolved_by %}
@@ -63,7 +66,20 @@
         <a class="link" href="{{ detail_url }}?linhas=erros">Mostrar só as linhas com erro</a>
       {% endif %}
     </div>
-    <table class="data-table">
+    {% if row_filters %}
+      <nav class="row-filters" aria-label="Recortes das linhas">
+        {% if chosen_filter %}<a class="link" href="{{ detail_url }}">Todas as linhas</a>{% else %}<span aria-current="true">Todas as linhas</span>{% endif %}
+        {% for filter in row_filters %}
+          {% if chosen_filter == filter.slug %}
+            <span aria-current="true">{{ filter.label }} ({{ filter.total }})</span>
+          {% else %}
+            <a class="link" href="{{ filter.url }}">{{ filter.label }} ({{ filter.total }})</a>
+          {% endif %}
+        {% endfor %}
+      </nav>
+    {% endif %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Linhas da importação">
+      <table class="data-table">
       <thead>
         <tr>
           <th scope="col">Linha</th>
@@ -87,7 +103,8 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+      </table>
+    </div>
     {% include "ui/components/pagination.html" with noun="linha" noun_plural="linhas" %}
   </section>
 {% endblock %}

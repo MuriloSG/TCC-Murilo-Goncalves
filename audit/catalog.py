@@ -51,6 +51,7 @@ AUTHENTICATION = 'AUTENTICACAO'
 USER = 'USUARIO'
 ROLE = 'PERFIL'
 USER_IMPORT = 'IMPORTACAO_USUARIO'
+SPACE_ALLOCATION_IMPORT = 'IMPORTACAO_ENSALAMENTO'
 EMAIL = 'EMAIL'
 AUDIT = 'AUDITORIA'
 NOTICE = 'NOTIFICACAO'
@@ -60,6 +61,7 @@ RESOURCE_LABELS = {
     USER: 'Usuários',
     ROLE: 'Perfis',
     USER_IMPORT: 'Importações de usuários',
+    SPACE_ALLOCATION_IMPORT: 'Importações de ensalamento',
     EMAIL: 'E-mails',
     AUDIT: 'Auditoria',
     NOTICE: 'Notificações',
@@ -89,6 +91,8 @@ FIELD_LABELS = {
     'cadastrados': 'Cadastrados',
     'atualizados': 'Atualizados',
     'sem_alteracao': 'Sem alteração',
+    'com_erro': 'Linhas com erro',
+    'semestre': 'Semestre',
     'rota': 'Rota',
     'caminho': 'Caminho',
     'tipo': 'Tipo',

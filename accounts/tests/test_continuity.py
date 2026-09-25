@@ -309,7 +309,12 @@ class ContinuityGuardTests(ContinuityTestCase):
         self.assertEqual(
             set(self.administrator.permissions.values_list('code', flat=True)),
             permissions.ADMINISTRATIVE_CAPABILITY
-            | {permissions.USER_IMPORT, permissions.AUDIT_VIEW, permissions.NOTICE_PUBLISH},
+            | {
+                permissions.USER_IMPORT,
+                permissions.AUDIT_VIEW,
+                permissions.NOTICE_PUBLISH,
+                permissions.SPACE_ALLOCATION_IMPORT,
+            },
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 

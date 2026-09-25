@@ -65,6 +65,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.USER_IMPORT,
             permissions.AUDIT_VIEW,
             permissions.NOTICE_PUBLISH,
+            permissions.SPACE_ALLOCATION_IMPORT,
         }
         self.assertEqual(user.effective_permissions(), granted)
         for code in granted:
@@ -123,6 +124,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.USER_IMPORT,
             permissions.AUDIT_VIEW,
             permissions.NOTICE_PUBLISH,
+            permissions.SPACE_ALLOCATION_IMPORT,
         }
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)

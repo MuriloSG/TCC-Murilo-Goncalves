@@ -9,7 +9,7 @@
 
 {% block body %}
   {{ form }}
-  <p><a class="link" href="{{ template_url }}">Baixar modelo do arquivo</a></p>
+  {% if template_url %}<p><a class="link" href="{{ template_url }}">Baixar modelo do arquivo</a></p>{% endif %}
 {% endblock %}
 
 {% block submit %}<button class="btn-primary" type="submit">{% icon "upload" %}Enviar arquivo</button>{% endblock %}

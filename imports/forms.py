@@ -1,30 +1,49 @@
 from django import forms
 
-from imports.reader import FileRejected, listing, read_csv
+from imports.reader import FileRejected
 
 
 class ImportUploadForm(forms.Form):
     """Envio do arquivo. A leitura e a conferência da estrutura acontecem na validação.
 
-    As recusas do arquivo inteiro viram erro do campo, e nenhuma importação é criada.
+    As recusas do arquivo inteiro viram erro do campo, e nenhuma importação é criada. Os
+    campos próprios da importação específica entram ao lado do arquivo, e o valor de cada
+    um é gravado como coluna lógica nos valores de todas as linhas, para que a confirmação
+    reexecute com o valor que foi visto na prévia.
     """
 
-    file = forms.FileField(
-        label='Arquivo CSV',
-        widget=forms.ClearableFileInput(attrs={'accept': '.csv,text/csv'}),
-        error_messages={'required': 'Escolha o arquivo CSV.'},
-    )
+    file = forms.FileField()
 
     def __init__(self, *args, definition, **kwargs):
         super().__init__(*args, **kwargs)
         self.definition = definition
-        labels = listing([column.label for column in definition.columns])
-        self.fields['file'].help_text = f'CSV em UTF-8, separado por ";", com as colunas {labels}.'
+        self.source = definition.source()
+        field = self.fields['file']
+        field.label = self.source.file_label
+        field.help_text = self.source.help_text(definition)
+        field.widget = forms.ClearableFileInput(attrs={'accept': self.source.accept})
+        field.error_messages['required'] = self.source.missing_message
+        for label, own_field in definition.upload_fields.items():
+            self.fields[self.field_name(label)] = own_field
 
-    def clean_file(self):
-        uploaded = self.cleaned_data['file']
+    def field_name(self, label):
+        return 'own_' + ''.join(char for char in label.lower() if char.isalnum())
+
+    def clean(self):
+        """Lê o arquivo depois dos campos próprios, para que o valor deles entre nas linhas."""
+        cleaned = super().clean()
+        uploaded = cleaned.get('file')
+        if uploaded is None or self.errors:
+            return cleaned
+        own_values = {
+            label: str(cleaned[self.field_name(label)]) for label in self.definition.upload_fields
+        }
         try:
-            self.cleaned_data['rows'] = read_csv(uploaded, self.definition)
+            rows = self.source.read(uploaded, self.definition)
         except FileRejected as error:
-            raise forms.ValidationError(error.message, code='file_rejected') from None
-        return uploaded
+            self.add_error('file', forms.ValidationError(error.message, code='file_rejected'))
+            return cleaned
+        for row in rows:
+            row.values.update(own_values)
+        cleaned['rows'] = rows
+        return cleaned

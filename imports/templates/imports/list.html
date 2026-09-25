@@ -15,7 +15,7 @@
       <h1 class="page-title">{{ screens.list_title }}</h1>
     </div>
     <div class="page-actions">
-      <a class="btn-secondary" href="{{ template_url }}">{% icon "download" %}Baixar modelo</a>
+      {% if template_url %}<a class="btn-secondary" href="{{ template_url }}">{% icon "download" %}Baixar modelo</a>{% endif %}
       <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}{{ screens.upload_title }}</a>
     </div>
   </div>

@@ -16,6 +16,7 @@ USER_CODES = {
 IMPORT_CODE = 'USUARIO.IMPORTAR'
 AUDIT_CODE = 'AUDITORIA.VISUALIZAR'
 NOTICE_CODE = 'NOTIFICACAO.PUBLICAR'
+SPACE_ALLOCATION_CODE = 'ENSALAMENTO.IMPORTAR'
 ROLE_CODES = {
     'PERFIL.VISUALIZAR',
     'PERFIL.CRIAR',
@@ -40,13 +41,14 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.ROLE_DELETE, 'PERFIL.EXCLUIR')
         self.assertEqual(permissions.AUDIT_VIEW, 'AUDITORIA.VISUALIZAR')
         self.assertEqual(permissions.NOTICE_PUBLISH, 'NOTIFICACAO.PUBLICAR')
+        self.assertEqual(permissions.SPACE_ALLOCATION_IMPORT, 'ENSALAMENTO.IMPORTAR')
 
-    def test_all_permissions_has_the_thirteen_codes(self):
+    def test_all_permissions_has_the_fourteen_codes(self):
         self.assertEqual(
             permissions.ALL_PERMISSIONS,
-            USER_CODES | {IMPORT_CODE, AUDIT_CODE, NOTICE_CODE} | ROLE_CODES,
+            USER_CODES | {IMPORT_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_CODE} | ROLE_CODES,
         )
-        self.assertEqual(len(permissions.ALL_PERMISSIONS), 13)
+        self.assertEqual(len(permissions.ALL_PERMISSIONS), 14)
 
     def test_codes_follow_the_format(self):
         for code in permissions.ALL_PERMISSIONS:
@@ -79,7 +81,7 @@ class InitialCatalogTests(TestCase):
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))
-        self.assertEqual(Permission.objects.count(), 13)
+        self.assertEqual(Permission.objects.count(), 14)
 
     def test_reserved_permissions_exist_in_database(self):
         codes = set(Permission.objects.values_list('code', flat=True))
@@ -97,12 +99,13 @@ class InitialCatalogTests(TestCase):
             with self.subTest(code=code):
                 self.assertTrue(Role.objects.get(code=code).is_system)
 
-    def test_administrator_grants_administrative_capability_import_audit_and_notice(self):
+    def test_administrator_grants_administrative_capability_import_audit_notice_and_space_allocation(self):
         administrator = Role.objects.get(code='ADMINISTRADOR')
         codes = set(administrator.permissions.values_list('code', flat=True))
         self.assertEqual(
             codes,
-            set(permissions.ADMINISTRATIVE_CAPABILITY) | {IMPORT_CODE, AUDIT_CODE, NOTICE_CODE},
+            set(permissions.ADMINISTRATIVE_CAPABILITY)
+            | {IMPORT_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_CODE},
         )
 
     def test_teacher_grants_no_permission(self):

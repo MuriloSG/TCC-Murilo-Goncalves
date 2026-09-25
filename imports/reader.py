@@ -2,6 +2,9 @@
 
 Recusas do arquivo inteiro lançam FileRejected e não criam importação. Problemas
 de uma linha viram erros dessa linha, e o arquivo segue para a prévia.
+
+A leitura de CSV é uma das fontes do motor, declarada por `CsvSource`. A outra é a
+leitura de planilha em grade, em `imports.workbook`.
 """
 
 import csv
@@ -45,16 +48,40 @@ def listing(items):
 
 
 def expected_columns(definition):
-    return ', '.join(column.label for column in definition.columns)
+    return ', '.join(column.label for column in definition.file_columns())
 
 
-def decode(uploaded_file):
-    if uploaded_file.size > settings.IMPORT_MAX_FILE_SIZE:
+def file_size_limit(definition):
+    """Tamanho máximo declarado pela importação, ou o da configuração."""
+    return definition.max_file_size or settings.IMPORT_MAX_FILE_SIZE
+
+
+def row_limit(definition):
+    """Quantidade máxima de linhas declarada pela importação, ou a da configuração."""
+    return definition.max_rows or settings.IMPORT_MAX_ROWS
+
+
+def check_file_size(uploaded_file, definition):
+    limit = file_size_limit(definition)
+    if uploaded_file.size > limit:
         raise FileRejected(
             f'O arquivo tem {quantity(-(-uploaded_file.size // 1024))} KB. '
-            f'O limite é {quantity(settings.IMPORT_MAX_FILE_SIZE // 1024)} KB. '
+            f'O limite é {quantity(limit // 1024)} KB. '
             'Divida o arquivo e importe em partes.'
         )
+
+
+def check_row_count(rows, definition):
+    limit = row_limit(definition)
+    if len(rows) > limit:
+        raise FileRejected(
+            f'O arquivo tem {quantity(len(rows))} linhas. O limite é {quantity(limit)}. '
+            'Divida o arquivo e importe em partes.'
+        )
+
+
+def decode(uploaded_file, definition):
+    check_file_size(uploaded_file, definition)
     try:
         return uploaded_file.read().decode('utf-8-sig')
     except UnicodeDecodeError:
@@ -80,7 +107,7 @@ def records(text):
 
 
 def header_positions(header, definition):
-    labels = {normalize_header(column.label): column.label for column in definition.columns}
+    labels = {normalize_header(column.label): column.label for column in definition.file_columns()}
     if len(header) == 1 and len(header[0].split(',')) > 1:
         if {normalize_header(cell) for cell in header[0].split(',')} & labels.keys():
             raise FileRejected(
@@ -103,7 +130,7 @@ def header_positions(header, definition):
         )
     if repeated:
         raise FileRejected(f'A coluna {listing(repeated)} aparece mais de uma vez. Deixe só uma.')
-    missing = [f'"{column.label}"' for column in definition.columns if column.label not in positions]
+    missing = [f'"{column.label}"' for column in definition.file_columns() if column.label not in positions]
     if missing:
         noun = 'a coluna' if len(missing) == 1 else 'as colunas'
         raise FileRejected(
@@ -133,7 +160,7 @@ def read_csv(uploaded_file, definition):
 
     Lança FileRejected quando o arquivo inteiro deve ser recusado.
     """
-    text = decode(uploaded_file)
+    text = decode(uploaded_file, definition)
     source = records(text)
     header = next(source, None)
     if header is None:
@@ -150,16 +177,27 @@ def read_csv(uploaded_file, definition):
             row.errors.append(RowError(
                 None, 'extra_cells', 'A linha tem mais colunas que o cabeçalho. Confira se há ";" sobrando.',
             ))
-        for column in definition.columns:
+        for column in definition.file_columns():
             if column.required and not values[column.label].strip():
                 row.errors.append(RowError(column.label, 'required', f'Preencha a coluna {column.label}.'))
         rows.append(row)
     if not rows:
         raise FileRejected('O arquivo não tem linhas de dados.')
-    if len(rows) > settings.IMPORT_MAX_ROWS:
-        raise FileRejected(
-            f'O arquivo tem {quantity(len(rows))} linhas. O limite é {quantity(settings.IMPORT_MAX_ROWS)}. '
-            'Divida o arquivo e importe em partes.'
-        )
+    check_row_count(rows, definition)
     check_identifiers(rows, definition)
     return rows
+
+
+class CsvSource:
+    """Fonte de CSV: um arquivo em UTF-8, separado por ";", com cabeçalho na primeira linha."""
+
+    file_label = 'Arquivo CSV'
+    accept = '.csv,text/csv'
+    missing_message = 'Escolha o arquivo CSV.'
+
+    def help_text(self, definition):
+        labels = listing([column.label for column in definition.file_columns()])
+        return f'CSV em UTF-8, separado por ";", com as colunas {labels}.'
+
+    def read(self, uploaded_file, definition):
+        return read_csv(uploaded_file, definition)

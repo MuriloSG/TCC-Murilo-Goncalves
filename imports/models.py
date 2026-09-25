@@ -50,7 +50,8 @@ class ImportManager(models.Manager):
                     'arquivo': importation.file_name,
                     'situacao': importation.status,
                     'linhas': len(plan.rows),
-                },
+                }
+                | definition.audit_metadata(rows),
             )
         return importation
 
@@ -155,10 +156,13 @@ class Import(models.Model):
                     resource_id=current.pk,
                     metadata={
                         'arquivo': current.file_name,
+                        'situacao': current.status,
                         'cadastrados': summary['create'],
                         'atualizados': summary['update'],
                         'sem_alteracao': summary['unchanged'],
-                    },
+                        'com_erro': summary['errors'],
+                    }
+                    | definition.audit_metadata(rows),
                 )
                 concluded = True
             else:
@@ -186,7 +190,7 @@ class Import(models.Model):
                 catalog.DISCARD,
                 definition.audit_resource,
                 resource_id=current.pk,
-                metadata={'arquivo': current.file_name},
+                metadata={'arquivo': current.file_name} | definition.audit_metadata(current.rows.all()),
             )
         self.refresh_from_db()
 

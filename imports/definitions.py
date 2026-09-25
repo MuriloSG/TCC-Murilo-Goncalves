@@ -25,6 +25,21 @@ class Column:
 
 
 @dataclass(frozen=True)
+class RowFilter:
+    """Recorte das linhas oferecido na prévia, por um valor de uma coluna lógica.
+
+    `columns` limita as colunas exibidas enquanto o recorte está escolhido, para que a
+    tabela mostre só o que importa naquele recorte. Vazio mantém todas as colunas.
+    """
+
+    slug: str
+    label: str
+    column: str
+    value: str
+    columns: tuple = ()
+
+
+@dataclass(frozen=True)
 class RowError:
     column: str | None
     code: str
@@ -56,6 +71,24 @@ class ImportDefinition:
     action_labels = {}
     field_labels = {}
     warning_labels = {}
+    upload_fields = {}
+    row_filters = ()
+    max_file_size = None
+    max_rows = None
+    has_template = True
+
+    def source(self):
+        """Fonte que lê o arquivo enviado. A leitura de CSV é o padrão.
+
+        O import é local porque o leitor depende deste módulo, e não o contrário.
+        """
+        from imports.reader import CsvSource
+
+        return CsvSource()
+
+    def file_columns(self):
+        """Colunas que vêm do arquivo, sem as colunas lógicas preenchidas pelo envio."""
+        return tuple(column for column in self.columns if column.label not in self.upload_fields)
 
     def normalize_identifier(self, value):
         return value.strip()
@@ -74,6 +107,13 @@ class ImportDefinition:
     def check_file(self, executor):
         """Verificações do arquivo inteiro, depois de todas as linhas. Devolve RowError sem coluna."""
         return []
+
+    def audit_metadata(self, rows):
+        """Informações adicionais próprias da importação nos registros de auditoria.
+
+        Recebe as linhas, cada uma com os valores lidos, e devolve valores canônicos.
+        """
+        return {}
 
 
 def errors_from_validation(error, columns_by_field):

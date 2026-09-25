@@ -16,11 +16,11 @@
 
 ## 3. Cálculo das ocorrências
 
-- [ ] 3.1 Criar `schedule/occupancy.py` com `Occurrence`, `AllocationSource`, `occupancy` e `grid_sources` (D4, D6)
-- [ ] 3.2 Testar a aula semanal numa semana, a data fora do período, o semestre sem período, a alocação sem espaço e o intervalo que atravessa dois semestres
-- [ ] 3.3 Testar que o cálculo não grava nada e usa a mesma quantidade de consultas numa semana, num mês e no semestre inteiro
-- [ ] 3.4 Testar a montagem com uma fonte de teste a mais
-- [ ] 3.5 Commit
+- [x] 3.1 Criar `schedule/occupancy.py` com `Occurrence`, `AllocationSource`, `occupancy` e `grid_sources` (D4, D6)
+- [x] 3.2 Testar a aula semanal numa semana, a data fora do período, o semestre sem período, a alocação sem espaço e o intervalo que atravessa dois semestres
+- [x] 3.3 Testar que o cálculo não grava nada e usa a mesma quantidade de consultas numa semana, num mês e no semestre inteiro
+- [x] 3.4 Testar a montagem com uma fonte de teste a mais
+- [x] 3.5 Commit
 
 ## 4. Visão semanal com datas
 

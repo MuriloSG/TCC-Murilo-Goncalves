@@ -28,12 +28,13 @@
 
 ## 4. Importação de usuários
 
-- [ ] 4.1 Acrescentar a coluna `Nome de usuário` ao `UserImport`, no `columns` e no `columns_by_field`, e ao `field_labels` (D8)
-- [ ] 4.2 Limpar o valor da coluna pelo mesmo campo de formulário usado pela tela, aplicando a mesma normalização do model
-- [ ] 4.3 Tratar a célula vazia como ausência de informação: sem valor no `create`, valor atual mantido no `update` (D8)
-- [ ] 4.4 Incluir a mudança de `username` no plano da linha, exigindo a permissão `USUARIO.EDITAR`, como o nome já faz
-- [ ] 4.5 Atualizar o CSV modelo para download, com a coluna nova
-- [ ] 4.6 Testar o cabeçalho antigo sendo recusado, o cadastro com e sem o valor, a atualização do valor, a célula vazia não apagando o valor atual, a duplicata dentro do mesmo arquivo e contra um usuário existente recebendo erro na coluna, e a mensagem igual à da tela
+- [x] 4.0 Acrescentar `required` ao `Column` do motor e deixar o leitor de exigir a célula preenchida numa coluna opcional, mantendo a exigência no cabeçalho (D8)
+- [x] 4.1 Acrescentar a coluna `Nome de usuário` ao `UserImport`, no `columns` e no `columns_by_field`, e ao `field_labels` (D8)
+- [x] 4.2 Limpar o valor da coluna pelo mesmo campo de formulário usado pela tela, aplicando a mesma normalização do model
+- [x] 4.3 Tratar a célula vazia como ausência de informação: sem valor no `create`, valor atual mantido no `update` (D8)
+- [x] 4.4 Incluir a mudança de `username` no plano da linha, exigindo a permissão `USUARIO.EDITAR`, como o nome já faz
+- [x] 4.5 Atualizar o CSV modelo para download, com a coluna nova
+- [x] 4.6 Testar o cabeçalho antigo sendo recusado, o cadastro com e sem o valor, a atualização do valor, a célula vazia não apagando o valor atual, a duplicata dentro do mesmo arquivo e contra um usuário existente recebendo erro na coluna, e a mensagem igual à da tela
 - [ ] 4.7 Commit
 
 ## 5. Specs e fechamento

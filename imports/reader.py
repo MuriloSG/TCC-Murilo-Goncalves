@@ -151,7 +151,7 @@ def read_csv(uploaded_file, definition):
                 None, 'extra_cells', 'A linha tem mais colunas que o cabeçalho. Confira se há ";" sobrando.',
             ))
         for column in definition.columns:
-            if not values[column.label].strip():
+            if column.required and not values[column.label].strip():
                 row.errors.append(RowError(column.label, 'required', f'Preencha a coluna {column.label}.'))
         rows.append(row)
     if not rows:

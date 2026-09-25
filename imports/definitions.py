@@ -13,9 +13,15 @@ from django.core.exceptions import NON_FIELD_ERRORS
 
 @dataclass(frozen=True)
 class Column:
-    """Coluna declarada. Nesta versão toda coluna é obrigatória (D1)."""
+    """Coluna declarada.
+
+    A coluna é sempre exigida no cabeçalho. `required` diz respeito à célula: numa
+    coluna opcional, a célula vazia é entregue à importação específica como texto
+    vazio, em vez de virar erro da linha.
+    """
 
     label: str
+    required: bool = True
 
 
 @dataclass(frozen=True)

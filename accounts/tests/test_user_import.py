@@ -10,7 +10,7 @@ from imports.models import Import
 from imports.reader import read_csv
 from outbox.models import OutboxEntry
 
-HEADER = 'E-mail;Nome;Perfil\n'
+HEADER = 'E-mail;Nome;Perfil;Nome de usuário\n'
 
 
 def create_user(email, name, role, **fields):
@@ -49,6 +49,56 @@ class UserImportTestCase(TestCase):
         for permission in Permission.objects.filter(code__in=codes):
             RolePermission.objects.create(role=role, permission=permission)
         return create_user('importador@ifnmg.edu.br', 'Importador', role)
+
+
+class UsernameTests(UserImportTestCase):
+    def test_creates_with_username(self):
+        self.confirm(self.preview('ana@ifnmg.edu.br;Ana Souza;DOCENTE;Ana Souza\n'))
+        self.assertEqual(User.objects.get(email='ana@ifnmg.edu.br').username, 'Ana Souza')
+
+    def test_creates_without_username(self):
+        self.confirm(self.preview('ana@ifnmg.edu.br;Ana Souza;DOCENTE;\n'))
+        self.assertIsNone(User.objects.get(email='ana@ifnmg.edu.br').username)
+
+    def test_update_plan_shows_the_username_change(self):
+        aldo = create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
+        row = self.row(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;Aldo Gomes\n'))
+        self.assertEqual((row.action, row.target), ('update', str(aldo.pk)))
+        self.assertEqual(row.changes, {'username': [None, 'Aldo Gomes']})
+
+    def test_update_applies_the_username(self):
+        create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
+        self.confirm(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;Aldo Gomes\n'))
+        self.assertEqual(User.objects.get(email='aldo@ifnmg.edu.br').username, 'Aldo Gomes')
+
+    def test_empty_cell_keeps_the_current_username(self):
+        user = create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
+        User.objects.filter(pk=user.pk).update(username='Aldo Gomes')
+        importation = self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;\n')
+        self.assertEqual(self.row(importation).action, 'unchanged')
+        self.confirm(importation)
+        self.assertEqual(User.objects.get(email='aldo@ifnmg.edu.br').username, 'Aldo Gomes')
+
+    def test_duplicate_username_in_the_same_file(self):
+        importation = self.preview(
+            'ana@ifnmg.edu.br;Ana;DOCENTE;Aldo Gomes\n'
+            'bruno@ifnmg.edu.br;Bruno;DOCENTE;ALDO GOMES\n'
+        )
+        self.assertEqual(importation.status, 'COM_ERROS')
+        self.assertEqual(self.error_codes(importation, line=3), [('Nome de usuário', 'username_taken')])
+
+    def test_username_of_an_existing_user(self):
+        user = create_user('aldo@ifnmg.edu.br', 'Aldo', self.teacher)
+        User.objects.filter(pk=user.pk).update(username='Aldo Gomes')
+        importation = self.preview('bruno@ifnmg.edu.br;Bruno;DOCENTE;aldo gomes\n')
+        self.assertEqual(importation.status, 'COM_ERROS')
+        self.assertEqual(self.error_codes(importation), [('Nome de usuário', 'username_taken')])
+
+    def test_username_change_needs_the_edit_permission(self):
+        create_user('aldo@ifnmg.edu.br', 'Aldo', self.teacher)
+        executor = self.executor_with(permissions.USER_IMPORT)
+        importation = self.preview('aldo@ifnmg.edu.br;Aldo;DOCENTE;Aldo Gomes\n', executor=executor)
+        self.assertEqual(self.error_codes(importation), [('Nome de usuário', 'permission_denied')])
 
 
 class ActionTests(UserImportTestCase):

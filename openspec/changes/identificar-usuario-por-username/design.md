@@ -99,7 +99,11 @@ Uma migration de esquema com duas operações: `AddField` com `null=True`, sem `
 
 ### D8. A coluna da importação é obrigatória no cabeçalho e pode vir vazia
 
-A spec `importacao-planilhas` determina que "nesta versão, toda coluna declarada DEVE ser obrigatória", e o motor recusa arquivo com coluna ausente. A coluna `Nome de usuário` entra sob essa regra: **arquivos gerados com o modelo antigo passam a ser recusados**, e o modelo para download é atualizado junto.
+A spec `importacao-planilhas` determinava que "nesta versão, toda coluna declarada DEVE ser obrigatória", e o motor (`imports/reader.py`) aplicava isso também à **célula**: toda coluna declarada precisava vir preenchida em toda linha. Como o `username` é opcional por D6, as duas decisões do autor — coluna na importação e campo opcional — não cabiam juntas nessa regra.
+
+A implementação mostrou que o conflito é real e que só havia um caminho coerente: o `Column` do motor passou a aceitar `required=False`, e o leitor deixa de exigir a célula preenchida nessa coluna. A exigência **no cabeçalho** não muda, e a coluna opcional continua obrigatória ali. Esta é a única alteração desta Change fora do `accounts`, e vem com delta próprio da spec `importacao-planilhas`.
+
+A coluna `Nome de usuário` é declarada com `required=False`. O cabeçalho, porém, passa a exigi-la: **arquivos gerados com o modelo antigo passam a ser recusados**, e o modelo para download é atualizado junto, porque ele é gerado a partir das colunas declaradas.
 
 A célula, porém, pode vir vazia, já que o campo é opcional. A interpretação do vazio é:
 

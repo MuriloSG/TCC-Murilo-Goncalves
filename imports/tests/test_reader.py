@@ -121,6 +121,22 @@ class RowTests(SimpleTestCase):
         self.assertEqual(rows[0].values['Perfil'], '')
         self.assertEqual(self.codes(rows[0]), [('Perfil', 'required')])
 
+    def test_optional_column_accepts_an_empty_cell(self):
+        class WithOptional(PeopleImport):
+            columns = (Column('E-mail'), Column('Nome'), Column('Apelido', required=False))
+
+        rows = read_csv(upload('E-mail;Nome;Apelido\na@ifnmg.edu.br;Ana;\n'), WithOptional())
+        self.assertEqual(rows[0].errors, [])
+        self.assertEqual(rows[0].values['Apelido'], '')
+
+    def test_optional_column_is_still_required_in_the_header(self):
+        class WithOptional(PeopleImport):
+            columns = (Column('E-mail'), Column('Nome'), Column('Apelido', required=False))
+
+        with self.assertRaises(FileRejected) as context:
+            read_csv(upload('E-mail;Nome\na@ifnmg.edu.br;Ana\n'), WithOptional())
+        self.assertIn('"Apelido"', context.exception.message)
+
     def test_extra_cells(self):
         rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;Ana;DOCENTE;sobra\nb@ifnmg.edu.br;B;DOCENTE;\n')
         self.assertEqual(self.codes(rows[0]), [(None, 'extra_cells')])

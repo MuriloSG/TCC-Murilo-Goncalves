@@ -14,6 +14,7 @@ Esta Change acrescenta ao `User` o campo `username`, um identificador textual ú
 - **Cadastro e edição de usuário** passam a aceitar o campo, opcional nos dois. Deixá-lo vazio é válido, e mais de um usuário pode estar sem valor.
 - **Lista de usuários**: o valor aparece na tabela e a busca por `busca=` passa a procurar também nele, junto com o nome e o e-mail.
 - **Importação de usuários por planilha** ganha a coluna `Nome de usuário`, obrigatória no cabeçalho como todas as demais, com a célula podendo vir vazia.
+- **Motor de importação**: uma coluna declarada passa a poder ter a célula opcional (`Column(..., required=False)`). A exigência da coluna no cabeçalho não muda. É a única alteração fora do `accounts`, e existe porque o `username` é opcional (D8).
 - **Migration** que acrescenta o campo como nulo e a restrição de unicidade, sem preencher nada nos usuários existentes.
 
 ### Fora do escopo
@@ -31,6 +32,7 @@ Esta Change acrescenta ao `User` o campo `username`, um identificador textual ú
 
 - `gestao-usuarios`: o `username` entra como dado do usuário, com regra própria de unicidade e normalização, e passa a fazer parte do cadastro, da edição, da busca da lista e da importação de usuários.
 - `autenticacao`: o requisito do e-mail como identificador de login passa a distinguir o identificador de autenticação do identificador de domínio, em vez de afirmar que o sistema não tem campo de username.
+- `importacao-planilhas`: a conferência do cabeçalho passa a distinguir a coluna exigida no cabeçalho da célula obrigatória, permitindo declarar uma coluna cuja célula pode vir vazia.
 
 ## Impact
 
@@ -40,7 +42,8 @@ Esta Change acrescenta ao `User` o campo `username`, um identificador textual ú
 - **`accounts/migrations/`**: uma migration de esquema, sem migration de dados.
 - **Templates**: `accounts/partials/user_table.html` e o modal de formulário de usuário.
 - **Testes**: `accounts/tests/test_models.py` (o conjunto de campos do `User` e a lista de atributos que o `User` não tem), `test_user_views.py`, `test_user_search.py`, `test_user_import.py`, `test_user_import_views.py`, `test_modals.py`, `test_form_initial.py` e `test_screens.py`.
-- **Sem impacto**: `audit`, `notices`, `outbox`, `ui`, `imports` (o motor genérico não muda), `config/settings.py` e o catálogo de permissões.
+- **`imports`**: `Column` ganha `required`, e o leitor deixa de exigir a célula preenchida numa coluna opcional.
+- **Sem impacto**: `audit` (só a expectativa de um teste, pelo campo novo na auditoria do cadastro), `notices`, `outbox`, `ui`, `config/settings.py` e o catálogo de permissões.
 
 ## Alinhamento com o TCC
 

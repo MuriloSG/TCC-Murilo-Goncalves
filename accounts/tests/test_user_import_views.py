@@ -9,7 +9,7 @@ from imports.reader import SourceRow
 from outbox.models import OutboxEntry
 from ui.pagination import PAGE_SIZE, ROWS_PAGE_SIZE
 
-HEADER = 'E-mail;Nome;Perfil\n'
+HEADER = 'E-mail;Nome;Perfil;Nome de usuário\n'
 
 
 def csv_file(lines, name='usuarios.csv'):
@@ -27,8 +27,9 @@ class ImportViewsTestCase(TestCase):
         self.client.force_login(self.admin)
 
     def preview(self, *lines):
+        labels = ('E-mail', 'Nome', 'Perfil', 'Nome de usuário')
         rows = [
-            SourceRow(number, dict(zip(('E-mail', 'Nome', 'Perfil'), line.split(';'))))
+            SourceRow(number, dict(zip(labels, line.split(';') + [''] * len(labels))))
             for number, line in enumerate(lines, start=2)
         ]
         return Import.objects.preview(UserImport(), rows, 'usuarios.csv', self.admin)
@@ -229,7 +230,7 @@ class TemplateTests(ImportViewsTestCase):
         response = self.client.get('/usuarios/importacoes/modelo/')
         self.assertEqual(response['Content-Type'], 'text/csv; charset=utf-8')
         self.assertIn('modelo-importacao-usuarios.csv', response['Content-Disposition'])
-        self.assertEqual(response.content, '﻿E-mail;Nome;Perfil\r\n'.encode())
+        self.assertEqual(response.content, '﻿E-mail;Nome;Perfil;Nome de usuário\r\n'.encode())
 
 
 class PaginationTests(ImportViewsTestCase):

@@ -152,7 +152,10 @@ class ImportChangeTests(ChangeRecordTestCase):
 
     def rows(self, *emails):
         return [
-            SourceRow(number, {'E-mail': email, 'Nome': email.partition('@')[0], 'Perfil': 'DOCENTE'})
+            SourceRow(number, {
+                'E-mail': email, 'Nome': email.partition('@')[0],
+                'Perfil': 'DOCENTE', 'Nome de usuário': '',
+            })
             for number, email in enumerate(emails, start=2)
         ]
 

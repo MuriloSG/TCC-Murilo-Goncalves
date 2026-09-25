@@ -1,0 +1,9 @@
+{% extends "ui/components/modal.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block description %}{% if target %}{{ target.name }}, com a origem {{ target.get_origin_display|lower }}{% if target.source_import %} ({{ target.source_import.file_name }}, {{ target.source_import.created_at|date:"SHORT_DATE_FORMAT" }}){% endif %}. A origem não muda. Ao renomear, o nome anterior passa a ser outro nome do espaço.{% else %}O espaço é cadastrado com a origem manual e fica ativo.{% endif %}{% endblock %}
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{{ submit_label }}</button>{% endblock %}

@@ -4,6 +4,12 @@ from django.urls import path
 from schedule import views
 
 urlpatterns = [
+    path('espacos/', login_required(views.SpaceListView.as_view()), name='spaces_list'),
+    path('espacos/novo/', login_required(views.SpaceCreateView.as_view()), name='spaces_create'),
+    path('espacos/<int:pk>/editar/', login_required(views.SpaceUpdateView.as_view()), name='spaces_update'),
+    path('espacos/<int:pk>/desativar/', login_required(views.SpaceDeactivateView.as_view()), name='spaces_deactivate'),
+    path('espacos/<int:pk>/reativar/', login_required(views.SpaceReactivateView.as_view()), name='spaces_reactivate'),
+    path('espacos/<int:pk>/excluir/', login_required(views.SpaceDeleteView.as_view()), name='spaces_delete'),
     path(
         'ensalamento/',
         login_required(views.SpaceAllocationGridView.as_view()),

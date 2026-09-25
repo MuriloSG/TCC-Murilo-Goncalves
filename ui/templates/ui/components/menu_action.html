@@ -1,1 +1,1 @@
-{% load ui %}<a href="{{ action.url }}" hx-get="{{ action.url }}" hx-target="#modal"{% if action.danger %} class="danger"{% endif %}>{% icon action.icon %}{{ action.label }}</a>
+{% load ui %}<a href="{{ action.url }}"{% if not action.page %} hx-get="{{ action.url }}" hx-target="#modal"{% endif %}{% if action.danger %} class="danger"{% endif %}>{% icon action.icon %}{{ action.label }}</a>

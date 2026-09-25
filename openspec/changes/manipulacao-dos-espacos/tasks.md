@@ -73,12 +73,12 @@
 
 ## 9. Tela de Espaços
 
-- [ ] 9.1 Criar a lista de espaços com busca pelo nome e pelos outros nomes, filtros `situacao` e `origem`, ordem natural, paginação, estados vazios, controles por permissão, excluir só no espaço sem aula e o link para a auditoria (D15)
-- [ ] 9.2 Criar o cadastro e a edição em modal, com o nome, os outros nomes um por linha e a origem só exibida na edição
-- [ ] 9.3 Criar a desativação, a reativação e a exclusão com confirmação em modal, título em pergunta e mensagens no particípio
-- [ ] 9.4 Acrescentar as rotas com `login_required` e `permission_required` e o item "Espaços" no menu, com o ícone `door-open`, para quem tem `ESPACO.VISUALIZAR`
-- [ ] 9.5 Testar cada rota nas quatro situações da §7 das convenções, com usuários sem superadmin, e os cenários da spec `gestao-espacos`
-- [ ] 9.6 Commit
+- [x] 9.1 Criar a lista de espaços com busca pelo nome e pelos outros nomes, filtros `situacao` e `origem`, ordem natural, paginação, estados vazios, controles por permissão, excluir só no espaço sem aula e o link para a auditoria (D15)
+- [x] 9.2 Criar o cadastro e a edição em modal, com o nome, os outros nomes um por linha e a origem só exibida na edição
+- [x] 9.3 Criar a desativação, a reativação e a exclusão com confirmação em modal, título em pergunta e mensagens no particípio
+- [x] 9.4 Acrescentar as rotas com `login_required` e `permission_required` e o item "Espaços" no menu, com o ícone `door-open`, para quem tem `ESPACO.VISUALIZAR`
+- [x] 9.5 Testar cada rota nas quatro situações da §7 das convenções, com usuários sem superadmin, e os cenários da spec `gestao-espacos`
+- [x] 9.6 Commit
 
 ## 10. Quadro da prévia e atualização automática
 

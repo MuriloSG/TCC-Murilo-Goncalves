@@ -267,7 +267,23 @@ def distinct_names(values, excluded=()):
     return names
 
 
-class SpaceManager(models.Manager):
+SPACE_STATUS_FILTERS = {'ativos': True, 'inativos': False}
+
+
+class SpaceQuerySet(models.QuerySet):
+    def search(self, term='', status='', origin=''):
+        """Aplica a busca pelo nome atual ou por outro nome e os filtros de situação e origem."""
+        queryset = self
+        if term:
+            queryset = queryset.filter(pk__in=SpaceName.objects.filter(name__icontains=term).values('space'))
+        if status in SPACE_STATUS_FILTERS:
+            queryset = queryset.filter(is_active=SPACE_STATUS_FILTERS[status])
+        if origin in SpaceOrigin.values:
+            queryset = queryset.filter(origin=origin)
+        return queryset
+
+
+class SpaceManager(models.Manager.from_queryset(SpaceQuerySet)):
     """Operações do cadastro de espaços (D2 e D3 da Change manipulacao-dos-espacos).
 
     Cada operação que altera o cadastro grava o próprio registro de auditoria no módulo

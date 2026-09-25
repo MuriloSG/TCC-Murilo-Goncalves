@@ -240,13 +240,13 @@ A tela é nova. O autor dispensou a imagem de referência (§9.8) e pediu o padr
 
 ### D15. Tela de Espaços no app `schedule`
 
-O espaço é entidade de `schedule` (D14 da Change de importação). As rotas:
+O espaço é entidade de `schedule` (D14 da Change de importação). As rotas, com nomes de prefixo `spaces_`, para que o item do menu não se confunda com as rotas `space_allocation_` do ensalamento:
 - `espacos/`, a lista;
 - `espacos/novo/`, o cadastro;
 - `espacos/<pk>/editar/`, a edição;
 - `espacos/<pk>/desativar/`, `espacos/<pk>/reativar/` e `espacos/<pk>/excluir/`, as ações com confirmação.
 
-Todas têm `login_required` na URL e `permission_required` na view. O cadastro e a edição usam `OperationFormView`, e as ações com confirmação usam `ConfirmedActionView`, tudo em modal. A lista segue a de usuários: `busca`, `situacao` e `origem` na URL, paginação da spec `interface`, ordem natural do nome (`natural_key` de `schedule/timetable.py`) e o link para a auditoria filtrada pelo módulo e pelo registro para quem tem `AUDITORIA.VISUALIZAR`. Os outros nomes são informados um por linha num campo de texto. O item "Espaços" do menu usa o ícone `door-open`, que já existe. A tela é nova. O autor dispensou a imagem de referência e pediu o padrão da lista de usuários: busca e filtros no cabeçalho do cartão, tabela com selos de origem e situação, ações da linha por `row_actions.html` e modais pelos componentes do app `ui`.
+Todas têm `login_required` na URL e `permission_required` na view. O cadastro e a edição usam `OperationFormView`, e as ações com confirmação usam `ConfirmedActionView`, tudo em modal. A lista segue a de usuários: `busca`, `situacao` e `origem` na URL, paginação da spec `interface`, ordem natural do nome (`natural_key` de `schedule/timetable.py`) e o link para a auditoria filtrada pelo módulo e pelo registro para quem tem `AUDITORIA.VISUALIZAR`. Esse link abre a página da auditoria, e não um modal: os componentes de ação da linha ganharam a marca `page` para isso. Os outros nomes são informados um por linha num campo de texto. O item "Espaços" do menu usa o ícone `door-open`, que já existe. A tela é nova. O autor dispensou a imagem de referência e pediu o padrão da lista de usuários: busca e filtros no cabeçalho do cartão, tabela com selos de origem e situação, ações da linha por `row_actions.html` e modais pelos componentes do app `ui`.
 
 ### D16. A Grade não muda
 

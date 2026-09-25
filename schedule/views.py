@@ -1,8 +1,10 @@
-"""Grade do ensalamento confirmado e telas da importação, sobre as views base do motor de importação.
+"""Grade do ensalamento confirmado, telas da importação e cadastro de espaços.
 
 A grade exige `ENSALAMENTO.VISUALIZAR`, as telas da importação exigem
-`ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`: a autenticação vem do `login_required`
-no `urls.py` e a permissão é declarada aqui como dado, verificada pelo PermissionMiddleware.
+`ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`.
+O cadastro de espaços exige a permissão de cada operação do recurso `ESPACO` (D15 da Change
+manipulacao-dos-espacos). A autenticação vem do `login_required` no `urls.py` e a
+permissão é declarada aqui como dado, verificada pelo PermissionMiddleware.
 A importação não tem modelo para baixar, porque a planilha é a do campus e não é alterada
 pelo sistema.
 """
@@ -10,11 +12,14 @@ pelo sistema.
 from datetime import date, timedelta
 from urllib.parse import urlencode
 
-from django.urls import reverse
+from django.contrib import messages
+from django.db.models import Count
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.views.generic import TemplateView
+from django.views.generic import ListView, TemplateView
 
 from accounts import permissions
+from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
 from imports.views import (
     ImportConfirmView,
@@ -25,8 +30,10 @@ from imports.views import (
     ImportScreens,
     ImportUploadView,
 )
-from schedule.forms import GridFilterForm
+from schedule.forms import GridFilterForm, SpaceFilterForm, SpaceForm
+from schedule.models import Space
 from schedule.imports import SpaceAllocationImport, concluded_message
+from ui.pagination import paginate
 from schedule.occupancy import occupancy
 from schedule.timetable import (
     current_semester_code,
@@ -35,6 +42,7 @@ from schedule.timetable import (
     imported_semesters,
     month_start,
     month_dates,
+    natural_key,
     space_week,
     spaces_of,
     week_start,
@@ -205,3 +213,125 @@ class SpaceAllocationImportDeleteView(ImportDeleteView):
     permission_required = permissions.SPACE_ALLOCATION_IMPORT_DELETE
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
     screens = SPACE_ALLOCATION_IMPORT_SCREENS
+
+
+class SpaceListView(ListView):
+    """Lista de espaços com busca e filtros pela URL, como a lista de usuários.
+
+    Quando o formulário de filtros pede pelo htmx, responde só com a tabela e o rodapé. A
+    ordem é a natural do nome, a mesma da Grade: `1/4` vem antes de `1/10`.
+    """
+
+    permission_required = permissions.SPACE_VIEW
+    audit_resource = catalog.SPACE
+    template_name = 'schedule/space_list.html'
+    table_template_name = 'schedule/partials/space_table.html'
+    table_target = 'tabela-espacos'
+    context_object_name = 'spaces'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.filters = SpaceFilterForm(request.GET)
+        self.term, self.status, self.origin = self.filters.criteria()
+
+    def get_queryset(self):
+        spaces = Space.objects.search(self.term, self.status, self.origin)
+        spaces = spaces.select_related('source_import').prefetch_related('names').annotate(lessons=Count('allocations'))
+        return sorted(spaces, key=natural_key)
+
+    def get_template_names(self):
+        if self.request.htmx and self.request.htmx.target == self.table_target:
+            return [self.table_template_name]
+        return super().get_template_names()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(
+            filters=self.filters,
+            filtered=bool(self.term) or self.status != 'todos' or self.origin != 'todas',
+            total=Space.objects.count(),
+            table_target=self.table_target,
+            **kwargs,
+        )
+        context['page'] = paginate(self.request, self.object_list)
+        context['spaces'] = context['page'].object_list
+        user = self.request.user
+        for space in context['spaces']:
+            space.deletable = not space.lessons and user.has_perm(permissions.SPACE_DELETE)
+            space.history_action = history_action(space) if user.has_perm(permissions.AUDIT_VIEW) else None
+        return context
+
+
+def history_action(space):
+    """Ação da linha que abre a consulta da auditoria filtrada pelo espaço."""
+    query = urlencode({'recurso': catalog.SPACE, 'registro': space.pk})
+    return {'url': f"{reverse('audit_log_list')}?{query}", 'label': 'Ver auditoria', 'icon': 'scroll-text', 'danger': False, 'page': True}
+
+
+class SpaceFormView(OperationFormView):
+    audit_resource = catalog.SPACE
+    template_name = 'schedule/space_form.html'
+    modal_template_name = 'schedule/space_form_modal.html'
+    success_url = reverse_lazy('spaces_list')
+    form_class = SpaceForm
+
+
+class SpaceCreateView(SpaceFormView):
+    permission_required = permissions.SPACE_CREATE
+    title = 'Cadastrar espaço'
+    submit_label = 'Cadastrar'
+
+    def perform(self, data):
+        space = Space.objects.register(data['name'], other_names=data['other_names'])
+        messages.success(self.request, f'Espaço {space.name} cadastrado.')
+
+
+class SpaceUpdateView(SpaceFormView):
+    permission_required = permissions.SPACE_EDIT
+    model = Space
+    title = 'Editar espaço'
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def perform(self, data):
+        self.target.update_details(data['name'], data['other_names'])
+        messages.success(self.request, f'Espaço {self.target.name} atualizado.')
+
+
+class SpaceActionView(ConfirmedActionView):
+    audit_resource = catalog.SPACE
+    model = Space
+    template_name = 'schedule/space_confirm.html'
+    modal_template_name = 'schedule/space_confirm_modal.html'
+    success_url = reverse_lazy('spaces_list')
+    action = ''
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(action=self.action, **kwargs)
+
+
+class SpaceDeactivateView(SpaceActionView):
+    permission_required = permissions.SPACE_CHANGE_STATUS
+    action = 'desativar'
+
+    def perform(self):
+        self.target.deactivate()
+        messages.success(self.request, f'Espaço {self.target.name} desativado.')
+
+
+class SpaceReactivateView(SpaceActionView):
+    permission_required = permissions.SPACE_CHANGE_STATUS
+    action = 'reativar'
+
+    def perform(self):
+        self.target.reactivate()
+        messages.success(self.request, f'Espaço {self.target.name} reativado.')
+
+
+class SpaceDeleteView(SpaceActionView):
+    permission_required = permissions.SPACE_DELETE
+    action = 'excluir'
+
+    def perform(self):
+        self.target.delete_space()
+        messages.success(self.request, f'Espaço {self.target.name} excluído.')

@@ -42,9 +42,9 @@
 
 ## 5. Sugestão de espaços parecidos
 
-- [ ] 5.1 Criar o módulo de semelhança em `schedule`, com a regra forte e a regra fraca de D6, sem efeito automático
-- [ ] 5.2 Testar os casos reais positivos (`HV5` e `HV 5`, `Lab.3 - Info` e `Lab. 3 - Info`, `Sala 01` e `Sala 1`, `Lab. Química` e `Lab. Química I` e `II`) e negativos (`1/1` e `1/10`, `1/1` e `11`, `Lab. Análise Alim.` e `Sl. Análise Alim.`, `1/10` e `Sala 10 do Bloco 1`)
-- [ ] 5.3 Commit
+- [x] 5.1 Criar o módulo de semelhança em `schedule`, com a regra forte e a regra fraca de D6, sem efeito automático
+- [x] 5.2 Testar os casos reais positivos (`HV5` e `HV 5`, `Lab.3 - Info` e `Lab. 3 - Info`, `Sala 01` e `Sala 1`, `Lab. Química` e `Lab. Química I` e `II`) e negativos (`1/1` e `1/10`, `1/1` e `11`, `Lab. Análise Alim.` e `Sl. Análise Alim.`, `1/10` e `Sala 10 do Bloco 1`)
+- [x] 5.3 Commit
 
 ## 6. Permissões do recurso `ESPACO`
 

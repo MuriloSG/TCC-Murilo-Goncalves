@@ -137,9 +137,18 @@ nome de usuário, com valores reais da planilha (`Aldo Gomes`, `Érica`, `Gera J
   larguras. O rótulo acessível continua completo, e o texto dentro do campo passou a
   ser "Buscar usuário".
 
-**Conferido sem ajuste:** o nome de usuário abaixo do e-mail na linha, que empilha em
-360 px sem quebrar a linha nem competir com o nome; o "(opcional)" ao lado do rótulo e
-o texto de ajuda, ambos gerados pelo layout de formulário que já existe.
+- **A coluna que identifica o usuário passou a mostrar só o e-mail**, por decisão do
+  autor depois de ver a lista. Com nome, e-mail e nome de usuário, a célula tinha três
+  linhas e o nome de usuário competia visualmente com o e-mail. O nome e o nome de
+  usuário continuam alcançáveis pela busca, e a ordenação continua por nome.
+
+**Conferido sem ajuste:** o "(opcional)" ao lado do rótulo e o texto de ajuda, ambos
+gerados pelo layout de formulário que já existe; a lista com uma linha por usuário em
+360 px.
+
+**Em aberto:** as iniciais do avatar continuam vindo do nome, que não é mais exibido na
+lista, então elas não correspondem ao e-mail ao lado (`aldo@ifnmg.edu.br` com `AS`).
+Não foi alterado porque o avatar é do layout, e não desta Change.
 
 ## Risks / Trade-offs
 

@@ -14,9 +14,7 @@
           <div class="person">
             <span class="avatar" aria-hidden="true">{{ item.name|initials }}</span>
             <span>
-              <span class="person-name">{{ item.name }}{% if item.is_superadmin %} (superadmin){% endif %}</span>
-              <span class="person-detail">{{ item.email }}</span>
-              {% if item.username %}<span class="person-detail">{{ item.username }}</span>{% endif %}
+              <span class="person-name">{{ item.email }}{% if item.is_superadmin %} (superadmin){% endif %}</span>
             </span>
           </div>
         </td>

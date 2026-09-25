@@ -78,29 +78,41 @@ class ListSearchViewTests(SearchTestCase):
 
     def test_busca_por_trecho_do_nome(self):
         response = self.client.get('/usuarios/', {'busca': 'SOU'})
-        self.assertEqual(self.listed(response), ['Ana Souza'])
+        self.assertEqual(self.listed(response), ['ana.souza@ifnmg.edu.br'])
         self.assertContains(response, 'Todos os usuários <span class="count">3</span>')
         self.assertContains(response, 'Exibindo <strong>1</strong> a <strong>1</strong> de <strong>1</strong> usuário</p>')
 
     def test_busca_por_trecho_do_email(self):
-        self.assertEqual(self.listed(self.client.get('/usuarios/', {'busca': 'bruno.lima'})), ['Bruno Lima'])
+        self.assertEqual(self.listed(self.client.get('/usuarios/', {'busca': 'bruno.lima'})), ['bruno.lima@ifnmg.edu.br'])
 
     def test_filtro_por_situacao(self):
-        self.assertEqual(self.listed(self.client.get('/usuarios/', {'situacao': 'inativos'})), ['Carla Mendes'])
-        self.assertEqual(self.listed(self.client.get('/usuarios/', {'situacao': 'ativos'})), ['Ana Souza', 'Bruno Lima'])
+        self.assertEqual(
+            self.listed(self.client.get('/usuarios/', {'situacao': 'inativos'})),
+            ['carla.mendes@ifnmg.edu.br'],
+        )
+        self.assertEqual(
+            self.listed(self.client.get('/usuarios/', {'situacao': 'ativos'})),
+            ['ana.souza@ifnmg.edu.br', 'bruno.lima@ifnmg.edu.br'],
+        )
 
     def test_busca_e_filtro_combinados(self):
         User.objects.register(email='ana.clara@ifnmg.edu.br', name='Ana Clara', role=self.admin_role).deactivate()
         response = self.client.get('/usuarios/', {'busca': 'ana', 'situacao': 'ativos'})
-        self.assertEqual(self.listed(response), ['Ana Souza'])
+        self.assertEqual(self.listed(response), ['ana.souza@ifnmg.edu.br'])
 
     def test_situacao_invalida_mostra_todos(self):
         response = self.client.get('/usuarios/', {'situacao': 'qualquer'})
-        self.assertEqual(self.listed(response), ['Ana Souza', 'Bruno Lima', 'Carla Mendes'])
+        self.assertEqual(
+            self.listed(response),
+            ['ana.souza@ifnmg.edu.br', 'bruno.lima@ifnmg.edu.br', 'carla.mendes@ifnmg.edu.br'],
+        )
         self.assertNotContains(response, 'class="error"')
 
     def test_ordem_por_nome(self):
-        self.assertEqual(self.listed(self.client.get('/usuarios/', {'busca': 'ifnmg'})), ['Ana Souza', 'Bruno Lima', 'Carla Mendes'])
+        self.assertEqual(
+            self.listed(self.client.get('/usuarios/', {'busca': 'ifnmg'})),
+            ['ana.souza@ifnmg.edu.br', 'bruno.lima@ifnmg.edu.br', 'carla.mendes@ifnmg.edu.br'],
+        )
 
     def test_busca_sem_resultado(self):
         response = self.client.get('/usuarios/', {'busca': 'zzz'})
@@ -130,7 +142,7 @@ class ListSearchViewTests(SearchTestCase):
         self.assertTrue(content.startswith('<table class="data-table compact-rows">'), content[:80])
         self.assertNotIn('<html', content)
         self.assertNotIn('role="search"', content)
-        self.assertEqual(self.listed(response), ['Ana Souza'])
+        self.assertEqual(self.listed(response), ['ana.souza@ifnmg.edu.br'])
         self.assertIn('Exibindo <strong>1</strong> a <strong>1</strong> de <strong>1</strong> usuário', content)
 
     def test_htmx_com_outro_alvo_responde_a_pagina(self):
@@ -175,8 +187,8 @@ class PaginatedSearchTests(SearchTestCase):
             f'de <strong>{self.total}</strong> usuários',
             content,
         )
-        self.assertIn(f'Pessoa Silva {PAGE_SIZE:03d}', content)
-        self.assertNotIn(f'Pessoa Silva {PAGE_SIZE - 1:03d}', content)
+        self.assertIn(f'silva{PAGE_SIZE:03d}@ifnmg.edu.br', content)
+        self.assertNotIn(f'silva{PAGE_SIZE - 1:03d}@ifnmg.edu.br', content)
         self.assertIn('href="/usuarios/?busca=silva&amp;pagina=3"', content)
         self.assertIn('href="/usuarios/?busca=silva"', content)
         self.assertIn('hx-target="#tabela-usuarios"', content)

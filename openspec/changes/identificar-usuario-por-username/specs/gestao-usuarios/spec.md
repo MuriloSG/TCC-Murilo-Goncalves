@@ -171,22 +171,22 @@ Um usuário com a permissão de editar usuários DEVE (MUST) poder alterar o nom
 - **THEN** o usuário continua com `is_superadmin = False`
 
 ### Requirement: Busca e filtro na lista de usuários
-A lista de usuários DEVE (MUST) aceitar uma busca por trecho do nome, do e-mail ou do `username`, sem diferenciar maiúsculas de minúsculas, e um filtro por situação com as opções todas, ativos e inativos. Busca e filtro DEVEM (MUST) valer juntos e ser recebidos como parâmetros da URL da lista (`busca` e `situacao`), de modo que o mesmo endereço reproduza o mesmo resultado. Um valor de `situacao` fora das opções DEVE (MUST) ser tratado como todas. A lista DEVE (MUST) manter a ordem por nome e ser paginada conforme a spec `interface`, com a página combinada à busca e ao filtro. Mudar a busca ou o filtro DEVE (MUST) voltar para a primeira página. O título do cartão DEVE (MUST) informar quantos usuários existem no total, e o rodapé DEVE (MUST) informar o intervalo exibido dentro do resultado da busca. Quando nenhum usuário atender à busca, a lista DEVE (MUST) informar isso em texto e oferecer um link para limpar a busca. A lista DEVE (MUST) exibir o `username` de quem o tiver. A busca, o filtro e a paginação NÃO DEVEM (MUST NOT) alterar dados nem mudar quem pode acessar a lista.
+A lista de usuários DEVE (MUST) aceitar uma busca por trecho do nome, do e-mail ou do `username`, sem diferenciar maiúsculas de minúsculas, e um filtro por situação com as opções todas, ativos e inativos. Busca e filtro DEVEM (MUST) valer juntos e ser recebidos como parâmetros da URL da lista (`busca` e `situacao`), de modo que o mesmo endereço reproduza o mesmo resultado. Um valor de `situacao` fora das opções DEVE (MUST) ser tratado como todas. A lista DEVE (MUST) manter a ordem por nome e ser paginada conforme a spec `interface`, com a página combinada à busca e ao filtro. Mudar a busca ou o filtro DEVE (MUST) voltar para a primeira página. O título do cartão DEVE (MUST) informar quantos usuários existem no total, e o rodapé DEVE (MUST) informar o intervalo exibido dentro do resultado da busca. Quando nenhum usuário atender à busca, a lista DEVE (MUST) informar isso em texto e oferecer um link para limpar a busca. A coluna que identifica o usuário DEVE (MUST) exibir o e-mail, e NÃO DEVE (MUST NOT) exibir o nome nem o `username`, que continuam alcançáveis pela busca. A busca, o filtro e a paginação NÃO DEVEM (MUST NOT) alterar dados nem mudar quem pode acessar a lista.
 
 #### Scenario: Busca por trecho do nome
 - **GIVEN** os usuários "Ana Souza", "Bruno Lima" e "Carla Mendes"
 - **WHEN** a lista é acessada com `busca=SOU`
-- **THEN** só "Ana Souza" é exibida, o título informa 3 usuários e o rodapé informa "Exibindo 1 a 1 de 1 usuário"
+- **THEN** só o e-mail de "Ana Souza" é exibido, o título informa 3 usuários e o rodapé informa "Exibindo 1 a 1 de 1 usuário"
 
 #### Scenario: Busca por trecho do e-mail
 - **GIVEN** o usuário "Bruno Lima" com o e-mail `bruno.lima@ifnmg.edu.br`
 - **WHEN** a lista é acessada com `busca=bruno.lima`
-- **THEN** "Bruno Lima" é exibido
+- **THEN** o e-mail `bruno.lima@ifnmg.edu.br` é exibido
 
 #### Scenario: Busca por trecho do `username`
-- **GIVEN** o usuário "Aldo Gomes da Silva" com o `username` `Aldo Gomes`
+- **GIVEN** o usuário `aldo@ifnmg.edu.br`, com o nome "Aldo Gomes da Silva" e o `username` `Aldo Gomes`
 - **WHEN** a lista é acessada com `busca=aldo gomes`
-- **THEN** "Aldo Gomes da Silva" é exibido
+- **THEN** o e-mail `aldo@ifnmg.edu.br` é exibido, embora o `username` não apareça na lista
 
 #### Scenario: Filtro por situação
 - **GIVEN** dois usuários ativos e um inativo

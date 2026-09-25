@@ -35,11 +35,11 @@
 - [x] 4.4 Incluir a mudança de `username` no plano da linha, exigindo a permissão `USUARIO.EDITAR`, como o nome já faz
 - [x] 4.5 Atualizar o CSV modelo para download, com a coluna nova
 - [x] 4.6 Testar o cabeçalho antigo sendo recusado, o cadastro com e sem o valor, a atualização do valor, a célula vazia não apagando o valor atual, a duplicata dentro do mesmo arquivo e contra um usuário existente recebendo erro na coluna, e a mensagem igual à da tela
-- [ ] 4.7 Commit
+- [x] 4.7 Commit
 
 ## 5. Specs e fechamento
 
-- [ ] 5.1 Conferir que os deltas de `gestao-usuarios` e `autenticacao` descrevem o que foi implementado, ajustando o que divergir
-- [ ] 5.2 Rodar a suíte inteira com `make test` e corrigir o que quebrar
-- [ ] 5.3 Registrar em `openspec/conventions.md` qualquer preferência nova surgida na implementação
-- [ ] 5.4 Commit
+- [x] 5.1 Conferir que os deltas de `gestao-usuarios` e `autenticacao` descrevem o que foi implementado, ajustando o que divergir
+- [x] 5.2 Rodar a suíte inteira com `make test` e corrigir o que quebrar
+- [x] 5.3 Registrar em `openspec/conventions.md` qualquer preferência nova surgida na implementação
+- [x] 5.4 Commit

@@ -69,7 +69,7 @@ Não se cria `Occurrence` no banco, nem uma linha por aula dada. Uma disciplina 
 
 ### D3. O período é definido por um modal aberto pela Grade
 
-"Definir período" é uma ação de gestão pequena, e segue as convenções (seção 6): `ModalView` pelas classes base de `accounts/views.py`, rota `ensalamento/semestres/<code>/periodo/`, `login_required` no `urls.py`, formulário com as duas datas e resposta `HttpResponseClientRedirect` para a Grade no mesmo semestre.
+"Definir período" é uma ação de gestão pequena, e segue as convenções (seção 6): `ModalView` pelas classes base de `accounts/views.py`, rota `ensalamento/semestres/<pk>/periodo/` (pela chave, porque o código tem barra), `login_required` no `urls.py`, formulário com as duas datas e resposta `HttpResponseClientRedirect` para a Grade no mesmo semestre.
 
 - **Permissão:** `ENSALAMENTO.IMPORTAR`, a de quem já administra o semestre ao importá-lo. Não se cria permissão nova.
 - **Auditoria:** registro `ALTERAR` do recurso `SEMESTRE` (novo no catálogo), com o código e o período anterior e o novo.

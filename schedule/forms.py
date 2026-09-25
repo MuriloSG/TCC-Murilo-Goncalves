@@ -15,3 +15,10 @@ class GridFilterForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields['semestre'].choices = [(code, code) for code in semesters]
         self.fields['sala'].choices = [(space.name, space.name) for space in spaces]
+
+
+class SemesterPeriodForm(forms.Form):
+    """Início e fim do período do semestre, validados pela operação do model (D3)."""
+
+    start_date = forms.DateField(label='Início', widget=forms.DateInput(attrs={'class': 'input', 'type': 'date'}, format='%Y-%m-%d'))
+    end_date = forms.DateField(label='Fim', widget=forms.DateInput(attrs={'class': 'input', 'type': 'date'}, format='%Y-%m-%d'))

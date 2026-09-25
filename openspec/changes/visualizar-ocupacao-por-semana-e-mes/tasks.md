@@ -41,10 +41,10 @@
 
 ## 6. Modal do período
 
-- [ ] 6.1 Criar a rota `ensalamento/semestres/<code>/periodo/` com `login_required`, a view sobre `ModalView` com `ENSALAMENTO.IMPORTAR`, o formulário e a auditoria (D3)
-- [ ] 6.2 Pôr o aviso e o botão "Definir período" na Grade, só para quem tem a permissão
-- [ ] 6.3 Testar a rota nas quatro situações das convenções, a definição com a auditoria, a recusa como erro do formulário e o botão escondido
-- [ ] 6.4 Commit
+- [x] 6.1 Criar a rota `ensalamento/semestres/<pk>/periodo/` (pela chave, porque o código tem barra) com `login_required`, a view sobre `ModalView` com `ENSALAMENTO.IMPORTAR`, o formulário e a auditoria (D3)
+- [x] 6.2 Pôr o aviso e o botão "Definir período" na Grade, só para quem tem a permissão
+- [x] 6.3 Testar a rota nas quatro situações das convenções, a definição com a auditoria, a recusa como erro do formulário e o botão escondido
+- [x] 6.4 Commit
 
 ## 7. Fechamento
 

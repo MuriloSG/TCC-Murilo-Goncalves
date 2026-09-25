@@ -554,3 +554,75 @@ class UserCreationTests(ScreenTestCase):
         self.assertEqual(importation.status, Import.Status.CONCLUDED)
         self.assertFalse(User.objects.filter(username__in=TEACHERS).exists())
         self.assertEqual(Allocation.objects.count(), 4)
+
+
+class SemesterPeriodScreenTests(ScreenTestCase):
+    def setUp(self):
+        super().setUp()
+        self.upload(semester='2026/2')
+        self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
+        self.semester = Semester.objects.get(code='2026/2')
+        self.url = reverse('semester_period', args=[self.semester.pk])
+        self.viewer = self.user('consulta@ifnmg.edu.br', SPACE_ALLOCATION_VIEW)
+        self.grid_url = f"{reverse('space_allocation_grid')}?semestre=2026%2F2"
+
+    def post(self, start='2026-08-03', end='2026-12-18', client=None):
+        return (client or self.client).post(self.url, {'start_date': start, 'end_date': end})
+
+    def test_anonymous_is_sent_to_the_login_with_next(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertRedirects(response, f"{reverse('account_login')}?next={self.url}", fetch_redirect_response=False)
+
+    def test_without_the_permission_it_is_refused(self):
+        self.client.force_login(self.viewer)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.assertEqual(self.post().status_code, 403)
+        self.semester.refresh_from_db()
+        self.assertFalse(self.semester.has_period)
+
+    def test_without_csrf_it_is_refused(self):
+        client = self.client_class(enforce_csrf_checks=True)
+        client.force_login(self.importer)
+        self.assertEqual(self.post(client=client).status_code, 403)
+
+    def test_with_the_permission_the_period_is_defined_and_audited(self):
+        self.client.force_login(self.importer)
+        self.assertContains(self.client.get(self.url, headers={'HX-Request': 'true'}), 'Semestre 2026/2.')
+        response = self.post()
+        self.assertRedirects(response, self.grid_url, fetch_redirect_response=False)
+        self.semester.refresh_from_db()
+        self.assertEqual((self.semester.start_date, self.semester.end_date), (date(2026, 8, 3), date(2026, 12, 18)))
+        record = AuditLog.objects.get(resource=catalog.SEMESTER)
+        self.assertEqual((record.user, record.action, record.resource_id), (self.importer, catalog.UPDATE, '2026/2'))
+        self.assertContains(self.client.get(self.grid_url), 'Período do semestre 2026/2 definido.')
+
+    def test_htmx_success_reloads_the_grid(self):
+        self.client.force_login(self.importer)
+        response = self.client.post(self.url, {'start_date': '2026-08-03', 'end_date': '2026-12-18'}, headers={'HX-Request': 'true'})
+        self.assertEqual(response.headers['HX-Redirect'], self.grid_url)
+
+    def test_refusal_is_a_form_error(self):
+        self.client.force_login(self.importer)
+        response = self.post(start='2026-12-18', end='2026-08-03')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'O fim deve ser igual ou posterior ao início.')
+        self.semester.refresh_from_db()
+        self.assertFalse(self.semester.has_period)
+
+    def test_current_period_is_the_initial_value(self):
+        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        self.client.force_login(self.importer)
+        self.assertContains(self.client.get(self.url), 'value="2026-08-03"')
+
+    def test_button_appears_only_with_the_permission(self):
+        self.client.force_login(self.importer)
+        self.assertContains(self.client.get(self.grid_url), f'href="{self.url}"')
+        self.client.force_login(self.viewer)
+        response = self.client.get(self.grid_url)
+        self.assertContains(response, 'Período do semestre 2026/2 não definido.')
+        self.assertNotContains(response, self.url)
+
+    def test_unknown_semester_is_not_found(self):
+        self.client.force_login(self.importer)
+        self.assertEqual(self.client.get(reverse('semester_period', args=[9999])).status_code, 404)

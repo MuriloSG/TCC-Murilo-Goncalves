@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ close_url }}">Ensalamento</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ title }}</span></li>
+{% endblock %}
+
+{% block content %}{% include "schedule/semester_period_modal.html" %}{% endblock %}

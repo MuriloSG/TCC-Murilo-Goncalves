@@ -10,6 +10,11 @@ urlpatterns = [
         name='space_allocation_grid',
     ),
     path(
+        'ensalamento/semestres/<int:pk>/periodo/',
+        login_required(views.SemesterPeriodView.as_view()),
+        name='semester_period',
+    ),
+    path(
         'ensalamento/importacoes/',
         login_required(views.SpaceAllocationImportListView.as_view()),
         name='space_allocation_import_list',

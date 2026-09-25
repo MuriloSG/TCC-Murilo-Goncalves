@@ -15,6 +15,10 @@
     </div>
     {% if perms.ENSALAMENTO.IMPORTAR %}
       <div class="page-actions">
+        {% if semester %}
+          {% url "semester_period" semester.pk as period_url %}
+          <a class="btn-secondary" href="{{ period_url }}" hx-get="{{ period_url }}" hx-target="#modal">{% icon "calendar-check" %}Definir período</a>
+        {% endif %}
         <a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>
       </div>
     {% endif %}

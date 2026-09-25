@@ -10,11 +10,13 @@ pelo sistema.
 from datetime import date, timedelta
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import TemplateView
 
 from accounts import permissions
+from accounts.views import OperationFormView
 from audit import catalog
 from imports.views import (
     ImportConfirmView,
@@ -25,8 +27,9 @@ from imports.views import (
     ImportScreens,
     ImportUploadView,
 )
-from schedule.forms import GridFilterForm
+from schedule.forms import GridFilterForm, SemesterPeriodForm
 from schedule.imports import SpaceAllocationImport, concluded_message
+from schedule.models import Semester
 from schedule.occupancy import occupancy
 from schedule.timetable import (
     current_semester_code,
@@ -124,6 +127,7 @@ class SpaceAllocationGridView(TemplateView):
             week=week,
             semester_code=code,
             space=space,
+            semester=semester,
             period_missing=semester is not None and not semester.has_period,
             filter_form=GridFilterForm(
                 {'semestre': code, 'sala': space.name if space else '', 'semana': week.start.isoformat() if week.start else ''},
@@ -138,6 +142,39 @@ class SpaceAllocationGridView(TemplateView):
             occupation_text=occupation_text(week),
         )
         return context
+
+
+def grid_url_of(semester):
+    return f"{reverse('space_allocation_grid')}?{urlencode({'semestre': semester.code})}"
+
+
+class SemesterPeriodView(OperationFormView):
+    """Período do semestre, definido em modal aberto pela Grade (D3).
+
+    Exige `ENSALAMENTO.IMPORTAR`, a permissão de quem administra o semestre ao importá-lo.
+    A rota usa a chave, e não o código, porque o código tem barra.
+    """
+
+    permission_required = permissions.SPACE_ALLOCATION_IMPORT
+    model = Semester
+    template_name = 'schedule/semester_period.html'
+    modal_template_name = 'schedule/semester_period_modal.html'
+    form_class = SemesterPeriodForm
+    title = 'Definir período'
+    submit_label = 'Salvar período'
+
+    def get_success_url(self):
+        return grid_url_of(self.target)
+
+    def get_close_url(self):
+        return grid_url_of(self.target)
+
+    def get_initial(self):
+        return {'start_date': self.target.start_date, 'end_date': self.target.end_date}
+
+    def perform(self, data):
+        self.target.define_period(data['start_date'], data['end_date'])
+        messages.success(self.request, f'Período do semestre {self.target.code} definido.')
 
 
 class SpaceAllocationImportDetailView(ImportDetailView):

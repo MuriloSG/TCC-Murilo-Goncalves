@@ -1,0 +1,9 @@
+{% extends "ui/components/modal.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block description %}Semestre {{ target.code }}. As aulas aparecem na grade só nas datas deste período.{% endblock %}
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{{ submit_label }}</button>{% endblock %}

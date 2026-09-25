@@ -1130,6 +1130,40 @@
     }
   }
 
+  .tabs {
+    display: flex;
+    gap: var(--spacing-1);
+    overflow-x: auto;
+    border-bottom: 1px solid var(--color-divider);
+
+    & > a {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      min-height: var(--spacing-11);
+      margin-bottom: -1px;
+      padding: 0 var(--spacing-4);
+      border-bottom: 2px solid transparent;
+      color: var(--color-text-muted);
+      font-weight: var(--font-weight-semibold);
+      white-space: nowrap;
+      transition: color var(--motion-fast), border-color var(--motion-fast);
+
+      &:hover {
+        color: var(--color-text);
+      }
+
+      &[aria-current="page"] {
+        border-bottom-color: var(--color-action);
+        color: var(--color-text);
+
+        & svg {
+          color: var(--color-action);
+        }
+      }
+    }
+  }
+
   .row-filter {
     & .select-wrap,
     & .select {

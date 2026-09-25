@@ -23,6 +23,7 @@ from audit.models import AuditLog
 from imports.definitions import ImportDefinition
 from imports.forms import ImportUploadForm, RowFilterForm
 from imports.models import Import, ImportRow
+from imports.reader import listing
 from ui.pagination import ROWS_PAGE_SIZE, paginate
 from ui.views import ModalView
 
@@ -36,6 +37,10 @@ class ImportScreens:
     As rotas do app seguem o prefixo: `<prefixo>_list`, `_upload`, `_template`,
     `_detail`, `_confirm` e `_discard`. A rota do modelo existe só quando a importação
     tem modelo.
+
+    `tabs` declara as abas do detalhe, cada uma com a rota, o rótulo e o ícone, e
+    `review_route` é a rota da tabela de linhas. Sem abas, o detalhe é a própria tabela
+    (D8 da Change visualizar-grade-do-ensalamento).
     """
 
     definition: ImportDefinition
@@ -47,6 +52,8 @@ class ImportScreens:
     empty_message: str
     concluded_message: Callable
     template_file_name: str | None = None
+    tabs: tuple = ()
+    review_route: str = 'detail'
 
     @property
     def has_template(self):
@@ -77,6 +84,40 @@ STATUS_BADGES = {
 
 def status_badge(status):
     return STATUS_BADGES[str(status)]
+
+
+def detail_tabs(screens, pk, current):
+    """Abas do detalhe da importação, com a atual marcada, ou nenhuma quando não declaradas."""
+    return [
+        {'url': screens.url(route, pk), 'label': label, 'icon': icon, 'current': route == current}
+        for route, label, icon in screens.tabs
+    ]
+
+
+def detail_head_context(screens, importation, current):
+    """Contexto do cabeçalho do detalhe, igual em todas as abas: situação, ações e resumo."""
+    importation.tone, importation.icon = status_badge(importation.status)
+    return {
+        'importation': importation,
+        'summary': importation.summary(),
+        'upload_values': upload_values(screens.definition, importation),
+        'confirm_url': screens.url('confirm', importation.pk),
+        'discard_url': screens.url('discard', importation.pk),
+        'review_url': screens.url(screens.review_route, importation.pk),
+        'tabs': detail_tabs(screens, importation.pk, current),
+    }
+
+
+def rows_title(numbers, only_errors):
+    """Título da tabela de linhas, conforme o filtro escolhido."""
+    if numbers:
+        return f'Linha {numbers[0]}' if len(numbers) == 1 else f'Linhas {listing(numbers)}'
+    return 'Linhas com erro' if only_errors else 'Linhas do arquivo'
+
+
+def line_numbers(request):
+    """Números de linha pedidos na consulta, descartando os que não são inteiros (D9)."""
+    return sorted({int(value) for value in request.GET.getlist('numero') if value.isdigit()})
 
 
 def with_summary(queryset):
@@ -199,8 +240,10 @@ class ImportDetailView(DetailView):
         context = super().get_context_data(**kwargs, **screens_context(self.screens))
         importation = self.object
         definition = self.screens.definition
+        context.update(detail_head_context(self.screens, importation, self.screens.review_route))
         chosen = self.request.GET.get('linhas', '')
         only_errors = chosen == 'erros'
+        numbers = line_numbers(self.request)
         columns = [column.label for column in definition.columns]
         rows = importation.rows.all()
         if only_errors:
@@ -209,21 +252,19 @@ class ImportDetailView(DetailView):
             found = chosen_row_filter(definition, chosen)
             rows = rows.filter(**{f'values__{found.column}': found.value})
             columns = list(found.columns) or columns
-        summary = importation.summary()
+        if numbers:
+            rows = rows.filter(line_number__in=numbers)
         page = paginate(self.request, rows, ROWS_PAGE_SIZE)
-        importation.tone, importation.icon = status_badge(importation.status)
         context.update(
-            summary=summary,
             only_errors=only_errors,
             chosen_filter=chosen,
-            row_filter=row_filter_form(definition, importation, chosen, summary['errors']),
+            numbers=numbers,
+            rows_title=rows_title(numbers, only_errors),
+            row_filter=row_filter_form(definition, importation, chosen, context['summary']['errors']),
             columns=columns,
-            upload_values=upload_values(definition, importation),
             page=page,
             rows=[self.describe(row, definition, columns) for row in page.object_list],
-            confirm_url=self.screens.url('confirm', importation.pk),
-            discard_url=self.screens.url('discard', importation.pk),
-            detail_url=self.screens.url('detail', importation.pk),
+            detail_url=context['review_url'],
         )
         return context
 

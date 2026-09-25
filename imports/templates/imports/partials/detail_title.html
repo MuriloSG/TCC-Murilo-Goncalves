@@ -1,0 +1,17 @@
+{% load ui %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Importação de {{ importation.file_name }}</h1>
+    </div>
+    {% if importation.is_validated %}
+      <form id="confirmar-importacao" method="post" action="{{ confirm_url }}">{% csrf_token %}</form>
+      <div class="page-actions">
+        <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
+        <button class="btn-primary" type="submit" form="confirmar-importacao">{% icon "check" %}Confirmar importação</button>
+      </div>
+    {% elif importation.status == "COM_ERROS" %}
+      <div class="page-actions">
+        <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo corrigido</a>
+      </div>
+    {% endif %}
+  </div>

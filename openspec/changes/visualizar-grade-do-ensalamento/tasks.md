@@ -20,12 +20,12 @@
 
 ## 3. Abas no motor de importação
 
-- [ ] 3.1 Acrescentar `tabs` e `review_route` a `ImportScreens`, com os padrões que deixam a importação de usuários igual (D8)
-- [ ] 3.2 Mover o título, as ações, os alertas, os erros do arquivo e o resumo de `imports/detail.html` para `imports/partials/detail_head.html`, e incluir a navegação entre abas quando houver
-- [ ] 3.3 Acrescentar o filtro `numero` à tabela de linhas, combinado com o recorte `linhas`, com o link para todas as linhas (D9)
-- [ ] 3.4 Fazer os links internos da tabela (select de recortes, paginação, "Mostrar todas as linhas") usarem a rota da Conferência
-- [ ] 3.5 Testar a importação de usuários sem abas e sem mudança de comportamento, o filtro `numero` com um, dois e nenhum número válido, e o número inválido descartado com 200
-- [ ] 3.6 Commit
+- [x] 3.1 Acrescentar `tabs` e `review_route` a `ImportScreens`, com os padrões que deixam a importação de usuários igual (D8)
+- [x] 3.2 Mover o título, as ações, os alertas, os erros do arquivo e o resumo de `imports/detail.html` para `imports/partials/detail_head.html`, e incluir a navegação entre abas quando houver
+- [x] 3.3 Acrescentar o filtro `numero` à tabela de linhas, combinado com o recorte `linhas`, com o link para todas as linhas (D9)
+- [x] 3.4 Fazer os links internos da tabela (select de recortes, paginação, "Mostrar todas as linhas") usarem a rota da Conferência
+- [x] 3.5 Testar a importação de usuários sem abas e sem mudança de comportamento, o filtro `numero` com um, dois e nenhum número válido, e o número inválido descartado com 200
+- [x] 3.6 Commit
 
 ## 4. Tela da Grade
 

@@ -1,0 +1,30 @@
+{% load ui %}
+  {% if importation.status == "VALIDADA" %}
+    <div class="alert tone-info" role="status">{% icon "info" %}<p>Prévia pronta. Nenhum dado foi gravado. Confira as linhas e confirme a importação.</p></div>
+  {% elif importation.status == "COM_ERROS" %}
+    <div class="alert tone-error" role="status">{% icon "circle-x" %}<p>A importação tem erros e não pode ser confirmada. Corrija a planilha e envie o arquivo de novo.</p></div>
+  {% endif %}
+  {% for error in importation.file_errors %}
+    <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>{{ error.message }}</p></div>
+  {% endfor %}
+
+  <section class="card" aria-label="Resumo da importação">
+    <dl class="detail-grid">
+      <div><dt>Situação</dt><dd>{% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}</dd></div>
+      <div><dt>Enviada por</dt><dd>{{ importation.created_by.name }}, em {{ importation.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+      {% for label, value in upload_values %}
+        <div><dt>{{ label }}</dt><dd>{{ value|default:"Vazio" }}</dd></div>
+      {% endfor %}
+      <div><dt>Resultado</dt><dd>{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged errors=summary.errors %}</dd></div>
+      <div><dt>Prévias refeitas</dt><dd>{% if importation.revalidation_count %}{{ importation.revalidation_count }} vez{{ importation.revalidation_count|pluralize:"es" }}, porque os dados mudaram antes da confirmação{% else %}Nenhuma{% endif %}</dd></div>
+      {% if importation.resolved_by %}
+        <div><dt>{% if importation.status == "CONCLUIDA" %}Confirmada por{% else %}Descartada por{% endif %}</dt><dd>{{ importation.resolved_by.name }}, em {{ importation.resolved_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+        <div><dt>Arquivo</dt><dd>{{ importation.file_name }}</dd></div>
+      {% endif %}
+    </dl>
+  </section>
+  {% if tabs %}
+    <nav class="tabs" aria-label="Visões da importação">
+      {% for tab in tabs %}<a href="{{ tab.url }}"{% if tab.current %} aria-current="page"{% endif %}>{% icon tab.icon "size-4" %}{{ tab.label }}</a>{% endfor %}
+    </nav>
+  {% endif %}

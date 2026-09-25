@@ -179,6 +179,41 @@ class DetailTests(ImportViewsTestCase):
         self.assertContains(self.client.get('/usuarios/importacoes/'), 'Nenhuma importação de usuários.')
 
 
+class LineNumberFilterTests(ImportViewsTestCase):
+    def setUp(self):
+        super().setUp()
+        self.importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE', 'bia@ifnmg.edu.br;Bia;DOCENTE', 'caio@ifnmg.edu.br;Caio;DOCENTE')
+        self.url = f'/usuarios/importacoes/{self.importation.pk}/'
+
+    def test_detail_has_no_tabs(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.context['tabs'], [])
+        self.assertNotContains(response, 'Visões da importação')
+
+    def test_one_line(self):
+        response = self.client.get(self.url + '?numero=3')
+        self.assertEqual(response.context['page'].paginator.count, 1)
+        self.assertContains(response, 'bia@ifnmg.edu.br')
+        self.assertNotContains(response, 'ana@ifnmg.edu.br')
+        self.assertContains(response, 'Linha 3')
+        self.assertContains(response, 'Mostrar todas as linhas')
+
+    def test_two_lines(self):
+        response = self.client.get(self.url + '?numero=2&numero=4')
+        self.assertEqual(response.context['page'].paginator.count, 2)
+        self.assertContains(response, 'Linhas 2 e 4')
+
+    def test_invalid_number_is_discarded(self):
+        response = self.client.get(self.url + '?numero=abc')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page'].paginator.count, 3)
+        self.assertNotContains(response, 'Mostrar todas as linhas')
+
+    def test_number_combines_with_the_filter(self):
+        response = self.client.get(self.url + '?linhas=erros&numero=2')
+        self.assertEqual(response.context['page'].paginator.count, 0)
+
+
 class ConfirmAndDiscardTests(ImportViewsTestCase):
     def test_confirm_applies_and_informs_the_link(self):
         importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')

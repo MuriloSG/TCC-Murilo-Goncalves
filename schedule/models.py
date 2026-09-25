@@ -14,9 +14,12 @@ from copy import copy
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db import models, transaction
+from django.conf import settings
+from django.db import IntegrityError, models, transaction
 from django.db.models.functions import Lower
 
+from audit import catalog
+from audit.models import AuditLog
 from schedule.utils import normalize_name
 
 SEMESTER_CODE_PATTERN = r'^\d{4}/[12]$'
@@ -219,13 +222,256 @@ class Semester(models.Model):
             return True
 
 
+class SpaceOrigin(models.TextChoices):
+    MANUAL = 'MANUAL', 'Manual'
+    SPREADSHEET = 'PLANILHA', 'Planilha'
+
+
+SPACE_NAME_TAKEN_MESSAGE = 'Já existe um espaço com este nome.'
+
+
+def name_taken_message(name):
+    return f'Já existe um espaço com o nome {name}.'
+
+
+class SpaceNameTaken(ValidationError):
+    """Recusa de uma grafia que já identifica outro espaço, no campo em que ela foi informada."""
+
+    def __init__(self, field, name=None):
+        message = name_taken_message(name) if name else SPACE_NAME_TAKEN_MESSAGE
+        super().__init__({field: ValidationError(message, code='name_taken')})
+
+
+class SpaceInUse(ValidationError):
+    def __init__(self, name):
+        super().__init__(
+            f'O espaço {name} tem aulas no ensalamento e não pode ser excluído. Desative o espaço.',
+            code='space_in_use',
+        )
+
+
+def distinct_names(values, excluded=()):
+    """Nomes normalizados, sem vazios e sem repetição que só difere na caixa, na ordem dada."""
+    seen = {name.casefold() for name in excluded}
+    names = []
+    for value in values:
+        name = normalize_name(value)
+        if name is None or name.casefold() in seen:
+            continue
+        seen.add(name.casefold())
+        names.append(name)
+    return names
+
+
+class SpaceManager(models.Manager):
+    """Operações do cadastro de espaços (D2 e D3 da Change manipulacao-dos-espacos).
+
+    Cada operação que altera o cadastro grava o próprio registro de auditoria no módulo
+    `ESPACO`, na transação de quem chama. Chamada pela importação, ela roda com a origem de
+    importação, e `metadata` leva a chave da importação e quem decidiu.
+    """
+
+    def named(self, name):
+        """Espaço identificado pelo nome atual ou por um outro nome, sem diferenciar a caixa."""
+        normalized = normalize_name(name)
+        if normalized is None:
+            return None
+        found = SpaceName.objects.filter(name__iexact=normalized).select_related('space').first()
+        return found.space if found else None
+
+    def register(self, name, other_names=(), origin=SpaceOrigin.MANUAL, source_import=None, metadata=None):
+        """Cadastra o espaço com o nome atual e os outros nomes, ativo, e devolve o espaço."""
+        current = normalize_name(name)
+        if current is None:
+            raise ValidationError({'name': ValidationError(NAME_REQUIRED_MESSAGE, code='required')})
+        others = distinct_names(other_names, excluded=[current])
+        with transaction.atomic():
+            refuse_taken(current, others)
+            space = self.model(name=current, origin=origin, source_import=source_import, is_active=True)
+            space.full_clean()
+            space.save()
+            save_names(space, [current, *others])
+            AuditLog.objects.record(
+                catalog.CREATE,
+                catalog.SPACE,
+                resource_id=space.pk,
+                new_values={
+                    'name': space.name,
+                    'outros_nomes': sorted(others),
+                    'origem': space.origin,
+                    'importacao': space.source_import_id,
+                },
+                metadata=metadata,
+            )
+            return space
+
+
+def refuse_taken(current, others, space=None):
+    """Recusa as grafias que já identificam outro espaço, apontando o campo de cada uma."""
+    taken = SpaceName.objects.filter(name__iexact=current)
+    if space is not None:
+        taken = taken.exclude(space=space)
+    if taken.exists():
+        raise SpaceNameTaken('name')
+    for other in others:
+        taken = SpaceName.objects.filter(name__iexact=other)
+        if space is not None:
+            taken = taken.exclude(space=space)
+        if taken.exists():
+            raise SpaceNameTaken('other_names', other)
+
+
+def save_names(space, names):
+    """Grava os nomes do espaço; a restrição do banco vira a recusa de grafia já usada."""
+    try:
+        with transaction.atomic():
+            SpaceName.objects.bulk_create(SpaceName(space=space, name=name) for name in names)
+    except IntegrityError as error:
+        raise SpaceNameTaken('name') from error
+
+
 class Space(NamedRecord):
-    """Espaço em que uma turma é ensalada, vindo da lista de salas da planilha."""
+    """Espaço físico do campus, com o nome atual, os outros nomes, a origem e a situação.
+
+    A origem e a importação de origem são definidas na criação e nunca mudam: `MANUAL` para
+    o cadastro pela tela e `PLANILHA` para o espaço criado pela confirmação de uma
+    importação. Todos os nomes que identificam o espaço, o atual inclusive, ficam em
+    `SpaceName`, cuja restrição garante que uma grafia identifique um espaço só (D2 e D3 da
+    Change manipulacao-dos-espacos).
+    """
+
+    origin = models.CharField('origem', max_length=8, choices=SpaceOrigin.choices)
+    source_import = models.ForeignKey(
+        'imports.Import',
+        on_delete=models.PROTECT,
+        related_name='+',
+        null=True,
+        blank=True,
+        verbose_name='importação de origem',
+    )
+    is_active = models.BooleanField('ativo', default=True)
+
+    objects = SpaceManager()
 
     class Meta(NamedRecord.Meta):
         verbose_name = 'espaço'
         verbose_name_plural = 'espaços'
         constraints = [models.UniqueConstraint(Lower('name'), name='space_name_unique_ci')]
+
+    @property
+    def other_names(self):
+        """Outros nomes do espaço, em ordem alfabética, sem o nome atual."""
+        current = self.name.casefold()
+        return sorted((item.name for item in self.names.all() if item.name.casefold() != current), key=str.casefold)
+
+    def snapshot(self):
+        return {'name': self.name, 'outros_nomes': self.other_names}
+
+    def lock(self):
+        return type(self).objects.select_for_update().get(pk=self.pk)
+
+    def update_details(self, name, other_names):
+        """Altera o nome e os outros nomes; o nome anterior passa a ser outro nome.
+
+        Um outro nome escolhido como nome novo deixa de ser outro nome. Origem, importação de
+        origem, situação e alocações não mudam.
+        """
+        current = normalize_name(name)
+        if current is None:
+            raise ValidationError({'name': ValidationError(NAME_REQUIRED_MESSAGE, code='required')})
+        with transaction.atomic():
+            space = self.lock()
+            previous = space.snapshot()
+            kept = [*other_names, space.name] if space.name.casefold() != current.casefold() else list(other_names)
+            others = distinct_names(kept, excluded=[current])
+            refuse_taken(current, others, space=space)
+            space.set_names(current, others)
+            AuditLog.objects.record_changes(catalog.SPACE, space.pk, previous, space.snapshot())
+        self.refresh_from_db()
+
+    def set_names(self, current, others):
+        """Troca os nomes do espaço pelos informados, mantendo os que continuam."""
+        wanted = {name.casefold(): name for name in [current, *others]}
+        existing = {item.name.casefold(): item for item in self.names.all()}
+        self.names.filter(pk__in=[item.pk for key, item in existing.items() if key not in wanted]).delete()
+        save_names(self, [name for key, name in wanted.items() if key not in existing])
+        if self.name != current:
+            self.name = current
+            self.full_clean(exclude=['origin', 'source_import'])
+            self.save(update_fields=['name'])
+
+    def add_name(self, name, metadata=None):
+        """Acrescenta um outro nome ao espaço, pela confirmação de uma importação."""
+        with transaction.atomic():
+            space = self.lock()
+            previous = space.snapshot()
+            refuse_taken(space.name, distinct_names([name]), space=space)
+            space.set_names(space.name, [*space.other_names, name])
+            AuditLog.objects.record_changes(catalog.SPACE, space.pk, previous, space.snapshot(), metadata=metadata)
+
+    def remove_name(self, name, metadata=None):
+        """Retira um outro nome do espaço, que volta a ser desconhecido para as importações."""
+        with transaction.atomic():
+            space = self.lock()
+            previous = space.snapshot()
+            space.set_names(space.name, [other for other in space.other_names if other.casefold() != name.casefold()])
+            AuditLog.objects.record_changes(catalog.SPACE, space.pk, previous, space.snapshot(), metadata=metadata)
+
+    def deactivate(self):
+        """Desativa o espaço sem mexer nas alocações; sem efeito quando já está inativo."""
+        self.change_status(False, catalog.DEACTIVATE)
+
+    def reactivate(self, metadata=None):
+        """Reativa o espaço; sem efeito quando já está ativo."""
+        self.change_status(True, catalog.ACTIVATE, metadata)
+
+    def change_status(self, active, action, metadata=None):
+        with transaction.atomic():
+            space = self.lock()
+            if space.is_active == active:
+                return
+            space.is_active = active
+            space.save(update_fields=['is_active'])
+            AuditLog.objects.record(action, catalog.SPACE, resource_id=space.pk, metadata=metadata)
+        self.refresh_from_db()
+
+    @property
+    def is_deletable(self):
+        return not self.allocations.exists()
+
+    def delete_space(self):
+        """Exclui o espaço sem aula, com os outros nomes e as decisões que o citam (D17)."""
+        with transaction.atomic():
+            space = self.lock()
+            if space.allocations.exists():
+                raise SpaceInUse(space.name)
+            AuditLog.objects.record(
+                catalog.DELETE,
+                catalog.SPACE,
+                resource_id=space.pk,
+                old_values={'name': space.name, 'outros_nomes': space.other_names, 'origem': space.origin},
+            )
+            space.delete()
+
+
+class SpaceName(models.Model):
+    """Grafia que identifica um espaço: o nome atual ou um outro nome (D2)."""
+
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name='names', verbose_name='espaço')
+    name = models.CharField('nome', max_length=200)
+
+    class Meta:
+        verbose_name = 'nome do espaço'
+        verbose_name_plural = 'nomes dos espaços'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                Lower('name'), name='space_alias_unique_ci', violation_error_message=SPACE_NAME_TAKEN_MESSAGE,
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
 
 
 class Teacher(NamedRecord):
@@ -497,3 +743,43 @@ class Allocation(models.Model):
             if 'teachers' in changes:
                 self.teachers.set(teachers)
         return 'update', changes
+
+
+class SpaceDecision(models.Model):
+    """Decisão de um usuário sobre um nome de espaço encontrado numa importação (D9).
+
+    Fica guardada na importação e só é aplicada na confirmação: gravar ou desfazer uma
+    decisão não altera o cadastro de espaços. `space` é o espaço escolhido ou reativado, e
+    `target_name` é o nome encontrado da mesma importação, a ser cadastrado, que recebe este
+    nome como outro nome.
+    """
+
+    class Kind(models.TextChoices):
+        NEW = 'NOVO', 'É um espaço novo'
+        SAME = 'ASSOCIAR', 'É o mesmo que'
+        REACTIVATE = 'REATIVAR', 'Reativar'
+
+    importation = models.ForeignKey(
+        'imports.Import', on_delete=models.CASCADE, related_name='space_decisions', verbose_name='importação',
+    )
+    found_name = models.CharField('nome encontrado', max_length=200)
+    kind = models.CharField('decisão', max_length=8, choices=Kind.choices)
+    space = models.ForeignKey(
+        Space, on_delete=models.CASCADE, related_name='decisions', null=True, blank=True, verbose_name='espaço',
+    )
+    target_name = models.CharField('nome de destino', max_length=200, blank=True, default='')
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='decidida por',
+    )
+    decided_at = models.DateTimeField('decidida em', auto_now=True)
+
+    class Meta:
+        verbose_name = 'decisão de espaço'
+        verbose_name_plural = 'decisões de espaço'
+        ordering = ['found_name']
+        constraints = [
+            models.UniqueConstraint('importation', Lower('found_name'), name='space_decision_unique_ci'),
+        ]
+
+    def __str__(self):
+        return f'{self.found_name}: {self.get_kind_display()}'

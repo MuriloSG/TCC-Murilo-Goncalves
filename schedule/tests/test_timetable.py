@@ -29,6 +29,11 @@ FRIDAY = date(2026, 9, 25)
 SATURDAY = date(2026, 9, 26)
 
 
+def space_named(name):
+    """Espaço de teste com este nome, cadastrado quando ainda não existe."""
+    return Space.objects.named(name) or Space.objects.register(name)
+
+
 def allocate(semester, group, subject, weekday, start, end, space=None, teachers=()):
     slot, _ = TimeSlot.objects.resolve(semester, start, end)
     allocation, _, _ = Allocation.objects.apply(
@@ -37,7 +42,7 @@ def allocate(semester, group, subject, weekday, start, end, space=None, teachers
         Subject.objects.resolve(subject)[0],
         weekday,
         slot,
-        space=Space.objects.resolve(space)[0] if space else None,
+        space=space_named(space) if space else None,
         teachers=[Teacher.objects.resolve(name)[0] for name in teachers],
     )
     return allocation

@@ -18,6 +18,7 @@ from audit.models import AuditLog
 from imports.models import Import
 from schedule.models import Allocation, ClassGroup, Course, Semester, Space, Stage, Subject, TimeSlot, Weekday
 from schedule.tests.test_import import PERIOD, TEACHERS, SPACES, workbook_file
+from schedule.tests.test_timetable import space_named
 from schedule.views import SPACE_ALLOCATION_IMPORT_SCREENS
 
 ROWS = len(TEACHERS) + len(SPACES) + 4
@@ -200,13 +201,14 @@ class ConfirmationScreenTests(ScreenTestCase):
         self.assertEqual(record.metadata['cadastrados'], ROWS)
         self.assertEqual(record.metadata['situacao'], 'CONCLUIDA')
 
-    def test_no_audit_record_of_the_created_entities(self):
+    def test_no_audit_record_of_the_created_entities_except_the_spaces(self):
         self.client.force_login(self.importer)
         before = AuditLog.objects.latest('pk').pk
         self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', self.importation.pk))
         recorded = AuditLog.objects.filter(pk__gt=before)
         self.assertEqual(
-            sorted(set(recorded.values_list('resource', flat=True))), [catalog.SPACE_ALLOCATION_IMPORT],
+            sorted(set(recorded.values_list('resource', flat=True))),
+            sorted([catalog.SPACE_ALLOCATION_IMPORT, catalog.SPACE]),
         )
         self.assertEqual(recorded.filter(action=catalog.IMPORT).count(), 1)
 
@@ -428,7 +430,7 @@ class DatedGridScreenTests(ScreenTestCase):
 
     def test_groups_in_the_same_slot_are_shown_together(self):
         self.define_period()
-        room, _ = Space.objects.resolve('1/13')
+        room = space_named('1/13')
         semester = self.semester
         slot = TimeSlot.objects.filter(semester=semester).order_by('start_time').first()
         for label in ('9º período', '10º período'):

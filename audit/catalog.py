@@ -55,6 +55,7 @@ SPACE_ALLOCATION_IMPORT = 'IMPORTACAO_ENSALAMENTO'
 EMAIL = 'EMAIL'
 AUDIT = 'AUDITORIA'
 NOTICE = 'NOTIFICACAO'
+SPACE = 'ESPACO'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -65,6 +66,7 @@ RESOURCE_LABELS = {
     EMAIL: 'E-mails',
     AUDIT: 'Auditoria',
     NOTICE: 'Notificações',
+    SPACE: 'Espaços',
 }
 
 INTERFACE = 'INTERFACE'
@@ -104,6 +106,16 @@ FIELD_LABELS = {
     'titulo': 'Título',
     'destino': 'Destino',
     'destinatarios': 'Destinatários',
+    'outros_nomes': 'Outros nomes',
+    'origem': 'Origem',
+    'importacao': 'Importação',
+    'decidido_por': 'Decidido por',
+    'nome_encontrado': 'Nome encontrado',
+    'decisao': 'Decisão',
+    'espaco': 'Espaço',
+    'espacos_cadastrados': 'Espaços cadastrados',
+    'outros_nomes_associados': 'Outros nomes associados',
+    'espacos_reativados': 'Espaços reativados',
 }
 
 

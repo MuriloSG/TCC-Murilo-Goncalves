@@ -429,7 +429,7 @@ class ReimportTests(ImportTestCase):
 class DivergenceTests(ImportTestCase):
     def test_data_changed_after_the_preview_gives_a_new_plan(self):
         importation = self.preview()
-        Space.objects.resolve('1/13')
+        Space.objects.register('1/13')
         self.assertFalse(importation.confirm(self.definition, self.executor))
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
@@ -476,7 +476,7 @@ class PeriodImportTests(ImportTestCase):
     def test_divergent_confirmation_does_not_change_the_period(self):
         self.conclude()
         importation = self.preview(period=LATER, uploaded=workbook_file(spaces=[*SPACES, 'Zoo II']))
-        Space.objects.resolve('Zoo II')
+        Space.objects.register('Zoo II')
         self.assertFalse(importation.confirm(self.definition, self.executor))
         self.assertEqual(self.period(), (date(2026, 8, 3), date(2026, 12, 18)))
 
@@ -550,11 +550,14 @@ class AuditTests(ImportTestCase):
             },
         )
 
-    def test_no_record_for_each_entity(self):
+    def test_no_record_for_each_entity_except_the_spaces(self):
         self.conclude()
         self.assertEqual(
             sorted(set(AuditLog.objects.values_list('resource', flat=True))),
-            [catalog.SPACE_ALLOCATION_IMPORT],
+            sorted([catalog.SPACE_ALLOCATION_IMPORT, catalog.SPACE]),
+        )
+        self.assertEqual(
+            AuditLog.objects.filter(resource=catalog.SPACE, action=catalog.CREATE).count(), Space.objects.count(),
         )
 
     def test_preview_records_only_the_preview(self):

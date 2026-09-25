@@ -45,6 +45,7 @@ from schedule.models import (
     Course,
     Semester,
     Space,
+    SpaceOrigin,
     Subject,
     Teacher,
     TimeSlot,
@@ -362,10 +363,24 @@ class SpaceAllocationImport(ImportDefinition):
     def execute_row(self, values, executor):
         row_kind = values.get(KIND_COLUMN)
         if row_kind == SPACE_KIND:
-            return self.execute_catalog(Space, self.catalog_name(values))
+            return self.execute_space(self.catalog_name(values))
         if row_kind == TEACHER_KIND:
             return self.execute_catalog(Teacher, self.catalog_name(values))
         return self.execute_activity(values)
+
+    def execute_space(self, name):
+        """Reconhece o espaço da lista pelo nome, ou o cadastra com a origem da planilha."""
+        state = RUN.get()
+        space = Space.objects.named(name)
+        if space is None:
+            try:
+                space = Space.objects.register(name, origin=SpaceOrigin.SPREADSHEET)
+            except ValidationError as error:
+                return RowPlan(errors=errors_from_validation(error, self.columns_by_field))
+            state.created.add((Space.__name__, space.pk))
+            return RowPlan(action='create', changes={'name': [None, space.name]}, created=space.pk)
+        key = (Space.__name__, space.pk)
+        return RowPlan(action='unchanged', target=None if key in state.created else space.pk)
 
     def execute_catalog(self, model, name):
         """Cria o espaço ou o docente da lista, ou o deixa como está."""
@@ -405,7 +420,7 @@ class SpaceAllocationImport(ImportDefinition):
             group, _ = ClassGroup.objects.resolve(course, label)
             subject, _ = Subject.objects.resolve(activity.subject_name)
             slot, _ = TimeSlot.objects.resolve(state.semester, *slot_times)
-            space = Space.objects.get(name__iexact=activity.space_name) if activity.space_name else None
+            space = Space.objects.named(activity.space_name) if activity.space_name else None
             teachers = [Teacher.objects.get(name__iexact=name) for name in activity.teacher_names]
             allocation, action, changes = Allocation.objects.apply(
                 semester=state.semester,

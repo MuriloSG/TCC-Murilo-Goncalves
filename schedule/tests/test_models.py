@@ -46,20 +46,20 @@ class SemesterTests(TestCase):
 
 class NamedRecordTests(TestCase):
     def test_name_is_stored_as_informed(self):
-        space, _ = Space.objects.resolve('Lab. Fenôm. de Transportes')
+        space = Space.objects.register('Lab. Fenôm. de Transportes')
         teacher, _ = Teacher.objects.resolve('Élcio José')
         self.assertEqual(space.name, 'Lab. Fenôm. de Transportes')
         self.assertEqual(teacher.name, 'Élcio José')
 
     def test_borders_and_repeated_spaces_are_normalized(self):
-        space, _ = Space.objects.resolve('  Lab.   Bromatologia ')
+        space = Space.objects.register('  Lab.   Bromatologia ')
         self.assertEqual(space.name, 'Lab. Bromatologia')
 
     def test_equivalent_name_does_not_duplicate(self):
-        first, _ = Space.objects.resolve('Lab. Bromatologia')
-        second, created = Space.objects.resolve(' lab.  bromatologia ')
+        first, _ = Teacher.objects.resolve('Aldo Gomes')
+        second, created = Teacher.objects.resolve(' aldo  gomes ')
         self.assertEqual((first, created), (second, False))
-        self.assertEqual(Space.objects.count(), 1)
+        self.assertEqual(Teacher.objects.count(), 1)
 
     def test_accents_distinguish_two_records(self):
         Teacher.objects.resolve('Érica')
@@ -92,7 +92,7 @@ class NamedRecordTests(TestCase):
             Space.objects.create(name='zoo ii')
 
     def test_the_same_name_in_two_entities_is_independent(self):
-        Space.objects.resolve('Química')
+        Space.objects.register('Química')
         Subject.objects.resolve('Química')
         Teacher.objects.resolve('Química')
         self.assertEqual((Space.objects.count(), Subject.objects.count(), Teacher.objects.count()), (1, 1, 1))
@@ -176,8 +176,8 @@ class AllocationTestCase(TestCase):
         self.forest_group, _ = ClassGroup.objects.resolve(self.forest, '2º PERÍODO')
         self.chemistry, _ = Subject.objects.resolve('Química Orgânica')
         self.calculus, _ = Subject.objects.resolve('Cálculo III')
-        self.room, _ = Space.objects.resolve('1/13')
-        self.other_room, _ = Space.objects.resolve('2/6')
+        self.room = Space.objects.register('1/13')
+        self.other_room = Space.objects.register('2/6')
         self.elza, _ = Teacher.objects.resolve('Elza')
         self.viviane, _ = Teacher.objects.resolve('Viviane')
         self.first_slot, _ = TimeSlot.objects.resolve(self.semester, time(13, 20), time(14, 10))

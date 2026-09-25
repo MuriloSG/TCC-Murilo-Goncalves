@@ -20,25 +20,25 @@
 
 ## 3. Nomes, origem e situação do espaço
 
-- [ ] 3.1 Acrescentar a `Space` a origem (`MANUAL`/`PLANILHA`, rótulos "Manual" e "Planilha"), a importação de origem (FK opcional para `Import`, `PROTECT`) e `is_active` (D3, D4)
-- [ ] 3.2 Criar `SpaceName`, com todos os nomes do espaço, inclusive o atual, e a unicidade sobre o nome em minúsculas garantida pelo banco (D2)
-- [ ] 3.3 Criar `SpaceDecision`, com a importação (`CASCADE`), o nome encontrado, o tipo (`NOVO`, `ASSOCIAR`, `REATIVAR`), o espaço (`CASCADE`), o nome encontrado de destino, quem decidiu (`PROTECT`) e quando, e a unicidade por importação e nome em minúsculas (D9)
-- [ ] 3.4 Criar a migration de esquema de `schedule`
-- [ ] 3.5 Criar a migration de dados que dá a cada espaço existente a origem `PLANILHA`, a situação ativo, a importação de origem pela linha `SALA` concluída cujo `created_object` é a chave dele, e o próprio `SpaceName`, sem registro de auditoria e sem apagar espaço sem aula (D3)
-- [ ] 3.6 Testar a migration de dados com um espaço rastreável até a importação, um espaço sem linha de origem e um espaço sem aula
-- [ ] 3.7 Commit
+- [x] 3.1 Acrescentar a `Space` a origem (`MANUAL`/`PLANILHA`, rótulos "Manual" e "Planilha"), a importação de origem (FK opcional para `Import`, `PROTECT`) e `is_active` (D3, D4)
+- [x] 3.2 Criar `SpaceName`, com todos os nomes do espaço, inclusive o atual, e a unicidade sobre o nome em minúsculas garantida pelo banco (D2)
+- [x] 3.3 Criar `SpaceDecision`, com a importação (`CASCADE`), o nome encontrado, o tipo (`NOVO`, `ASSOCIAR`, `REATIVAR`), o espaço (`CASCADE`), o nome encontrado de destino, quem decidiu (`PROTECT`) e quando, e a unicidade por importação e nome em minúsculas (D9)
+- [x] 3.4 Criar a migration de esquema de `schedule`
+- [x] 3.5 Criar a migration de dados que dá a cada espaço existente a origem `PLANILHA`, a situação ativo, a importação de origem pela linha `SALA` concluída cujo `created_object` é a chave dele, e o próprio `SpaceName`, sem registro de auditoria e sem apagar espaço sem aula (D3)
+- [x] 3.6 Testar a migration de dados com um espaço rastreável até a importação, um espaço sem linha de origem e um espaço sem aula
+- [x] 3.7 Commit
 
 ## 4. Operações do cadastro de espaços
 
-- [ ] 4.1 Criar a busca do espaço por qualquer nome, sem diferenciar a caixa, e a operação que cadastra o espaço com o nome, os outros nomes, a origem e a importação de origem, recusando com "Já existe um espaço com este nome." a grafia que já identifica outro espaço
-- [ ] 4.2 Criar a operação que altera o nome e os outros nomes, guardando o nome anterior como outro nome, promovendo um outro nome a nome atual e recusando grafia de outro espaço, sem mudar origem, importação de origem nem situação
-- [ ] 4.3 Criar as operações que acrescentam e retiram um outro nome, usadas pela importação
-- [ ] 4.4 Criar a desativação e a reativação, sem efeito e sem registro quando a situação já é a pedida
-- [ ] 4.5 Criar a exclusão, recusada com "O espaço <nome> tem aulas no ensalamento e não pode ser excluído. Desative o espaço." quando há alocação (D17)
-- [ ] 4.6 Gravar em cada operação o registro do módulo `ESPACO`: `CRIAR` com nome, outros nomes, origem e importação; `ALTERAR` só com o que mudou; `DESATIVAR`; `ATIVAR`; `EXCLUIR` com os valores anteriores (D13)
-- [ ] 4.7 Acrescentar o módulo `ESPACO` ("Espaços") e os rótulos dos campos novos a `audit/catalog.py`
-- [ ] 4.8 Testar a unicidade entre nome e outros nomes, a preservação de acento e caixa, o nome anterior guardado na renomeação, a promoção do outro nome, a origem imutável em todas as operações, a desativação sem mexer em alocação, a exclusão recusada com alocação e os registros de auditoria de cada operação
-- [ ] 4.9 Commit
+- [x] 4.1 Criar a busca do espaço por qualquer nome, sem diferenciar a caixa, e a operação que cadastra o espaço com o nome, os outros nomes, a origem e a importação de origem, recusando com "Já existe um espaço com este nome." a grafia que já identifica outro espaço
+- [x] 4.2 Criar a operação que altera o nome e os outros nomes, guardando o nome anterior como outro nome, promovendo um outro nome a nome atual e recusando grafia de outro espaço, sem mudar origem, importação de origem nem situação
+- [x] 4.3 Criar as operações que acrescentam e retiram um outro nome, usadas pela importação
+- [x] 4.4 Criar a desativação e a reativação, sem efeito e sem registro quando a situação já é a pedida
+- [x] 4.5 Criar a exclusão, recusada com "O espaço <nome> tem aulas no ensalamento e não pode ser excluído. Desative o espaço." quando há alocação (D17)
+- [x] 4.6 Gravar em cada operação o registro do módulo `ESPACO`: `CRIAR` com nome, outros nomes, origem e importação; `ALTERAR` só com o que mudou; `DESATIVAR`; `ATIVAR`; `EXCLUIR` com os valores anteriores (D13)
+- [x] 4.7 Acrescentar o módulo `ESPACO` ("Espaços") e os rótulos dos campos novos a `audit/catalog.py`
+- [x] 4.8 Testar a unicidade entre nome e outros nomes, a preservação de acento e caixa, o nome anterior guardado na renomeação, a promoção do outro nome, a origem imutável em todas as operações, a desativação sem mexer em alocação, a exclusão recusada com alocação e os registros de auditoria de cada operação
+- [x] 4.9 Commit
 
 ## 5. Sugestão de espaços parecidos
 

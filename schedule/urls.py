@@ -5,6 +5,11 @@ from schedule import views
 
 urlpatterns = [
     path(
+        'ensalamento/',
+        login_required(views.SpaceAllocationGridView.as_view()),
+        name='space_allocation_grid',
+    ),
+    path(
         'ensalamento/importacoes/',
         login_required(views.SpaceAllocationImportListView.as_view()),
         name='space_allocation_import_list',
@@ -16,13 +21,8 @@ urlpatterns = [
     ),
     path(
         'ensalamento/importacoes/<int:pk>/',
-        login_required(views.SpaceAllocationImportGridView.as_view()),
-        name='space_allocation_import_detail',
-    ),
-    path(
-        'ensalamento/importacoes/<int:pk>/conferencia/',
         login_required(views.SpaceAllocationImportDetailView.as_view()),
-        name='space_allocation_import_review',
+        name='space_allocation_import_detail',
     ),
     path(
         'ensalamento/importacoes/<int:pk>/confirmar/',

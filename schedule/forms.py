@@ -1,13 +1,13 @@
 from django import forms
 
 
-class RoomFilterForm(forms.Form):
-    """Sala escolhida na Grade, recebida pela URL (D3 da Change visualizar-grade-do-ensalamento)."""
+class GridFilterForm(forms.Form):
+    """Semestre e sala escolhidos na Grade do ensalamento, recebidos pela URL (D15)."""
 
+    semestre = forms.ChoiceField(label='Semestre', required=False, widget=forms.Select(attrs={'class': 'input'}))
     sala = forms.ChoiceField(label='Sala', required=False, widget=forms.Select(attrs={'class': 'input'}))
 
-    def __init__(self, *args, spaces=(), **kwargs):
+    def __init__(self, *args, semesters=(), spaces=(), **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['sala'].choices = [
-            (option.name, f'{option.name}, com choque' if option.has_clash else option.name) for option in spaces
-        ]
+        self.fields['semestre'].choices = [(code, code) for code in semesters]
+        self.fields['sala'].choices = [(space.name, space.name) for space in spaces]

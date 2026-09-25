@@ -254,3 +254,13 @@ Nenhuma migration. A rota da Conferência é nova, e a rota do detalhe continua 
 - **Choque e turmas juntas:** fazem parte do escopo, como visualização, sem recusa (D13).
 - **Cor pela etapa:** aprovada com os tokens de D14.
 - **Ordem do trabalho:** a prévia estática `grade-previa.html` foi aprovada antes dos templates e do código.
+
+### D15. A Grade é a entrada do módulo e lê o ensalamento confirmado
+
+Pedido do autor depois da primeira versão: o item "Ensalamento" do menu abre direto a Grade (`ensalamento/`, rota `space_allocation_grid`), e a Grade sai do detalhe da importação.
+
+- A Grade lê `Allocation`, e não as linhas de uma importação, como D11 previa. Por isso não há card com erro nem link para a Conferência: o que não foi confirmado não aparece.
+- Dois filtros na URL: `semestre` e `sala`. O semestre padrão é o atual, calculado pela data (janeiro a junho é `/1`, julho a dezembro é `/2`), e as opções são ele e os semestres com alocação confirmada. O semestre atual sem importação mostra "Nenhum ensalamento importado no semestre 2026/2.". A sala padrão é a primeira do semestre pelo nome, porque a ordem da planilha não é gravada.
+- As linhas são as faixas com aula no semestre, iguais para toda sala. O card mostra a disciplina, a turma com o curso e os docentes.
+- O botão "Ver importações" leva à lista das importações. O detalhe da importação volta a ser só a tabela de linhas, sem abas.
+- A permissão continua `ENSALAMENTO.IMPORTAR`, porque ainda não existe permissão de consulta do ensalamento.

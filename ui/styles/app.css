@@ -1176,51 +1176,6 @@
     overflow: hidden;
   }
 
-  .timetable-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    justify-content: space-between;
-    gap: var(--spacing-4);
-    padding: var(--spacing-5) var(--spacing-6);
-  }
-
-  .timetable-room {
-    display: grid;
-    gap: var(--spacing-1);
-    width: calc(var(--spacing-16) * 5);
-    max-width: 100%;
-
-    & .field-label {
-      color: var(--color-text-muted);
-      font-size: var(--text-sm);
-      font-weight: var(--font-weight-semibold);
-    }
-
-    & select {
-      appearance: none;
-      padding-right: var(--spacing-10);
-    }
-  }
-
-  .timetable-semester {
-    display: grid;
-    justify-items: end;
-
-    & span {
-      color: var(--color-text-muted);
-      font-size: var(--text-xs);
-      line-height: var(--text-xs--line-height);
-      font-weight: var(--font-weight-semibold);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    & strong {
-      font-weight: var(--font-weight-bold);
-    }
-  }
-
   .timetable-status {
     display: flex;
     flex-wrap: wrap;
@@ -1233,28 +1188,11 @@
     line-height: var(--text-sm--line-height);
   }
 
-  .timetable-state {
-    font-weight: var(--font-weight-semibold);
-  }
-
   .timetable-occupation {
     color: var(--color-text-muted);
 
     @variant sm {
       margin-left: auto;
-    }
-  }
-
-  .timetable-errors {
-    display: flex;
-    flex-basis: 100%;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--spacing-2);
-    color: var(--color-error-text);
-
-    & svg {
-      color: var(--color-error-icon);
     }
   }
 
@@ -1380,35 +1318,6 @@
       background: var(--color-stage-secondary-bg);
       box-shadow: inset 3px 0 0 var(--color-stage-secondary-bar);
     }
-
-    &.is-error {
-      background: var(--color-error-bg);
-      box-shadow: inset 3px 0 0 var(--color-error-border), inset 0 0 0 1px var(--color-error-soft-border);
-      text-decoration: none;
-
-      &:hover {
-        box-shadow: inset 3px 0 0 var(--color-error-border), inset 0 0 0 1px var(--color-error-border);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--color-focus);
-        outline-offset: 2px;
-      }
-
-      &:hover .tip,
-      &:focus-visible .tip {
-        opacity: 1;
-      }
-
-      & .tip {
-        top: calc(100% + var(--spacing-1));
-        bottom: auto;
-        left: 0;
-        translate: none;
-        max-width: 100%;
-        white-space: normal;
-      }
-    }
   }
 
   .timetable-subject {
@@ -1432,72 +1341,6 @@
 
     &.is-muted {
       color: var(--color-text-muted);
-    }
-  }
-
-  .timetable-flag {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-1);
-    color: var(--color-error-text);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    font-weight: var(--font-weight-bold);
-
-    & svg {
-      color: var(--color-error-icon);
-    }
-  }
-
-  .timetable-raw {
-    font-size: var(--text-xs);
-    line-height: var(--text-sm--line-height);
-  }
-
-  .timetable-group {
-    display: grid;
-    gap: var(--spacing-1);
-    padding: var(--spacing-1);
-    border-radius: var(--radius-md);
-
-    & .timetable-card + .timetable-card {
-      margin-top: 0;
-    }
-
-    &.is-joint {
-      background: var(--color-info-bg);
-      box-shadow: inset 0 0 0 1px var(--color-info-border);
-    }
-
-    &.is-clash {
-      background: var(--color-warning-bg);
-      box-shadow: inset 0 0 0 1px var(--color-warning-border);
-    }
-  }
-
-  .timetable-group-flag {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-1);
-    padding: var(--spacing-1);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    font-weight: var(--font-weight-bold);
-
-    .is-joint > & {
-      color: var(--color-info-text);
-
-      & svg {
-        color: var(--color-info-icon);
-      }
-    }
-
-    .is-clash > & {
-      color: var(--color-warning-text);
-
-      & svg {
-        color: var(--color-warning-icon);
-      }
     }
   }
 
@@ -1543,41 +1386,6 @@
     margin-top: var(--spacing-2);
     color: var(--color-text-muted);
     font-size: var(--text-sm);
-  }
-
-  .timetable-legend {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--spacing-2) var(--spacing-3);
-    padding: var(--spacing-3) var(--spacing-6);
-    border-top: 1px solid var(--color-divider);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-
-    & svg {
-      margin-left: var(--spacing-2);
-      color: var(--color-text-muted);
-    }
-  }
-
-  .timetable-key {
-    width: var(--spacing-3);
-    height: var(--spacing-3);
-    margin-left: var(--spacing-2);
-    border-radius: 3px;
-
-    &:first-child {
-      margin-left: 0;
-    }
-
-    &.is-undergraduate {
-      background: var(--color-stage-undergraduate-bar);
-    }
-
-    &.is-secondary {
-      background: var(--color-stage-secondary-bar);
-    }
   }
 
   .timetable-empty {

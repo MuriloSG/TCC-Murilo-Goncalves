@@ -404,7 +404,7 @@
     init(document);
   });
 
-  document.addEventListener("htmx:afterSwap", function (event) {
-    init(event.detail.target);
+  document.addEventListener("htmx:load", function (event) {
+    init(event.target);
   });
 })();

@@ -49,3 +49,11 @@
 - [ ] 5.4 Registrar em `openspec/conventions.md` a exceção da célula vazia da Grade e qualquer outra preferência nova
 - [ ] 5.5 Rodar a suíte inteira com `make test`
 - [ ] 5.6 Commit
+
+## 6. Grade como entrada do ensalamento
+
+- [x] 6.1 Montar a semana da sala a partir de `Allocation`, com o semestre atual calculado pela data (D15)
+- [x] 6.2 Criar a rota `ensalamento/` com os filtros de semestre e sala e o botão "Ver importações", e apontar o menu para ela
+- [x] 6.3 Tirar a Grade e as abas do detalhe da importação
+- [x] 6.4 Testar os padrões, os valores inexistentes, o semestre sem importação, as contagens e o acesso
+- [x] 6.5 Commit

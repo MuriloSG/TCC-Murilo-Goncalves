@@ -28,13 +28,19 @@ class UserModelTests(SimpleTestCase):
         fields = {field.name for field in User._meta.concrete_fields}
         self.assertEqual(
             fields,
-            {'id', 'password', 'last_login', 'email', 'name', 'is_active', 'is_superadmin', 'created_at'},
+            {
+                'id', 'password', 'last_login', 'email', 'name', 'username',
+                'is_active', 'is_superadmin', 'created_at',
+            },
         )
 
     def test_no_default_django_user_attributes(self):
+        """O `username` fica fora da lista: ele existe como identificador de domínio, e não
+
+        como a credencial do AbstractUser (D2 da Change identificar-usuario-por-username).
+        """
         user = User(email='maria@ifnmg.edu.br', name='Maria')
         for attribute in (
-            'username',
             'first_name',
             'last_name',
             'is_staff',
@@ -85,6 +91,78 @@ class UserDatabaseTests(TestCase):
         User.objects.create(email='antigo@ifnmg.edu.br', name='Antigo', is_active=False)
         with self.assertRaises(IntegrityError), transaction.atomic():
             User.objects.create(email='ANTIGO@ifnmg.edu.br', name='Novo')
+
+
+class UsernameTests(TestCase):
+    def build(self, email='maria@ifnmg.edu.br', name='Maria', username=None):
+        user = User(email=email, name=name, username=username)
+        user.set_unusable_password()
+        return user
+
+    def clean(self, **values):
+        user = self.build(**values)
+        user.full_clean()
+        return user
+
+    def test_keeps_spaces_accents_and_abbreviations(self):
+        for value in ('Aldo Gomes', 'João da Silva', 'Érica', 'Gera Jr.', 'Élcio José'):
+            with self.subTest(value=value):
+                self.assertEqual(self.clean(username=value).username, value)
+
+    def test_strips_and_collapses_spaces(self):
+        self.assertEqual(self.clean(username='  Aldo   Gomes  ').username, 'Aldo Gomes')
+
+    def test_blank_becomes_none(self):
+        for value in ('', '   ', None):
+            with self.subTest(value=value):
+                self.assertIsNone(self.clean(username=value).username)
+
+    def test_several_users_without_username(self):
+        self.clean().save()
+        other = self.build(email='outra@ifnmg.edu.br', name='Outra', username='')
+        other.full_clean()
+        other.save()
+        self.assertEqual(User.objects.filter(username=None).count(), 2)
+
+    def test_validation_rejects_duplicate(self):
+        self.clean(username='Aldo Gomes').save()
+        other = self.build(email='outro@ifnmg.edu.br', name='Outro', username='Aldo Gomes')
+        with self.assertRaises(ValidationError) as context:
+            other.full_clean()
+        self.assertIn('username', context.exception.message_dict)
+
+    def test_validation_rejects_duplicate_differing_only_in_case(self):
+        self.clean(username='Aldo Gomes').save()
+        other = self.build(email='outro@ifnmg.edu.br', name='Outro', username='ALDO GOMES')
+        with self.assertRaises(ValidationError) as context:
+            other.full_clean()
+        self.assertIn('username', context.exception.message_dict)
+
+    def test_accents_make_values_distinct(self):
+        self.clean(username='Érica').save()
+        other = self.clean(email='outra@ifnmg.edu.br', name='Outra', username='Erica')
+        other.save()
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_own_username_is_not_a_duplicate_of_itself(self):
+        user = self.clean(username='Aldo Gomes')
+        user.save()
+        user.full_clean()
+
+    def test_inactive_user_username_remains_unavailable(self):
+        user = self.clean(username='Aldo Gomes')
+        user.is_active = False
+        user.save()
+        other = self.build(email='outro@ifnmg.edu.br', name='Outro', username='Aldo Gomes')
+        with self.assertRaises(ValidationError) as context:
+            other.full_clean()
+        self.assertIn('username', context.exception.message_dict)
+
+    def test_database_rejects_duplicate_differing_only_in_case(self):
+        User.objects.create(email='aldo@ifnmg.edu.br', name='Aldo', username='Aldo Gomes')
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create(email='outro@ifnmg.edu.br', name='Outro', username='aldo gomes')
+        self.assertEqual(User.objects.count(), 1)
 
 
 class RoleTests(TestCase):

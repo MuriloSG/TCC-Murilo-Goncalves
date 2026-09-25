@@ -25,6 +25,16 @@ ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
 PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
 ADMINISTRATOR_ROLE = 'ADMINISTRADOR'
 INSTITUTIONAL_EMAIL_DOMAIN = 'ifnmg.edu.br'
+USERNAME_TAKEN_MESSAGE = 'Este nome de usuário já pertence a outro usuário. Use outro nome de usuário.'
+
+
+def normalize_username(value):
+    """Apara as bordas e reduz espaços internos repetidos, devolvendo None quando não sobra nada.
+
+    A caixa e os acentos são preservados: o valor precisa voltar idêntico ao que foi
+    informado para casar com o identificador usado fora da aplicação (D3).
+    """
+    return ' '.join((value or '').split()) or None
 
 
 class AdministrativeContinuityViolation(ValidationError):
@@ -240,8 +250,16 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
 
 
 class User(AbstractBaseUser):
+    """Usuário do sistema, autenticado pelo e-mail.
+
+    O campo `username` é um identificador de domínio, usado para reconhecer o usuário
+    em dados vindos de fora da aplicação, e não uma credencial: quem autentica é o
+    e-mail, apontado por USERNAME_FIELD (D2 da Change identificar-usuario-por-username).
+    """
+
     email = models.EmailField('e-mail', max_length=254, unique=True)
     name = models.CharField('nome', max_length=150)
+    username = models.CharField('nome de usuário', max_length=150, null=True, blank=True)
     is_active = models.BooleanField('ativo', default=True)
     is_superadmin = models.BooleanField('superadmin', default=False)
     created_at = models.DateTimeField('criado em', auto_now_add=True)
@@ -267,14 +285,34 @@ class User(AbstractBaseUser):
                 name='user_email_unique_ci',
                 violation_error_message='Já existe um usuário com este e-mail.',
             ),
+            models.UniqueConstraint(
+                Lower('username'),
+                name='user_username_unique_ci',
+                violation_error_message=USERNAME_TAKEN_MESSAGE,
+            ),
         ]
 
     def __str__(self):
         return self.email
 
     def clean(self):
+        """Normaliza o e-mail e o nome de usuário e recusa um nome de usuário já em uso.
+
+        A unicidade do nome de usuário é conferida aqui, e não pelo `unique=True` do
+        campo, porque o valor é gravado como foi informado: sem baixar a caixa, a
+        conferência do campo não alcançaria dois valores que diferem só nela. A
+        UniqueConstraint continua como garantia do banco (D4).
+        """
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email)
+        self.username = normalize_username(self.username)
+        if self.username is None:
+            return
+        taken = self.__class__.objects.filter(username__iexact=self.username)
+        if self.pk is not None:
+            taken = taken.exclude(pk=self.pk)
+        if taken.exists():
+            raise ValidationError({'username': ValidationError(USERNAME_TAKEN_MESSAGE, code='username_taken')})
 
     def effective_permissions(self):
         if not self.is_active or self.pk is None:

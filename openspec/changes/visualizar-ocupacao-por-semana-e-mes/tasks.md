@@ -8,11 +8,11 @@
 
 ## 2. Período do semestre
 
-- [ ] 2.1 Acrescentar `start_date` e `end_date` ao `Semester`, com a restrição de início anterior ou igual ao fim, e a migration (D2)
-- [ ] 2.2 Criar `Semester.define_period`, com as recusas de início depois do fim, de uma data sem a outra e de período maior que 366 dias
-- [ ] 2.3 Acrescentar o recurso `SEMESTRE` ao catálogo da auditoria
-- [ ] 2.4 Testar a operação, as recusas sem alteração e a importação que não mexe no período
-- [ ] 2.5 Commit
+- [x] 2.1 Acrescentar `start_date` e `end_date` ao `Semester`, com a restrição de início anterior ou igual ao fim, e a migration (D2)
+- [x] 2.2 Criar `Semester.define_period`, com as recusas de início depois do fim, de uma data sem a outra e de período maior que 366 dias
+- [x] 2.3 Acrescentar o recurso `SEMESTRE` ao catálogo da auditoria
+- [x] 2.4 Testar a operação, as recusas sem alteração e a importação que não mexe no período
+- [x] 2.5 Commit
 
 ## 3. Cálculo das ocorrências
 

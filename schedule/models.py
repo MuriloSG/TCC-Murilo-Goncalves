@@ -10,16 +10,21 @@ institucional tem aulas compartilhadas por turmas diferentes na mesma sala e no 
 horário (D8 da Change importar-ensalamento-da-planilha).
 """
 
+from copy import copy
+
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
 
+from audit import catalog
+from audit.models import AuditLog
 from schedule.utils import normalize_name
 
 SEMESTER_CODE_PATTERN = r'^\d{4}/[12]$'
 SEMESTER_CODE_MESSAGE = 'Informe o semestre no formato 2026/1.'
 NAME_REQUIRED_MESSAGE = 'Informe o nome.'
+PERIOD_MAX_DAYS = 366
 
 
 class Weekday(models.TextChoices):
@@ -38,6 +43,10 @@ class Stage(models.TextChoices):
 class Origin(models.TextChoices):
     IMPORTED = 'IMPORTADA', 'Importada'
     MANUAL = 'MANUAL', 'Manual'
+
+
+def iso(day):
+    return day.isoformat() if day else None
 
 
 def taken_message(verbose_name):
@@ -113,7 +122,12 @@ class SemesterManager(models.Manager):
 
 
 class Semester(models.Model):
-    """Semestre letivo, recorte a que pertencem as faixas de horário e as alocações."""
+    """Semestre letivo, recorte a que pertencem as faixas de horário e as alocações.
+
+    O período é opcional: a planilha não o traz, e sem ele a Grade mostra a semana típica.
+    Com ele, as alocações do semestre viram ocorrências datadas (D2 da Change
+    visualizar-ocupacao-por-semana-e-mes).
+    """
 
     code = models.CharField(
         'código',
@@ -122,6 +136,8 @@ class Semester(models.Model):
         validators=[RegexValidator(SEMESTER_CODE_PATTERN, message=SEMESTER_CODE_MESSAGE)],
         error_messages={'unique': 'Já existe um semestre com este código.'},
     )
+    start_date = models.DateField('início', null=True, blank=True)
+    end_date = models.DateField('fim', null=True, blank=True)
 
     objects = SemesterManager()
 
@@ -129,9 +145,57 @@ class Semester(models.Model):
         verbose_name = 'semestre'
         verbose_name_plural = 'semestres'
         ordering = ['-code']
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(start_date__isnull=True, end_date__isnull=True)
+                    | models.Q(start_date__isnull=False, end_date__isnull=False, start_date__lte=models.F('end_date'))
+                ),
+                name='semester_period_valid',
+                violation_error_message='Informe o início e o fim, com o início até o fim.',
+            ),
+        ]
 
     def __str__(self):
         return self.code
+
+    @property
+    def has_period(self):
+        return self.start_date is not None and self.end_date is not None
+
+    def contains(self, day):
+        """Diz se a data está no período do semestre; sem período, nenhuma data está."""
+        return self.has_period and self.start_date <= day <= self.end_date
+
+    def clean(self):
+        super().clean()
+        if (self.start_date is None) != (self.end_date is None):
+            missing = 'start_date' if self.start_date is None else 'end_date'
+            raise ValidationError({missing: ValidationError('Informe o início e o fim do período.', code='required')})
+        if self.has_period and self.start_date > self.end_date:
+            raise ValidationError(
+                {'end_date': ValidationError('O fim deve ser igual ou posterior ao início.', code='invalid_range')},
+            )
+        if self.has_period and (self.end_date - self.start_date).days >= PERIOD_MAX_DAYS:
+            raise ValidationError(
+                {'end_date': ValidationError('O período deve ter no máximo 366 dias.', code='too_long')},
+            )
+
+    def define_period(self, start_date, end_date):
+        """Grava o período do semestre e registra a alteração na auditoria (D3).
+
+        A recusa não altera o semestre: os valores só ficam no objeto depois de validados.
+        """
+        with transaction.atomic():
+            previous = {'inicio': iso(self.start_date), 'fim': iso(self.end_date)}
+            candidate = copy(self)
+            candidate.start_date, candidate.end_date = start_date, end_date
+            candidate.full_clean()
+            self.start_date, self.end_date = start_date, end_date
+            self.save(update_fields=['start_date', 'end_date'])
+            AuditLog.objects.record_changes(
+                catalog.SEMESTER, self.code, previous, {'inicio': iso(start_date), 'fim': iso(end_date)},
+            )
 
 
 class Space(NamedRecord):

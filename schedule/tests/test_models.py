@@ -1,10 +1,13 @@
 """Entidades do ensalamento: identificação, deduplicação e atualização."""
 
-from datetime import time
+from datetime import date, time
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+
+from audit import catalog
+from audit.models import AuditLog
 
 from schedule.models import (
     Allocation,
@@ -331,3 +334,44 @@ class QueryTests(AllocationTestCase):
         self.apply()
         self.apply(class_group=self.forest_group)
         self.assertEqual(Allocation.objects.filter(class_group=self.food_group).count(), 1)
+
+
+class SemesterPeriodTests(TestCase):
+    def setUp(self):
+        self.semester, _ = Semester.objects.resolve('2026/2')
+
+    def test_period_is_defined_and_audited(self):
+        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        self.semester.refresh_from_db()
+        self.assertEqual((self.semester.start_date, self.semester.end_date), (date(2026, 8, 3), date(2026, 12, 18)))
+        entry = AuditLog.objects.get(resource=catalog.SEMESTER)
+        self.assertEqual(entry.action, catalog.UPDATE)
+        self.assertEqual(entry.resource_id, '2026/2')
+        self.assertEqual(entry.old_values, {'inicio': None, 'fim': None})
+        self.assertEqual(entry.new_values, {'inicio': '2026-08-03', 'fim': '2026-12-18'})
+
+    def test_refusals_leave_the_semester_unchanged(self):
+        cases = [
+            (date(2026, 12, 18), date(2026, 8, 3)),
+            (date(2026, 8, 3), None),
+            (None, date(2026, 12, 18)),
+            (date(2026, 1, 1), date(2027, 1, 2)),
+        ]
+        for start, end in cases:
+            with self.subTest(start=start, end=end), self.assertRaises(ValidationError):
+                self.semester.define_period(start, end)
+            self.semester.refresh_from_db()
+            self.assertIsNone(self.semester.start_date)
+            self.assertIsNone(self.semester.end_date)
+        self.assertFalse(AuditLog.objects.filter(resource=catalog.SEMESTER).exists())
+
+    def test_contains_only_dates_of_the_period(self):
+        self.assertFalse(self.semester.contains(date(2026, 10, 5)))
+        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        self.assertTrue(self.semester.contains(date(2026, 8, 3)))
+        self.assertTrue(self.semester.contains(date(2026, 12, 18)))
+        self.assertFalse(self.semester.contains(date(2026, 8, 2)))
+
+    def test_database_refuses_period_with_one_date(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Semester.objects.filter(pk=self.semester.pk).update(start_date=date(2026, 8, 3))

@@ -55,6 +55,7 @@ SPACE_ALLOCATION_IMPORT = 'IMPORTACAO_ENSALAMENTO'
 EMAIL = 'EMAIL'
 AUDIT = 'AUDITORIA'
 NOTICE = 'NOTIFICACAO'
+SEMESTER = 'SEMESTRE'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -65,6 +66,7 @@ RESOURCE_LABELS = {
     EMAIL: 'E-mails',
     AUDIT: 'Auditoria',
     NOTICE: 'Notificações',
+    SEMESTER: 'Semestres',
 }
 
 INTERFACE = 'INTERFACE'
@@ -93,6 +95,8 @@ FIELD_LABELS = {
     'sem_alteracao': 'Sem alteração',
     'com_erro': 'Linhas com erro',
     'semestre': 'Semestre',
+    'inicio': 'Início',
+    'fim': 'Fim',
     'rota': 'Rota',
     'caminho': 'Caminho',
     'tipo': 'Tipo',

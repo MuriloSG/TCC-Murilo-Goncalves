@@ -82,14 +82,14 @@
 
 ## 10. Quadro da prévia e atualização automática
 
-- [ ] 10.1 Criar o quadro "Espaços desta importação", com as quantidades no futuro, as listas recolhidas, "Nenhuma alteração foi feita no cadastro de espaços.", "Pronta para confirmar." e o resumo junto ao confirmar (D14)
-- [ ] 10.2 Criar os itens de decisão por nome, com a origem do nome, o uso agregado, os botões conforme o caso e as permissões, "Não é um espaço novo" nos novos propostos, "Alterar decisão" e a orientação para o nome só nas células
-- [ ] 10.3 Criar a rota de opções de espaços para "É o mesmo que…", com `ENSALAMENTO.IMPORTAR`, sobre `ui.views.OptionsView`
-- [ ] 10.4 Criar as rotas de decidir, desfazer e atualizar a prévia, com `ENSALAMENTO.IMPORTAR`, que recalculam o quadro e atualizam a prévia completa quando não resta pendência ou quando a importação estava `VALIDADA`, com e sem JavaScript (D12)
-- [ ] 10.5 Mostrar a mensagem sem permissão, o quadro sem controles numa importação `COM_ERROS`, os espaços cadastrados numa importação concluída e "Não foi possível atualizar a prévia." com "Tentar novamente" só numa importação `PENDENTE` sem pendência na classificação
-- [ ] 10.6 Medir o tempo da atualização da prévia com a planilha real e, se passar de poucos segundos, mostrar o estado de atualização durante a requisição
-- [ ] 10.7 Testar os cenários do quadro e da atualização automática da spec `ensalamento` e as regras de texto de `ui/tests`
-- [ ] 10.8 Commit
+- [x] 10.1 Criar o quadro "Espaços desta importação", com as quantidades no futuro, as listas recolhidas, "Nenhuma alteração foi feita no cadastro de espaços.", "Pronta para confirmar." e o resumo junto ao confirmar (D14)
+- [x] 10.2 Criar os itens de decisão por nome, com a origem do nome, o uso agregado, os botões conforme o caso e as permissões, "Não é um espaço novo" nos novos propostos, "Alterar decisão" e a orientação para o nome só nas células
+- [x] 10.3 Criar a escolha do espaço em "É o mesmo que outro espaço", em modal, com todos os espaços no componente de seleção, sem fonte paginada, porque o campo é obrigatório (§9.9 das convenções)
+- [x] 10.4 Criar as rotas de decidir, desfazer e atualizar a prévia, com `ENSALAMENTO.IMPORTAR`, que recalculam o quadro e atualizam a prévia completa quando não resta pendência ou quando a importação estava `VALIDADA`, com e sem JavaScript (D12)
+- [x] 10.5 Mostrar a mensagem sem permissão, o quadro sem controles numa importação `COM_ERROS`, os espaços cadastrados numa importação concluída e "Não foi possível atualizar a prévia." com "Tentar novamente" só numa importação `PENDENTE` sem pendência na classificação
+- [x] 10.6 Medir o tempo da atualização da prévia com a planilha real e, se passar de poucos segundos, mostrar o estado de atualização durante a requisição
+- [x] 10.7 Testar os cenários do quadro e da atualização automática da spec `ensalamento` e as regras de texto de `ui/tests`
+- [x] 10.8 Commit
 
 ## 11. Conferência e fechamento
 

@@ -45,4 +45,24 @@ urlpatterns = [
         login_required(views.SpaceAllocationImportDeleteView.as_view()),
         name='space_allocation_import_delete',
     ),
+    path(
+        'ensalamento/importacoes/<int:pk>/espacos/decidir/',
+        login_required(views.SpaceDecisionView.as_view()),
+        name='space_allocation_import_decide',
+    ),
+    path(
+        'ensalamento/importacoes/<int:pk>/espacos/desfazer/',
+        login_required(views.SpaceWithdrawView.as_view()),
+        name='space_allocation_import_withdraw',
+    ),
+    path(
+        'ensalamento/importacoes/<int:pk>/espacos/associar/',
+        login_required(views.SpaceAssociateView.as_view()),
+        name='space_allocation_import_associate',
+    ),
+    path(
+        'ensalamento/importacoes/<int:pk>/atualizar/',
+        login_required(views.SpaceRefreshView.as_view()),
+        name='space_allocation_import_refresh',
+    ),
 ]

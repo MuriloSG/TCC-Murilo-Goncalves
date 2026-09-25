@@ -1,6 +1,7 @@
 from django import forms
 
-from schedule.models import SpaceOrigin
+from schedule.models import Space, SpaceOrigin
+from schedule.timetable import natural_key
 
 
 class GridFilterForm(forms.Form):
@@ -83,3 +84,31 @@ class SpaceForm(forms.Form):
 
     def clean_other_names(self):
         return [line for line in self.cleaned_data['other_names'].splitlines() if line.strip()]
+
+
+class SpaceChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, space):
+        return space.name if space.is_active else f'{space.name} (desativado, será reativado)'
+
+
+class SpaceAssociateForm(forms.Form):
+    """Espaço do cadastro que é o mesmo que o nome encontrado na planilha.
+
+    O campo é obrigatório, e por isso lista todos os espaços, sem fonte paginada, na ordem
+    natural do nome; a busca é a do componente de seleção.
+    """
+
+    espaco = SpaceChoiceField(
+        label='Espaço cadastrado',
+        queryset=Space.objects.all(),
+        empty_label='Escolha o espaço',
+        widget=forms.Select(attrs={'class': 'input'}),
+        error_messages={'required': 'Escolha o espaço que é o mesmo.'},
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        field = self.fields['espaco']
+        field.widget.choices = [('', field.empty_label)] + [
+            (space.pk, field.label_from_instance(space)) for space in sorted(Space.objects.all(), key=natural_key)
+        ]

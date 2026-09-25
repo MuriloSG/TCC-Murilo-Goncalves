@@ -1,0 +1,114 @@
+{% load ui %}{% with panel=space_panel %}{% if panel %}
+  <section class="card" id="espacos" aria-labelledby="espacos-titulo" data-busy-region>
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="espacos-titulo">Espaços desta importação</h2>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if panel.concluded %}
+        {% if panel.created %}
+          <details class="perm-group">
+            <summary><span class="perm-group-name">{{ panel.created|length }} espaço{{ panel.created|length|pluralize }} cadastrado{{ panel.created|length|pluralize }} por esta importação.</span>{% icon "chevron-down" %}</summary>
+            <ul class="space-names">{% for space in panel.created %}<li>{{ space.name }}</li>{% endfor %}</ul>
+          </details>
+        {% else %}
+          <p>Esta importação não cadastrou espaços.</p>
+        {% endif %}
+      {% else %}
+        {% if panel.open %}<p class="space-status">{% icon "info" %}Nenhuma alteração foi feita no cadastro de espaços.</p>{% endif %}
+        <div class="alert tone-info" role="status" data-busy-status hidden>{% icon "info" %}<p>Atualizando a prévia com a decisão. A atualização lê todas as linhas da planilha e leva alguns segundos.</p></div>
+        {% if panel.refresh_failed %}
+          <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>Não foi possível atualizar a prévia.</p>
+            <form method="post" action="{% url 'space_allocation_import_refresh' importation.pk %}" data-busy>{% csrf_token %}<button class="btn-secondary" type="submit">Tentar novamente</button></form>
+          </div>
+        {% elif panel.ready %}
+          <div class="alert tone-success" role="status">{% icon "circle-check" %}<p>Pronta para confirmar. {{ panel.summary }}</p></div>
+        {% endif %}
+        {% if panel.with_errors and panel.pending %}
+          <div class="alert tone-info" role="status">{% icon "info" %}<p>Depois de corrigir a planilha, estes espaços também vão precisar de decisão.</p></div>
+        {% endif %}
+        {% if panel.blocked %}
+          <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>{{ panel.permission_message }}</p></div>
+        {% endif %}
+        {% if panel.lines %}
+          <div class="space-summary">
+            {% for text, names in panel.lines %}
+              {% if names %}
+                <details class="perm-group">
+                  <summary><span class="perm-group-name">{{ text }}</span>{% icon "chevron-down" %}</summary>
+                  <ul class="space-names">{% for name in names %}<li>{{ name }}</li>{% endfor %}</ul>
+                </details>
+              {% else %}
+                <p class="space-summary-line">{{ text }}</p>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if panel.pending %}
+          <div class="space-decisions">
+            {% for item in panel.pending %}
+              <article class="space-decision" aria-labelledby="espaco-{{ forloop.counter }}">
+                <div class="space-decision-head">
+                  <h3 id="espaco-{{ forloop.counter }}">{{ item.entry.name }}</h3>
+                  {% include "ui/components/badge.html" with tone="warning" icon="triangle-alert" label=item.origin %}
+                  <span class="space-meta">{{ item.usage }}</span>
+                </div>
+                <p>{{ item.question }}</p>
+                {% if not item.entry.from_list %}<p class="space-meta">Se for erro de digitação, corrija a planilha e envie de novo.</p>{% endif %}
+                {% if item.actions or item.choose %}
+                  <div class="space-decision-actions">
+                    {% for action in item.actions %}
+                      <form method="post" action="{% url 'space_allocation_import_decide' importation.pk %}" data-busy>{% csrf_token %}
+                        <input type="hidden" name="nome" value="{{ item.entry.name }}">
+                        <input type="hidden" name="decisao" value="{{ action.kind }}">
+                        <input type="hidden" name="espaco" value="{{ action.space }}">
+                        <input type="hidden" name="destino" value="{{ action.target }}">
+                        <button class="btn-secondary" type="submit">{{ action.label }}{% if action.note %} ({{ action.note }}){% endif %}</button>
+                      </form>
+                    {% endfor %}
+                    {% if item.choose %}{% url 'space_allocation_import_associate' importation.pk as associate_url %}<a class="btn-secondary" href="{{ associate_url }}?nome={{ item.entry.name|urlencode }}" hx-get="{{ associate_url }}?nome={{ item.entry.name|urlencode }}" hx-target="#modal">É o mesmo que outro espaço</a>{% endif %}
+                  </div>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if panel.decided %}
+          <div class="space-decisions">
+            {% for item in panel.decided %}
+              <article class="space-decision" aria-labelledby="decisao-{{ forloop.counter }}">
+                <div class="space-decision-head">
+                  <h3 id="decisao-{{ forloop.counter }}">{{ item.entry.name }}</h3>
+                  {% include "ui/components/badge.html" with tone="info" icon="check" label="Decidido" %}
+                </div>
+                <p>{{ item.effect }}</p>
+                {% if item.withdraw %}
+                  <div class="space-decision-actions">
+                    <form method="post" action="{% url 'space_allocation_import_withdraw' importation.pk %}" data-busy>{% csrf_token %}
+                      <input type="hidden" name="nome" value="{{ item.entry.name }}">
+                      <button class="btn-secondary" type="submit">Alterar decisão</button>
+                    </form>
+                  </div>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if panel.open and panel.proposed %}
+          <details class="perm-group">
+            <summary><span class="perm-group-name">Espaços novos propostos pela planilha</span><span class="perm-group-count">{{ panel.proposed|length }}</span>{% icon "chevron-down" %}</summary>
+            <ul class="space-proposals">
+              {% for item in panel.proposed %}
+                <li>
+                  <span>{{ item.entry.name }} <span class="space-meta">Será cadastrado</span></span>
+                  {% if item.change %}{% url 'space_allocation_import_associate' importation.pk as associate_url %}<a class="link" href="{{ associate_url }}?nome={{ item.entry.name|urlencode }}" hx-get="{{ associate_url }}?nome={{ item.entry.name|urlencode }}" hx-target="#modal">Não é um espaço novo</a>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </details>
+        {% endif %}
+      {% endif %}
+    </div>
+  </section>
+{% endif %}{% endwith %}

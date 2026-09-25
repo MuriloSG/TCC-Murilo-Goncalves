@@ -16,7 +16,7 @@
 | Auditoria centralizada | `AuditLog.objects.record` e `record_changes`, `audit/catalog.py`, `acting_from_import` | módulo `ESPACO`, sem mecanismo novo (D13) |
 | Lista com busca, filtro, paginação e ações em modal | lista de usuários, `OperationFormView`, `ConfirmedActionView`, `ui.pagination` | tela de Espaços (D15) |
 | Exclusão recusada quando em uso | `Role.delete_role` e `RoleInUse` | exclusão de espaço sem uso (D17) |
-| Campo de escolha com fonte paginada | `ui/components/select.html` e `ui.views.OptionsView` | escolha do espaço em "É o mesmo que…" (D14) |
+| Campo de escolha | `ui/components/select.html` | escolha do espaço em "É o mesmo que outro espaço" (D14) |
 | Regras de texto verificadas por teste | `ui/text_rules.py` | forçaram o rótulo "Precisa de decisão" e a mensagem com "O seu perfil" (D14) |
 
 ### Os dados reais
@@ -207,7 +207,18 @@ A view de decisão:
 
 **Quando a atualização falha:** a decisão continua gravada, porque está em outra transação, e a importação fica como estava. O quadro reconhece a falha sem guardar indicador: a importação está `PENDENTE` e a classificação não tem mais pendência. Nesse caso, e só nele, aparece "Não foi possível atualizar a prévia." com "Tentar novamente", que faz POST para a rota de atualização. Numa importação `VALIDADA`, uma falha deixa o plano velho, e a confirmação diverge e atualiza a prévia, o que já é seguro.
 
-O tempo da prévia completa com a planilha real deve ser medido na implementação. Se passar de poucos segundos, o quadro mostra "Atualizando a prévia" durante a requisição.
+**Medição (25/09/2026)**, no banco `visual_check`, com `planilha_example_corrigida.xlsx` (1.715 linhas) no container de desenvolvimento:
+
+| Operação | Tempo |
+|---|---|
+| Prévia no cadastro vazio | 6,3 s |
+| Atualização completa da prévia, três vezes | 7,1 s a 7,2 s |
+| Confirmação | 6,9 s |
+| Prévia de uma reimportação com 4 nomes que precisam de decisão | 6,3 s |
+| Classificação do quadro, sem executar as linhas | 0,03 s |
+| Atualização completa depois de uma decisão | 6,7 s |
+
+O recálculo do quadro a cada decisão é imediato, e só a última decisão paga os cerca de 7 segundos da atualização completa, o mesmo custo da prévia e da confirmação. Como passa de poucos segundos, o quadro mostra, durante a requisição, "Atualizando a prévia com a decisão. A atualização lê todas as linhas da planilha e leva alguns segundos." e desabilita os botões dele (`ui/static/ui/js/busy.js`, pelos atributos `data-busy`). Sem JavaScript, o envio é o do formulário comum. Se esse tempo é aceitável continua em aberto: esta Change só registra a medição.
 
 ### D13. Auditoria
 
@@ -229,7 +240,8 @@ Fica no detalhe da importação de ensalamento, pelo template de quadro que `SPA
 
 **Interação:**
 - Cada decisão é um POST com CSRF, disparado por um botão.
-- "É o mesmo que…" abre o campo de escolha do componente `select`, com fonte paginada de espaços. A rota de opções é declarada em `schedule` com `ENSALAMENTO.IMPORTAR`, a permissão da tela que a consome.
+- "É o mesmo que outro espaço" abre em modal o campo de escolha do componente `select`, com todos os espaços na ordem natural do nome. O campo é obrigatório, e a §9.9 das convenções proíbe fonte paginada em campo obrigatório, porque sem JavaScript ele ficaria limitado à primeira página; por isso não há rota de opções. O mesmo modal atende a "Não é um espaço novo".
+- O rótulo previsto era "É o mesmo que…". As regras de texto (`ui/text_rules.py`) recusam reticências em qualquer texto exibido, e o rótulo passou a "É o mesmo que outro espaço".
 - A lista de novos propostos fica recolhida, com "Não é um espaço novo" em cada item.
 
 **Frases fixas:** a linguagem de futuro e "Nenhuma alteração foi feita no cadastro de espaços." aparecem enquanto a importação não é concluída.

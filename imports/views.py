@@ -35,8 +35,11 @@ class ImportScreens:
     """Descrição das telas de uma importação: definição, textos e prefixo das rotas.
 
     As rotas do app seguem o prefixo: `<prefixo>_list`, `_upload`, `_template`,
-    `_detail`, `_confirm` e `_discard`. A rota do modelo existe só quando a importação
-    tem modelo.
+    `_detail`, `_confirm`, `_discard` e `_delete`. A rota do modelo existe só quando a
+    importação tem modelo, e a de exclusão só quando `delete_permission` é declarada.
+
+    `section_permission` é a permissão da tela da seção: sem ela, o caminho de navegação
+    mostra a seção sem link.
 
     `tabs` declara as abas do detalhe, cada uma com a rota, o rótulo e o ícone, e
     `review_route` é a rota da tabela de linhas. Sem abas, o detalhe é a própria tabela
@@ -54,6 +57,8 @@ class ImportScreens:
     template_file_name: str | None = None
     tabs: tuple = ()
     review_route: str = 'detail'
+    delete_permission: str | None = None
+    section_permission: str | None = None
 
     @property
     def has_template(self):
@@ -64,10 +69,17 @@ class ImportScreens:
         return reverse(f'{self.url_prefix}_{name}', args=args)
 
 
-def screens_context(screens):
+def section_url(screens, user):
+    """Link da seção no caminho de navegação, só para quem pode abrir a tela dela."""
+    if screens.section_permission and not user.has_perm(screens.section_permission):
+        return None
+    return reverse(screens.section_url_name)
+
+
+def screens_context(screens, user):
     return {
         'screens': screens,
-        'section_url': reverse(screens.section_url_name),
+        'section_url': section_url(screens, user),
         'list_url': screens.url('list'),
         'upload_url': screens.url('upload'),
         'template_url': screens.url('template') if screens.has_template else None,
@@ -94,7 +106,7 @@ def detail_tabs(screens, pk, current):
     ]
 
 
-def detail_head_context(screens, importation, current):
+def detail_head_context(screens, importation, current, user):
     """Contexto do cabeçalho do detalhe, igual em todas as abas: situação, ações e resumo."""
     importation.tone, importation.icon = status_badge(importation.status)
     return {
@@ -103,9 +115,17 @@ def detail_head_context(screens, importation, current):
         'upload_values': upload_values(screens.definition, importation),
         'confirm_url': screens.url('confirm', importation.pk),
         'discard_url': screens.url('discard', importation.pk),
+        'delete_url': delete_url(screens, importation, user),
         'review_url': screens.url(screens.review_route, importation.pk),
         'tabs': detail_tabs(screens, importation.pk, current),
     }
+
+
+def delete_url(screens, importation, user):
+    """Rota da exclusão, oferecida só na situação que a permite e a quem tem a permissão."""
+    if screens.delete_permission and importation.is_deletable and user.has_perm(screens.delete_permission):
+        return screens.url('delete', importation.pk)
+    return None
 
 
 def rows_title(numbers, only_errors):
@@ -140,7 +160,7 @@ class ImportListView(ListView):
         return with_summary(queryset)
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs, **screens_context(self.screens))
+        context = super().get_context_data(**kwargs, **screens_context(self.screens, self.request.user))
         context['page'] = paginate(self.request, self.object_list)
         context['importations'] = context['page'].object_list
         for importation in context['importations']:
@@ -165,7 +185,7 @@ class ImportUploadView(ModalView, FormView):
         return super().get_form_kwargs() | {'definition': self.screens.definition}
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(**kwargs, **screens_context(self.screens))
+        return super().get_context_data(**kwargs, **screens_context(self.screens, self.request.user))
 
     def form_valid(self, form):
         self.importation = Import.objects.preview(
@@ -237,10 +257,10 @@ class ImportDetailView(DetailView):
         return load_importation(self.screens, self.kwargs['pk'])
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs, **screens_context(self.screens))
+        context = super().get_context_data(**kwargs, **screens_context(self.screens, self.request.user))
         importation = self.object
         definition = self.screens.definition
-        context.update(detail_head_context(self.screens, importation, self.screens.review_route))
+        context.update(detail_head_context(self.screens, importation, self.screens.review_route, self.request.user))
         chosen = self.request.GET.get('linhas', '')
         only_errors = chosen == 'erros'
         numbers = line_numbers(self.request)
@@ -322,7 +342,7 @@ class ImportDiscardView(ModalView, TemplateView):
         return self.screens.url('detail', self.target.pk)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(target=self.target, **kwargs, **screens_context(self.screens))
+        return super().get_context_data(target=self.target, **kwargs, **screens_context(self.screens, self.request.user))
 
     def post(self, request, *args, **kwargs):
         try:
@@ -333,3 +353,31 @@ class ImportDiscardView(ModalView, TemplateView):
         else:
             messages.success(request, f'Importação do arquivo {self.target.file_name} descartada.')
         return self.redirect_to(self.screens.url('detail', self.target.pk))
+
+
+class ImportDeleteView(ModalView, TemplateView):
+    """Exclusão definitiva de uma importação descartada ou com erros: GET confirma, POST exclui."""
+
+    screens = None
+    template_name = 'imports/delete.html'
+    modal_template_name = 'imports/delete_modal.html'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = load_importation(self.screens, kwargs['pk'])
+
+    def get_close_url(self):
+        return self.screens.url('detail', self.target.pk)
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(target=self.target, **kwargs, **screens_context(self.screens, self.request.user))
+
+    def post(self, request, *args, **kwargs):
+        try:
+            self.target.remove(self.screens.definition, request.user)
+        except ValidationError as error:
+            for message in error.messages:
+                messages.error(request, message)
+            return self.redirect_to(self.screens.url('detail', self.target.pk))
+        messages.success(request, f'Importação do arquivo {self.target.file_name} excluída.')
+        return self.redirect_to(self.screens.url('list'))

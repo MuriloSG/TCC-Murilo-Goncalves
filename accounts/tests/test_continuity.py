@@ -311,9 +311,12 @@ class ContinuityGuardTests(ContinuityTestCase):
             permissions.ADMINISTRATIVE_CAPABILITY
             | {
                 permissions.USER_IMPORT,
+                permissions.USER_IMPORT_DELETE,
                 permissions.AUDIT_VIEW,
                 permissions.NOTICE_PUBLISH,
+                permissions.SPACE_ALLOCATION_VIEW,
                 permissions.SPACE_ALLOCATION_IMPORT,
+                permissions.SPACE_ALLOCATION_IMPORT_DELETE,
             },
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())

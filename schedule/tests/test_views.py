@@ -7,7 +7,12 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import Role, User
-from accounts.permissions import SPACE_ALLOCATION_IMPORT, USER_VIEW
+from accounts.permissions import (
+    SPACE_ALLOCATION_IMPORT,
+    SPACE_ALLOCATION_IMPORT_DELETE,
+    SPACE_ALLOCATION_VIEW,
+    USER_VIEW,
+)
 from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
@@ -20,7 +25,7 @@ ROWS = len(TEACHERS) + len(SPACES) + 4
 
 class ScreenTestCase(TestCase):
     def setUp(self):
-        self.importer = self.user('importador@ifnmg.edu.br', SPACE_ALLOCATION_IMPORT)
+        self.importer = self.user('importador@ifnmg.edu.br', SPACE_ALLOCATION_VIEW, SPACE_ALLOCATION_IMPORT)
         self.other = self.user('outro@ifnmg.edu.br', USER_VIEW)
 
     def user(self, email, *codes):
@@ -373,6 +378,88 @@ class NavigationTests(ScreenTestCase):
         self.client.force_login(self.other)
         response = self.client.get(reverse('user_list'))
         self.assertNotContains(response, 'Ensalamento')
+
+
+class ViewPermissionTests(ScreenTestCase):
+    def setUp(self):
+        super().setUp()
+        self.viewer = self.user('consulta@ifnmg.edu.br', SPACE_ALLOCATION_VIEW)
+        self.only_importer = self.user('sograde@ifnmg.edu.br', SPACE_ALLOCATION_IMPORT)
+
+    def test_viewer_opens_the_grid_without_the_import_screens(self):
+        self.client.force_login(self.viewer)
+        response = self.client.get(reverse('space_allocation_grid'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, SPACE_ALLOCATION_IMPORT_SCREENS.url('list'))
+        self.assertEqual(self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('list')).status_code, 403)
+
+    def test_importer_without_the_view_permission_is_refused_in_the_grid(self):
+        self.client.force_login(self.only_importer)
+        self.assertEqual(self.client.get(reverse('space_allocation_grid')).status_code, 403)
+
+    def test_menu_points_to_the_imports_when_the_grid_is_not_allowed(self):
+        self.client.force_login(self.only_importer)
+        response = self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('list'))
+        self.assertContains(response, f'href="{SPACE_ALLOCATION_IMPORT_SCREENS.url("list")}"')
+        self.assertNotContains(response, f'href="{reverse("space_allocation_grid")}"')
+
+    def test_menu_points_to_the_grid_for_the_viewer(self):
+        self.client.force_login(self.viewer)
+        self.assertContains(self.client.get(reverse('space_allocation_grid')), f'href="{reverse("space_allocation_grid")}"')
+
+
+class DeletionTests(ScreenTestCase):
+    def setUp(self):
+        super().setUp()
+        self.remover = self.user('removedor@ifnmg.edu.br', SPACE_ALLOCATION_IMPORT, SPACE_ALLOCATION_IMPORT_DELETE)
+        self.upload()
+        self.importation = Import.objects.get()
+        self.importation.discard(SPACE_ALLOCATION_IMPORT_SCREENS.definition, self.importer)
+        self.url = SPACE_ALLOCATION_IMPORT_SCREENS.url('delete', self.importation.pk)
+
+    def test_anonymous_is_sent_to_the_login_with_next(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertRedirects(response, f"{reverse('account_login')}?next={self.url}", fetch_redirect_response=False)
+
+    def test_without_the_permission_the_deletion_is_refused(self):
+        self.client.force_login(self.importer)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.assertEqual(self.client.post(self.url).status_code, 403)
+        self.assertTrue(Import.objects.exists())
+
+    def test_without_csrf_the_deletion_is_refused(self):
+        client = self.client_class(enforce_csrf_checks=True)
+        client.force_login(self.remover)
+        self.assertEqual(client.post(self.url).status_code, 403)
+        self.assertTrue(Import.objects.exists())
+
+    def test_with_the_permission_the_import_is_deleted(self):
+        self.client.force_login(self.remover)
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+        response = self.client.post(self.url, follow=True)
+        self.assertRedirects(response, SPACE_ALLOCATION_IMPORT_SCREENS.url('list'))
+        self.assertContains(response, 'excluída')
+        self.assertFalse(Import.objects.exists())
+        record = AuditLog.objects.filter(action=catalog.DELETE).get()
+        self.assertEqual((record.user, record.resource), (self.remover, catalog.SPACE_ALLOCATION_IMPORT))
+
+    def test_button_appears_only_with_the_permission(self):
+        detail = SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', self.importation.pk)
+        self.client.force_login(self.remover)
+        self.assertContains(self.client.get(detail), self.url)
+        self.client.force_login(self.importer)
+        self.assertNotContains(self.client.get(detail), self.url)
+
+    def test_pending_import_is_not_deleted(self):
+        self.upload()
+        pending = Import.objects.get(status=Import.Status.VALIDATED)
+        self.client.force_login(self.remover)
+        url = SPACE_ALLOCATION_IMPORT_SCREENS.url('delete', pending.pk)
+        self.assertNotContains(self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', pending.pk)), url)
+        response = self.client.post(url, follow=True)
+        self.assertContains(response, 'não pode ser excluída')
+        self.assertTrue(Import.objects.filter(pk=pending.pk).exists())
 
 
 class UserCreationTests(ScreenTestCase):

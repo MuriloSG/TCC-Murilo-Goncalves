@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Grade por sala da importação de ensalamento
-O detalhe de uma importação de ensalamento DEVE (MUST) abrir na Grade, também numa importação `COM_ERROS`. A Grade DEVE (MUST) ter um único filtro, a sala, com as salas da lista de salas da planilha, na ordem da planilha, e a primeira sala da lista como padrão. Uma sala que não está na lista DEVE (MUST) cair no padrão, sem erro. A Grade DEVE (MUST) mostrar a semana inteira da sala escolhida: as faixas de horário com atividade na importação nas linhas, na ordem do início, e os dias de segunda a sexta nas colunas, com o dia atual marcado como "Hoje". Cada faixa ocupada DEVE (MUST) mostrar a disciplina, a turma com o curso e os docentes, e indicar a etapa da turma por texto e cor. A mesma atividade em faixas seguidas sem intervalo entre elas DEVE (MUST) aparecer uma vez, ocupando as faixas. A Grade NÃO DEVE (MUST NOT) mostrar linhas de intervalo. A Grade DEVE (MUST) informar quantas faixas da semana estão ocupadas e quantas estão disponíveis na sala. A Grade DEVE (MUST) ser montada a partir das linhas gravadas da importação, com as mesmas funções de leitura que a execução usa, e NÃO DEVE (MUST NOT) gravar dados, executar linhas, alterar o plano nem abrir o arquivo. A Grade exige a permissão `ENSALAMENTO.IMPORTAR`, como as demais telas da importação.
+O detalhe de uma importação de ensalamento DEVE (MUST) abrir na Grade, também numa importação `COM_ERROS`. A Grade DEVE (MUST) ter um único filtro, a sala, com as salas da lista de salas da planilha, na ordem da planilha, e a primeira sala da lista como padrão. Uma sala que não está na lista DEVE (MUST) cair no padrão, sem erro. A Grade DEVE (MUST) mostrar a semana inteira da sala escolhida: as faixas de horário com atividade na importação nas linhas, na ordem do início, e os dias de segunda a sexta nas colunas, com o dia atual marcado como "Hoje". Cada faixa ocupada DEVE (MUST) mostrar a disciplina, a turma com o curso e os docentes, e indicar a etapa da turma por texto e cor. A mesma atividade em faixas seguidas sem intervalo entre elas DEVE (MUST) aparecer uma vez, ocupando as faixas. A Grade NÃO DEVE (MUST NOT) mostrar linhas de intervalo. A Grade DEVE (MUST) informar quantas faixas da semana estão ocupadas e quantas estão disponíveis na sala. A Grade DEVE (MUST) ser montada a partir das linhas gravadas da importação, com as mesmas funções de leitura que a execução usa, e NÃO DEVE (MUST NOT) gravar dados, executar linhas, alterar o plano nem abrir o arquivo. A Grade exige a permissão `ENSALAMENTO.VISUALIZAR`, e as telas da importação continuam exigindo `ENSALAMENTO.IMPORTAR`.
 
 #### Scenario: Grade aberta por padrão
 - **GIVEN** uma importação de ensalamento `VALIDADA` da planilha corrigida
@@ -85,3 +85,18 @@ Uma atividade com erro que tem sala reconhecida DEVE (MUST) aparecer na Grade da
 - **GIVEN** uma atividade cuja sala não está na lista de salas
 - **WHEN** a Grade de qualquer sala é exibida
 - **THEN** a Grade informa a quantidade de linhas com erro fora da Grade, com o link para a Conferência
+
+### Requirement: Consulta do ensalamento separada da importação
+A grade do ensalamento confirmado DEVE (MUST) exigir `ENSALAMENTO.VISUALIZAR`, e NÃO DEVE (MUST NOT) aceitar `ENSALAMENTO.IMPORTAR` no lugar dela. O item "Ensalamento" do menu DEVE (MUST) levar à grade para quem tem `ENSALAMENTO.VISUALIZAR` e à lista de importações para quem tem só `ENSALAMENTO.IMPORTAR`, e NÃO DEVE (MUST NOT) aparecer para quem não tem nenhuma das duas. O botão "Ver importações" da grade DEVE (MUST) aparecer somente para quem tem `ENSALAMENTO.IMPORTAR`.
+
+#### Scenario: Consulta sem importação
+- **GIVEN** um usuário cujo perfil concede somente `ENSALAMENTO.VISUALIZAR`
+- **WHEN** ele abre a grade
+- **THEN** a grade é exibida sem o botão "Ver importações"
+- **AND** a lista de importações responde 403
+
+#### Scenario: Importação sem consulta
+- **GIVEN** um usuário cujo perfil concede somente `ENSALAMENTO.IMPORTAR`
+- **WHEN** ele abre a grade
+- **THEN** a resposta é 403
+- **AND** o item "Ensalamento" do menu leva à lista de importações

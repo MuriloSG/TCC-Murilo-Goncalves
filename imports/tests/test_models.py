@@ -9,7 +9,9 @@ from django.test import TestCase, TransactionTestCase
 
 import imports
 from accounts.models import User
-from imports.models import Import
+from audit import catalog
+from audit.models import AuditLog
+from imports.models import Import, ImportRow
 from imports.reader import SourceRow
 from imports.tests.definitions import GroupImport
 
@@ -149,6 +151,35 @@ class ConfirmTests(ImportTestCase):
         importation.discard(self.definition, self.other)
         self.assertEqual((importation.status, importation.resolved_by), ('DESCARTADA', self.other))
         self.assertFalse(Group.objects.exists())
+
+
+class RemoveTests(ImportTestCase):
+    def test_discarded_and_with_errors_are_deleted_with_their_rows(self):
+        discarded = self.preview('Docentes')
+        discarded.discard(self.definition, self.executor)
+        with_errors = self.preview('ERRO')
+        for importation in (discarded, with_errors):
+            with self.subTest(status=importation.status):
+                importation.remove(self.definition, self.executor)
+                self.assertFalse(Import.objects.filter(pk=importation.pk).exists())
+        self.assertFalse(ImportRow.objects.exists())
+
+    def test_pending_and_concluded_are_refused(self):
+        pending = self.preview('Docentes')
+        concluded = self.preview('Técnicos')
+        concluded.confirm(self.definition, self.executor)
+        for importation in (pending, concluded):
+            with self.subTest(status=importation.status):
+                with self.assertRaises(ValidationError):
+                    importation.remove(self.definition, self.executor)
+                self.assertTrue(Import.objects.filter(pk=importation.pk).exists())
+
+    def test_deletion_is_audited_with_the_file_and_status(self):
+        importation = self.preview('ERRO')
+        importation.remove(self.definition, self.executor)
+        record = AuditLog.objects.filter(action=catalog.DELETE).get()
+        self.assertEqual(record.resource_id, str(importation.pk))
+        self.assertEqual(record.metadata, {'arquivo': 'grupos.csv', 'situacao': 'COM_ERROS'})
 
 
 class ConcurrentConfirmTests(TransactionTestCase):

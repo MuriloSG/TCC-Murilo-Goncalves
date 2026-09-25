@@ -13,9 +13,11 @@
     <div>
       <h1 class="page-title">Ensalamento</h1>
     </div>
-    <div class="page-actions">
-      <a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>
-    </div>
+    {% if perms.ENSALAMENTO.IMPORTAR %}
+      <div class="page-actions">
+        <a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
 

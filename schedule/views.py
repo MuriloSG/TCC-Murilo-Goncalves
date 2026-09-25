@@ -1,6 +1,7 @@
 """Grade do ensalamento confirmado e telas da importação, sobre as views base do motor de importação.
 
-O acesso de toda rota exige `ENSALAMENTO.IMPORTAR`: a autenticação vem do `login_required`
+A grade exige `ENSALAMENTO.VISUALIZAR`, as telas da importação exigem
+`ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`: a autenticação vem do `login_required`
 no `urls.py` e a permissão é declarada aqui como dado, verificada pelo PermissionMiddleware.
 A importação não tem modelo para baixar, porque a planilha é a do campus e não é alterada
 pelo sistema.
@@ -14,6 +15,7 @@ from accounts import permissions
 from audit import catalog
 from imports.views import (
     ImportConfirmView,
+    ImportDeleteView,
     ImportDetailView,
     ImportDiscardView,
     ImportListView,
@@ -29,10 +31,12 @@ SPACE_ALLOCATION_IMPORT_SCREENS = ImportScreens(
     url_prefix='space_allocation_import',
     section_title='Ensalamento',
     section_url_name='space_allocation_grid',
+    section_permission=permissions.SPACE_ALLOCATION_VIEW,
     list_title='Importações de ensalamento',
     upload_title='Importar ensalamento',
     empty_message='Nenhuma importação de ensalamento.',
     concluded_message=concluded_message,
+    delete_permission=permissions.SPACE_ALLOCATION_IMPORT_DELETE,
 )
 
 
@@ -65,7 +69,7 @@ class SpaceAllocationGridView(TemplateView):
     existe na lista cai no padrão, sem erro.
     """
 
-    permission_required = permissions.SPACE_ALLOCATION_IMPORT
+    permission_required = permissions.SPACE_ALLOCATION_VIEW
     template_name = 'schedule/grid.html'
 
     def get_context_data(self, **kwargs):
@@ -106,5 +110,11 @@ class SpaceAllocationImportConfirmView(ImportConfirmView):
 
 class SpaceAllocationImportDiscardView(ImportDiscardView):
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
+    audit_resource = catalog.SPACE_ALLOCATION_IMPORT
+    screens = SPACE_ALLOCATION_IMPORT_SCREENS
+
+
+class SpaceAllocationImportDeleteView(ImportDeleteView):
+    permission_required = permissions.SPACE_ALLOCATION_IMPORT_DELETE
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
     screens = SPACE_ALLOCATION_IMPORT_SCREENS

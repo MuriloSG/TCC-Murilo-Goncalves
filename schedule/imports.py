@@ -110,6 +110,9 @@ def semester_field():
         max_length=6,
         help_text='Semestre a que os dados da planilha pertencem, no formato 2026/1.',
         validators=[RegexValidator(SEMESTER_CODE_PATTERN, message=SEMESTER_CODE_MESSAGE)],
+        widget=forms.TextInput(
+            attrs={'placeholder': '2026/1', 'inputmode': 'numeric', 'autocomplete': 'off', 'data-mask': 'semester'},
+        ),
         error_messages={'required': 'Informe o semestre da planilha.'},
     )
 

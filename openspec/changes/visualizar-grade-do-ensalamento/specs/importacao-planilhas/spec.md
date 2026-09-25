@@ -28,3 +28,31 @@ A tabela de linhas da importação DEVE (MUST) aceitar um ou mais números de li
 #### Scenario: Número inválido
 - **WHEN** a tabela de linhas é aberta com `numero=abc`
 - **THEN** todas as linhas são listadas, e a resposta é 200
+
+### Requirement: Exclusão da importação
+A importação específica DEVE (MUST) poder declarar a permissão de exclusão das suas importações. Com ela declarada, uma importação `DESCARTADA` ou `COM_ERROS` DEVE (MUST) poder ser excluída por quem tem a permissão, junto com todas as suas linhas. A exclusão DEVE (MUST) abrir a confirmação em modal pelo GET e excluir pelo POST com CSRF, e DEVE (MUST) voltar à lista de importações com mensagem. Uma importação `VALIDADA` ou `CONCLUIDA` NÃO DEVE (MUST NOT) ser excluída, e a tentativa DEVE (MUST) ser recusada com mensagem, sem alterar dados. A exclusão NÃO DEVE (MUST NOT) alterar dados de domínio e DEVE (MUST) ser auditada com a ação `EXCLUIR`, o arquivo, a situação e as informações próprias da importação. O controle de excluir DEVE (MUST) aparecer somente numa importação que pode ser excluída e para quem tem a permissão.
+
+#### Scenario: Exclusão de importação descartada
+- **GIVEN** uma importação `DESCARTADA` e um usuário com a permissão de exclusão
+- **WHEN** ele confirma a exclusão
+- **THEN** a importação e as linhas deixam de existir, e a tela volta à lista com "Importação do arquivo planilha.xlsx excluída."
+- **AND** um registro de auditoria `EXCLUIR` guarda o arquivo e a situação
+
+#### Scenario: Importação pendente não é excluída
+- **GIVEN** uma importação `VALIDADA`
+- **WHEN** a exclusão é enviada por POST
+- **THEN** a exclusão é recusada com mensagem e a importação continua existindo
+
+#### Scenario: Exclusão sem a permissão
+- **GIVEN** um usuário com a permissão da importação, sem a de exclusão
+- **WHEN** ele abre o detalhe de uma importação descartada
+- **THEN** não há controle de excluir
+- **AND** o POST na rota de exclusão responde 403
+
+### Requirement: Resumo recolhido do detalhe da importação
+O resumo do detalhe de uma importação DEVE (MUST) abrir recolhido, mostrando a situação e o resultado, e DEVE (MUST) expandir ao ser acionado, com animação, mostrando quem enviou, quem confirmou ou descartou, os campos próprios do envio, as prévias refeitas e o arquivo. No caminho de navegação das telas da importação, a seção DEVE (MUST) ser link somente para quem pode abrir a tela dela.
+
+#### Scenario: Seção sem acesso
+- **GIVEN** um usuário que tem a permissão da importação de ensalamento, mas não `ENSALAMENTO.VISUALIZAR`
+- **WHEN** ele abre a lista de importações
+- **THEN** "Ensalamento" aparece no caminho de navegação sem link

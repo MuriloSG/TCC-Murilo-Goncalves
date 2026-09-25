@@ -293,3 +293,35 @@ class PaginationTests(ImportViewsTestCase):
             response, f'Exibindo <strong>{total}</strong> a <strong>{total}</strong> de <strong>{total}</strong> importações',
         )
         self.assertContains(response, f'Todas as importações <span class="count">{total}</span>')
+
+
+class ImportDeletionTests(ImportViewsTestCase):
+    def discarded(self):
+        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation.discard(UserImport(), self.admin)
+        return importation
+
+    def test_administrator_deletes_a_discarded_import(self):
+        importation = self.discarded()
+        url = f'/usuarios/importacoes/{importation.pk}/excluir/'
+        self.assertContains(self.client.get(f'/usuarios/importacoes/{importation.pk}/'), url)
+        response = self.client.post(url, follow=True)
+        self.assertRedirects(response, '/usuarios/importacoes/')
+        self.assertFalse(Import.objects.exists())
+
+    def test_without_the_permission_the_deletion_is_refused(self):
+        importation = self.discarded()
+        self.client.force_login(self.user_with(permissions.USER_IMPORT))
+        url = f'/usuarios/importacoes/{importation.pk}/excluir/'
+        self.assertNotContains(self.client.get(f'/usuarios/importacoes/{importation.pk}/'), url)
+        self.assertEqual(self.client.post(url).status_code, 403)
+        self.assertTrue(Import.objects.exists())
+
+    def test_anonymous_is_sent_to_the_login_and_csrf_is_required(self):
+        importation = self.discarded()
+        url = f'/usuarios/importacoes/{importation.pk}/excluir/'
+        self.assertRedirects(Client().get(url), f'/contas/login/?next={url}', fetch_redirect_response=False)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.admin)
+        self.assertEqual(client.post(url).status_code, 403)
+        self.assertTrue(Import.objects.exists())

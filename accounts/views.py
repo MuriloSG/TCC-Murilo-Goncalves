@@ -11,6 +11,7 @@ from audit import catalog
 from imports.views import (
     ImportConfirmView,
     ImportDetailView,
+    ImportDeleteView,
     ImportDiscardView,
     ImportListView,
     ImportScreens,
@@ -368,11 +369,13 @@ USER_IMPORT_SCREENS = ImportScreens(
     url_prefix='user_import',
     section_title='Usuários',
     section_url_name='user_list',
+    section_permission=permissions.USER_VIEW,
     list_title='Importações de usuários',
     upload_title='Importar usuários',
     template_file_name='modelo-importacao-usuarios.csv',
     empty_message='Nenhuma importação de usuários.',
     concluded_message=concluded_message,
+    delete_permission=permissions.USER_IMPORT_DELETE,
 )
 
 
@@ -406,5 +409,11 @@ class UserImportConfirmView(ImportConfirmView):
 
 class UserImportDiscardView(ImportDiscardView):
     permission_required = permissions.USER_IMPORT
+    audit_resource = catalog.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportDeleteView(ImportDeleteView):
+    permission_required = permissions.USER_IMPORT_DELETE
     audit_resource = catalog.USER_IMPORT
     screens = USER_IMPORT_SCREENS

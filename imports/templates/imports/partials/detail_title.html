@@ -11,7 +11,12 @@
       </div>
     {% elif importation.status == "COM_ERROS" %}
       <div class="page-actions">
+        {% if delete_url %}<a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>{% endif %}
         <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo corrigido</a>
+      </div>
+    {% elif delete_url %}
+      <div class="page-actions">
+        <a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>
       </div>
     {% endif %}
   </div>

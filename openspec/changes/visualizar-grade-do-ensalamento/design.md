@@ -263,4 +263,14 @@ Pedido do autor depois da primeira versão: o item "Ensalamento" do menu abre di
 - Dois filtros na URL: `semestre` e `sala`. O semestre padrão é o atual, calculado pela data (janeiro a junho é `/1`, julho a dezembro é `/2`), e as opções são ele e os semestres com alocação confirmada. O semestre atual sem importação mostra "Nenhum ensalamento importado no semestre 2026/2.". A sala padrão é a primeira do semestre pelo nome, porque a ordem da planilha não é gravada.
 - As linhas são as faixas com aula no semestre, iguais para toda sala. O card mostra a disciplina, a turma com o curso e os docentes.
 - O botão "Ver importações" leva à lista das importações. O detalhe da importação volta a ser só a tabela de linhas, sem abas.
-- A permissão continua `ENSALAMENTO.IMPORTAR`, porque ainda não existe permissão de consulta do ensalamento.
+- A permissão passou a ser `ENSALAMENTO.VISUALIZAR` (D16).
+
+### D16. Consulta separada, exclusão de importação e resumo recolhido
+
+Pedidos do autor depois de D15:
+
+- **`ENSALAMENTO.VISUALIZAR`** protege a grade; `ENSALAMENTO.IMPORTAR` fica só com as telas da importação. O menu leva à grade ou, para quem só importa, à lista de importações. No caminho de navegação das importações, a seção só é link quando o usuário pode abrir a tela dela (`ImportScreens.section_permission`), o que vale também para "Usuários" na importação de usuários.
+- **Exclusão de importação no motor.** `Import.remove()` exclui uma importação `DESCARTADA` ou `COM_ERROS` com as linhas, numa transação com trava, e grava a auditoria `EXCLUIR` antes, porque a importação deixa de existir. A importação específica liga a exclusão declarando `delete_permission`; as duas existentes declaram `ENSALAMENTO.EXCLUIR_IMPORTACAO` e `USUARIO.EXCLUIR_IMPORTACAO`. Uma importação `CONCLUIDA` não é excluída, porque o histórico dela explica dados que continuam no domínio.
+- As três permissões entram numa só migration (`accounts/0008_space_allocation_permissions`), concedidas ao `ADMINISTRADOR`.
+- **Resumo recolhido.** O resumo do detalhe virou um `<details>` com a situação e o resultado na linha fechada, e a mesma animação dos grupos de permissões. A grade antiga de duas colunas com bordas desencontrava com número ímpar de campos.
+- **Máscara do semestre.** O campo "Semestre" do envio aceita só números e põe a barra (`2026/1`), com o termo limitado a 1 ou 2. A reimportação de um semestre já importado continua permitida.

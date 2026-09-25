@@ -39,6 +39,11 @@ urlpatterns = [
         login_required(views.UserImportDiscardView.as_view()),
         name='user_import_discard',
     ),
+    path(
+        'usuarios/importacoes/<int:pk>/excluir/',
+        login_required(views.UserImportDeleteView.as_view()),
+        name='user_import_delete',
+    ),
     path('perfis/', login_required(views.RoleListView.as_view()), name='role_list'),
     path('perfis/novo/', login_required(views.RoleCreateView.as_view()), name='role_create'),
     path('perfis/<int:pk>/', login_required(views.RoleDetailView.as_view()), name='role_detail'),

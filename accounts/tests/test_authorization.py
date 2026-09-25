@@ -63,9 +63,12 @@ class RolePermissionsTests(AuthorizationTestCase):
         user = self.create_user('admin@ifnmg.edu.br', self.administrator)
         granted = permissions.ADMINISTRATIVE_CAPABILITY | {
             permissions.USER_IMPORT,
+            permissions.USER_IMPORT_DELETE,
             permissions.AUDIT_VIEW,
             permissions.NOTICE_PUBLISH,
+            permissions.SPACE_ALLOCATION_VIEW,
             permissions.SPACE_ALLOCATION_IMPORT,
+            permissions.SPACE_ALLOCATION_IMPORT_DELETE,
         }
         self.assertEqual(user.effective_permissions(), granted)
         for code in granted:
@@ -122,9 +125,12 @@ class RolePermissionsTests(AuthorizationTestCase):
     def test_decision_does_not_depend_on_role_code_or_name(self):
         granted = permissions.ADMINISTRATIVE_CAPABILITY | {
             permissions.USER_IMPORT,
+            permissions.USER_IMPORT_DELETE,
             permissions.AUDIT_VIEW,
             permissions.NOTICE_PUBLISH,
+            permissions.SPACE_ALLOCATION_VIEW,
             permissions.SPACE_ALLOCATION_IMPORT,
+            permissions.SPACE_ALLOCATION_IMPORT_DELETE,
         }
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)

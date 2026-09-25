@@ -19,6 +19,15 @@ class ImportNotPending(ValidationError):
         )
 
 
+class ImportNotDeletable(ValidationError):
+    def __init__(self, status_label):
+        super().__init__(
+            f'Esta importação está {status_label.lower()} e não pode ser excluída. '
+            'Só importações descartadas ou com erros podem ser excluídas.',
+            code='import_not_deletable',
+        )
+
+
 class ImportManager(models.Manager):
     def preview(self, definition, rows, file_name, executor):
         """Executa e desfaz todas as linhas e grava a importação com o plano (D7).
@@ -193,6 +202,29 @@ class Import(models.Model):
                 metadata={'arquivo': current.file_name} | definition.audit_metadata(current.rows.all()),
             )
         self.refresh_from_db()
+
+    @property
+    def is_deletable(self):
+        return self.status in (self.Status.DISCARDED, self.Status.WITH_ERRORS)
+
+    def remove(self, definition, executor):
+        """Exclui a importação e as linhas dela, só quando descartada ou com erros.
+
+        Nenhuma delas alterou o domínio, por isso nada além do histórico some. O registro
+        de auditoria guarda o arquivo e a situação, já que a importação deixa de existir.
+        """
+        with transaction.atomic():
+            current = type(self).objects.select_for_update().get(pk=self.pk)
+            if not current.is_deletable:
+                raise ImportNotDeletable(current.get_status_display())
+            AuditLog.objects.record(
+                catalog.DELETE,
+                definition.audit_resource,
+                resource_id=current.pk,
+                metadata={'arquivo': current.file_name, 'situacao': current.status}
+                | definition.audit_metadata(current.rows.all()),
+            )
+            current.delete()
 
     def comparable(self, rows=None):
         rows = rows if rows is not None else self.rows.order_by('line_number')

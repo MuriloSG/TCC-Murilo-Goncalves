@@ -57,3 +57,12 @@
 - [x] 6.3 Tirar a Grade e as abas do detalhe da importação
 - [x] 6.4 Testar os padrões, os valores inexistentes, o semestre sem importação, as contagens e o acesso
 - [x] 6.5 Commit
+
+## 7. Permissões do ensalamento e exclusão de importação
+
+- [x] 7.1 Criar `ENSALAMENTO.VISUALIZAR`, `ENSALAMENTO.EXCLUIR_IMPORTACAO` e `USUARIO.EXCLUIR_IMPORTACAO` por migration, concedidas ao `ADMINISTRADOR` (D16)
+- [x] 7.2 Exigir `ENSALAMENTO.VISUALIZAR` na grade e ajustar o menu, o botão "Ver importações" e o caminho de navegação das importações
+- [x] 7.3 Criar a exclusão de importação no motor, com a regra no model, a auditoria e o modal de confirmação, e ligá-la às importações de ensalamento e de usuários
+- [x] 7.4 Recolher o resumo do detalhe da importação e pôr a máscara no campo do semestre
+- [x] 7.5 Testar as permissões novas nas quatro situações das convenções, a exclusão recusada fora de `DESCARTADA` e `COM_ERROS`, e o menu de quem só consulta ou só importa
+- [x] 7.6 Commit

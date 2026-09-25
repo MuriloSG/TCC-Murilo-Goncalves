@@ -8,21 +8,24 @@
     <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>{{ error.message }}</p></div>
   {% endfor %}
 
-  <section class="card" aria-label="Resumo da importação">
-    <dl class="detail-grid">
-      <div><dt>Situação</dt><dd>{% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}</dd></div>
-      <div><dt>Enviada por</dt><dd>{{ importation.created_by.name }}, em {{ importation.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+  <details class="card audit-panel" aria-label="Resumo da importação">
+    <summary>
+      {% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}
+      <span class="audit-panel-result">{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged errors=summary.errors %}</span>
+      <span class="audit-panel-toggle">Detalhes {% icon "chevron-down" %}</span>
+    </summary>
+    <dl class="audit-grid">
+      <div><dt>Enviada por</dt><dd>{{ importation.created_by.name }}</dd><dd class="audit-grid-meta">{{ importation.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+      {% if importation.resolved_by %}
+        <div><dt>{% if importation.status == "CONCLUIDA" %}Confirmada por{% else %}Descartada por{% endif %}</dt><dd>{{ importation.resolved_by.name }}</dd><dd class="audit-grid-meta">{{ importation.resolved_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+      {% endif %}
       {% for label, value in upload_values %}
         <div><dt>{{ label }}</dt><dd>{{ value|default:"Vazio" }}</dd></div>
       {% endfor %}
-      <div><dt>Resultado</dt><dd>{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged errors=summary.errors %}</dd></div>
-      <div><dt>Prévias refeitas</dt><dd>{% if importation.revalidation_count %}{{ importation.revalidation_count }} vez{{ importation.revalidation_count|pluralize:"es" }}, porque os dados mudaram antes da confirmação{% else %}Nenhuma{% endif %}</dd></div>
-      {% if importation.resolved_by %}
-        <div><dt>{% if importation.status == "CONCLUIDA" %}Confirmada por{% else %}Descartada por{% endif %}</dt><dd>{{ importation.resolved_by.name }}, em {{ importation.resolved_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
-        <div><dt>Arquivo</dt><dd>{{ importation.file_name }}</dd></div>
-      {% endif %}
+      <div><dt>Prévias refeitas</dt><dd>{% if importation.revalidation_count %}{{ importation.revalidation_count }} vez{{ importation.revalidation_count|pluralize:"es" }}{% else %}Nenhuma{% endif %}</dd>{% if importation.revalidation_count %}<dd class="audit-grid-meta">Os dados mudaram antes da confirmação</dd>{% endif %}</div>
+      <div class="audit-grid-wide"><dt>Arquivo</dt><dd>{{ importation.file_name }}</dd></div>
     </dl>
-  </section>
+  </details>
   {% if tabs %}
     <nav class="tabs" aria-label="Visões da importação">
       {% for tab in tabs %}<a href="{{ tab.url }}"{% if tab.current %} aria-current="page"{% endif %}>{% icon tab.icon "size-4" %}{{ tab.label }}</a>{% endfor %}

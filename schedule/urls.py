@@ -34,4 +34,9 @@ urlpatterns = [
         login_required(views.SpaceAllocationImportDiscardView.as_view()),
         name='space_allocation_import_discard',
     ),
+    path(
+        'ensalamento/importacoes/<int:pk>/excluir/',
+        login_required(views.SpaceAllocationImportDeleteView.as_view()),
+        name='space_allocation_import_delete',
+    ),
 ]

@@ -5,7 +5,7 @@
 
 {% block crumbs %}
   <li><a href="{% url 'home' %}">Início</a></li>
-  <li>{% icon "chevron-right" "size-4" %}<a href="{{ section_url }}">{{ screens.section_title }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}{% if section_url %}<a href="{{ section_url }}">{{ screens.section_title }}</a>{% else %}<span>{{ screens.section_title }}</span>{% endif %}</li>
   <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Importações</span></li>
 {% endblock %}
 

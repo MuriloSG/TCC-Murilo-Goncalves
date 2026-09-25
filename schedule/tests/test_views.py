@@ -258,6 +258,12 @@ class RowFilterTests(ScreenTestCase):
     def test_errors_filter_still_works(self):
         self.assertEqual(self.detail('?linhas=erros').context['page'].paginator.count, 0)
 
+    def test_filters_are_offered_in_a_select_with_the_chosen_one_selected(self):
+        content = self.detail('?linhas=salas').content.decode()
+        self.assertIn('<select name="linhas"', content)
+        self.assertIn(f'<option value="salas" selected>Salas ({len(SPACES)})</option>', content)
+        self.assertIn('<option value="">Todas as linhas (', content)
+
 
 class NavigationTests(ScreenTestCase):
     def test_item_appears_only_with_the_permission(self):

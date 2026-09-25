@@ -14,13 +14,14 @@ from django.db.models import Count, Q
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils.formats import number_format
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from audit import catalog
 from audit.models import AuditLog
 from imports.definitions import ImportDefinition
-from imports.forms import ImportUploadForm
+from imports.forms import ImportUploadForm, RowFilterForm
 from imports.models import Import, ImportRow
 from ui.pagination import ROWS_PAGE_SIZE, paginate
 from ui.views import ModalView
@@ -160,15 +161,16 @@ def chosen_row_filter(definition, slug):
     return chosen
 
 
-def row_filters(definition, importation, screens):
-    """Recortes das linhas oferecidos na prévia, cada um com a sua quantidade."""
-    detail_url = screens.url('detail', importation.pk)
-    found = []
+def row_filter_form(definition, importation, chosen, errors):
+    """Select dos recortes das linhas, cada opção com a sua quantidade."""
+    choices = [('', f'Todas as linhas ({number_format(importation.rows.count(), force_grouping=True)})')]
+    if errors or chosen == 'erros':
+        choices.append(('erros', f'Com erro ({number_format(errors, force_grouping=True)})'))
     for item in definition.row_filters:
         total = importation.rows.filter(**{f'values__{item.column}': item.value}).count()
-        if total:
-            found.append({'slug': item.slug, 'label': item.label, 'total': total, 'url': f'{detail_url}?linhas={item.slug}'})
-    return found
+        if total or chosen == item.slug:
+            choices.append((item.slug, f'{item.label} ({number_format(total, force_grouping=True)})'))
+    return RowFilterForm({'linhas': chosen}, choices=choices)
 
 
 def upload_values(definition, importation):
@@ -214,7 +216,7 @@ class ImportDetailView(DetailView):
             summary=summary,
             only_errors=only_errors,
             chosen_filter=chosen,
-            row_filters=row_filters(definition, importation, self.screens),
+            row_filter=row_filter_form(definition, importation, chosen, summary['errors']),
             columns=columns,
             upload_values=upload_values(definition, importation),
             page=page,

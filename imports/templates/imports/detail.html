@@ -55,29 +55,21 @@
     </dl>
   </section>
 
-  <section class="card" aria-labelledby="linhas-importacao">
+  <section class="card" id="linhas-secao" aria-labelledby="linhas-importacao">
     <div class="card-head">
       <div>
         <h2 class="card-title" id="linhas-importacao">{% if only_errors %}Linhas com erro{% else %}Linhas do arquivo{% endif %} <span class="count">{{ page.paginator.count }}</span></h2>
       </div>
-      {% if only_errors %}
-        <a class="link" href="{{ detail_url }}">Mostrar todas as linhas</a>
-      {% elif summary.errors %}
-        <a class="link" href="{{ detail_url }}?linhas=erros">Mostrar só as linhas com erro</a>
+      {% if row_filter.fields.linhas.choices|length > 1 %}
+        <form class="filters row-filter" method="get" action="{{ detail_url }}" role="search" hx-get="{{ detail_url }}" hx-target="#linhas-secao" hx-select="#linhas-secao" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=linhas]">
+          <div>
+            <label class="sr-only" id="{{ row_filter.linhas.auto_id }}_rotulo" for="{{ row_filter.linhas.id_for_label }}">Mostrar</label>
+            {% include "ui/components/select.html" with field=row_filter.linhas %}
+          </div>
+          <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Filtrar</button></noscript>
+        </form>
       {% endif %}
     </div>
-    {% if row_filters %}
-      <nav class="row-filters" aria-label="Recortes das linhas">
-        {% if chosen_filter %}<a class="link" href="{{ detail_url }}">Todas as linhas</a>{% else %}<span aria-current="true">Todas as linhas</span>{% endif %}
-        {% for filter in row_filters %}
-          {% if chosen_filter == filter.slug %}
-            <span aria-current="true">{{ filter.label }} ({{ filter.total }})</span>
-          {% else %}
-            <a class="link" href="{{ filter.url }}">{{ filter.label }} ({{ filter.total }})</a>
-          {% endif %}
-        {% endfor %}
-      </nav>
-    {% endif %}
     <div class="table-scroll" tabindex="0" role="region" aria-label="Linhas da importação">
       <table class="data-table">
       <thead>

@@ -1130,6 +1130,13 @@
     }
   }
 
+  .row-filter {
+    & .select-wrap,
+    & .select {
+      width: calc(var(--spacing-16) * 4);
+    }
+  }
+
   .filter-bar {
     display: grid;
     gap: var(--spacing-3);
@@ -1553,20 +1560,6 @@
         font-size: var(--text-sm);
         line-height: var(--text-sm--line-height);
       }
-    }
-  }
-
-  .row-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-2) var(--spacing-4);
-    padding: 0 var(--spacing-4) var(--spacing-4);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
-
-    @variant lg {
-      padding-inline: var(--spacing-6);
     }
   }
 

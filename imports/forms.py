@@ -47,3 +47,13 @@ class ImportUploadForm(forms.Form):
             row.values.update(own_values)
         cleaned['rows'] = rows
         return cleaned
+
+
+class RowFilterForm(forms.Form):
+    """Recorte das linhas da prévia, escolhido num select e recebido pela URL."""
+
+    linhas = forms.ChoiceField(label='Mostrar', required=False, widget=forms.Select(attrs={'class': 'input'}))
+
+    def __init__(self, *args, choices=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['linhas'].choices = choices

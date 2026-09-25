@@ -1188,6 +1188,49 @@
     line-height: var(--text-sm--line-height);
   }
 
+  .timetable-range {
+    margin-top: var(--spacing-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timetable-notice {
+    padding: 0 var(--spacing-6) var(--spacing-4);
+  }
+
+  .timetable-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+
+    & [aria-disabled="true"] {
+      border-color: var(--color-divider);
+      background: var(--color-page);
+      color: var(--color-text-muted);
+      cursor: default;
+    }
+  }
+
+  .timetable-date {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: var(--font-weight-normal);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timetable-outside {
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--color-page);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    vertical-align: top;
+  }
+
   .timetable-occupation {
     color: var(--color-text-muted);
 

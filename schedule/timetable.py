@@ -3,10 +3,15 @@
 Os templates recebem só `Week`, sem referência a `Allocation`. A leitura é feita em uma
 quantidade fixa de consultas e nada é gravado (D15 e D16 da Change
 visualizar-grade-do-ensalamento).
+
+Com o período do semestre definido, a semana é datada e montada das ocorrências calculadas
+em `schedule.occupancy`; sem ele, continua sendo a semana típica (D7 e D9 da Change
+visualizar-ocupacao-por-semana-e-mes).
 """
 
 import re
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from schedule.models import Allocation, Semester, Space, Stage, TimeSlot, Weekday
 
@@ -78,15 +83,26 @@ class Cell:
     end: object
     span: int = 1
     is_continued = False
+    is_outside = False
 
 
 class Continued:
     """Faixa coberta pelo bloco de uma faixa anterior do mesmo dia."""
 
     is_continued = True
+    is_outside = False
 
 
 CONTINUED = Continued()
+
+
+@dataclass
+class Outside:
+    """Dia fora do período do semestre, num bloco que cobre todas as faixas."""
+
+    span: int
+    is_continued = False
+    is_outside = True
 
 
 @dataclass
@@ -95,10 +111,17 @@ class Day:
     label: str
     is_today: bool
     cells: list
+    date: object = None
+    in_period: bool = True
+    available: int = 0
+
+    @property
+    def full_label(self):
+        return Weekday(self.weekday).label
 
     @property
     def has_activity(self):
-        return any(self.cells)
+        return any(cell and not cell.is_outside for cell in self.cells)
 
 
 @dataclass
@@ -108,6 +131,12 @@ class Row:
     start: object
     end: object
     cells: list
+    days: list = field(default_factory=list)
+
+    @property
+    def day_cells(self):
+        """Cada dia com a sua célula nesta faixa, para o nome acessível da faixa disponível."""
+        return list(zip(self.days, self.cells))
 
 
 @dataclass
@@ -118,6 +147,14 @@ class Week:
     days: list = field(default_factory=list)
     occupied: int = 0
     available: int = 0
+    start: object = None
+    end: object = None
+    previous: object = None
+    following: object = None
+
+    @property
+    def is_dated(self):
+        return self.start is not None
 
     @property
     def has_activities(self):
@@ -155,21 +192,43 @@ def build_day(slots, by_slot):
     return cells
 
 
-def build_week(slots, by_day_slot, today):
-    """Semana com as faixas nas linhas e os dias de segunda a sexta nas colunas."""
+def build_week(slots, by_day_slot, today, start=None, semester=None):
+    """Semana com as faixas nas linhas e os dias de segunda a sexta nas colunas.
+
+    Sem `start`, é a semana típica, com o dia atual pelo dia da semana. Com `start`, a
+    segunda-feira da semana, cada dia tem a data, "Hoje" é a data de hoje e o dia fora do
+    período do semestre não tem células nem entra na contagem.
+    """
     today_code = weekday_of(today)
     days = []
-    for weekday in WEEKDAYS:
+    for index, weekday in enumerate(WEEKDAYS):
+        day_date = start + timedelta(days=index) if start else None
+        in_period = semester.contains(day_date) if start else True
         by_slot = {slot: entries for (day, slot), entries in by_day_slot.items() if day == weekday}
+        if in_period:
+            cells = build_day(slots, by_slot)
+        else:
+            cells = [Outside(span=len(slots))] + [CONTINUED] * (len(slots) - 1) if slots else []
         days.append(Day(
             weekday=weekday,
             label=Weekday(weekday).label.split('-')[0],
-            is_today=weekday == today_code,
-            cells=build_day(slots, by_slot),
+            is_today=day_date == today if start else weekday == today_code,
+            cells=cells,
+            date=day_date,
+            in_period=in_period,
+            available=len(slots) - len(by_slot) if in_period else 0,
         ))
-    rows = [Row(start=slot[0], end=slot[1], cells=[day.cells[index] for day in days]) for index, slot in enumerate(slots)]
-    occupied = len(by_day_slot)
-    return Week(rows=rows, days=days, occupied=occupied, available=len(slots) * len(WEEKDAYS) - occupied)
+    rows = [Row(start=slot[0], end=slot[1], cells=[day.cells[index] for day in days], days=days) for index, slot in enumerate(slots)]
+    counted_days = {day.weekday for day in days if day.in_period}
+    occupied = len([key for key in by_day_slot if key[0] in counted_days])
+    return Week(
+        rows=rows,
+        days=days,
+        occupied=occupied,
+        available=len(slots) * len(counted_days) - occupied,
+        start=start,
+        end=start + timedelta(days=len(WEEKDAYS) - 1) if start else None,
+    )
 
 
 def imported_semesters():
@@ -184,17 +243,18 @@ def spaces_of(semester):
     return sorted(Space.objects.filter(allocations__semester=semester).distinct(), key=natural_key)
 
 
-def space_week(semester, space, today):
-    """Grade da semana da sala no semestre, a partir das alocações confirmadas.
-
-    As linhas são as faixas com aula no semestre, iguais para toda sala, para que duas
-    salas possam ser comparadas.
-    """
-    if semester is None or space is None:
-        return Week()
-    slots = sorted(set(
+def semester_slots(semester):
+    """Faixas com aula no semestre, iguais para toda sala, para que duas salas possam ser comparadas."""
+    return sorted(set(
         TimeSlot.objects.filter(semester=semester, allocations__isnull=False).values_list('start_time', 'end_time'),
     ))
+
+
+def space_week(semester, space, today):
+    """Semana típica da sala no semestre, a partir das alocações confirmadas, sem datas."""
+    if semester is None or space is None:
+        return Week()
+    slots = semester_slots(semester)
     allocations = (
         Allocation.objects.filter(semester=semester, space=space)
         .select_related('subject', 'time_slot', 'class_group__course')
@@ -211,3 +271,41 @@ def space_week(semester, space, today):
             stage=allocation.class_group.course.stage,
         ))
     return build_week(slots, by_day_slot, today)
+
+
+def monday_of(day):
+    return day - timedelta(days=day.weekday())
+
+
+def week_start(semester, reference, today):
+    """Segunda-feira da semana mostrada, levada para dentro do período do semestre.
+
+    A referência é a data da URL ou, sem ela, hoje. Antes do período vale a primeira
+    semana dele; depois, a última (D7).
+    """
+    day = reference or today
+    day = min(max(day, semester.start_date), semester.end_date)
+    return monday_of(day)
+
+
+def dated_space_week(semester, space, start, today, occurrences):
+    """Semana datada da sala, a partir das ocorrências do intervalo, com as semanas vizinhas.
+
+    A semana vizinha só é oferecida quando tem algum dia útil no período do semestre.
+    """
+    if semester is None or space is None:
+        return Week()
+    slots = semester_slots(semester)
+    known = set(slots)
+    by_day_slot = {}
+    for occurrence in occurrences:
+        slot = (occurrence.start, occurrence.end)
+        if slot not in known or occurrence.date.weekday() >= len(WEEKDAYS):
+            continue
+        by_day_slot.setdefault((WEEKDAYS[occurrence.date.weekday()], slot), []).append(occurrence.entry)
+    week = build_week(slots, by_day_slot, today, start=start, semester=semester)
+    previous, following = start - timedelta(days=7), start + timedelta(days=7)
+    last_weekday = timedelta(days=len(WEEKDAYS) - 1)
+    week.previous = previous if previous + last_weekday >= semester.start_date else None
+    week.following = following if following <= semester.end_date else None
+    return week

@@ -24,12 +24,12 @@
 
 ## 4. Visão semanal com datas
 
-- [ ] 4.1 Levar `Week` e `Day` para datas, com "Fora do semestre", o estado da célula e "Hoje" pela data, montados das ocorrências (D7, D9)
-- [ ] 4.2 Acrescentar `visao` e `semana` ao `GridFilterForm`, com o padrão e o valor inválido caindo nele
-- [ ] 4.3 Manter a semana típica sem datas quando o semestre não tem período, com o aviso
-- [ ] 4.4 Atualizar `grid.html` e a célula: datas nos dias, intervalo no título, navegação por links com htmx e sem JavaScript, e a célula disponível vazia com o nome acessível, e o total de disponíveis no título do dia abaixo de 640 px
-- [ ] 4.5 Testar a semana padrão dentro, antes e depois do período, a navegação, a semana parcial, a semana inválida, as contagens e a faixa disponível
-- [ ] 4.6 Commit
+- [x] 4.1 Levar `Week` e `Day` para datas, com "Fora do semestre", o estado da célula e "Hoje" pela data, montados das ocorrências (D7, D9)
+- [x] 4.2 Acrescentar `visao` e `semana` ao `GridFilterForm`, com o padrão e o valor inválido caindo nele
+- [x] 4.3 Manter a semana típica sem datas quando o semestre não tem período, com o aviso
+- [x] 4.4 Atualizar `grid.html` e a célula: datas nos dias, intervalo no título, navegação por links com htmx e sem JavaScript, e a célula disponível vazia com o nome acessível, e o total de disponíveis no título do dia abaixo de 640 px
+- [x] 4.5 Testar a semana padrão dentro, antes e depois do período, a navegação, a semana parcial, a semana inválida, as contagens e a faixa disponível
+- [x] 4.6 Commit
 
 ## 5. Visão mensal
 

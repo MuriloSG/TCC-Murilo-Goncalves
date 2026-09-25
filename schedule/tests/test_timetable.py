@@ -1,11 +1,21 @@
 """Grade da semana de uma sala, montada das alocações confirmadas de um semestre."""
 
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.test import TestCase
 
 from schedule.models import Allocation, ClassGroup, Course, Semester, Space, Stage, Subject, Teacher, TimeSlot, Weekday
-from schedule.timetable import CONTINUED, current_semester_code, group_label, imported_semesters, space_week, spaces_of
+from schedule.occupancy import occupancy
+from schedule.timetable import (
+    CONTINUED,
+    current_semester_code,
+    dated_space_week,
+    group_label,
+    imported_semesters,
+    space_week,
+    spaces_of,
+    week_start,
+)
 
 FRIDAY = date(2026, 9, 25)
 SATURDAY = date(2026, 9, 26)
@@ -107,3 +117,59 @@ class SpaceWeekTests(TestCase):
     def test_fixed_number_of_queries(self):
         with self.assertNumQueries(3):
             self.week()
+
+
+class DatedWeekTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.semester, _ = Semester.objects.resolve('2026/2')
+        cls.semester.define_period(date(2026, 8, 5), date(2026, 12, 18))
+        course, _ = Course.objects.resolve('ENGENHARIA DE ALIMENTOS', stage=Stage.UNDERGRADUATE)
+        group, _ = ClassGroup.objects.resolve(course, '2º PERÍODO')
+        allocate(cls.semester, group, 'Cálculo III', Weekday.MONDAY, time(19, 0), time(19, 50), '1/13', ['Viviane'])
+        allocate(cls.semester, group, 'Cálculo III', Weekday.MONDAY, time(19, 50), time(20, 40), '1/13', ['Viviane'])
+        allocate(cls.semester, group, 'Física', Weekday.WEDNESDAY, time(21, 0), time(21, 50), '1/4')
+        cls.room = Space.objects.get(name='1/13')
+
+    def week(self, start, today=date(2026, 10, 7)):
+        occurrences = occupancy(self.room, start, start + timedelta(days=4))
+        return dated_space_week(self.semester, self.room, start, today, occurrences)
+
+    def test_default_week_is_the_current_one_inside_the_period(self):
+        self.assertEqual(week_start(self.semester, None, date(2026, 10, 7)), date(2026, 10, 5))
+
+    def test_before_and_after_the_period_the_week_is_the_first_and_the_last(self):
+        self.assertEqual(week_start(self.semester, None, date(2026, 7, 1)), date(2026, 8, 3))
+        self.assertEqual(week_start(self.semester, None, date(2027, 1, 10)), date(2026, 12, 14))
+        self.assertEqual(week_start(self.semester, date(2026, 10, 14), date(2026, 7, 1)), date(2026, 10, 12))
+
+    def test_days_have_dates_and_today_is_the_date(self):
+        week = self.week(date(2026, 10, 5))
+        self.assertEqual([day.date.day for day in week.days], [5, 6, 7, 8, 9])
+        self.assertEqual([day.is_today for day in week.days], [False, False, True, False, False])
+        self.assertEqual((week.start, week.end), (date(2026, 10, 5), date(2026, 10, 9)))
+
+    def test_occurrences_fill_the_cells_as_one_block(self):
+        monday = self.week(date(2026, 10, 5)).days[0]
+        block = next(cell for cell in monday.cells if cell)
+        self.assertEqual((block.span, block.entries[0].subject), (2, 'Cálculo III'))
+
+    def test_available_slots_are_counted(self):
+        week = self.week(date(2026, 10, 5))
+        self.assertEqual((week.occupied, week.available), (2, 13))
+        self.assertEqual([day.available for day in week.days], [1, 3, 3, 3, 3])
+
+    def test_days_outside_the_period(self):
+        week = self.week(date(2026, 8, 3))
+        self.assertEqual([day.in_period for day in week.days], [False, False, True, True, True])
+        self.assertTrue(week.days[0].cells[0].is_outside)
+        self.assertEqual(week.days[0].cells[0].span, 3)
+        self.assertEqual((week.occupied, week.available), (0, 9))
+
+    def test_neighbour_weeks_stay_inside_the_period(self):
+        first = self.week(date(2026, 8, 3))
+        self.assertIsNone(first.previous)
+        self.assertEqual(first.following, date(2026, 8, 10))
+        last = self.week(date(2026, 12, 14))
+        self.assertEqual(last.previous, date(2026, 12, 7))
+        self.assertIsNone(last.following)

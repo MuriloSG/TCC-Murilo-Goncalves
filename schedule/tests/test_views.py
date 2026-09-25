@@ -355,6 +355,84 @@ class GridScreenTests(ScreenTestCase):
         self.assertEqual((Allocation.objects.count(), Space.objects.count(), Semester.objects.count()), before)
 
 
+class DatedGridScreenTests(ScreenTestCase):
+    def setUp(self):
+        super().setUp()
+        self.upload(semester='2026/2')
+        self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
+        self.url = reverse('space_allocation_grid')
+        self.semester = Semester.objects.get(code='2026/2')
+
+    def grid(self, query='', today=date(2026, 10, 7)):
+        with mock.patch('schedule.views.timezone.localdate', return_value=today):
+            return self.client.get(self.url + query)
+
+    def define_period(self):
+        self.semester.define_period(date(2026, 8, 5), date(2026, 12, 18))
+
+    def test_without_period_the_typical_week_has_the_notice(self):
+        response = self.grid()
+        self.assertContains(response, 'Período do semestre 2026/2 não definido.')
+        self.assertFalse(response.context['week'].is_dated)
+        self.assertNotContains(response, 'Próxima semana')
+
+    def test_current_semester_without_import_has_no_notice(self):
+        self.assertNotContains(self.grid(today=date(2027, 3, 1)), 'não definido')
+
+    def test_default_week_with_the_period(self):
+        self.define_period()
+        response = self.grid()
+        self.assertNotContains(response, 'não definido')
+        self.assertContains(response, '05/10/2026 a 09/10/2026')
+        self.assertContains(response, 'QUÍMICA ORGÂNICA')
+        self.assertContains(response, '2 faixas ocupadas e 18 disponíveis na semana.')
+
+    def test_navigation_to_the_next_week(self):
+        self.define_period()
+        response = self.grid()
+        following = '?semestre=2026%2F2&amp;sala=1%2F13&amp;semana=2026-10-12'
+        self.assertContains(response, f'href="{self.url}{following}"')
+        response = self.grid('?semestre=2026/2&sala=1/13&semana=2026-10-12')
+        self.assertContains(response, '12/10/2026 a 16/10/2026')
+
+    def test_any_date_of_the_week_opens_it(self):
+        self.define_period()
+        self.assertContains(self.grid('?semana=2026-10-14'), '12/10/2026 a 16/10/2026')
+
+    def test_invalid_week_falls_back_to_the_default(self):
+        self.define_period()
+        for value in ['abc', '2026-13-01', '']:
+            with self.subTest(value=value):
+                response = self.grid(f'?semana={value}')
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, '05/10/2026 a 09/10/2026')
+
+    def test_partial_first_week(self):
+        self.define_period()
+        response = self.grid('?semana=2026-08-03')
+        self.assertContains(response, 'Fora do semestre')
+        self.assertContains(response, '0 faixas ocupadas e 12 disponíveis na semana.')
+        self.assertContains(response, '<span class="btn-secondary" aria-disabled="true">', count=1)
+
+    def test_today_is_the_date(self):
+        self.define_period()
+        self.assertContains(self.grid(), '<span class="timetable-today">Hoje</span>Quarta', html=False)
+        self.assertNotContains(self.grid('?semana=2026-10-12'), '<span class="timetable-today">Hoje</span>')
+
+    def test_available_slot_is_empty_with_its_accessible_name(self):
+        self.define_period()
+        response = self.grid()
+        self.assertContains(response, '<span class="sr-only">Segunda-feira, 05/10/2026, das 09:20 às 10:10, disponível</span>', html=False)
+        self.assertNotContains(response, '>Disponível<')
+
+    def test_grid_changes_nothing(self):
+        self.define_period()
+        before = (Allocation.objects.count(), Semester.objects.get(code='2026/2').start_date)
+        self.grid()
+        self.grid('?semana=2026-08-03')
+        self.assertEqual((Allocation.objects.count(), Semester.objects.get(code='2026/2').start_date), before)
+
+
 class ClashConfirmationTests(ScreenTestCase):
     def test_clash_does_not_block_the_confirmation(self):
         clash = {

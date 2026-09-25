@@ -26,6 +26,7 @@
     <div class="card-head">
       <div>
         <h2 class="card-title" id="grade-titulo">Semana da sala{% if space %} {{ space.name }}{% endif %}</h2>
+        {% if week.is_dated %}<p class="timetable-range">{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}</p>{% endif %}
       </div>
       <form class="filters" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=semestre], change from:select[name=sala]">
         <div>
@@ -38,11 +39,32 @@
             {% include "ui/components/select.html" with field=filter_form.sala %}
           </div>
         {% endif %}
+        {{ filter_form.semana }}
         <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
       </form>
     </div>
-    {% if week.has_activities %}
+    {% if period_missing %}
+      <div class="timetable-notice">
+        <div class="alert tone-info" role="status">{% icon "info" %}<p>Período do semestre {{ semester_code }} não definido.</p></div>
+      </div>
+    {% endif %}
+    {% if week.rows %}
       <div class="timetable-status">
+        {% if week.is_dated %}
+          <nav class="timetable-nav" aria-label="Semanas">
+            {% if previous_week_url %}
+              <a class="btn-secondary" href="{{ previous_week_url }}" hx-get="{{ previous_week_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}Semana anterior</a>
+            {% else %}
+              <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}Semana anterior</span>
+            {% endif %}
+            <a class="btn-secondary" href="{{ today_week_url }}" hx-get="{{ today_week_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
+            {% if following_week_url %}
+              <a class="btn-secondary" href="{{ following_week_url }}" hx-get="{{ following_week_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Próxima semana{% icon "chevron-right" %}</a>
+            {% else %}
+              <span class="btn-secondary" aria-disabled="true">Próxima semana{% icon "chevron-right" %}</span>
+            {% endif %}
+          </nav>
+        {% endif %}
         <p class="timetable-occupation">{{ occupation_text }}</p>
       </div>
       <div class="timetable-scroll" tabindex="0" role="region" aria-label="Semana da sala {{ space.name }}">
@@ -52,7 +74,7 @@
             <tr>
               <th scope="col" class="timetable-corner">Horário</th>
               {% for day in week.days %}
-                <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}</th>
+                <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</th>
               {% endfor %}
             </tr>
           </thead>
@@ -60,12 +82,14 @@
             {% for row in week.rows %}
               <tr>
                 <th scope="row" class="timetable-time"><span>{{ row.start|time:"H:i" }}</span><span>{{ row.end|time:"H:i" }}</span></th>
-                {% for cell in row.cells %}
+                {% for day, cell in row.day_cells %}
                   {% if cell.is_continued %}
+                  {% elif cell.is_outside %}
+                    <td class="timetable-outside" rowspan="{{ cell.span }}">Fora do semestre</td>
                   {% elif cell %}
-                    <td class="timetable-slot{% if forloop.counter0 == week.today_index %} is-today{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" %}</td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" %}</td>
                   {% else %}
-                    <td class="timetable-slot{% if forloop.counter0 == week.today_index %} is-today{% endif %}"><span class="sr-only">Disponível</span></td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span></td>
                   {% endif %}
                 {% endfor %}
               </tr>
@@ -75,16 +99,22 @@
       </div>
       <div class="timetable-days">
         {% for day in week.days %}
-          <section class="timetable-daylist" aria-label="{{ day.label }}">
-            <h3>{{ day.label }}{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}</h3>
-            <ol>
-              {% for cell in day.cells %}
-                {% if cell and not cell.is_continued %}
-                  <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span>{% include "schedule/partials/timetable_cell.html" %}</li>
-                {% endif %}
-              {% endfor %}
-            </ol>
-            {% if not day.has_activity %}<p class="timetable-free">Sala disponível o dia todo.</p>{% endif %}
+          <section class="timetable-daylist" aria-label="{{ day.full_label }}{% if day.date %}, {{ day.date|date:"SHORT_DATE_FORMAT" }}{% endif %}">
+            <h3>{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}</h3>
+            {% if not day.in_period %}
+              <p class="timetable-free">Fora do semestre</p>
+            {% elif day.has_activity %}
+              <ol>
+                {% for cell in day.cells %}
+                  {% if cell and not cell.is_continued %}
+                    <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span>{% include "schedule/partials/timetable_cell.html" %}</li>
+                  {% endif %}
+                {% endfor %}
+              </ol>
+              {% if day.available %}<p class="timetable-free">{% if day.available == 1 %}1 faixa disponível{% else %}{{ day.available }} faixas disponíveis{% endif %}</p>{% endif %}
+            {% else %}
+              <p class="timetable-free">Sala disponível o dia todo.</p>
+            {% endif %}
           </section>
         {% endfor %}
       </div>

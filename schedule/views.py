@@ -7,6 +7,9 @@ A importação não tem modelo para baixar, porque a planilha é a do campus e n
 pelo sistema.
 """
 
+from datetime import date, timedelta
+from urllib.parse import urlencode
+
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import TemplateView
@@ -24,7 +27,15 @@ from imports.views import (
 )
 from schedule.forms import GridFilterForm
 from schedule.imports import SpaceAllocationImport, concluded_message
-from schedule.timetable import current_semester_code, imported_semesters, space_week, spaces_of
+from schedule.occupancy import occupancy
+from schedule.timetable import (
+    current_semester_code,
+    dated_space_week,
+    imported_semesters,
+    space_week,
+    spaces_of,
+    week_start,
+)
 
 SPACE_ALLOCATION_IMPORT_SCREENS = ImportScreens(
     definition=SpaceAllocationImport(),
@@ -49,6 +60,14 @@ def occupation_text(week):
     return f'{counted(week.occupied, "faixa ocupada", "faixas ocupadas")} e {counted(week.available, "disponível", "disponíveis")} na semana.'
 
 
+def parse_date(value):
+    """Data no formato AAAA-MM-DD da URL, ou None quando não serve."""
+    try:
+        return date.fromisoformat(value or '')
+    except ValueError:
+        return None
+
+
 class SpaceAllocationImportListView(ImportListView):
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
@@ -66,7 +85,9 @@ class SpaceAllocationGridView(TemplateView):
 
     O semestre padrão é o atual, calculado pela data, e as opções são ele e os semestres
     com alocação confirmada. A sala padrão é a primeira do semestre, pelo nome, e um valor que não
-    existe na lista cai no padrão, sem erro.
+    existe na lista cai no padrão, sem erro. Com o período do semestre, a semana é datada e
+    navegável pelo parâmetro `semana`; sem ele, é a semana típica com o aviso (D3 e D7 da
+    Change visualizar-ocupacao-por-semana-e-mes).
     """
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
@@ -84,13 +105,35 @@ class SpaceAllocationGridView(TemplateView):
         spaces = spaces_of(semester)
         chosen = (self.request.GET.get('sala') or '').casefold()
         space = next((option for option in spaces if option.name.casefold() == chosen), spaces[0] if spaces else None)
-        week = space_week(semester, space, today)
+        reference = parse_date(self.request.GET.get('semana'))
+        if semester is not None and semester.has_period:
+            start = week_start(semester, reference, today)
+            occurrences = occupancy(space, start, start + timedelta(days=4)) if space else []
+            week = dated_space_week(semester, space, start, today, occurrences)
+        else:
+            week = space_week(semester, space, today)
+        grid_url = reverse('space_allocation_grid')
+
+        def week_url(day):
+            query = {'semestre': code, 'sala': space.name if space else ''}
+            if day is not None:
+                query['semana'] = day.isoformat()
+            return f'{grid_url}?{urlencode(query)}'
+
         context.update(
             week=week,
             semester_code=code,
             space=space,
-            filter_form=GridFilterForm({'semestre': code, 'sala': space.name if space else ''}, semesters=codes, spaces=spaces),
-            grid_url=reverse('space_allocation_grid'),
+            period_missing=semester is not None and not semester.has_period,
+            filter_form=GridFilterForm(
+                {'semestre': code, 'sala': space.name if space else '', 'semana': week.start.isoformat() if week.start else ''},
+                semesters=codes,
+                spaces=spaces,
+            ),
+            grid_url=grid_url,
+            previous_week_url=week_url(week.previous) if week.previous else None,
+            following_week_url=week_url(week.following) if week.following else None,
+            today_week_url=week_url(None),
             import_list_url=SPACE_ALLOCATION_IMPORT_SCREENS.url('list'),
             occupation_text=occupation_text(week),
         )

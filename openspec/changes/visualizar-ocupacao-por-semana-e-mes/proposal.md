@@ -10,11 +10,11 @@ A Grade continua sendo uma consulta. Ela não cria, não altera e não exclui oc
 
 ## What Changes
 
-- **Período do semestre.** `Semester` ganha `start_date` e `end_date`, opcionais. Um modal "Definir período", aberto pela Grade para quem tem `ENSALAMENTO.IMPORTAR`, grava o período, com auditoria. Sem período, a Grade continua mostrando a semana típica de hoje (D2, D3).
+- **Período do semestre, informado na importação.** `Semester` ganha `start_date` e `end_date`, opcionais. O envio da importação de ensalamento ganha "Início do semestre" e "Fim do semestre", aplicados ao semestre na confirmação e auditados no resumo; a reimportação com datas atualiza o período, e sem datas o preserva. A Grade só consome o período; sem ele, mostra a semana típica de hoje com um aviso (D2, D3).
 - **Ocorrências calculadas, nunca gravadas.** Um módulo novo, `schedule/occupancy.py`, expande cada alocação nas datas do intervalo consultado que caem no dia da semana dela e dentro do período do semestre. Nenhuma ocorrência é gravada no banco. O custo da consulta não depende do tamanho do intervalo (D4, D5).
 - **Fonte de ocupação.** O cálculo recebe uma lista de fontes. Esta Change tem uma só, o ensalamento (`AllocationSource`). A reserva futura será outra fonte, e a Grade vai apresentá-la sem mudança na estrutura (D6, D12).
 - **Visão semanal com datas.** A semana da sala passa a ter datas nos dias, navegação para a semana anterior e a seguinte, "Hoje" pela data, e os dias fora do período do semestre marcados como tal (D7).
-- **Visão mensal como mapa de ocupação.** O mesmo cálculo mostra o mês da sala de segunda a sexta, com cada dia indicando a ocupação e levando à semana dele. Não é calendário genérico nem tela de reserva (D8).
+- **Visão mensal como a Grade expandida.** A mesma Grade da semana, com as faixas na lateral e uma coluna por dia útil do mês, pelo mesmo cálculo e com rolagem horizontal. Não é calendário genérico nem tela de reserva (D8).
 - **Faixa disponível sem poluição visual.** A célula sem ocupação continua visualmente vazia, como na planilha, e informa "disponível" à tecnologia assistiva. Ela se distingue de "Fora do semestre" e do aviso de semestre sem período (D9).
 - **Arquitetura documentada para a alteração da recorrência, as exceções e as reservas**, sem implementar nenhuma delas: versões da alocação por vigência, exceção por data e fonte de reservas (D10, D11, D12).
 
@@ -40,8 +40,8 @@ Nenhuma.
 
 ## Impact
 
-- **`schedule/`**: `models.py` (período do `Semester` e a operação que o define), uma migration, `occupancy.py` (novo: `Occurrence`, `AllocationSource`, `occupancy`), `timetable.py` (a semana e o mês a partir das ocorrências), `forms.py` (filtros de visão, semana e mês; formulário do período), `views.py` e `urls.py` (a Grade com as duas visões e o modal do período), `templates/schedule/` e `tests/`.
-- **`audit/`**: o recurso do semestre no catálogo.
+- **`schedule/`**: `models.py` (período do `Semester` e a operação que o define), uma migration, `occupancy.py` (novo: `Occurrence`, `AllocationSource`, `occupancy`), `timetable.py` (a semana e o mês a partir das ocorrências), `forms.py` (filtros de visão, semana e mês), `views.py` (a Grade com as duas visões), `imports.py` (os campos de início e fim do semestre no envio), `templates/schedule/` e `tests/`.
+- **`imports/`**: os ganchos `clean_upload` e `upload_display` das importações específicas, para validar campos próprios juntos e exibir datas formatadas.
 - **`ui/`**: estilos do mês, da navegação entre períodos e da célula disponível no `app.css`, e ícones do Lucide que faltarem.
 - **Sem impacto**: `imports/`, `schedule/imports.py`, `schedule/sheets.py`, `schedule/activities.py`, a identidade e as restrições de `Allocation`, as permissões e o menu.
 

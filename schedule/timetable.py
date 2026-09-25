@@ -17,6 +17,10 @@ from schedule.models import Allocation, Semester, Space, Stage, TimeSlot, Weekda
 
 SMALL_WORDS = {'a', 'as', 'o', 'os', 'e', 'em', 'de', 'do', 'da', 'dos', 'das', 'para'}
 
+SINGLE = 'single'
+JOINT = 'joint'
+CLASH = 'clash'
+
 WEEKDAYS = [Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY]
 
 
@@ -85,6 +89,22 @@ class Cell:
     is_continued = False
     is_outside = False
 
+    @property
+    def group_count(self):
+        return len({entry.group_label for entry in self.entries})
+
+    @property
+    def kind(self):
+        """Uma turma, turmas juntas ou choque (D13 da Change visualizar-grade-do-ensalamento).
+
+        Turmas juntas têm a mesma disciplina e os mesmos docentes; o resto é choque, que
+        só é mostrado. A classificação é das entradas da célula, e não um dado gravado.
+        """
+        if self.group_count <= 1:
+            return SINGLE
+        lessons = {(entry.subject.casefold(), frozenset(name.casefold() for name in entry.teachers)) for entry in self.entries}
+        return JOINT if len(lessons) == 1 else CLASH
+
 
 class Continued:
     """Faixa coberta pelo bloco de uma faixa anterior do mesmo dia."""
@@ -114,6 +134,12 @@ class Day:
     date: object = None
     in_period: bool = True
     available: int = 0
+    is_week_start: bool = False
+
+    @property
+    def short_label(self):
+        """Dia da semana abreviado do cabeçalho do mês: `Seg`, mostrado em caixa alta pelo CSS."""
+        return self.label[:3]
 
     @property
     def full_label(self):
@@ -192,42 +218,48 @@ def build_day(slots, by_slot):
     return cells
 
 
-def build_week(slots, by_day_slot, today, start=None, semester=None):
-    """Semana com as faixas nas linhas e os dias de segunda a sexta nas colunas.
+def build_week(slots, by_day_slot, today, dates=None, semester=None):
+    """Grade com as faixas nas linhas e os dias nas colunas.
 
-    Sem `start`, é a semana típica, com o dia atual pelo dia da semana. Com `start`, a
-    segunda-feira da semana, cada dia tem a data, "Hoje" é a data de hoje e o dia fora do
-    período do semestre não tem células nem entra na contagem.
+    Sem `dates`, é a semana típica, de segunda a sexta, com as entradas indexadas pelo dia
+    da semana e o dia atual pelo dia da semana. Com `dates`, os dias úteis de uma semana ou
+    de um mês, com as entradas indexadas pela data: "Hoje" é a data de hoje e o dia fora do
+    período do semestre não tem células nem entra na contagem. A semana e o mês são a mesma
+    estrutura, com listas de datas diferentes (D8 da Change visualizar-ocupacao-por-semana-e-mes).
     """
     today_code = weekday_of(today)
+    columns = [(weekday, weekday, None) for weekday in WEEKDAYS] if dates is None else [
+        (WEEKDAYS[day.weekday()], day, day) for day in dates
+    ]
     days = []
-    for index, weekday in enumerate(WEEKDAYS):
-        day_date = start + timedelta(days=index) if start else None
-        in_period = semester.contains(day_date) if start else True
-        by_slot = {slot: entries for (day, slot), entries in by_day_slot.items() if day == weekday}
+    counted, occupied = 0, 0
+    for position, (weekday, key, day_date) in enumerate(columns):
+        in_period = semester.contains(day_date) if day_date else True
+        by_slot = {slot: entries for (day, slot), entries in by_day_slot.items() if day == key}
         if in_period:
             cells = build_day(slots, by_slot)
+            counted += 1
+            occupied += len(by_slot)
         else:
             cells = [Outside(span=len(slots))] + [CONTINUED] * (len(slots) - 1) if slots else []
         days.append(Day(
             weekday=weekday,
             label=Weekday(weekday).label.split('-')[0],
-            is_today=day_date == today if start else weekday == today_code,
+            is_today=day_date == today if day_date else weekday == today_code,
             cells=cells,
             date=day_date,
             in_period=in_period,
             available=len(slots) - len(by_slot) if in_period else 0,
+            is_week_start=bool(position) and weekday == WEEKDAYS[0],
         ))
     rows = [Row(start=slot[0], end=slot[1], cells=[day.cells[index] for day in days], days=days) for index, slot in enumerate(slots)]
-    counted_days = {day.weekday for day in days if day.in_period}
-    occupied = len([key for key in by_day_slot if key[0] in counted_days])
     return Week(
         rows=rows,
         days=days,
         occupied=occupied,
-        available=len(slots) * len(counted_days) - occupied,
-        start=start,
-        end=start + timedelta(days=len(WEEKDAYS) - 1) if start else None,
+        available=len(slots) * counted - occupied,
+        start=dates[0] if dates else None,
+        end=dates[-1] if dates else None,
     )
 
 
@@ -277,35 +309,86 @@ def monday_of(day):
     return day - timedelta(days=day.weekday())
 
 
+def clamp(semester, reference, today):
+    """Data de referência levada para dentro do período do semestre (D7, D8).
+
+    A referência é a data da URL ou, sem ela, hoje. Antes do período vale o primeiro dia
+    dele; depois, o último.
+    """
+    return min(max(reference or today, semester.start_date), semester.end_date)
+
+
 def week_start(semester, reference, today):
-    """Segunda-feira da semana mostrada, levada para dentro do período do semestre.
-
-    A referência é a data da URL ou, sem ela, hoje. Antes do período vale a primeira
-    semana dele; depois, a última (D7).
-    """
-    day = reference or today
-    day = min(max(day, semester.start_date), semester.end_date)
-    return monday_of(day)
+    """Segunda-feira da semana mostrada, dentro do período do semestre."""
+    return monday_of(clamp(semester, reference, today))
 
 
-def dated_space_week(semester, space, start, today, occurrences):
-    """Semana datada da sala, a partir das ocorrências do intervalo, com as semanas vizinhas.
+def month_start(semester, reference, today):
+    """Primeiro dia do mês mostrado, dentro do período do semestre."""
+    return clamp(semester, reference, today).replace(day=1)
 
-    A semana vizinha só é oferecida quando tem algum dia útil no período do semestre.
-    """
+
+def week_dates(start):
+    return [start + timedelta(days=index) for index in range(len(WEEKDAYS))]
+
+
+def month_dates(first):
+    """Dias úteis do mês, de segunda a sexta, porque o ensalamento não tem fim de semana."""
+    following = next_month(first)
+    return [day for day in dates_until(first, following) if day.weekday() < len(WEEKDAYS)]
+
+
+def dates_until(start, stop):
+    day = start
+    while day < stop:
+        yield day
+        day += timedelta(days=1)
+
+
+def next_month(first):
+    return (first.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+
+def previous_month(first):
+    return (first - timedelta(days=1)).replace(day=1)
+
+
+def dated_grid(semester, space, dates, today, occurrences):
+    """Grade datada da sala nas datas pedidas, a partir das ocorrências do intervalo."""
     if semester is None or space is None:
         return Week()
     slots = semester_slots(semester)
     known = set(slots)
+    wanted = set(dates)
     by_day_slot = {}
     for occurrence in occurrences:
         slot = (occurrence.start, occurrence.end)
-        if slot not in known or occurrence.date.weekday() >= len(WEEKDAYS):
-            continue
-        by_day_slot.setdefault((WEEKDAYS[occurrence.date.weekday()], slot), []).append(occurrence.entry)
-    week = build_week(slots, by_day_slot, today, start=start, semester=semester)
+        if slot in known and occurrence.date in wanted:
+            by_day_slot.setdefault((occurrence.date, slot), []).append(occurrence.entry)
+    return build_week(slots, by_day_slot, today, dates=dates, semester=semester)
+
+
+def dated_space_week(semester, space, start, today, occurrences):
+    """Semana datada da sala, com as semanas vizinhas que tocam o período do semestre."""
+    week = dated_grid(semester, space, week_dates(start), today, occurrences)
+    if semester is None or space is None:
+        return week
     previous, following = start - timedelta(days=7), start + timedelta(days=7)
     last_weekday = timedelta(days=len(WEEKDAYS) - 1)
     week.previous = previous if previous + last_weekday >= semester.start_date else None
     week.following = following if following <= semester.end_date else None
     return week
+
+
+def dated_space_month(semester, space, first, today, occurrences):
+    """Mês da sala: a mesma Grade da semana, com um dia útil do mês por coluna (D8).
+
+    Os meses vizinhos só são oferecidos quando tocam o período do semestre.
+    """
+    month = dated_grid(semester, space, month_dates(first), today, occurrences)
+    if semester is None or space is None:
+        return month
+    previous, following = previous_month(first), next_month(first)
+    month.previous = previous if next_month(previous) > semester.start_date else None
+    month.following = following if following <= semester.end_date else None
+    return month

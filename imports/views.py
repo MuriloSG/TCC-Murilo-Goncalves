@@ -239,7 +239,7 @@ def upload_values(definition, importation):
     if not definition.upload_fields:
         return []
     first = importation.rows.values_list('values', flat=True).first() or {}
-    return [(label, first.get(label, '')) for label in definition.upload_fields]
+    return [(label, definition.upload_display(label, first.get(label, ''))) for label in definition.upload_fields]
 
 
 def load_importation(screens, pk):
@@ -264,7 +264,7 @@ class ImportDetailView(DetailView):
         chosen = self.request.GET.get('linhas', '')
         only_errors = chosen == 'erros'
         numbers = line_numbers(self.request)
-        columns = [column.label for column in definition.columns]
+        columns = [column.label for column in definition.file_columns()]
         rows = importation.rows.all()
         if only_errors:
             rows = rows.exclude(errors=[])

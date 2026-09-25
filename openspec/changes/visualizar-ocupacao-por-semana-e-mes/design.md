@@ -61,21 +61,61 @@ Não se cria `Occurrence` no banco, nem uma linha por aula dada. Uma disciplina 
 
 ### D2. O semestre ganha período: `start_date` e `end_date`
 
-`Semester` ganha `start_date` e `end_date` (`DateField`, `null=True`), com uma `CheckConstraint` de início anterior ou igual ao fim. Os dois são preenchidos juntos ou nenhum dos dois.
+`Semester` ganha `start_date` e `end_date` (`DateField`, `null=True`), com uma `CheckConstraint` de início anterior ou igual ao fim. Os dois são preenchidos juntos ou nenhum dos dois. O semestre é o **único** lugar do período: a importação só o informa (D3), e não existe outra estrutura que o guarde.
 
-- **Opcionais**, porque os semestres existentes não têm período, a planilha não o traz (D16 da Change de importação) e a importação não muda nesta Change.
+- **Opcionais**, porque os semestres existentes não têm período e a planilha não o traz (D16 da Change de importação).
 - **Por que no semestre, e não na alocação:** toda aula do semestre vale do primeiro ao último dia letivo. Uma data por alocação repetiria o mesmo par em centenas de linhas. A vigência própria de uma alocação só aparece quando alguém muda a recorrência no meio do semestre (D10).
-- **Regra no model:** `Semester.define_period(start_date, end_date)` valida e grava numa transação, e recusa com `ValidationError` o início depois do fim e um período maior que 366 dias. O ano do período não precisa ser o do código, porque o calendário do campus pode atravessar o ano.
+- **Regra no model:** `Semester.define_period(start_date, end_date)` valida e grava, e recusa com `ValidationError` uma data sem a outra, o início depois do fim e um período maior que 366 dias. O ano do período não precisa ser o do código, porque o calendário do campus pode atravessar o ano. A operação devolve se o período mudou e **não grava auditoria própria**, porque quem a chama é a importação, que audita o resumo (D3).
 
-### D3. O período é definido por um modal aberto pela Grade
+### D3. O período é informado no envio da importação
 
-"Definir período" é uma ação de gestão pequena, e segue as convenções (seção 6): `ModalView` pelas classes base de `accounts/views.py`, rota `ensalamento/semestres/<pk>/periodo/` (pela chave, porque o código tem barra), `login_required` no `urls.py`, formulário com as duas datas e resposta `HttpResponseClientRedirect` para a Grade no mesmo semestre.
+*Revisto pelo autor em 25/09/2026.* A primeira versão desta Change definia o período por um modal "Definir período" aberto pela Grade. O autor decidiu que o período pertence ao momento em que o ensalamento do semestre entra no sistema, a importação, e que a Grade é só consulta. O modal, a rota `ensalamento/semestres/<pk>/periodo/`, o botão e o recurso `SEMESTRE` da auditoria saem.
 
-- **Permissão:** `ENSALAMENTO.IMPORTAR`, a de quem já administra o semestre ao importá-lo. Não se cria permissão nova.
-- **Auditoria:** registro `ALTERAR` do recurso `SEMESTRE` (novo no catálogo), com o código e o período anterior e o novo.
-- **Sem período:** a Grade mostra a semana típica de hoje, sem datas e sem navegação, com o aviso "Período do semestre 2026/2 não definido." e o botão "Definir período" para quem pode. A visão mensal fica indisponível com o mesmo aviso. Assim nada do que funciona hoje deixa de funcionar.
+**Como a importação funciona hoje** (motor `imports` e `schedule/imports.py`):
 
-A Grade é uma consulta, e o modal não a transforma em tela de cadastro: ele só abre por cima dela, como os modais das demais telas.
+1. O envio tem, além do arquivo, os campos próprios declarados em `upload_fields`; hoje só `Semestre`. O valor de cada campo próprio é gravado nos valores de **todas** as linhas, como coluna lógica (D16 da Change de importação), para que a confirmação reexecute sem receber nada de novo.
+2. A prévia chama `run()` dentro de um savepoint que é **desfeito**: `lock()` resolve o semestre pelo código das linhas (`Semester.objects.resolve`, que cria o semestre se não existir) e trava as alocações dele; depois cada linha executa.
+3. A confirmação refaz `run()` com as linhas gravadas e só aplica se o plano refeito for idêntico ao da prévia; senão desfaz e substitui o plano.
+
+**Onde capturar as datas.** No mesmo lugar do semestre: dois campos próprios do envio, "Início do semestre" e "Fim do semestre" (`DateField`, `type="date"`), gravados como as colunas lógicas `Início` e `Fim` em todas as linhas, no formato `AAAA-MM-DD`. Assim o período segue exatamente o caminho do código do semestre: vai para as linhas, é visto na prévia e é reaplicado na confirmação a partir das linhas, sem estado fora delas.
+
+**Onde aplicar.** Em `lock()`, logo depois de resolver o semestre: com as duas datas nos valores, chama `state.semester.define_period(inicio, fim)`. Como `lock()` roda dentro da transação da execução:
+
+- **na prévia**, o período é gravado e desfeito com o resto, como o semestre recém-criado;
+- **na confirmação**, é gravado junto com as alocações, na mesma transação; se o plano divergir, é desfeito com elas;
+- **no descarte** ou numa importação `COM_ERROS`, o semestre não muda.
+
+O período não entra no plano das linhas, que continua sendo o das entidades. Ele é determinístico, porque vem dos valores gravados, e por isso não precisa entrar na comparação da confirmação.
+
+**Validação no envio.** As regras do período (as duas datas juntas, início até o fim, no máximo 366 dias) são do model. O formulário de envio as aplica antes de ler o arquivo, chamando a validação do `Semester` sobre as datas informadas, e uma recusa é **erro do formulário de envio, sem criar importação**, como o código do semestre fora do formato. Para isso o motor ganha uma capacidade pequena: a importação específica pode declarar `clean_upload(values)`, chamada com os valores dos campos próprios já limpos, para validações que envolvem mais de um campo. O motor continua sem conhecer a regra: só chama o gancho e põe as recusas no formulário.
+
+**Rótulo dos campos.** Os dois campos não são obrigatórios para o formulário, porque a obrigatoriedade depende do semestre, e o renderizador marcaria "(opcional)". Eles declaram `conditional = True`, e o renderizador não marca o campo condicional como opcional; a ajuda do início diz a regra.
+
+**Exibição.** O resumo do detalhe mostra os campos próprios uma vez, e a tabela de linhas deixa de repeti-los: sem recorte escolhido, as colunas são as do arquivo (`file_columns`), sem as colunas lógicas do envio, como o requisito do motor já pedia. As datas são gravadas em `AAAA-MM-DD`, que é dado, e exibidas em dd/mm/aaaa (seção 9.5 das convenções): a importação específica pode declarar `upload_display(label, value)`, e o motor usa o valor exibido quando existir.
+
+**Datas e reimportação.** *Decisão do autor em 25/09/2026.*
+
+| Envio | Semestre novo ou sem período | Semestre com período |
+|---|---|---|
+| Início e fim preenchidos | grava o período | **atualiza** o período, se diferente |
+| Início e fim em branco | **recusado**: as duas datas são obrigatórias | **preserva** o período existente |
+| Só uma das datas | **recusado** | **recusado** |
+
+- As duas datas vão sempre juntas, e o fim é a data real informada: o sistema não infere o fim pelo código (`/1`, `/2`).
+- A obrigatoriedade depende do semestre, então a validação conjunta (`clean_upload`) consulta o `Semester` do código informado: sem semestre ou sem período, as datas são obrigatórias. A consulta é leitura, feita no formulário, fora da execução.
+- Datas em branco nunca apagam o período, assim como uma alocação ausente da planilha não é excluída.
+- A ajuda dos campos diz que, num semestre com período, deixá-los em branco mantém o período atual.
+- **Limitação registrada:** mudar o período numa reimportação muda as semanas e os meses mostrados, inclusive os anteriores, porque as ocorrências são calculadas do período atual (D4). É a mesma natureza da limitação de D10.
+
+**Auditoria.** O resumo auditado da confirmação ganha o período informado (`inicio`, `fim`) nos metadados, ao lado do semestre, e o período anterior quando ele mudou (`inicio_anterior`, `fim_anterior`). Não há registro separado do semestre: a regra da Change de importação é auditar o resumo, e não cada entidade.
+
+**O que acontece com o que já foi feito.**
+
+- **Dados:** o período já definido pelo modal está em `Semester.start_date` e `end_date`, o mesmo lugar que a importação usa. **Não há migração de dados** nem de esquema: a migration `0002_semester_period` continua como está.
+- **Código:** saem `SemesterPeriodView`, `SemesterPeriodForm`, a rota `semester_period`, os templates `semester_period*.html`, o botão "Definir período" da Grade e os testes do modal. `define_period` fica, sem auditoria própria.
+- **Auditoria:** sai o recurso `SEMESTRE` do catálogo. Registros antigos com esse código, se houver, continuam no banco e aparecem com o código no lugar do rótulo.
+
+**Sem período na Grade.** A regra continua: a semana típica, sem datas, sem o campo "Visualização", com o aviso. O aviso deixa de oferecer o botão e passa a dizer onde se define o período: "Período do semestre 2026/2 não definido. Informe o início e o fim na próxima importação do semestre." Para quem tem `ENSALAMENTO.IMPORTAR`, o botão "Ver importações" continua no topo da página.
 
 ### D4. O cálculo das ocorrências: regra × datas do intervalo
 
@@ -118,36 +158,41 @@ Ensalamento e reserva ficam **separados na origem** (cada um no seu model, com a
 - **Navegação:** "Semana anterior", "Próxima semana" e "Hoje", como links (`href` e `hx-get`, atualizando só `#grade` e a URL), com o intervalo "05/10/2026 a 09/10/2026" no título. Os links ficam desabilitados fora do período.
 - **Contagem:** faixas ocupadas e disponíveis da semana, só com os dias dentro do período.
 
-### D8. Visão mensal: o mapa de ocupação do mês
+### D8. Visão mensal: a Grade semanal expandida para o mês
 
-**Papel.** A visão mensal responde "em quais dias deste mês a sala está ocupada, e quanto". Ela é um **mapa de ocupação** do ensalamento, e não um calendário genérico de eventos: não lista compromissos por extenso, não tem horas soltas, não tem arrastar nem criar. O detalhe de cada aula continua sendo da visão semanal, e o mês leva a ela.
+*Revisto pelo autor em 25/09/2026, depois da primeira prévia.* A proposta anterior, de um mapa com uma tira de faixas e a contagem "N de M faixas ocupadas" por dia, foi **descartada**. A visão mensal é a **mesma Grade da visão semanal**, com mais colunas.
 
-**Mesmo cálculo, sem estrutura paralela.** O mês chama `occupancy(space, primeiro_dia_util, ultimo_dia_util, grid_sources())`, a mesma função da semana. `Month` → `MonthWeek` → `MonthDay` em `timetable.py` são só apresentação, montados das mesmas ocorrências e das mesmas faixas do semestre que formam as linhas da semana. Nada é gravado.
+**Mesmo cálculo, sem estrutura paralela.** O mês chama `occupancy(space, primeiro_dia_util, ultimo_dia_util)`, a mesma função da semana, e monta a mesma estrutura: `Week` com uma `Day` por dia útil do mês, as mesmas `Row`, `Cell`, `Continued` e `Outside`, e as mesmas faixas do semestre nas linhas. `build_week` passa a receber a lista de datas, em vez de só a segunda-feira. Não existe `Month` nem outra estrutura para o mês, e nada é gravado.
 
-**Forma proposta.**
+**Forma.**
 
-- As semanas do mês nas linhas e segunda a sexta nas colunas, as mesmas colunas da visão semanal. Sábado e domingo não aparecem, como na semana.
-- Cada dia mostra a data e uma **tira de faixas**: uma marca por faixa do semestre, na mesma ordem das linhas da semana, preenchida com a cor da etapa quando a faixa está ocupada e vazia quando está disponível. É a coluna do dia da Grade semanal, comprimida. Junto da tira, o texto "5 de 12 faixas ocupadas", para que o estado não dependa só da cor (seção 9.7 das convenções), e o `aria-label` do dia com a data e as mesmas contagens.
-- Dia sem ocupação: a tira vazia e "Nenhuma faixa ocupada", sem frase de preenchimento.
-- Dias de outro mês: só a data, esmaecida, sem tira. Dias fora do período do semestre: "Fora do semestre", sem tira e sem contagem.
-- "Hoje" marcado como na semana.
-- O dia inteiro é um link para a semana dele (`href` e `hx-get`), com o mesmo semestre e a mesma sala. Não abre formulário nem modal.
+- As faixas de horário na lateral, fixas na rolagem horizontal, iguais às da semana.
+- Uma coluna por dia útil do mês (segunda a sexta), com o número do dia e o dia da semana abreviado: `01 TER`, `02 QUA`. Sábado e domingo não aparecem, como na semana, porque o ensalamento só tem segunda a sexta.
+- Uma linha mais forte antes de cada segunda-feira, separando as semanas.
+- As células são as da semana: o card com a disciplina, a turma com o curso e os docentes, a cor da etapa, o bloco de faixas seguidas, o agrupamento "N turmas juntas" e "Choque: N turmas neste horário" (D9a).
+- A faixa disponível fica visualmente vazia, com o nome acessível (D9). O dia fora do período é uma coluna com "Fora do semestre", sem células, como na semana.
+- "Hoje": a coluna do dia atual marcada como na semana; o botão "Hoje" abre o mês atual e rola até essa coluna.
+- A legenda das etapas, como na semana.
+- Somente consulta: nenhum formulário, nenhum clique que crie, edite ou cancele ocupação.
 
-**Navegação e semestre.**
+**Quantidade de dias e responsividade.** Um mês tem de 20 a 23 dias úteis, e a Grade não cabe na tela. A solução é a **rolagem horizontal da própria Grade**, dentro do card, com a coluna de horários e a linha dos dias fixas (`position: sticky`), e não outra forma de visualização:
 
-- URL: `?visao=mes&semestre=2026/2&sala=1/13&mes=2026-10`. Padrão: o mês de hoje, quando hoje está no período; antes dele, o primeiro mês do período; depois, o último. `mes` inválido cai no padrão, com 200.
-- "Mês anterior", "Próximo mês" e "Hoje", desabilitados além do primeiro e do último mês que tocam o período. O mês que só em parte está no período mostra o resto como "Fora do semestre".
-- A alternância "Semana" e "Mês" fica ao lado dos filtros, como links de abas, preservando semestre, sala e a data de referência: da semana vai ao mês da segunda-feira dela; do mês, à semana do primeiro dia do período dentro dele, ou de hoje quando hoje está nele.
+- cada coluna tem largura fixa (cerca de 150 px; 136 px abaixo de 640 px), suficiente para o card da semana com o texto um pouco menor;
+- a área da Grade tem altura máxima e rola nos dois sentidos, para que a linha dos dias continue à vista;
+- a página não rola na horizontal: só a área da Grade, que é uma região rotulada e focável pelo teclado;
+- abaixo de 640 px continua sendo a Grade, com a mesma rolagem, e não a lista por dia da visão semanal;
+- quem precisa ver a semana inteira sem rolagem usa a visão semanal, que continua existindo.
 
-**Abaixo de 640 px.** Os dias do mês dentro do período viram uma lista, um por linha, com a data, a tira e a contagem.
+**Navegação e semestre.** URL `?visao=mes&semestre=2026/2&sala=1/13&mes=2026-10`. Padrão: o mês de hoje dentro do período, ou o primeiro ou o último mês dele; `mes` inválido cai no padrão, com 200. "Mês anterior", "Hoje" e "Próximo mês", desabilitados além dos meses que tocam o período. A troca entre semana e mês é o campo de seleção "Visualização", com as opções "Semana" e "Mês", junto do semestre e da sala, pelo componente `ui/components/select.html` e o mesmo gatilho htmx dos outros filtros; sem JavaScript, vale o botão "Mostrar". *Decisão do autor em 25/09/2026, no lugar das abas da primeira implementação.* O formulário envia a semana ou o mês mostrados em campos ocultos (`semana`, `mes`), e a view traduz a referência: da semana para o mês da segunda-feira dela; do mês para a semana de hoje, quando hoje está no mês, ou a do primeiro dia do mês no período. O campo só aparece quando o semestre tem período, porque sem ele não há mês. "Hoje" no mês é um link comum para `#hoje`, a coluna do dia atual, para que o navegador role a Grade até ela.
 
-**Coerência com a semana.** Mesmo card de fundo, mesmos tokens de etapa (D14 de `visualizar-grade-do-ensalamento`), mesma legenda, e a tira segue a ordem das linhas da semana para que o olho reconheça a manhã, a tarde e a noite nos dois lugares.
+**Consulta.** O mês é consultado numa quantidade fixa de consultas, como a semana (D4). A página do mês tem cerca de quatro vezes as células da semana; o tempo de resposta é medido na implementação.
 
-**Decisões de interface pendentes do autor** (seção 9.8 das convenções, tela nova):
+**Prévia.** `grade-mensal-previa.html`, estática, com a sala 1/13 da planilha de referência em setembro de 2026 (com "Hoje") e em agosto de 2026 (com dias fora do semestre). O choque de quinta-feira às 21:00 é ilustrativo, porque a sala 1/13 não tem choque na planilha.
 
-- **P1. Referência visual do mês.** Antes da prévia estática.
-- **P2. Conteúdo do dia:** a tira de faixas com a contagem (proposta acima), ou a lista das aulas em blocos com horário e disciplina, até três e "mais N". A tira mantém o mês como mapa; a lista aproxima do calendário genérico que se quer evitar. A recomendação é a tira.
-- **P3. Cor da tira:** pela etapa, como os cards, ou um tom único de "ocupado". A recomendação é a etapa, que já tem legenda.
+**Decididos pelo autor em 25/09/2026:**
+
+- **P1. Prévia aprovada.**
+- **P4. Sala no card:** não aparece. O pedido cita a sala e "Sem sala" nas células. A Grade é de uma sala, escolhida no filtro, então todo card dela é daquela sala, e uma alocação sem sala não aparece em sala nenhuma (requisito de ocorrências). O card não repete a sala nem mostra "Sem sala", como na prévia.
 
 ### D9. Faixa disponível: visualmente vazia, semanticamente disponível
 
@@ -166,6 +211,12 @@ A faixa disponível não é erro: a Grade lê só alocações confirmadas (D15 d
 "Disponível" é um estado calculado, e não um dado nem uma ocorrência: não existe registro de faixa disponível. Abaixo de 640 px, cada dia continua listando só as faixas ocupadas, com o total de disponíveis no título do dia ("3 faixas disponíveis"), e "Sala disponível o dia todo." quando não há ocupação, como hoje.
 
 Os estados que a estrutura distingue são `Cell.state`: `available` e `occupied`, e o `kind` das entradas diz se a ocupação é do ensalamento ou, depois, de reserva.
+
+### D9a. Turmas juntas e choque na Grade datada
+
+*Decisão do autor em 25/09/2026.* O agrupamento da Grade da importação (D13 de `visualizar-grade-do-ensalamento`) volta à Grade do ensalamento confirmado. Quando mais de uma turma ocupa a sala na mesma faixa do mesmo dia, a célula agrupa os cards numa moldura só, com "N turmas juntas" (mesma disciplina e mesmos docentes, tom neutro, ícone `users`) ou "Choque: N turmas neste horário" (tom de aviso, ícone `triangle-alert`). Assim o segundo card não parece pertencer à faixa seguinte.
+
+A classificação é uma propriedade de `Cell`, calculada das entradas da célula (`kind` e `group_count`), sem dado gravado e sem mudar o cálculo das ocorrências: vale para a semana típica e para a datada, e valerá para as ocorrências de outra fonte. O choque continua só sendo mostrado, sem recusa.
 
 ### D10. Alteração futura da recorrência: versões por vigência (não implementada)
 
@@ -216,13 +267,14 @@ A Grade não cria, não edita e não cancela reserva, não tem formulário de re
 | Reutilizado sem mudança | Mudado | Novo |
 |---|---|---|
 | `Allocation`, `TimeSlot`, catálogos, `Weekday`, índices | `Semester` (período) | `schedule/occupancy.py` |
-| `Entry`, `Cell`, `Continued`, `build_day` (bloco de faixas) | `Week` e `Day` (data, "Fora do semestre", estado) | `Month`, `MonthWeek`, `MonthDay` em `timetable.py` |
-| `GridFilterForm`, `current_semester_code`, `spaces_of`, `imported_semesters` | `space_week` passa a receber o intervalo e as ocorrências | modal "Definir período" |
+| `Entry`, `Cell`, `Continued`, `build_day` (bloco de faixas) | `Week` e `Day` (data, "Fora do semestre", estado) | `build_week` sobre uma lista de datas, para a semana e o mês |
+| `GridFilterForm`, `current_semester_code`, `spaces_of`, `imported_semesters` | `space_week` passa a receber o intervalo e as ocorrências; `SpaceAllocationImport` ganha os campos próprios de início e fim | ganchos `clean_upload` e `upload_display` no motor de importação |
 | Importação, auditoria da importação, permissões | `grid.html` e o parcial da célula | recurso `SEMESTRE` na auditoria |
 
 ## Risks / Trade-offs
 
-- **Semestres sem período.** Até alguém defini-lo, a Grade fica na semana típica. O aviso e o botão na própria Grade tornam o passo visível.
+- **Semestres sem período.** Até uma importação do semestre informar o período, a Grade fica na semana típica, com o aviso que diz onde informá-lo.
+- **Período fora do plano.** A mudança de período não entra no plano das linhas nem na comparação da confirmação; é determinística, porque vem dos valores gravados, e aparece no resumo e na auditoria.
 - **Reimportação muda o passado (D10).** Registrada; resolvida pela Change de versões.
 - **Feriados aparecem como ocupados.** Sem calendário de dias sem aula, um feriado mostra as aulas do dia. Fica para D11.
 - **Datas fora do período digitadas na URL.** Caem no padrão, sem erro.
@@ -230,7 +282,7 @@ A Grade não cria, não edita e não cancela reserva, não tem formulário de re
 
 ## Migration Plan
 
-Uma migration no `schedule`, acrescentando `start_date`, `end_date` e a restrição ao `Semester`, sem dados. Os semestres existentes ficam sem período e continuam funcionando na semana típica. A rota `ensalamento/` mantém o nome e os filtros atuais; `visao`, `semana` e `mes` são opcionais. Reverter é remover os campos: nenhuma outra tabela depende deles.
+Uma migration no `schedule`, acrescentando `start_date`, `end_date` e a restrição ao `Semester`, sem dados. A revisão de D3 não muda o esquema nem os dados: o período continua no semestre. Os semestres existentes ficam sem período e continuam funcionando na semana típica. A rota `ensalamento/` mantém o nome e os filtros atuais; `visao`, `semana` e `mes` são opcionais. Reverter é remover os campos: nenhuma outra tabela depende deles.
 
 ## Decisões confirmadas pelo autor
 
@@ -240,26 +292,31 @@ Em 25/09/2026:
 |---|---|---|
 | Histórico da reimportação | sem versionamento nesta Change; a `Allocation` é a regra vigente, a limitação fica registrada e a solução futura descrita | D10 |
 | Faixa disponível | visualmente vazia; "Disponível" só para a tecnologia assistiva; distinta de erro e de ausência de dados | D9 |
-| Visão mensal | mapa de ocupação pelo mesmo cálculo, com a proposta definida antes da implementação | D8 |
 | Reservas | a Grade não cria, não edita e não cancela reserva; as reservas entram depois como fonte de ocupação | D6, D12 |
 | Recorrência futura | encerrar a regra atual e criar outra com nova vigência, sem materializar ocorrências | D10 |
+| Visão mensal | a Grade semanal expandida para os dias úteis do mês, com rolagem horizontal; a tira de faixas e a contagem por dia foram descartadas | D8 |
+| Turmas juntas e choque | agrupados na célula, como na Grade da importação | D9a |
+| Troca entre semana e mês | campo de seleção "Visualização" junto dos filtros, e não abas | D8 |
+| Prévia da Grade mensal e sala no card | prévia aprovada; o card não repete a sala nem mostra "Sem sala" | D8 |
+| Onde se define o período | no envio da importação do semestre, e não na Grade; o modal "Definir período" sai | D3 |
+| Datas do período | juntas; obrigatórias no semestre novo ou sem período; em branco preservam o período existente; uma só é recusada; o fim nunca é inferido | D3 |
+| Auditoria do período | nos metadados do resumo da importação, com o anterior quando muda; sem o recurso `SEMESTRE` | D3 |
+| Aviso da Grade sem período | "Período do semestre 2026/2 não definido. Informe o início e o fim na próxima importação do semestre." | D3 |
 
 ## Open Questions
 
-Ainda dependem do autor:
-
-1. **Referência visual da visão mensal** (D8, P1), antes da prévia estática.
-2. **Conteúdo do dia no mês** (D8, P2): tira de faixas com contagem (recomendada) ou lista das aulas.
-3. **Cor da tira** (D8, P3): pela etapa (recomendada) ou tom único.
-4. **Quem define o período** (D3): `ENSALAMENTO.IMPORTAR` (proposto) ou permissão própria.
-5. **Período sugerido no modal** (D3): sugerir datas padrão pelo código do semestre ou começar com os campos vazios.
+Nenhuma.
 
 ## Conferência no navegador
 
 Em 25/09/2026, com a planilha de referência importada no banco `visual_check` e o período de 05/08/2026 a 18/12/2026:
 
-- **Visão semanal e modal do período:** sem rolagem horizontal em 360, 640, 1.024 e 1.280 px e com zoom de 200%; navegação entre semanas pelo htmx e sem JavaScript; foco no primeiro campo do modal, que fecha com Esc; a primeira semana mostra segunda e terça "Fora do semestre".
+- **Visão semanal e modal do período** (o modal sai com a revisão de D3): sem rolagem horizontal em 360, 640, 1.024 e 1.280 px e com zoom de 200%; navegação entre semanas pelo htmx e sem JavaScript; foco no primeiro campo do modal, que fecha com Esc; a primeira semana mostra segunda e terça "Fora do semestre".
 - **Tempo de resposta** da semana da sala 1/13: cerca de 40 ms depois da primeira carga.
 - **Ajuste:** abaixo de 640 px, a faixa com mais de uma turma (turmas juntas) quebrava o segundo card para a coluna do horário. Os cards passaram a ficar num bloco próprio, com a altura do conteúdo. O defeito existia antes desta Change.
-- **Observação, fora do escopo:** na tabela, a faixa com duas turmas mostra os dois cards empilhados na mesma célula, sem o agrupamento "turmas juntas" que a Grade da importação tinha (D13 de `visualizar-grade-do-ensalamento`), o que faz o segundo card parecer estar na faixa seguinte.
-- **Pendente:** a visão mensal, depois da referência visual.
+- **Turmas juntas:** na tabela, a faixa com duas turmas mostrava os dois cards empilhados na mesma célula, sem o agrupamento da Grade da importação, o que fazia o segundo card parecer estar na faixa seguinte. Corrigido por D9a, a pedido do autor.
+- **Visão mensal**, com um choque ilustrativo acrescentado à sala 1/13 só no banco `visual_check` (quinta-feira, 21:00): a página não rola na horizontal em 360, 640, 1.024 e 1.280 px nem com zoom de 200%, e só a área da Grade rola; a coluna de horários fica fixa na rolagem horizontal e a linha dos dias na vertical; "Mês anterior" e "Próximo mês" funcionam pelo htmx e sem JavaScript, com "Mês anterior" desabilitado em agosto, que mostra 03/08 e 04/08 "Fora do semestre"; "Hoje" abre o mês atual e rola até a coluna de hoje; a troca Semana e Mês preserva o mês; turmas juntas e choque aparecem agrupados; a Grade não tem formulário nem ação de reserva.
+- **Tempo de resposta** do mês da sala 1/13: cerca de 50 ms.
+- **Choque real:** com o agrupamento, apareceu na sala 1/13 um choque da própria planilha, às quartas-feiras das 13:20 às 15:00 (Matérias primas alimentícias e Geometria euclidiana plana), que antes parecia estar na faixa das 15:20.
+- **Observação:** "Hoje" é um link comum para `#hoje`, para que o navegador role a Grade até a coluna; por isso a página também rola até ela, e o cabeçalho do card sai de vista.
+- **Período na importação** (revisão de D3), com a planilha importada pela tela: a primeira importação de `2026/2` sem datas é recusada, com o erro nos dois campos, que não dizem "(opcional)"; com as datas, a prévia e a importação concluída mostram 05/08/2026 e 18/12/2026, sem o formato `AAAA-MM-DD`; a Grade usa o período importado, com 03/08 e 04/08 "Fora do semestre", e não tem "Definir período"; a reimportação com as datas em branco mostra "Mantido" no resumo.

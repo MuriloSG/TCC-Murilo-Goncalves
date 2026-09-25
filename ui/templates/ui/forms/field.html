@@ -1,6 +1,6 @@
 {% load ui %}{% if field.use_fieldset %}
   <fieldset class="field">
-    <legend>{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</legend>
+    <legend>{{ field.label }}{% if not field.field.required and not field.field.conditional %} <span class="optional">(opcional)</span>{% endif %}</legend>
     {% if field.help_text %}<div class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</div>{% endif %}
     {{ field }}
     {% include "ui/forms/errors.html" %}
@@ -12,7 +12,7 @@
   </div>
 {% else %}
   <div class="field">
-    <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="optional">(opcional)</span>{% endif %}</label>
+    <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required and not field.field.conditional %} <span class="optional">(opcional)</span>{% endif %}</label>
     {% if icon %}
       <div class="control">{% icon icon %}{{ field }}</div>
     {% elif field.widget_type == "select" or field.widget_type == "selectmultiple" %}

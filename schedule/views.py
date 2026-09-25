@@ -10,13 +10,11 @@ pelo sistema.
 from datetime import date, timedelta
 from urllib.parse import urlencode
 
-from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import TemplateView
 
 from accounts import permissions
-from accounts.views import OperationFormView
 from audit import catalog
 from imports.views import (
     ImportConfirmView,
@@ -27,18 +25,24 @@ from imports.views import (
     ImportScreens,
     ImportUploadView,
 )
-from schedule.forms import GridFilterForm, SemesterPeriodForm
+from schedule.forms import GridFilterForm
 from schedule.imports import SpaceAllocationImport, concluded_message
-from schedule.models import Semester
 from schedule.occupancy import occupancy
 from schedule.timetable import (
     current_semester_code,
+    dated_space_month,
     dated_space_week,
     imported_semesters,
+    month_start,
+    month_dates,
     space_week,
     spaces_of,
     week_start,
 )
+
+WEEK_VIEW = 'semana'
+MONTH_VIEW = 'mes'
+
 
 SPACE_ALLOCATION_IMPORT_SCREENS = ImportScreens(
     definition=SpaceAllocationImport(),
@@ -58,9 +62,10 @@ def counted(total, singular, plural):
     return f'{total} {singular if total == 1 else plural}'
 
 
-def occupation_text(week):
-    """Faixas ocupadas e disponíveis da sala na semana."""
-    return f'{counted(week.occupied, "faixa ocupada", "faixas ocupadas")} e {counted(week.available, "disponível", "disponíveis")} na semana.'
+def occupation_text(week, is_month=False):
+    """Faixas ocupadas e disponíveis da sala na semana ou no mês."""
+    period = 'no mês' if is_month else 'na semana'
+    return f'{counted(week.occupied, "faixa ocupada", "faixas ocupadas")} e {counted(week.available, "disponível", "disponíveis")} {period}.'
 
 
 def parse_date(value):
@@ -69,6 +74,19 @@ def parse_date(value):
         return date.fromisoformat(value or '')
     except ValueError:
         return None
+
+
+def month_reference(semester, first, today):
+    """Data que leva do mês à semana: hoje, quando está no mês, ou o primeiro dia dele no período."""
+    in_period = [day for day in month_dates(first) if semester.contains(day)]
+    if today in in_period:
+        return today
+    return in_period[0] if in_period else first
+
+
+def parse_month(value):
+    """Primeiro dia do mês no formato AAAA-MM da URL, ou None quando não serve."""
+    return parse_date(f'{value}-01') if value and len(value) == 7 else None
 
 
 class SpaceAllocationImportListView(ImportListView):
@@ -108,73 +126,62 @@ class SpaceAllocationGridView(TemplateView):
         spaces = spaces_of(semester)
         chosen = (self.request.GET.get('sala') or '').casefold()
         space = next((option for option in spaces if option.name.casefold() == chosen), spaces[0] if spaces else None)
-        reference = parse_date(self.request.GET.get('semana'))
-        if semester is not None and semester.has_period:
+        view = MONTH_VIEW if self.request.GET.get('visao') == MONTH_VIEW else WEEK_VIEW
+        chosen_week = parse_date(self.request.GET.get('semana'))
+        chosen_month = parse_month(self.request.GET.get('mes'))
+        dated = semester is not None and semester.has_period
+        if dated and view == MONTH_VIEW:
+            first = month_start(semester, chosen_month or chosen_week, today)
+            month_end = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            occurrences = occupancy(space, first, month_end) if space else []
+            week = dated_space_month(semester, space, first, today, occurrences)
+        elif dated:
+            reference = chosen_week or (month_reference(semester, chosen_month, today) if chosen_month else None)
             start = week_start(semester, reference, today)
             occurrences = occupancy(space, start, start + timedelta(days=4)) if space else []
             week = dated_space_week(semester, space, start, today, occurrences)
         else:
+            view = WEEK_VIEW
             week = space_week(semester, space, today)
         grid_url = reverse('space_allocation_grid')
+        is_month = view == MONTH_VIEW
 
-        def week_url(day):
+        def grid_link(target, day=None, fragment=''):
             query = {'semestre': code, 'sala': space.name if space else ''}
-            if day is not None:
+            if target == MONTH_VIEW:
+                query['visao'] = MONTH_VIEW
+                if day is not None:
+                    query['mes'] = f'{day:%Y-%m}'
+            elif day is not None:
                 query['semana'] = day.isoformat()
-            return f'{grid_url}?{urlencode(query)}'
+            return f'{grid_url}?{urlencode(query)}{fragment}'
 
         context.update(
             week=week,
+            is_month=is_month,
             semester_code=code,
             space=space,
             semester=semester,
             period_missing=semester is not None and not semester.has_period,
             filter_form=GridFilterForm(
-                {'semestre': code, 'sala': space.name if space else '', 'semana': week.start.isoformat() if week.start else ''},
+                {
+                    'semestre': code,
+                    'sala': space.name if space else '',
+                    'visao': view,
+                    'semana': week.start.isoformat() if week.start and not is_month else '',
+                    'mes': f'{week.start:%Y-%m}' if week.start and is_month else '',
+                },
                 semesters=codes,
                 spaces=spaces,
             ),
             grid_url=grid_url,
-            previous_week_url=week_url(week.previous) if week.previous else None,
-            following_week_url=week_url(week.following) if week.following else None,
-            today_week_url=week_url(None),
+            previous_url=grid_link(view, week.previous) if week.previous else None,
+            following_url=grid_link(view, week.following) if week.following else None,
+            today_url=grid_link(view, fragment='#hoje' if is_month else ''),
             import_list_url=SPACE_ALLOCATION_IMPORT_SCREENS.url('list'),
-            occupation_text=occupation_text(week),
+            occupation_text=occupation_text(week, is_month),
         )
         return context
-
-
-def grid_url_of(semester):
-    return f"{reverse('space_allocation_grid')}?{urlencode({'semestre': semester.code})}"
-
-
-class SemesterPeriodView(OperationFormView):
-    """Período do semestre, definido em modal aberto pela Grade (D3).
-
-    Exige `ENSALAMENTO.IMPORTAR`, a permissão de quem administra o semestre ao importá-lo.
-    A rota usa a chave, e não o código, porque o código tem barra.
-    """
-
-    permission_required = permissions.SPACE_ALLOCATION_IMPORT
-    model = Semester
-    template_name = 'schedule/semester_period.html'
-    modal_template_name = 'schedule/semester_period_modal.html'
-    form_class = SemesterPeriodForm
-    title = 'Definir período'
-    submit_label = 'Salvar período'
-
-    def get_success_url(self):
-        return grid_url_of(self.target)
-
-    def get_close_url(self):
-        return grid_url_of(self.target)
-
-    def get_initial(self):
-        return {'start_date': self.target.start_date, 'end_date': self.target.end_date}
-
-    def perform(self, data):
-        self.target.define_period(data['start_date'], data['end_date'])
-        messages.success(self.request, f'Período do semestre {self.target.code} definido.')
 
 
 class SpaceAllocationImportDetailView(ImportDetailView):

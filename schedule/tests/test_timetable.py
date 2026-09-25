@@ -7,11 +7,19 @@ from django.test import TestCase
 from schedule.models import Allocation, ClassGroup, Course, Semester, Space, Stage, Subject, Teacher, TimeSlot, Weekday
 from schedule.occupancy import occupancy
 from schedule.timetable import (
+    CLASH,
     CONTINUED,
+    JOINT,
+    SINGLE,
+    Cell,
+    Entry,
     current_semester_code,
+    dated_space_month,
     dated_space_week,
     group_label,
     imported_semesters,
+    month_dates,
+    month_start,
     space_week,
     spaces_of,
     week_start,
@@ -173,3 +181,94 @@ class DatedWeekTests(TestCase):
         last = self.week(date(2026, 12, 14))
         self.assertEqual(last.previous, date(2026, 12, 7))
         self.assertIsNone(last.following)
+
+
+class CellKindTests(TestCase):
+    def entry(self, group, subject='Química orgânica', teachers=('Elza',)):
+        return Entry(subject=subject, group_label=group, teachers=teachers, stage=Stage.UNDERGRADUATE)
+
+    def cell(self, *entries):
+        return Cell(entries=list(entries), start=time(13, 20), end=time(14, 10))
+
+    def test_one_group_is_single(self):
+        self.assertEqual(self.cell(self.entry('Eng. Alimentos, 2º período')).kind, SINGLE)
+
+    def test_same_subject_and_teachers_are_joint_groups(self):
+        cell = self.cell(self.entry('Eng. Alimentos, 2º período'), self.entry('Eng. Florestal, 2º período', 'QUÍMICA ORGÂNICA', ('elza',)))
+        self.assertEqual((cell.kind, cell.group_count), (JOINT, 2))
+
+    def test_different_subject_or_teachers_is_a_clash(self):
+        by_subject = self.cell(self.entry('A, 1º ano A'), self.entry('B, 1º ano B', 'Física'))
+        by_teacher = self.cell(self.entry('A, 1º ano A'), self.entry('B, 1º ano B', teachers=('Viviane',)))
+        self.assertEqual((by_subject.kind, by_teacher.kind), (CLASH, CLASH))
+
+    def test_joint_groups_in_the_dated_week(self):
+        semester, _ = Semester.objects.resolve('2026/2')
+        semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        alimentos, _ = Course.objects.resolve('Eng. Alimentos', stage=Stage.UNDERGRADUATE)
+        florestal, _ = Course.objects.resolve('Eng. Florestal', stage=Stage.UNDERGRADUATE)
+        for course in (alimentos, florestal):
+            group, _ = ClassGroup.objects.resolve(course, '2º período')
+            allocate(semester, group, 'Química orgânica', Weekday.MONDAY, time(13, 20), time(14, 10), '1/13', ['Elza'])
+        room = Space.objects.get(name='1/13')
+        start = date(2026, 10, 5)
+        week = dated_space_week(semester, room, start, start, occupancy(room, start, start + timedelta(days=4)))
+        cell = next(cell for cell in week.days[0].cells if cell)
+        self.assertEqual((cell.kind, cell.group_count, cell.span), (JOINT, 2, 1))
+
+
+class DatedMonthTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.semester, _ = Semester.objects.resolve('2026/2')
+        cls.semester.define_period(date(2026, 8, 5), date(2026, 12, 18))
+        course, _ = Course.objects.resolve('ENGENHARIA DE ALIMENTOS', stage=Stage.UNDERGRADUATE)
+        group, _ = ClassGroup.objects.resolve(course, '2º PERÍODO')
+        allocate(cls.semester, group, 'Cálculo III', Weekday.MONDAY, time(19, 0), time(19, 50), '1/13', ['Viviane'])
+        allocate(cls.semester, group, 'Física', Weekday.TUESDAY, time(21, 0), time(21, 50), '1/4')
+        cls.room = Space.objects.get(name='1/13')
+
+    def month(self, first, today=date(2026, 9, 25)):
+        dates = month_dates(first)
+        occurrences = occupancy(self.room, dates[0], dates[-1])
+        return dated_space_month(self.semester, self.room, first, today, occurrences)
+
+    def test_month_has_one_column_per_weekday(self):
+        dates = month_dates(date(2026, 10, 1))
+        self.assertEqual((len(dates), dates[0], dates[-1]), (22, date(2026, 10, 1), date(2026, 10, 30)))
+        self.assertTrue(all(day.weekday() < 5 for day in dates))
+
+    def test_occurrences_fall_on_each_monday(self):
+        month = self.month(date(2026, 10, 1))
+        occupied = [day.date.day for day in month.days if day.has_activity]
+        self.assertEqual(occupied, [5, 12, 19, 26])
+
+    def test_same_cells_as_the_week(self):
+        month = self.month(date(2026, 10, 1))
+        start = date(2026, 10, 5)
+        week = dated_space_week(self.semester, self.room, start, date(2026, 9, 25), occupancy(self.room, start, start + timedelta(days=4)))
+        in_month = next(day for day in month.days if day.date == start)
+        self.assertEqual(in_month.cells, week.days[0].cells)
+        self.assertEqual(in_month.available, week.days[0].available)
+
+    def test_week_starts_and_today(self):
+        month = self.month(date(2026, 9, 1))
+        self.assertEqual([day.date.day for day in month.days if day.is_week_start], [7, 14, 21, 28])
+        self.assertEqual([day.date for day in month.days if day.is_today], [date(2026, 9, 25)])
+        self.assertEqual(month.days[0].short_label, 'Ter')
+
+    def test_first_month_has_days_outside_the_period(self):
+        month = self.month(date(2026, 8, 1))
+        self.assertEqual([day.date.day for day in month.days if not day.in_period], [3, 4])
+        self.assertIsNone(month.previous)
+        self.assertEqual(month.following, date(2026, 9, 1))
+
+    def test_last_month_has_no_following(self):
+        month = self.month(date(2026, 12, 1))
+        self.assertEqual(month.previous, date(2026, 11, 1))
+        self.assertIsNone(month.following)
+
+    def test_month_start_stays_inside_the_period(self):
+        self.assertEqual(month_start(self.semester, None, date(2026, 7, 1)), date(2026, 8, 1))
+        self.assertEqual(month_start(self.semester, None, date(2027, 3, 1)), date(2026, 12, 1))
+        self.assertEqual(month_start(self.semester, date(2026, 10, 20), date(2026, 7, 1)), date(2026, 10, 1))

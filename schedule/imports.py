@@ -8,7 +8,9 @@ referenciam, e porque é delas que a execução monta o catálogo do arquivo.
 A execução de uma linha só usa os valores gravados dela, e nunca o arquivo: é isso que
 permite à confirmação reexecutar tudo depois, sem a planilha, e chegar ao mesmo plano. O
 código do semestre vem do campo próprio do envio e está nos valores de todas as linhas
-(D16).
+(D16). O início e o fim do semestre também são campos próprios do envio, gravados nas linhas,
+e o período é aplicado ao semestre na execução, em `lock()` (D3 da Change
+visualizar-ocupacao-por-semana-e-mes).
 
 Nada é excluído por uma importação, e nenhuma operação de domínio grava auditoria própria:
 o registro é o resumo da importação (D13 e D15).
@@ -16,10 +18,12 @@ o registro é o resumo da importação (D13 e D15).
 
 import contextvars
 from contextlib import contextmanager
+from datetime import date
 
 from django import forms
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import RegexValidator
+from django.utils import formats
 
 from audit import catalog
 from imports.definitions import (
@@ -63,6 +67,8 @@ from schedule.sheets import (
 from schedule.sheets import text as sheet_text
 
 SEMESTER_COLUMN = 'Semestre'
+START_COLUMN = 'Início'
+END_COLUMN = 'Fim'
 KIND_COLUMN = 'Tipo'
 CELL_COLUMN = 'Célula'
 NAME_COLUMN = 'Nome'
@@ -78,6 +84,7 @@ MAX_ROWS = 5000
 STAGES = {layout.title: layout.stage for layout in SHEET_LAYOUTS}
 
 RUN = contextvars.ContextVar('schedule_import_run')
+PERIOD_CHANGE = contextvars.ContextVar('schedule_import_period_change', default=None)
 
 
 class RunState:
@@ -115,6 +122,25 @@ def semester_field():
         ),
         error_messages={'required': 'Informe o semestre da planilha.'},
     )
+
+
+def period_field(label, help_text):
+    """Data do período no envio. A obrigatoriedade depende do semestre e é conferida em
+    `clean_upload`; por isso o campo é `conditional`, e o rótulo não diz "(opcional)".
+    """
+    field = forms.DateField(
+        label=label,
+        required=False,
+        help_text=help_text,
+        widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+    )
+    field.conditional = True
+    return field
+
+
+def period_of(values):
+    """Início e fim gravados nos valores da linha, ou None quando ficaram em branco."""
+    return tuple(date.fromisoformat(values[column]) if values.get(column) else None for column in (START_COLUMN, END_COLUMN))
 
 
 def activity_identity(values, file_catalog):
@@ -199,6 +225,8 @@ class SpaceAllocationImport(ImportDefinition):
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
     columns = (
         Column(SEMESTER_COLUMN),
+        Column(START_COLUMN, required=False),
+        Column(END_COLUMN, required=False),
         Column(KIND_COLUMN),
         Column(CELL_COLUMN),
         Column(NAME_COLUMN, required=False),
@@ -209,7 +237,11 @@ class SpaceAllocationImport(ImportDefinition):
         Column(ACTIVITY_COLUMN, required=False),
     )
     identifier = CELL_COLUMN
-    upload_fields = {SEMESTER_COLUMN: semester_field()}
+    upload_fields = {
+        SEMESTER_COLUMN: semester_field(),
+        START_COLUMN: period_field('Início do semestre', 'Primeiro dia letivo. Obrigatório na primeira importação do semestre; num semestre que já tem período, em branco mantém o atual.'),
+        END_COLUMN: period_field('Fim do semestre', 'Último dia letivo, informado junto com o início.'),
+    }
     row_filters = (
         RowFilter('salas', 'Salas', KIND_COLUMN, SPACE_KIND, (CELL_COLUMN, NAME_COLUMN)),
         RowFilter('docentes', 'Docentes', KIND_COLUMN, TEACHER_KIND, (CELL_COLUMN, NAME_COLUMN)),
@@ -240,10 +272,30 @@ class SpaceAllocationImport(ImportDefinition):
         'teachers': ACTIVITY_COLUMN,
         'label': GROUP_COLUMN,
         'code': SEMESTER_COLUMN,
+        'start_date': START_COLUMN,
+        'end_date': END_COLUMN,
     }
 
     def source(self):
         return WorkbookSource()
+
+    def clean_upload(self, values):
+        """Datas do período conferidas pelo model, antes de ler o arquivo (D3).
+
+        As recusas voltam pelo rótulo da coluna lógica, para que o formulário as ponha no
+        campo certo.
+        """
+        try:
+            Semester.objects.check_period(values.get(SEMESTER_COLUMN), values.get(START_COLUMN), values.get(END_COLUMN))
+        except ValidationError as error:
+            fields = {'start_date': START_COLUMN, 'end_date': END_COLUMN}
+            raise ValidationError({fields.get(name, NON_FIELD_ERRORS): errors for name, errors in error.error_dict.items()}) from error
+
+    def upload_display(self, label, value):
+        """Datas do período em dd/mm/aaaa; em branco, o período atual foi mantido."""
+        if label in (START_COLUMN, END_COLUMN):
+            return formats.date_format(date.fromisoformat(value), 'SHORT_DATE_FORMAT') if value else 'Mantido'
+        return value
 
     def read_cells(self, workbook):
         """Linhas da importação: primeiro os catálogos, depois as atividades."""
@@ -277,6 +329,7 @@ class SpaceAllocationImport(ImportDefinition):
         )
         code = next((row.values.get(SEMESTER_COLUMN) for row in rows if row.values.get(SEMESTER_COLUMN)), '')
         state.semester, _ = Semester.objects.resolve(code)
+        self.apply_period(state.semester, rows)
         state.duplicates = repeated_activities(rows, state.catalog)
         list(
             Allocation.objects.filter(semester=state.semester)
@@ -284,6 +337,20 @@ class SpaceAllocationImport(ImportDefinition):
             .select_for_update()
             .values_list('pk', flat=True)
         )
+
+    def apply_period(self, semester, rows):
+        """Aplica ao semestre o período gravado nas linhas, e guarda a mudança para a auditoria.
+
+        Roda dentro da transação da execução: a prévia desfaz, a confirmação grava com as
+        alocações. Em branco, o período atual é preservado. A mudança fica num contextvar
+        próprio, e não no estado da execução, porque o resumo auditado é montado depois
+        que a execução termina.
+        """
+        start, end = period_of(rows[0].values) if rows else (None, None)
+        previous = (semester.start_date, semester.end_date)
+        changed = start is not None and semester.define_period(start, end)
+        replaced = changed and previous[0] is not None
+        PERIOD_CHANGE.set((semester.code, start, end, previous) if replaced else None)
 
     def catalog_name(self, values):
         """Nome de um valor de catálogo, com os parênteses da sala retirados."""
@@ -363,11 +430,27 @@ class SpaceAllocationImport(ImportDefinition):
         return plan
 
     def audit_metadata(self, rows):
-        """Semestre da importação, para o resumo auditado (D15)."""
+        """Semestre e período da importação, para o resumo auditado (D15 e D3).
+
+        O período anterior entra quando a execução que acabou de rodar o substituiu. A
+        mudança é conferida pelo semestre e pelas datas, e consumida na leitura, para que
+        um valor de outra execução da mesma thread não apareça no descarte ou na exclusão.
+        """
         codes = {values.get(SEMESTER_COLUMN) for values in (row.values for row in rows)}
         codes.discard('')
         codes.discard(None)
-        return {'semestre': codes.pop() if len(codes) == 1 else None}
+        first = rows[0].values if rows else {}
+        metadata = {
+            'semestre': codes.pop() if len(codes) == 1 else None,
+            'inicio': first.get(START_COLUMN) or None,
+            'fim': first.get(END_COLUMN) or None,
+        }
+        change = PERIOD_CHANGE.get()
+        PERIOD_CHANGE.set(None)
+        if change is not None and change[:3] == (metadata['semestre'], *period_of(first)):
+            previous = change[3]
+            metadata |= {'inicio_anterior': previous[0].isoformat(), 'fim_anterior': previous[1].isoformat()}
+        return metadata
 
 
 def concluded_message(summary):

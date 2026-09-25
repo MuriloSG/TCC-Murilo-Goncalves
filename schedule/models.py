@@ -17,8 +17,6 @@ from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
 
-from audit import catalog
-from audit.models import AuditLog
 from schedule.utils import normalize_name
 
 SEMESTER_CODE_PATTERN = r'^\d{4}/[12]$'
@@ -120,6 +118,28 @@ class SemesterManager(models.Manager):
             semester.save()
             return semester, True
 
+    def check_period(self, code, start_date, end_date):
+        """Confere as datas do período informadas no envio da importação do semestre (D3).
+
+        As duas datas vão juntas e seguem as regras do período. Em branco, só servem para
+        um semestre que já tem período, que é preservado; o semestre novo ou sem período
+        exige as duas. O fim nunca é inferido do código. Nada é gravado.
+        """
+        existing = self.filter(code=(code or '').strip()).first()
+        if start_date is None and end_date is None:
+            if existing is None or not existing.has_period:
+                raise ValidationError({
+                    'start_date': ValidationError(PERIOD_REQUIRED_MESSAGE, code='required'),
+                    'end_date': ValidationError(PERIOD_REQUIRED_MESSAGE, code='required'),
+                })
+            return
+        candidate = copy(existing) if existing is not None else self.model(code=(code or '').strip())
+        candidate.start_date, candidate.end_date = start_date, end_date
+        candidate.clean()
+
+
+PERIOD_REQUIRED_MESSAGE = 'Informe o início e o fim do semestre, que ainda não tem período.'
+
 
 class Semester(models.Model):
     """Semestre letivo, recorte a que pertencem as faixas de horário e as alocações.
@@ -182,20 +202,21 @@ class Semester(models.Model):
             )
 
     def define_period(self, start_date, end_date):
-        """Grava o período do semestre e registra a alteração na auditoria (D3).
+        """Grava o período do semestre e devolve se ele mudou (D2 e D3).
 
-        A recusa não altera o semestre: os valores só ficam no objeto depois de validados.
+        Quem chama é a importação, que registra o período no resumo auditado; por isso
+        esta operação não grava auditoria própria. A recusa não altera o semestre: os
+        valores só ficam no objeto depois de validados.
         """
         with transaction.atomic():
-            previous = {'inicio': iso(self.start_date), 'fim': iso(self.end_date)}
             candidate = copy(self)
             candidate.start_date, candidate.end_date = start_date, end_date
             candidate.full_clean()
+            if (self.start_date, self.end_date) == (start_date, end_date):
+                return False
             self.start_date, self.end_date = start_date, end_date
             self.save(update_fields=['start_date', 'end_date'])
-            AuditLog.objects.record_changes(
-                catalog.SEMESTER, self.code, previous, {'inicio': iso(start_date), 'fim': iso(end_date)},
-            )
+            return True
 
 
 class Space(NamedRecord):

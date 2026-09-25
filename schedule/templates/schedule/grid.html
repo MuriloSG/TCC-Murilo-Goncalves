@@ -15,10 +15,6 @@
     </div>
     {% if perms.ENSALAMENTO.IMPORTAR %}
       <div class="page-actions">
-        {% if semester %}
-          {% url "semester_period" semester.pk as period_url %}
-          <a class="btn-secondary" href="{{ period_url }}" hx-get="{{ period_url }}" hx-target="#modal">{% icon "calendar-check" %}Definir período</a>
-        {% endif %}
         <a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>
       </div>
     {% endif %}
@@ -29,10 +25,10 @@
   <section class="card timetable" id="grade" aria-labelledby="grade-titulo">
     <div class="card-head">
       <div>
-        <h2 class="card-title" id="grade-titulo">Semana da sala{% if space %} {{ space.name }}{% endif %}</h2>
-        {% if week.is_dated %}<p class="timetable-range">{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}</p>{% endif %}
+        <h2 class="card-title" id="grade-titulo">{% if is_month %}Mês{% else %}Semana{% endif %} da sala{% if space %} {{ space.name }}{% endif %}</h2>
+        {% if week.is_dated %}<p class="timetable-range">{% if is_month %}{{ week.start|date:"F" }} de {{ week.start|date:"Y" }}{% else %}{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}{% endif %}</p>{% endif %}
       </div>
-      <form class="filters" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=semestre], change from:select[name=sala]">
+      <form class="filters" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=semestre], change from:select[name=sala], change from:select[name=visao]">
         <div>
           <label class="sr-only" id="{{ filter_form.semestre.auto_id }}_rotulo" for="{{ filter_form.semestre.id_for_label }}">Semestre</label>
           {% include "ui/components/select.html" with field=filter_form.semestre %}
@@ -43,42 +39,56 @@
             {% include "ui/components/select.html" with field=filter_form.sala %}
           </div>
         {% endif %}
-        {{ filter_form.semana }}
+        {% if week.is_dated %}
+          <div>
+            <label class="sr-only" id="{{ filter_form.visao.auto_id }}_rotulo" for="{{ filter_form.visao.id_for_label }}">Visualização</label>
+            {% include "ui/components/select.html" with field=filter_form.visao %}
+          </div>
+        {% endif %}
+        {{ filter_form.semana }}{{ filter_form.mes }}
         <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
       </form>
     </div>
     {% if period_missing %}
       <div class="timetable-notice">
-        <div class="alert tone-info" role="status">{% icon "info" %}<p>Período do semestre {{ semester_code }} não definido.</p></div>
+        <div class="alert tone-info" role="status">{% icon "info" %}<p>Período do semestre {{ semester_code }} não definido. Informe o início e o fim na próxima importação do semestre.</p></div>
       </div>
     {% endif %}
     {% if week.rows %}
       <div class="timetable-status">
         {% if week.is_dated %}
-          <nav class="timetable-nav" aria-label="Semanas">
-            {% if previous_week_url %}
-              <a class="btn-secondary" href="{{ previous_week_url }}" hx-get="{{ previous_week_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}Semana anterior</a>
+          <nav class="timetable-nav" aria-label="{% if is_month %}Meses{% else %}Semanas{% endif %}">
+            {% if previous_url %}
+              <a class="btn-secondary" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}{% if is_month %}Mês anterior{% else %}Semana anterior{% endif %}</a>
             {% else %}
-              <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}Semana anterior</span>
+              <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}{% if is_month %}Mês anterior{% else %}Semana anterior{% endif %}</span>
             {% endif %}
-            <a class="btn-secondary" href="{{ today_week_url }}" hx-get="{{ today_week_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
-            {% if following_week_url %}
-              <a class="btn-secondary" href="{{ following_week_url }}" hx-get="{{ following_week_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Próxima semana{% icon "chevron-right" %}</a>
+            {% if is_month %}
+              <a class="btn-secondary" href="{{ today_url }}">Hoje</a>
             {% else %}
-              <span class="btn-secondary" aria-disabled="true">Próxima semana{% icon "chevron-right" %}</span>
+              <a class="btn-secondary" href="{{ today_url }}" hx-get="{{ today_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
+            {% endif %}
+            {% if following_url %}
+              <a class="btn-secondary" href="{{ following_url }}" hx-get="{{ following_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% if is_month %}Próximo mês{% else %}Próxima semana{% endif %}{% icon "chevron-right" %}</a>
+            {% else %}
+              <span class="btn-secondary" aria-disabled="true">{% if is_month %}Próximo mês{% else %}Próxima semana{% endif %}{% icon "chevron-right" %}</span>
             {% endif %}
           </nav>
         {% endif %}
         <p class="timetable-occupation">{{ occupation_text }}</p>
       </div>
-      <div class="timetable-scroll" tabindex="0" role="region" aria-label="Semana da sala {{ space.name }}">
-        <table class="timetable-grid">
-          <caption class="sr-only">Semana da sala {{ space.name }} em {{ semester_code }}</caption>
+      <div class="timetable-scroll{% if is_month %} is-month{% endif %}" tabindex="0" role="region" aria-label="{% if is_month %}Mês{% else %}Semana{% endif %} da sala {{ space.name }}">
+        <table class="timetable-grid{% if is_month %} is-month{% endif %}">
+          <caption class="sr-only">{% if is_month %}Mês{% else %}Semana{% endif %} da sala {{ space.name }} em {{ semester_code }}</caption>
           <thead>
             <tr>
               <th scope="col" class="timetable-corner">Horário</th>
               {% for day in week.days %}
-                <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</th>
+                {% if is_month %}
+                  <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"{% if day.is_today %} id="hoje"{% endif %} aria-label="{{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}<span class="timetable-daynum">{{ day.date|date:"d" }}</span> <span class="timetable-weekday">{{ day.short_label }}</span></th>
+                {% else %}
+                  <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</th>
+                {% endif %}
               {% endfor %}
             </tr>
           </thead>
@@ -89,11 +99,11 @@
                 {% for day, cell in row.day_cells %}
                   {% if cell.is_continued %}
                   {% elif cell.is_outside %}
-                    <td class="timetable-outside" rowspan="{{ cell.span }}">Fora do semestre</td>
+                    <td class="timetable-outside{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">Fora do semestre</td>
                   {% elif cell %}
-                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" %}</td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" %}</td>
                   {% else %}
-                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span></td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span></td>
                   {% endif %}
                 {% endfor %}
               </tr>
@@ -101,7 +111,7 @@
           </tbody>
         </table>
       </div>
-      <div class="timetable-days">
+      {% if not is_month %}<div class="timetable-days">
         {% for day in week.days %}
           <section class="timetable-daylist" aria-label="{{ day.full_label }}{% if day.date %}, {{ day.date|date:"SHORT_DATE_FORMAT" }}{% endif %}">
             <h3>{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}</h3>
@@ -121,7 +131,7 @@
             {% endif %}
           </section>
         {% endfor %}
-      </div>
+      </div>{% endif %}
     {% else %}
       <p class="timetable-empty">Nenhum ensalamento importado no semestre {{ semester_code }}.</p>
     {% endif %}

@@ -104,6 +104,17 @@ class ImportDefinition:
         """Executa a linha com as operações reais do domínio e devolve o RowPlan."""
         raise NotImplementedError
 
+    def clean_upload(self, values):
+        """Validação conjunta dos campos próprios do envio, antes da leitura do arquivo.
+
+        Recebe os valores limpos, pelo rótulo da coluna lógica, e lança `ValidationError`
+        para recusar o envio. A regra fica no model; aqui ela só é chamada.
+        """
+
+    def upload_display(self, label, value):
+        """Valor de um campo próprio como aparece no resumo; o gravado nas linhas não muda."""
+        return value
+
     def check_file(self, executor):
         """Verificações do arquivo inteiro, depois de todas as linhas. Devolve RowError sem coluna."""
         return []

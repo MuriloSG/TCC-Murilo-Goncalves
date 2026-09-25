@@ -7,6 +7,7 @@ listas. O arquivo real é usado nos testes que conferem o comportamento diante d
 """
 
 import io
+from datetime import date
 
 from django.conf import settings
 from django.test import TestCase
@@ -103,14 +104,17 @@ def workbook_file(undergraduate=None, secondary=None, teachers=None, spaces=None
     return SimpleUploadedFile(name, stream.getvalue(), content_type=CONTENT_TYPE)
 
 
+PERIOD = {'own_início': '2026-08-03', 'own_fim': '2026-12-18'}
+
+
 class ImportTestCase(TestCase):
     def setUp(self):
         self.executor = User.objects.create(email='admin@ifnmg.edu.br', name='Admin')
         self.definition = SpaceAllocationImport()
 
-    def preview(self, uploaded=None, semester='2026/1'):
+    def preview(self, uploaded=None, semester='2026/1', period=None):
         form = ImportUploadForm(
-            data={'own_semestre': semester},
+            data={'own_semestre': semester, **(PERIOD if period is None else period)},
             files={'file': uploaded if uploaded is not None else workbook_file()},
             definition=self.definition,
         )
@@ -119,8 +123,8 @@ class ImportTestCase(TestCase):
             self.definition, form.cleaned_data['rows'], form.cleaned_data['file'].name, self.executor,
         )
 
-    def conclude(self, uploaded=None, semester='2026/1'):
-        importation = self.preview(uploaded, semester)
+    def conclude(self, uploaded=None, semester='2026/1', period=None):
+        importation = self.preview(uploaded, semester, period)
         self.assertEqual(importation.status, Import.Status.VALIDATED, self.errors_of(importation))
         self.assertTrue(importation.confirm(self.definition, self.executor))
         return importation
@@ -184,14 +188,14 @@ class PreviewTests(ImportTestCase):
         stream = io.BytesIO()
         book.save(stream)
         uploaded = SimpleUploadedFile('sem_catalogo.xlsx', stream.getvalue(), content_type=CONTENT_TYPE)
-        form = ImportUploadForm(data={'own_semestre': '2026/1'}, files={'file': uploaded}, definition=self.definition)
+        form = ImportUploadForm(data={'own_semestre': '2026/1', **PERIOD}, files={'file': uploaded}, definition=self.definition)
         self.assertFalse(form.is_valid())
         self.assertIn(CATALOG_SHEET, form.errors['file'][0])
         self.assertFalse(Import.objects.exists())
 
     def test_empty_catalog_is_refused(self):
         form = ImportUploadForm(
-            data={'own_semestre': '2026/1'},
+            data={'own_semestre': '2026/1', **PERIOD},
             files={'file': workbook_file(teachers=[], spaces=[])},
             definition=self.definition,
         )
@@ -439,6 +443,92 @@ class DivergenceTests(ImportTestCase):
         self.assertEqual(Allocation.objects.filter(semester__code='2027/2').count(), 4)
 
 
+BLANK = {'own_início': '', 'own_fim': ''}
+LATER = {'own_início': '2026-08-10', 'own_fim': '2026-12-18'}
+
+
+class PeriodImportTests(ImportTestCase):
+    def period(self, code='2026/1'):
+        semester = Semester.objects.get(code=code)
+        return semester.start_date, semester.end_date
+
+    def last_summary(self):
+        return AuditLog.objects.filter(action=catalog.IMPORT).latest('pk').metadata
+
+    def form(self, period, semester='2026/1'):
+        return ImportUploadForm(data={'own_semestre': semester, **period}, files={'file': workbook_file()}, definition=self.definition)
+
+    def test_first_import_sets_the_period(self):
+        self.conclude()
+        self.assertEqual(self.period(), (date(2026, 8, 3), date(2026, 12, 18)))
+        summary = self.last_summary()
+        self.assertEqual((summary['inicio'], summary['fim']), ('2026-08-03', '2026-12-18'))
+        self.assertNotIn('inicio_anterior', summary)
+
+    def test_preview_and_discard_do_not_change_the_period(self):
+        importation = self.preview()
+        self.assertFalse(Semester.objects.filter(code='2026/1').exists())
+        self.conclude()
+        importation = self.preview(period=LATER)
+        importation.discard(self.definition, self.executor)
+        self.assertEqual(self.period(), (date(2026, 8, 3), date(2026, 12, 18)))
+
+    def test_divergent_confirmation_does_not_change_the_period(self):
+        self.conclude()
+        importation = self.preview(period=LATER, uploaded=workbook_file(spaces=[*SPACES, 'Zoo II']))
+        Space.objects.resolve('Zoo II')
+        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertEqual(self.period(), (date(2026, 8, 3), date(2026, 12, 18)))
+
+    def test_reimport_with_new_dates_updates_and_audits_the_previous(self):
+        self.conclude()
+        self.conclude(period=LATER)
+        self.assertEqual(self.period(), (date(2026, 8, 10), date(2026, 12, 18)))
+        summary = self.last_summary()
+        self.assertEqual(
+            {key: summary[key] for key in ('inicio', 'fim', 'inicio_anterior', 'fim_anterior')},
+            {'inicio': '2026-08-10', 'fim': '2026-12-18', 'inicio_anterior': '2026-08-03', 'fim_anterior': '2026-12-18'},
+        )
+
+    def test_reimport_with_blank_dates_keeps_the_period(self):
+        self.conclude()
+        self.conclude(period=BLANK)
+        self.assertEqual(self.period(), (date(2026, 8, 3), date(2026, 12, 18)))
+        summary = self.last_summary()
+        self.assertEqual((summary['inicio'], summary['fim']), (None, None))
+        self.assertNotIn('inicio_anterior', summary)
+
+    def test_first_import_requires_the_dates(self):
+        form = self.form(BLANK)
+        self.assertFalse(form.is_valid())
+        self.assertIn('Informe o início e o fim do semestre, que ainda não tem período.', form.errors['own_início'])
+        self.assertIn('own_fim', form.errors)
+        self.assertFalse(Semester.objects.exists())
+
+    def test_one_date_or_an_invalid_period_is_refused(self):
+        self.conclude()
+        cases = [
+            {'own_início': '2026-08-03', 'own_fim': ''},
+            {'own_início': '', 'own_fim': '2026-12-18'},
+            {'own_início': '2026-12-18', 'own_fim': '2026-08-03'},
+            {'own_início': '2026-01-01', 'own_fim': '2027-01-02'},
+        ]
+        for period in cases:
+            with self.subTest(period=period):
+                self.assertFalse(self.form(period).is_valid())
+        self.assertEqual(Import.objects.count(), 1)
+
+    def test_dates_are_recorded_in_every_row(self):
+        importation = self.preview()
+        values = list(importation.rows.values_list('values', flat=True))
+        self.assertTrue(all(row['Início'] == '2026-08-03' and row['Fim'] == '2026-12-18' for row in values))
+
+    def test_summary_shows_the_dates_formatted(self):
+        self.assertEqual(self.definition.upload_display('Início', '2026-08-03'), '03/08/2026')
+        self.assertEqual(self.definition.upload_display('Fim', ''), 'Mantido')
+        self.assertEqual(self.definition.upload_display('Semestre', '2026/1'), '2026/1')
+
+
 class AuditTests(ImportTestCase):
     def test_summary_of_the_confirmation(self):
         importation = self.conclude()
@@ -455,6 +545,8 @@ class AuditTests(ImportTestCase):
                 'sem_alteracao': 0,
                 'com_erro': 0,
                 'semestre': '2026/1',
+                'inicio': '2026-08-03',
+                'fim': '2026-12-18',
             },
         )
 

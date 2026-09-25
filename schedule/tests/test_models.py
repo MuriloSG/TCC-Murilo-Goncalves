@@ -6,7 +6,6 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from audit import catalog
 from audit.models import AuditLog
 
 from schedule.models import (
@@ -340,15 +339,15 @@ class SemesterPeriodTests(TestCase):
     def setUp(self):
         self.semester, _ = Semester.objects.resolve('2026/2')
 
-    def test_period_is_defined_and_audited(self):
-        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+    def test_period_is_defined_without_its_own_audit(self):
+        self.assertTrue(self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18)))
         self.semester.refresh_from_db()
         self.assertEqual((self.semester.start_date, self.semester.end_date), (date(2026, 8, 3), date(2026, 12, 18)))
-        entry = AuditLog.objects.get(resource=catalog.SEMESTER)
-        self.assertEqual(entry.action, catalog.UPDATE)
-        self.assertEqual(entry.resource_id, '2026/2')
-        self.assertEqual(entry.old_values, {'inicio': None, 'fim': None})
-        self.assertEqual(entry.new_values, {'inicio': '2026-08-03', 'fim': '2026-12-18'})
+        self.assertFalse(AuditLog.objects.exists())
+
+    def test_same_period_is_not_a_change(self):
+        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        self.assertFalse(self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18)))
 
     def test_refusals_leave_the_semester_unchanged(self):
         cases = [
@@ -363,7 +362,23 @@ class SemesterPeriodTests(TestCase):
             self.semester.refresh_from_db()
             self.assertIsNone(self.semester.start_date)
             self.assertIsNone(self.semester.end_date)
-        self.assertFalse(AuditLog.objects.filter(resource=catalog.SEMESTER).exists())
+
+    def test_check_period_requires_the_dates_without_a_period(self):
+        for code in ('2026/2', '2027/1'):
+            with self.subTest(code=code), self.assertRaises(ValidationError) as context:
+                Semester.objects.check_period(code, None, None)
+            self.assertEqual(set(context.exception.error_dict), {'start_date', 'end_date'})
+
+    def test_check_period_accepts_blank_dates_with_a_period(self):
+        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        Semester.objects.check_period('2026/2', None, None)
+
+    def test_check_period_refuses_one_date_or_an_invalid_period(self):
+        self.semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
+        for start, end in [(date(2026, 8, 3), None), (None, date(2026, 12, 18)), (date(2026, 12, 18), date(2026, 8, 3))]:
+            with self.subTest(start=start, end=end), self.assertRaises(ValidationError):
+                Semester.objects.check_period('2026/2', start, end)
+        self.assertFalse(Semester.objects.filter(code='2026/2', start_date=date(2026, 12, 18)).exists())
 
     def test_contains_only_dates_of_the_period(self):
         self.assertFalse(self.semester.contains(date(2026, 10, 5)))

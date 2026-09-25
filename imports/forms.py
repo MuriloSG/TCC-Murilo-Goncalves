@@ -30,13 +30,24 @@ class ImportUploadForm(forms.Form):
         return 'own_' + ''.join(char for char in label.lower() if char.isalnum())
 
     def clean(self):
-        """Lê o arquivo depois dos campos próprios, para que o valor deles entre nas linhas."""
+        """Valida os campos próprios juntos e lê o arquivo depois deles, para que o valor deles entre nas linhas."""
         cleaned = super().clean()
         uploaded = cleaned.get('file')
         if uploaded is None or self.errors:
             return cleaned
+        try:
+            self.definition.clean_upload({label: cleaned.get(self.field_name(label)) for label in self.definition.upload_fields})
+        except forms.ValidationError as error:
+            if hasattr(error, 'error_dict'):
+                for label, errors in error.error_dict.items():
+                    field = self.field_name(label) if label in self.definition.upload_fields else None
+                    self.add_error(field, errors)
+            else:
+                self.add_error(None, error)
+            return cleaned
         own_values = {
-            label: str(cleaned[self.field_name(label)]) for label in self.definition.upload_fields
+            label: '' if cleaned[self.field_name(label)] is None else str(cleaned[self.field_name(label)])
+            for label in self.definition.upload_fields
         }
         try:
             rows = self.source.read(uploaded, self.definition)

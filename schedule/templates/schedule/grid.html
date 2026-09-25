@@ -111,7 +111,7 @@
               <ol>
                 {% for cell in day.cells %}
                   {% if cell and not cell.is_continued %}
-                    <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span>{% include "schedule/partials/timetable_cell.html" %}</li>
+                    <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span><div>{% include "schedule/partials/timetable_cell.html" %}</div></li>
                   {% endif %}
                 {% endfor %}
               </ol>

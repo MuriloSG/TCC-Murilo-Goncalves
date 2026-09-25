@@ -253,3 +253,13 @@ Ainda dependem do autor:
 3. **Cor da tira** (D8, P3): pela etapa (recomendada) ou tom único.
 4. **Quem define o período** (D3): `ENSALAMENTO.IMPORTAR` (proposto) ou permissão própria.
 5. **Período sugerido no modal** (D3): sugerir datas padrão pelo código do semestre ou começar com os campos vazios.
+
+## Conferência no navegador
+
+Em 25/09/2026, com a planilha de referência importada no banco `visual_check` e o período de 05/08/2026 a 18/12/2026:
+
+- **Visão semanal e modal do período:** sem rolagem horizontal em 360, 640, 1.024 e 1.280 px e com zoom de 200%; navegação entre semanas pelo htmx e sem JavaScript; foco no primeiro campo do modal, que fecha com Esc; a primeira semana mostra segunda e terça "Fora do semestre".
+- **Tempo de resposta** da semana da sala 1/13: cerca de 40 ms depois da primeira carga.
+- **Ajuste:** abaixo de 640 px, a faixa com mais de uma turma (turmas juntas) quebrava o segundo card para a coluna do horário. Os cards passaram a ficar num bloco próprio, com a altura do conteúdo. O defeito existia antes desta Change.
+- **Observação, fora do escopo:** na tabela, a faixa com duas turmas mostra os dois cards empilhados na mesma célula, sem o agrupamento "turmas juntas" que a Grade da importação tinha (D13 de `visualizar-grade-do-ensalamento`), o que faz o segundo card parecer estar na faixa seguinte.
+- **Pendente:** a visão mensal, depois da referência visual.

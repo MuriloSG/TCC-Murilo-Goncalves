@@ -1423,6 +1423,10 @@
     & .timetable-time {
       padding: var(--spacing-2) 0 0;
     }
+
+    & .timetable-card {
+      height: auto;
+    }
   }
 
   .timetable-free {

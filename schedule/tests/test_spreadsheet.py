@@ -249,16 +249,20 @@ class ActivityReadingTests(SpreadsheetTestCase):
         self.assertEqual(len(rows), 1)
         self.assertIn('Eduardo Garrido/ Thaís/ Antônio', rows[0][ACTIVITY_COLUMN])
 
-    def test_space_outside_the_catalog_is_a_problem(self):
+    def test_space_outside_the_catalog_is_read_as_cited_only_in_the_cells(self):
         activity = self.activity(f'{SECONDARY_SHEET}!J33')
-        self.assertEqual([code for code, _ in activity.problems], ['sala_desconhecida'])
-        self.assertIn('Zoo I', activity.problems[0][1])
+        self.assertEqual(activity.problems, [])
+        self.assertEqual((activity.space_name, activity.cell_space_name), (None, 'Zoo I'))
 
-    def test_space_with_a_different_spelling_is_a_problem(self):
+    def test_space_with_a_different_spelling_is_not_matched(self):
         activity = self.activity(f'{UNDERGRADUATE_SHEET}!T25')
-        self.assertEqual([code for code, _ in activity.problems], ['sala_desconhecida'])
-        self.assertIn('HV1', activity.problems[0][1])
+        self.assertEqual(activity.problems, [])
+        self.assertEqual((activity.space_name, activity.cell_space_name), (None, 'HV1'))
         self.assertEqual(activity.teacher_names, ['Valéria'])
+
+    def test_empty_parentheses_in_place_of_the_space_is_a_problem(self):
+        activity = resolve('Física (Elza) ()', Catalog.build(['Elza'], ['1/1']))
+        self.assertEqual([code for code, _ in activity.problems], ['sala_vazia'])
 
     def test_teacher_outside_the_catalog_is_a_problem(self):
         activity = self.activity(f'{UNDERGRADUATE_SHEET}!AB15')
@@ -305,9 +309,7 @@ class RealFileProblemTests(SpreadsheetTestCase):
         problems = [resolve(row[ACTIVITY_COLUMN], file_catalog).problems for row in self.activity_rows]
         with_problem = [found for found in problems if found]
         codes = sorted({code for found in with_problem for code, _ in found})
-        self.assertEqual(len(with_problem), 147)
-        self.assertEqual(codes, ['docente_desconhecido', 'sala_desconhecida', 'sem_disciplina'])
+        self.assertEqual(len(with_problem), 121)
+        self.assertEqual(codes, ['docente_desconhecido', 'sem_disciplina'])
         by_code = collections.Counter(code for found in with_problem for code, _ in found)
-        self.assertEqual(
-            by_code, {'docente_desconhecido': 120, 'sala_desconhecida': 26, 'sem_disciplina': 1},
-        )
+        self.assertEqual(by_code, {'docente_desconhecido': 120, 'sem_disciplina': 1})

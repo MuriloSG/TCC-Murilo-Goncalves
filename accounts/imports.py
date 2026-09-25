@@ -180,7 +180,7 @@ class UserImport(ImportDefinition):
         return []
 
 
-def concluded_message(summary):
+def concluded_message(summary, importation=None):
     """Mensagem da importação de usuários concluída, com os totais e o aviso do link."""
     created, updated = summary['create'], summary['update']
     parts = []

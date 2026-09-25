@@ -54,22 +54,22 @@
 
 ## 7. Importação: leitura e classificação dos espaços
 
-- [ ] 7.1 Fazer a leitura das células conhecer os nomes da lista de salas e todos os `SpaceName`, e transformar a sala desconhecida em nome citado só nas aulas, em vez do erro `sala_desconhecida` (D7)
-- [ ] 7.2 Criar a classificação dos nomes encontrados, com o agrupamento por nome, os nomes da lista sem aula fora da conta, a precedência reconhecido > decidido > novo proposto > precisa de decisão, os parecidos procurados conforme a origem do nome, o uso agregado (aulas, turmas e dias) e a alteração do cadastro que cada nome causará (D5)
-- [ ] 7.3 Testar a classificação com as duas planilhas reais num cadastro vazio: 62 novos propostos e nenhuma pendência na corrigida; `HV 1`, `HV 3` e `HV 4` propostos, e `HV1`, `HV3`, `HV4`, `HV5`, `Zoo I`, `EaD` e `2/41` precisando de decisão na original
-- [ ] 7.4 Testar o reconhecimento pelo outro nome, o espaço inativo como pendência, os vários parecidos, o nome só nas células sem parecido e a reimportação da planilha corrigida sobre os espaços adotados sem nenhuma proposta nem pendência
-- [ ] 7.5 Commit
+- [x] 7.1 Fazer a leitura das células conhecer os nomes da lista de salas e todos os `SpaceName`, e transformar a sala desconhecida em nome citado só nas aulas, em vez do erro `sala_desconhecida` (D7)
+- [x] 7.2 Criar a classificação dos nomes encontrados, com o agrupamento por nome, os nomes da lista sem aula fora da conta, a precedência reconhecido > decidido > novo proposto > precisa de decisão, os parecidos procurados conforme a origem do nome, o uso agregado (aulas, turmas e dias) e a alteração do cadastro que cada nome causará (D5)
+- [x] 7.3 Testar a classificação com as duas planilhas reais num cadastro vazio: 62 novos propostos e nenhuma pendência na corrigida; `HV 1`, `HV 3` e `HV 4` propostos, e `HV1`, `HV3`, `HV4`, `HV5`, `Zoo I`, `EaD` e `2/41` precisando de decisão na original
+- [x] 7.4 Testar o reconhecimento pelo outro nome, o espaço inativo como pendência, os vários parecidos, o nome só nas células sem parecido e a reimportação da planilha corrigida sobre os espaços adotados sem nenhuma proposta nem pendência
+- [x] 7.5 Commit
 
 ## 8. Importação: decisões e aplicação na confirmação
 
-- [ ] 8.1 Criar `decide` e `withdraw` de `SpaceDecision`: travam a importação, exigem `PENDENTE` ou `VALIDADA`, conferem o nome e o tipo contra a classificação e a permissão de espaço do executor, gravam o registro `ALTERAR` do módulo da importação e não tocam em `Space` (D9, D11, D13)
-- [ ] 8.2 Aplicar em `lock()` a classificação ao cadastro, pelas operações do capítulo 4: cadastrar com `PLANILHA` e a importação de origem, acrescentar e retirar outros nomes e reativar, guardando o resultado no `RunState` (D8)
-- [ ] 8.3 Devolver nas linhas de sala `create`, `update`, `unchanged`, nenhuma ação com o aviso `sala_sem_aula` ou a pendência, e nas linhas de atividade o espaço resultante ou a pendência `espaco_a_decidir`, sem executar a linha com pendência
-- [ ] 8.4 Implementar `check_confirmation` da importação de ensalamento com as permissões de espaço exigidas pelas alterações previstas e a mensagem aprovada (D11)
-- [ ] 8.5 Acrescentar ao resumo auditado as quantidades de espaços cadastrados, de outros nomes associados e de espaços reativados, por `contextvar`, e gravar nos registros de espaço da confirmação a chave da importação e quem decidiu (D13)
-- [ ] 8.6 Incluir na mensagem de conclusão as quantidades de espaços, omitindo as zero
-- [ ] 8.7 Testar: nada no cadastro depois da prévia e da atualização; tudo aplicado na confirmação; falha na confirmação sem espaço criado; descarte e exclusão sem alteração do cadastro; associação a um espaço e a um nome da mesma importação; reativação; reconhecimento prevalecendo sobre decisão antiga; duas importações que propõem o mesmo espaço; permissões recusando decisão e confirmação sem alterar nada; confirmação por outro usuário com a permissão; auditoria por espaço na confirmação e nenhuma na prévia
-- [ ] 8.8 Commit
+- [x] 8.1 Criar `decide` e `withdraw` de `SpaceDecision`: travam a importação, exigem `PENDENTE` ou `VALIDADA`, conferem o nome e o tipo contra a classificação e a permissão de espaço do executor, gravam o registro `ALTERAR` do módulo da importação e não tocam em `Space` (D9, D11, D13)
+- [x] 8.2 Aplicar em `lock()` a classificação ao cadastro, pelas operações do capítulo 4: cadastrar com `PLANILHA` e a importação de origem, acrescentar e retirar outros nomes e reativar, guardando o resultado no `RunState` (D8)
+- [x] 8.3 Devolver nas linhas de sala `create`, `update`, `unchanged`, nenhuma ação com o aviso `sala_sem_aula` ou a pendência, e nas linhas de atividade o espaço resultante ou a pendência `espaco_a_decidir`, sem executar a linha com pendência
+- [x] 8.4 Implementar `check_confirmation` da importação de ensalamento com as permissões de espaço exigidas pelas alterações previstas e a mensagem aprovada (D11)
+- [x] 8.5 Acrescentar ao resumo auditado as quantidades de espaços cadastrados, de outros nomes associados e de espaços reativados, por `contextvar`, e gravar nos registros de espaço da confirmação a chave da importação e quem decidiu (D13)
+- [x] 8.6 Incluir na mensagem de conclusão as quantidades de espaços, omitindo as zero
+- [x] 8.7 Testar: nada no cadastro depois da prévia e da atualização; tudo aplicado na confirmação; falha na confirmação sem espaço criado; descarte e exclusão sem alteração do cadastro; associação a um espaço e a um nome da mesma importação; reativação; reconhecimento prevalecendo sobre decisão antiga; duas importações que propõem o mesmo espaço; permissões recusando decisão e confirmação sem alterar nada; confirmação por outro usuário com a permissão; auditoria por espaço na confirmação e nenhuma na prévia
+- [x] 8.8 Commit
 
 ## 9. Tela de Espaços
 

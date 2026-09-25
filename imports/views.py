@@ -350,7 +350,7 @@ class ImportConfirmView(View):
                 messages.error(request, message)
         else:
             if concluded:
-                messages.success(request, self.screens.concluded_message(importation.summary()))
+                messages.success(request, self.screens.concluded_message(importation.summary(), importation))
             else:
                 messages.warning(request, DIVERGENCE_MESSAGE)
         return HttpResponseRedirect(self.screens.url('detail', importation.pk))

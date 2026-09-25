@@ -11,6 +11,7 @@ from accounts.permissions import (
     SPACE_ALLOCATION_IMPORT,
     SPACE_ALLOCATION_IMPORT_DELETE,
     SPACE_ALLOCATION_VIEW,
+    SPACE_CREATE,
     USER_VIEW,
 )
 from audit import catalog
@@ -26,7 +27,7 @@ ROWS = len(TEACHERS) + len(SPACES) + 4
 
 class ScreenTestCase(TestCase):
     def setUp(self):
-        self.importer = self.user('importador@ifnmg.edu.br', SPACE_ALLOCATION_VIEW, SPACE_ALLOCATION_IMPORT)
+        self.importer = self.user('importador@ifnmg.edu.br', SPACE_ALLOCATION_VIEW, SPACE_ALLOCATION_IMPORT, SPACE_CREATE)
         self.other = self.user('outro@ifnmg.edu.br', USER_VIEW)
 
     def user(self, email, *codes):
@@ -198,7 +199,8 @@ class ConfirmationScreenTests(ScreenTestCase):
         self.assertEqual(record.resource, catalog.SPACE_ALLOCATION_IMPORT)
         self.assertEqual(record.origin, catalog.INTERFACE)
         self.assertEqual(record.metadata['semestre'], '2026/1')
-        self.assertEqual(record.metadata['cadastrados'], ROWS)
+        self.assertEqual(record.metadata['cadastrados'], ROWS - 1)
+        self.assertEqual(record.metadata['espacos_cadastrados'], 3)
         self.assertEqual(record.metadata['situacao'], 'CONCLUIDA')
 
     def test_no_audit_record_of_the_created_entities_except_the_spaces(self):

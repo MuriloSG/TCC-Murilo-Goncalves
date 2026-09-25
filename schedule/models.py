@@ -228,6 +228,10 @@ class SpaceOrigin(models.TextChoices):
 
 
 SPACE_NAME_TAKEN_MESSAGE = 'Já existe um espaço com este nome.'
+SPACE_PERMISSION_MESSAGE = (
+    'A importação encontrou espaços que precisam ser cadastrados ou associados. '
+    'O seu perfil não tem permissão para essa configuração.'
+)
 
 
 def name_taken_message(name):
@@ -745,6 +749,105 @@ class Allocation(models.Model):
         return 'update', changes
 
 
+def decision_values(decision):
+    """Valores canônicos de uma decisão, para o registro de auditoria da importação."""
+    if decision is None:
+        return {}
+    return {
+        'nome_encontrado': decision.found_name,
+        'decisao': decision.kind,
+        'espaco': decision.space.name if decision.space_id else (decision.target_name or None),
+    }
+
+
+class SpaceDecisionManager(models.Manager):
+    """Decisões de espaço de uma importação (D9 da Change manipulacao-dos-espacos).
+
+    Gravar ou desfazer uma decisão trava a importação, confere a situação, o nome encontrado,
+    o tipo e a permissão de espaço do executor, e registra a auditoria no módulo da
+    importação. Nenhuma das duas operações toca no cadastro de espaços: a decisão só é
+    aplicada na confirmação. A classificação é importada aqui dentro porque o módulo dela
+    depende destes models.
+    """
+
+    def locked_import(self, importation):
+        from imports.models import Import
+
+        current = Import.objects.select_for_update().get(pk=importation.pk)
+        if current.status not in (Import.Status.VALIDATED, Import.Status.PENDING):
+            raise ValidationError(
+                f'Esta importação está {current.get_status_display().lower()} e não aceita decisões de espaço.',
+                code='decision_closed',
+            )
+        return current
+
+    def check_permissions(self, executor, required):
+        if any(not executor.has_perm(code) for code in required):
+            raise ValidationError(SPACE_PERMISSION_MESSAGE, code='space_permission')
+
+    def decide(self, importation, found_name, kind, executor, space=None, target_name=''):
+        """Grava a decisão do nome encontrado, substituindo a anterior, e devolve a decisão."""
+        from schedule import spaces
+
+        with transaction.atomic():
+            current = self.locked_import(importation)
+            resolution = spaces.classify_import(current)
+            entry = resolution.found.get(spaces.key_of(normalize_name(found_name) or ''))
+            if entry is None or kind not in spaces.options_of(entry):
+                raise ValidationError('Esta decisão não se aplica a este espaço.', code='decision_invalid')
+            target_name = normalize_name(target_name) or ''
+            if kind == self.model.Kind.SAME:
+                target = resolution.found.get(spaces.key_of(target_name)) if target_name else None
+                if (space is None) == (target is None):
+                    raise ValidationError('Escolha o espaço que é o mesmo.', code='decision_target')
+                if target is not None and (target.key == entry.key or target.outcome != spaces.CREATE):
+                    raise ValidationError('O espaço escolhido não será cadastrado por esta importação.', code='decision_target')
+                if target is not None:
+                    target_name = target.name
+            else:
+                space, target_name = None, ''
+            self.check_permissions(executor, spaces.decision_permissions(entry, kind, space, target_name))
+            previous = self.filter(importation=current, found_name__iexact=entry.name).select_related('space').first()
+            old_values = decision_values(previous)
+            if previous is not None:
+                previous.delete()
+            decision = self.create(
+                importation=current, found_name=entry.name, kind=kind, space=space,
+                target_name=target_name, decided_by=executor,
+            )
+            AuditLog.objects.record(
+                catalog.UPDATE,
+                catalog.SPACE_ALLOCATION_IMPORT,
+                resource_id=current.pk,
+                old_values=old_values,
+                new_values=decision_values(decision),
+            )
+            return decision
+
+    def withdraw(self, importation, found_name, executor):
+        """Desfaz a decisão do nome encontrado, que volta a ser classificado sem ela."""
+        from schedule import spaces
+
+        with transaction.atomic():
+            current = self.locked_import(importation)
+            decision = self.filter(
+                importation=current, found_name__iexact=normalize_name(found_name) or '',
+            ).select_related('space').first()
+            if decision is None:
+                raise ValidationError('Este espaço não tem decisão para desfazer.', code='decision_missing')
+            entry = spaces.classify_import(current).found.get(spaces.key_of(decision.found_name))
+            if entry is not None:
+                required = spaces.decision_permissions(entry, decision.kind, decision.space, decision.target_name)
+                self.check_permissions(executor, required)
+            AuditLog.objects.record(
+                catalog.UPDATE,
+                catalog.SPACE_ALLOCATION_IMPORT,
+                resource_id=current.pk,
+                old_values=decision_values(decision),
+            )
+            decision.delete()
+
+
 class SpaceDecision(models.Model):
     """Decisão de um usuário sobre um nome de espaço encontrado numa importação (D9).
 
@@ -772,6 +875,8 @@ class SpaceDecision(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='decidida por',
     )
     decided_at = models.DateTimeField('decidida em', auto_now=True)
+
+    objects = SpaceDecisionManager()
 
     class Meta:
         verbose_name = 'decisão de espaço'

@@ -7,8 +7,10 @@ validação de dados (D3 da Change importar-ensalamento-da-planilha).
 
 A correspondência é exata, ignorando somente a diferença entre maiúsculas e minúsculas e a
 normalização de espaços. Os acentos são preservados, e não há similaridade, prefixo nem
-correspondência parcial em nenhum ponto. Um nome fora do catálogo é erro da linha, e nada
-é criado a partir do texto da célula.
+correspondência parcial em nenhum ponto. Um docente fora do catálogo é erro da linha. Uma
+sala fora do catálogo, depois de uma lista de docentes conhecidos, é um nome citado só nas
+células: a classificação dos espaços decide o que fazer com ele, e nada é criado a partir do
+texto da célula (D7 da Change manipulacao-dos-espacos).
 """
 
 import re
@@ -21,8 +23,8 @@ TEACHER_SEPARATORS = re.compile(r'\s*/\s*|\s*,\s*|\s+e\s+')
 SUBJECT_BORDERS = ' -:;,/'
 ACTIVITY_COLUMN = 'Atividade'
 
-UNKNOWN_SPACE = 'sala_desconhecida'
 UNKNOWN_TEACHER = 'docente_desconhecido'
+EMPTY_SPACE = 'sala_vazia'
 WITHOUT_SUBJECT = 'sem_disciplina'
 WITHOUT_PARENTHESES = 'sem_parenteses'
 
@@ -50,12 +52,17 @@ class Catalog:
 
 @dataclass
 class Activity:
-    """Uma atividade lida de uma célula: disciplina, docentes, sala e os problemas dela."""
+    """Uma atividade lida de uma célula: disciplina, docentes, sala e os problemas dela.
+
+    `cell_space_name` é a sala que não está no catálogo, lida no lugar da sala porque o grupo
+    anterior é uma lista de docentes conhecidos.
+    """
 
     subject_name: str | None = None
     teacher_names: list = field(default_factory=list)
     space_name: str | None = None
     problems: list = field(default_factory=list)
+    cell_space_name: str | None = None
 
 
 def normalized_text(content):
@@ -120,11 +127,10 @@ def resolve(text, catalog):
         activity.space_name = space_name
         teacher_group = previous
     elif previous is not None and all(catalog.teacher(name) for name in teacher_names_of(previous.group(1))):
-        activity.problems.append((
-            UNKNOWN_SPACE,
-            f'A sala "{last_value}" não está na lista de salas da aba "Validação de Dados". '
-            'Acrescente a sala à planilha.',
-        ))
+        if last_value:
+            activity.cell_space_name = last_value
+        else:
+            activity.problems.append((EMPTY_SPACE, 'A atividade tem parênteses vazios no lugar da sala. Preencha a sala na planilha.'))
         teacher_group = previous
     else:
         teacher_group = last

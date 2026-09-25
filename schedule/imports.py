@@ -12,8 +12,11 @@ código do semestre vem do campo próprio do envio e está nos valores de todas 
 e o período é aplicado ao semestre na execução, em `lock()` (D3 da Change
 visualizar-ocupacao-por-semana-e-mes).
 
-Nada é excluído por uma importação, e nenhuma operação de domínio grava auditoria própria:
-o registro é o resumo da importação (D13 e D15).
+Nada é excluído por uma importação, e nenhuma operação de domínio grava auditoria própria,
+salvo as do cadastro de espaços: o registro é o resumo da importação (D13 e D15). Os espaços
+seguem a classificação de `schedule.spaces`, aplicada ao cadastro em `lock()`, antes das
+linhas; a lista de salas não cria espaço por si só, e o nome que precisa de decisão vira
+pendência (D5 e D8 da Change manipulacao-dos-espacos).
 """
 
 import contextvars
@@ -34,6 +37,8 @@ from imports.definitions import (
     RowPlan,
     errors_from_validation,
 )
+from audit.models import AuditLog
+from imports.models import Import
 from imports.reader import listing
 from imports.workbook import WorkbookSource
 from schedule.activities import ACTIVITY_COLUMN, Catalog, resolve, split_activities
@@ -44,8 +49,8 @@ from schedule.models import (
     ClassGroup,
     Course,
     Semester,
+    SPACE_PERMISSION_MESSAGE,
     Space,
-    SpaceOrigin,
     Subject,
     Teacher,
     TimeSlot,
@@ -66,6 +71,8 @@ from schedule.sheets import (
     strip_parentheses,
 )
 from schedule.sheets import text as sheet_text
+from schedule.spaces import ASSOCIATE, CREATE, PENDING, classify, classify_import, key_of
+from schedule.spaces import apply as apply_spaces
 
 SEMESTER_COLUMN = 'Semestre'
 START_COLUMN = 'Início'
@@ -79,6 +86,10 @@ GROUP_COLUMN = 'Turma'
 COURSE_COLUMN = 'Curso'
 
 COURSE_WITHOUT_TITLE = 'curso_sem_titulo'
+SPACE_WITHOUT_LESSONS = 'sala_sem_aula'
+ASSOCIATED_TO_NEW = 'outro_nome_de_espaco_novo'
+SPACE_PENDING = 'espaco_a_decidir'
+ACTIVE_LABELS = {True: 'ATIVO', False: 'INATIVO'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_ROWS = 5000
 
@@ -103,13 +114,20 @@ class RunState:
 
     `duplicates` guarda as células que descrevem a mesma alocação, para que todas recebam o
     erro de duplicidade em vez de a segunda atualizar o que a primeira criou.
+
+    `resolution` é a classificação dos espaços, `applied` o que ela aplicou ao cadastro e
+    `reported` os nomes da lista de salas cuja linha já recebeu a ação.
     """
 
-    def __init__(self):
+    def __init__(self, importation=None):
+        self.importation = importation
         self.catalog = Catalog.build((), ())
         self.semester = None
         self.created = set()
         self.duplicates = {}
+        self.resolution = None
+        self.applied = None
+        self.reported = set()
 
 
 def semester_field():
@@ -263,9 +281,17 @@ class SpaceAllocationImport(ImportDefinition):
         'name': 'Nome',
         'space': 'Espaço',
         'teachers': 'Docentes',
+        'outros_nomes': 'Outros nomes',
+        'situacao': 'Situação',
+        'novo_espaco': 'Espaço cadastrado',
     }
     warning_labels = {
         COURSE_WITHOUT_TITLE: 'O nome do curso veio do cabeçalho da turma, porque a planilha não traz o título.',
+        SPACE_WITHOUT_LESSONS: 'A sala está na lista da planilha e não tem aula nesta importação. Ela não será cadastrada.',
+        ASSOCIATED_TO_NEW: 'O nome será guardado como outro nome de um espaço cadastrado por esta importação.',
+    }
+    pending_labels = {
+        SPACE_PENDING: 'O espaço {key} precisa de decisão no quadro de espaços desta importação.',
     }
     columns_by_field = {
         'name': NAME_COLUMN,
@@ -311,23 +337,26 @@ class SpaceAllocationImport(ImportDefinition):
 
     @contextmanager
     def execution(self, importation=None):
-        token = RUN.set(RunState())
+        token = RUN.set(RunState(importation))
         try:
             yield
         finally:
             RUN.reset(token)
 
     def lock(self, rows, executor):
-        """Monta o catálogo do arquivo, resolve o semestre e trava as alocações dele.
+        """Classifica e aplica os espaços, resolve o semestre e trava as alocações dele.
 
-        O catálogo sai das próprias linhas, e não do arquivo, porque a confirmação não tem o
-        arquivo. A trava das alocações do semestre serializa duas importações concorrentes.
+        A classificação sai das próprias linhas, e não do arquivo, porque a confirmação não tem
+        o arquivo, e o catálogo da leitura das células é o dela: a lista da planilha somada
+        aos nomes do cadastro. As alterações do cadastro acontecem aqui, antes das linhas,
+        pelas operações de `Space`. A trava das alocações do semestre serializa duas
+        importações concorrentes.
         """
         state = RUN.get()
-        state.catalog = Catalog.build(
-            [self.catalog_name(row.values) for row in rows if row.values.get(KIND_COLUMN) == TEACHER_KIND],
-            [self.catalog_name(row.values) for row in rows if row.values.get(KIND_COLUMN) == SPACE_KIND],
-        )
+        state.resolution = classify([row.values for row in rows], state.importation)
+        state.catalog = state.resolution.catalog
+        state.applied = apply_spaces(state.resolution, state.importation)
+        state.created |= {(Space.__name__, pk) for pk in state.applied.created}
         code = next((row.values.get(SEMESTER_COLUMN) for row in rows if row.values.get(SEMESTER_COLUMN)), '')
         state.semester, _ = Semester.objects.resolve(code)
         self.apply_period(state.semester, rows)
@@ -369,18 +398,49 @@ class SpaceAllocationImport(ImportDefinition):
         return self.execute_activity(values)
 
     def execute_space(self, name):
-        """Reconhece o espaço da lista pelo nome, ou o cadastra com a origem da planilha."""
+        """Plano da linha da lista de salas, pelo que a classificação decidiu para o nome."""
         state = RUN.get()
+        key = key_of(name)
+        entry = state.resolution.found.get(key)
+        if entry is None:
+            return self.unused_space_plan(name)
+        if entry.outcome == PENDING:
+            return RowPlan(pending=[{'code': SPACE_PENDING, 'key': entry.name}])
+        space = state.applied.spaces[key]
+        if key in state.reported:
+            return RowPlan(action='unchanged', target=None if space.pk in state.applied.created else space.pk)
+        state.reported.add(key)
+        if entry.outcome == CREATE:
+            changes = {'name': [None, space.name]}
+            if space.other_names:
+                changes['outros_nomes'] = [None, space.other_names]
+            return RowPlan(action='create', changes=changes, created=space.pk)
+        if entry.outcome == ASSOCIATE and entry.target_key is not None:
+            return RowPlan(warnings=[ASSOCIATED_TO_NEW])
+        changes = self.space_changes(space, state.applied)
+        if changes:
+            return RowPlan(action='update', target=space.pk, changes=changes)
+        return RowPlan(action='unchanged', target=space.pk)
+
+    def unused_space_plan(self, name):
+        """Nome da lista sem aula: reconhecido fica como está; desconhecido não é cadastrado."""
         space = Space.objects.named(name)
-        if space is None:
-            try:
-                space = Space.objects.register(name, origin=SpaceOrigin.SPREADSHEET)
-            except ValidationError as error:
-                return RowPlan(errors=errors_from_validation(error, self.columns_by_field))
-            state.created.add((Space.__name__, space.pk))
-            return RowPlan(action='create', changes={'name': [None, space.name]}, created=space.pk)
-        key = (Space.__name__, space.pk)
-        return RowPlan(action='unchanged', target=None if key in state.created else space.pk)
+        if space is not None and space.is_active:
+            return RowPlan(action='unchanged', target=space.pk)
+        if space is not None:
+            return RowPlan()
+        return RowPlan(warnings=[SPACE_WITHOUT_LESSONS])
+
+    def space_changes(self, space, applied):
+        """Outros nomes e situação do espaço existente antes e depois desta execução."""
+        previous_names, was_active = applied.previous_names.get(space.pk, (space.other_names, space.is_active))
+        space.refresh_from_db()
+        changes = {}
+        if previous_names != space.other_names:
+            changes['outros_nomes'] = [previous_names, space.other_names]
+        if was_active != space.is_active:
+            changes['situacao'] = [ACTIVE_LABELS[was_active], ACTIVE_LABELS[space.is_active]]
+        return changes
 
     def execute_catalog(self, model, name):
         """Cria o espaço ou o docente da lista, ou o deixa como está."""
@@ -411,6 +471,11 @@ class SpaceAllocationImport(ImportDefinition):
         plan.errors = [RowError(ACTIVITY_COLUMN, code, message) for code, message in activity.problems]
         if plan.errors:
             return plan
+        space_key = key_of(activity.space_name or activity.cell_space_name or '')
+        entry = state.resolution.found.get(space_key)
+        if entry is not None and entry.outcome == PENDING:
+            plan.pending = [{'code': SPACE_PENDING, 'key': entry.name}]
+            return plan
         identity = activity_identity(values, state.catalog)
         if identity in state.duplicates:
             plan.errors.append(duplicate_error(state.duplicates[identity]))
@@ -420,7 +485,7 @@ class SpaceAllocationImport(ImportDefinition):
             group, _ = ClassGroup.objects.resolve(course, label)
             subject, _ = Subject.objects.resolve(activity.subject_name)
             slot, _ = TimeSlot.objects.resolve(state.semester, *slot_times)
-            space = Space.objects.named(activity.space_name) if activity.space_name else None
+            space = state.applied.spaces.get(space_key) if entry is not None else None
             teachers = [Teacher.objects.get(name__iexact=name) for name in activity.teacher_names]
             allocation, action, changes = Allocation.objects.apply(
                 semester=state.semester,
@@ -435,7 +500,7 @@ class SpaceAllocationImport(ImportDefinition):
             plan.errors = errors_from_validation(error, self.columns_by_field)
             return plan
         plan.action = action
-        plan.changes = changes
+        plan.changes = changes | self.new_space_change(entry, space)
         key = (Allocation.__name__, allocation.pk)
         if action == 'create':
             state.created.add(key)
@@ -443,6 +508,27 @@ class SpaceAllocationImport(ImportDefinition):
         else:
             plan.target = None if key in state.created else allocation.pk
         return plan
+
+    def check_confirmation(self, importation, executor):
+        """Permissões de espaço de quem confirma, pelo que a confirmação alterará no cadastro (D11)."""
+        required = classify_import(importation).required_permissions()
+        if any(not executor.has_perm(code) for code in required):
+            raise ValidationError(SPACE_PERMISSION_MESSAGE, code='space_permission')
+
+    def new_space_change(self, entry, space):
+        """Cadastro do espaço citado só nas células, no plano da primeira aula que o usa.
+
+        O nome da lista tem a linha de sala para mostrar o cadastro; o nome só das células não
+        tem, e sem esta mudança o plano não mudaria quando o espaço passasse a existir por
+        outro caminho entre a prévia e a confirmação.
+        """
+        state = RUN.get()
+        if entry is None or entry.from_list or space is None or space.pk not in state.applied.created:
+            return {}
+        if entry.key in state.reported:
+            return {}
+        state.reported.add(entry.key)
+        return {'novo_espaco': [None, space.name]}
 
     def audit_metadata(self, rows):
         """Semestre e período da importação, para o resumo auditado (D15 e D3).
@@ -465,11 +551,51 @@ class SpaceAllocationImport(ImportDefinition):
         if change is not None and change[:3] == (metadata['semestre'], *period_of(first)):
             previous = change[3]
             metadata |= {'inicio_anterior': previous[0].isoformat(), 'fim_anterior': previous[1].isoformat()}
+        parent = getattr(rows[0], 'parent_id', None) if rows else None
+        if parent is not None and Import.objects.filter(pk=parent, status=Import.Status.CONCLUDED).exists():
+            metadata |= space_totals(parent)
         return metadata
 
 
-def concluded_message(summary):
-    """Mensagem da importação de ensalamento concluída, com os totais."""
+def space_totals(importation_pk):
+    """Totais de espaços da confirmação, contados dos registros de espaço que ela gravou (D13).
+
+    Ficam fora dos campos da importação: vêm das alterações do cadastro aplicadas pela
+    confirmação, que registram a chave da importação nas informações adicionais.
+    """
+    records = AuditLog.objects.filter(resource=catalog.SPACE, metadata__importacao=importation_pk)
+    associated = sum(
+        1 for record in records.filter(action=catalog.UPDATE)
+        if len(record.new_values.get('outros_nomes') or []) > len(record.old_values.get('outros_nomes') or [])
+    )
+    return {
+        'espacos_cadastrados': records.filter(action=catalog.CREATE).count(),
+        'outros_nomes_associados': associated,
+        'espacos_reativados': records.filter(action=catalog.ACTIVATE).count(),
+    }
+
+
+def space_totals_text(importation):
+    """Trecho da mensagem de conclusão com os espaços alterados, sem as quantidades zero."""
+    record = AuditLog.objects.filter(
+        resource=catalog.SPACE_ALLOCATION_IMPORT, action=catalog.IMPORT, resource_id=str(importation.pk),
+    ).order_by('-pk').first()
+    totals = record.metadata if record else {}
+    parts = []
+    created = totals.get('espacos_cadastrados') or 0
+    associated = totals.get('outros_nomes_associados') or 0
+    reactivated = totals.get('espacos_reativados') or 0
+    if created:
+        parts.append(f'{created} espaço{"s" if created > 1 else ""} cadastrado{"s" if created > 1 else ""}')
+    if associated:
+        parts.append(f'{associated} outro{"s" if associated > 1 else ""} nome{"s" if associated > 1 else ""} associado{"s" if associated > 1 else ""}')
+    if reactivated:
+        parts.append(f'{reactivated} espaço{"s" if reactivated > 1 else ""} reativado{"s" if reactivated > 1 else ""}')
+    return parts
+
+
+def concluded_message(summary, importation=None):
+    """Mensagem da importação de ensalamento concluída, com os totais e os espaços alterados."""
     created, updated, unchanged = summary['create'], summary['update'], summary['unchanged']
     parts = []
     if created:
@@ -478,6 +604,8 @@ def concluded_message(summary):
         parts.append(f'{updated} atualizado{"s" if updated > 1 else ""}')
     if unchanged:
         parts.append(f'{unchanged} sem alteração')
+    if importation is not None:
+        parts.extend(space_totals_text(importation))
     if not parts:
         return 'Importação concluída. Nenhum registro foi cadastrado ou alterado.'
     return f'Importação do ensalamento concluída. {", ".join(parts)}.'

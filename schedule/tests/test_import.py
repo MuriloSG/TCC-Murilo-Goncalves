@@ -14,7 +14,8 @@ from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from openpyxl import Workbook
 
-from accounts.models import User
+from accounts import permissions
+from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
 from imports.forms import ImportUploadForm
@@ -42,6 +43,8 @@ TEACHERS = ['Viviane', 'Elza', 'Eduardo Garrido', 'Thaís Rios', 'Gera Jr.', 'É
 SPACES = ['(1/13)', '(2/6)', '(HV 3)', 'Lab. de Madeira']
 UNDERGRADUATE_SLOTS = ['07:20 - 08:10', '08:10 - 09:00', 'INTERVALO', '09:20 - 10:10']
 SECONDARY_SLOTS = ['07:20 - 08:10', 'ALMOÇO', '13:20 - 14:10']
+USED_SPACES = ['1/13', '2/6', 'HV 3']
+UNUSED_SPACES = 1
 
 
 def grid(sheet, banner, headers, days, activities):
@@ -107,9 +110,18 @@ def workbook_file(undergraduate=None, secondary=None, teachers=None, spaces=None
 PERIOD = {'own_início': '2026-08-03', 'own_fim': '2026-12-18'}
 
 
+def space_manager(email='admin@ifnmg.edu.br'):
+    """Usuário que importa o ensalamento e pode alterar o cadastro de espaços."""
+    code = email.partition('@')[0].upper()
+    role = Role.objects.create_role(
+        code=code, name=code, permissions=[permissions.SPACE_ALLOCATION_IMPORT, *permissions.SPACE_PERMISSIONS],
+    )
+    return User.objects.register(email=email, name=code.capitalize(), role=role)
+
+
 class ImportTestCase(TestCase):
     def setUp(self):
-        self.executor = User.objects.create(email='admin@ifnmg.edu.br', name='Admin')
+        self.executor = space_manager()
         self.definition = SpaceAllocationImport()
 
     def preview(self, uploaded=None, semester='2026/1', period=None):
@@ -145,7 +157,9 @@ class PreviewTests(ImportTestCase):
         importation = self.preview()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertEqual(importation.rows.count(), len(TEACHERS) + len(SPACES) + 4)
-        self.assertEqual(importation.summary()['create'], len(TEACHERS) + len(SPACES) + 4)
+        self.assertEqual(importation.summary()['create'], len(TEACHERS) + len(USED_SPACES) + 4)
+        unused = importation.rows.get(values__Nome='Lab. de Madeira')
+        self.assertEqual((unused.action, unused.warnings), (None, ['sala_sem_aula']))
         for model in (Semester, Space, Teacher, Course, Subject, ClassGroup, TimeSlot, Allocation):
             self.assertFalse(model.objects.exists(), model.__name__)
 
@@ -226,14 +240,15 @@ class PreviewTests(ImportTestCase):
         self.assertEqual(row.errors[0]['code'], 'docente_desconhecido')
         self.assertFalse(Teacher.objects.filter(name='Agnaldo').exists())
 
-    def test_unknown_space_is_an_error_of_the_activity_row(self):
+    def test_space_cited_only_in_the_cells_needs_decision(self):
         uploaded = workbook_file(undergraduate={
             ('SEGUNDA ', '07:20 - 08:10', 0): 'Física (Viviane) (Zoo I)',
         })
         importation = self.preview(uploaded)
-        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertEqual(importation.status, Import.Status.PENDING)
         row = importation.rows.get(values__Célula=f'{UNDERGRADUATE_SHEET}!C3')
-        self.assertEqual(row.errors[0]['code'], 'sala_desconhecida')
+        self.assertEqual((row.errors, row.action), ([], None))
+        self.assertEqual(row.pending, [{'code': 'espaco_a_decidir', 'key': 'Zoo I'}])
 
 
 class ConfirmationTests(ImportTestCase):
@@ -241,8 +256,8 @@ class ConfirmationTests(ImportTestCase):
         self.conclude()
         self.assertEqual(list(Semester.objects.values_list('code', flat=True)), ['2026/1'])
         self.assertEqual(Teacher.objects.count(), len(TEACHERS))
-        self.assertEqual(Space.objects.count(), len(SPACES))
-        self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), ['1/13', '2/6', 'HV 3', 'Lab. de Madeira'])
+        self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), USED_SPACES)
+        self.assertEqual(set(Space.objects.values_list('origin', flat=True)), {'PLANILHA'})
         self.assertEqual(Course.objects.count(), 2)
         self.assertEqual(Subject.objects.count(), 3)
         self.assertEqual(ClassGroup.objects.count(), 3)
@@ -276,10 +291,9 @@ class ConfirmationTests(ImportTestCase):
         self.assertEqual(group.course.stage, Stage.SECONDARY)
         self.assertEqual(group.allocations.count(), 1)
 
-    def test_catalog_value_without_activity_becomes_a_record(self):
+    def test_space_without_activity_is_not_registered_but_the_teacher_is(self):
         self.conclude()
-        self.assertTrue(Space.objects.filter(name='Lab. de Madeira').exists())
-        self.assertFalse(Allocation.objects.filter(space__name='Lab. de Madeira').exists())
+        self.assertFalse(Space.objects.filter(name='Lab. de Madeira').exists())
         self.assertTrue(Teacher.objects.filter(name='Gera Jr.').exists())
 
     def test_repeated_catalog_value_becomes_one_record(self):
@@ -292,23 +306,23 @@ class ConfirmationTests(ImportTestCase):
         self.assertEqual((first.action, repeated.action), ('create', 'unchanged'))
         self.assertIsNone(repeated.target)
 
-    def test_space_of_another_import_outside_the_list_is_not_accepted(self):
+    def test_existing_space_cited_only_in_the_cells_is_recognized(self):
         self.conclude()
         fewer = workbook_file(
             spaces=['(1/13)', '(2/6)'],
             secondary={('SEGUNDA-FEIRA', '13:20 - 14:10', 0): 'Biologia (Érica) (HV 3)'},
         )
         importation = self.preview(fewer)
-        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
         row = importation.rows.get(values__Célula=f'{SECONDARY_SHEET}!C5')
-        self.assertEqual(row.errors[0]['code'], 'sala_desconhecida')
-        self.assertTrue(Space.objects.filter(name='HV 3').exists())
+        self.assertEqual((row.errors, row.pending, row.action), ([], [], 'unchanged'))
 
     def test_concluded_message_has_the_totals(self):
         importation = self.conclude()
         self.assertEqual(
-            concluded_message(importation.summary()),
-            f'Importação do ensalamento concluída. {len(TEACHERS) + len(SPACES) + 4} registros cadastrados.',
+            concluded_message(importation.summary(), importation),
+            f'Importação do ensalamento concluída. {len(TEACHERS) + len(USED_SPACES) + 4} registros cadastrados, '
+            '3 espaços cadastrados.',
         )
 
 
@@ -320,7 +334,7 @@ class ReimportTests(ImportTestCase):
         summary = importation.summary()
         self.assertEqual(summary['create'], 0)
         self.assertEqual(summary['update'], 0)
-        self.assertEqual(summary['unchanged'], importation.rows.count())
+        self.assertEqual(summary['unchanged'], importation.rows.count() - UNUSED_SPACES)
         for model, count in counts.items():
             self.assertEqual(model.objects.count(), count, model.__name__)
 
@@ -396,11 +410,14 @@ class ReimportTests(ImportTestCase):
         self.assertEqual(manual.origin, Origin.MANUAL)
         self.assertTrue(Allocation.objects.filter(pk=manual.pk).exists())
 
-    def test_catalog_value_missing_from_the_new_file_is_preserved(self):
+    def test_space_missing_from_the_new_file_is_preserved_and_active(self):
         self.conclude()
-        fewer = workbook_file(spaces=['(1/13)', '(2/6)', '(HV 3)'])
+        fewer = workbook_file(
+            spaces=['(1/13)', '(2/6)'],
+            secondary={('SEGUNDA-FEIRA', '13:20 - 14:10', 0): 'Biologia (Érica) (1/13)'},
+        )
         self.conclude(fewer)
-        self.assertTrue(Space.objects.filter(name='Lab. de Madeira').exists())
+        self.assertTrue(Space.objects.get(name='HV 3').is_active)
 
     def test_another_semester_is_untouched(self):
         self.conclude()
@@ -540,20 +557,24 @@ class AuditTests(ImportTestCase):
             {
                 'arquivo': 'ensalamento.xlsx',
                 'situacao': 'CONCLUIDA',
-                'cadastrados': len(TEACHERS) + len(SPACES) + 4,
+                'cadastrados': len(TEACHERS) + len(USED_SPACES) + 4,
                 'atualizados': 0,
                 'sem_alteracao': 0,
                 'com_erro': 0,
                 'semestre': '2026/1',
                 'inicio': '2026-08-03',
                 'fim': '2026-12-18',
+                'espacos_cadastrados': 3,
+                'outros_nomes_associados': 0,
+                'espacos_reativados': 0,
             },
         )
 
     def test_no_record_for_each_entity_except_the_spaces(self):
+        before = AuditLog.objects.latest('pk').pk
         self.conclude()
         self.assertEqual(
-            sorted(set(AuditLog.objects.values_list('resource', flat=True))),
+            sorted(set(AuditLog.objects.filter(pk__gt=before).values_list('resource', flat=True))),
             sorted([catalog.SPACE_ALLOCATION_IMPORT, catalog.SPACE]),
         )
         self.assertEqual(
@@ -561,9 +582,10 @@ class AuditTests(ImportTestCase):
         )
 
     def test_preview_records_only_the_preview(self):
+        before = AuditLog.objects.latest('pk').pk
         self.preview()
         self.assertEqual(
-            list(AuditLog.objects.values_list('action', 'resource')),
+            list(AuditLog.objects.filter(pk__gt=before).values_list('action', 'resource')),
             [(catalog.CREATE, catalog.SPACE_ALLOCATION_IMPORT)],
         )
 
@@ -571,8 +593,9 @@ class AuditTests(ImportTestCase):
         self.conclude()
         importation = self.conclude()
         record = AuditLog.objects.filter(action=catalog.IMPORT).latest('pk')
-        self.assertEqual(record.metadata['sem_alteracao'], importation.rows.count())
+        self.assertEqual(record.metadata['sem_alteracao'], importation.rows.count() - UNUSED_SPACES)
         self.assertEqual(record.metadata['cadastrados'], 0)
+        self.assertEqual(record.metadata['espacos_cadastrados'], 0)
 
 
 class RealSpreadsheetTests(ImportTestCase):
@@ -590,11 +613,13 @@ class RealSpreadsheetTests(ImportTestCase):
     def test_real_file_has_the_activities_that_the_campus_needs_to_fix(self):
         importation = self.preview(self.uploaded())
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
-        self.assertEqual(importation.summary()['errors'], 147)
+        self.assertEqual(importation.summary()['errors'], 121)
 
     def test_real_file_plans_the_catalogs_and_most_activities(self):
-        summary = self.preview(self.uploaded()).summary()
-        self.assertEqual(summary['create'], 1706 - 147 - summary['unchanged'])
+        importation = self.preview(self.uploaded())
+        summary = importation.summary()
+        without_action = importation.rows.filter(action=None, errors=[], pending=[]).count()
+        self.assertEqual(summary['create'], 1706 - 121 - summary['pending'] - summary['unchanged'] - without_action)
         self.assertEqual(summary['update'], 0)
 
     def test_real_file_cannot_be_confirmed_while_it_has_errors(self):

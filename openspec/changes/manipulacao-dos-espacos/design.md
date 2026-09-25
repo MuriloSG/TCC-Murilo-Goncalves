@@ -272,6 +272,8 @@ A Grade escolhe a sala pelo nome na URL (`sala=`) e cai no padrão quando o nome
 
 A tela de Espaços e o quadro da prévia são conferidos no navegador, no banco `visual_check` e com Playwright em container, nunca no banco de desenvolvimento, nas larguras do projeto e sem rolagem horizontal da página.
 
+**Conferência de 25/09/2026.** Com a planilha corrigida concluída e uma reimportação com espaço inativo (`3/8`), nome parecido (`HV1`), erro de digitação (`2/41`) e um nome já decidido (`Sala Nova 01`), a lista de Espaços, o cadastro e o detalhe das duas importações foram abertos pelo administrador e pelo usuário só com `ENSALAMENTO.IMPORTAR`, em 360, 640, 1.024 e 1.280 px, sem JavaScript e com zoom de 200%: nenhuma página rolou na horizontal. Ajuste feito: as linhas recolhíveis do quadro usavam o estilo dos grupos de permissões, em maiúsculas espaçadas, que deixava frases inteiras em caixa alta; elas ganharam `space-group-name`, em caixa normal.
+
 ## Risks / Trade-offs
 
 - **[Um espaço renomeado na planilha sem nenhuma semelhança vira novo proposto]** → A lista de novos propostos fica visível antes da confirmação, com "Não é um espaço novo". Corrigir depois exige mesclar espaços, que está fora do escopo.

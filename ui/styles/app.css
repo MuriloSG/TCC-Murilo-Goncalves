@@ -2125,11 +2125,16 @@
     gap: var(--spacing-3);
   }
 
+  .space-group-name {
+    flex: 1;
+    font-weight: var(--font-weight-semibold);
+  }
+
   .space-summary-line {
     padding: var(--spacing-3) var(--spacing-4);
     border: 1px solid var(--color-divider);
     border-radius: var(--radius-lg);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .space-names {
@@ -2174,7 +2179,7 @@
     & h3 {
       font-size: var(--text-base);
       line-height: var(--text-base--line-height);
-      font-weight: 600;
+      font-weight: var(--font-weight-semibold);
     }
   }
 

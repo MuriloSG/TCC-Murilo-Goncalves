@@ -93,7 +93,7 @@
 
 ## 11. Conferência e fechamento
 
-- [ ] 11.1 Conferir no navegador, no banco `visual_check` e com Playwright em container, a lista de Espaços, os modais e o quadro da prévia nas larguras do projeto, sem rolagem horizontal da página, com a primeira importação da planilha corrigida e da original (D18)
-- [ ] 11.2 Rodar `make test` com a suíte inteira passando
-- [ ] 11.3 Rodar `openspec validate --all --strict`
-- [ ] 11.4 Commit
+- [x] 11.1 Conferir no navegador, no banco `visual_check` e com Playwright em container, a lista de Espaços, os modais e o quadro da prévia nas larguras do projeto, sem rolagem horizontal da página, com a primeira importação da planilha corrigida e da original (D18)
+- [x] 11.2 Rodar `make test` com a suíte inteira passando
+- [x] 11.3 Rodar `openspec validate --all --strict`
+- [x] 11.4 Commit

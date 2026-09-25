@@ -9,7 +9,7 @@
       {% if panel.concluded %}
         {% if panel.created %}
           <details class="perm-group">
-            <summary><span class="perm-group-name">{{ panel.created|length }} espaço{{ panel.created|length|pluralize }} cadastrado{{ panel.created|length|pluralize }} por esta importação.</span>{% icon "chevron-down" %}</summary>
+            <summary><span class="space-group-name">{{ panel.created|length }} espaço{{ panel.created|length|pluralize }} cadastrado{{ panel.created|length|pluralize }} por esta importação.</span>{% icon "chevron-down" %}</summary>
             <ul class="space-names">{% for space in panel.created %}<li>{{ space.name }}</li>{% endfor %}</ul>
           </details>
         {% else %}
@@ -36,7 +36,7 @@
             {% for text, names in panel.lines %}
               {% if names %}
                 <details class="perm-group">
-                  <summary><span class="perm-group-name">{{ text }}</span>{% icon "chevron-down" %}</summary>
+                  <summary><span class="space-group-name">{{ text }}</span>{% icon "chevron-down" %}</summary>
                   <ul class="space-names">{% for name in names %}<li>{{ name }}</li>{% endfor %}</ul>
                 </details>
               {% else %}
@@ -97,7 +97,7 @@
         {% endif %}
         {% if panel.open and panel.proposed %}
           <details class="perm-group">
-            <summary><span class="perm-group-name">Espaços novos propostos pela planilha</span><span class="perm-group-count">{{ panel.proposed|length }}</span>{% icon "chevron-down" %}</summary>
+            <summary><span class="space-group-name">Espaços novos propostos pela planilha</span><span class="perm-group-count">{{ panel.proposed|length }}</span>{% icon "chevron-down" %}</summary>
             <ul class="space-proposals">
               {% for item in panel.proposed %}
                 <li>

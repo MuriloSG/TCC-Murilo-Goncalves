@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.cache import cache
 from django.test import Client, RequestFactory, TestCase
 
@@ -32,6 +33,26 @@ class AuthenticationTestCase(TestCase):
 
     def login_errors(self, response):
         return list(response.context['form'].non_field_errors())
+
+
+class UsernameIsNotACredentialTests(AuthenticationTestCase):
+    """O nome de usuário é identificador de domínio, e não credencial (D2)."""
+
+    def test_email_remains_the_login_field(self):
+        self.assertEqual(User.USERNAME_FIELD, 'email')
+        self.assertIsNone(settings.ACCOUNT_USER_MODEL_USERNAME_FIELD)
+        self.assertEqual(settings.ACCOUNT_LOGIN_METHODS, {'email'})
+
+    def test_login_form_has_no_username_field(self):
+        response = self.client.get('/contas/login/')
+        self.assertEqual(set(response.context['form'].fields), {'login', 'password', 'remember'})
+
+    def test_username_does_not_authenticate(self):
+        self.user.username = 'Aldo Gomes'
+        self.user.save(update_fields=['username'])
+        response = self.login(email='Aldo Gomes')
+        self.assertFalse(self.is_authenticated())
+        self.assertTrue(response.context['form'].errors)
 
 
 class RoutesTests(AuthenticationTestCase):

@@ -26,6 +26,8 @@ PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
 ADMINISTRATOR_ROLE = 'ADMINISTRADOR'
 INSTITUTIONAL_EMAIL_DOMAIN = 'ifnmg.edu.br'
 USERNAME_TAKEN_MESSAGE = 'Este nome de usuário já pertence a outro usuário. Use outro nome de usuário.'
+UNCHANGED = object()
+"""Ausência de valor em uma operação, distinta de um valor vazio que exclui o dado."""
 
 
 def normalize_username(value):
@@ -160,14 +162,18 @@ USER_STATUS_FILTERS = {'ativos': True, 'inativos': False}
 
 class UserQuerySet(models.QuerySet):
     def search(self, term='', status=''):
-        """Filtra por trecho do nome ou do e-mail e pela situação.
+        """Filtra por trecho do nome, do e-mail ou do nome de usuário e pela situação.
 
         A comparação do termo ignora maiúsculas. A situação é "ativos" ou
         "inativos", e qualquer outro valor mantém todos os usuários.
         """
         queryset = self
         if term:
-            queryset = queryset.filter(models.Q(name__icontains=term) | models.Q(email__icontains=term))
+            queryset = queryset.filter(
+                models.Q(name__icontains=term)
+                | models.Q(email__icontains=term)
+                | models.Q(username__icontains=term),
+            )
         if status in USER_STATUS_FILTERS:
             queryset = queryset.filter(is_active=USER_STATUS_FILTERS[status])
         return queryset
@@ -194,7 +200,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
     def normalize_email(cls, email):
         return (email or '').strip().lower()
 
-    def register(self, email, name, role):
+    def register(self, email, name, role, username=None):
         """Cadastra o usuário sem senha e registra no outbox o envio do link para defini-la.
 
         O envio fica na mesma transação do cadastro: se o cadastro for desfeito, inclusive
@@ -210,6 +216,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         user = self.model(
             email=self.normalize_email(email),
             name=(name or '').strip(),
+            username=username,
             is_active=True,
             is_superadmin=False,
         )
@@ -223,7 +230,12 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
                 catalog.CREATE,
                 catalog.USER,
                 resource_id=user.pk,
-                new_values={'email': user.email, 'name': user.name, 'role': role.code},
+                new_values={
+                    'email': user.email,
+                    'name': user.name,
+                    'username': user.username,
+                    'role': role.code,
+                },
             )
         return user
 
@@ -371,7 +383,14 @@ class User(AbstractBaseUser):
                 announce(notifications.ROLE_CHANGED, user=self, role=role)
         self.__dict__.pop('_effective_permissions_cache', None)
 
-    def update_details(self, executor, name, email):
+    def update_details(self, executor, name, email, username=UNCHANGED):
+        """Altera nome, e-mail e nome de usuário.
+
+        O nome de usuário omitido fica como está. Informado vazio, ele é excluído: a
+        distinção entre não informar e excluir é o que permite à importação manter o
+        valor atual de uma célula vazia (D8). A proteção do e-mail de superadmin não
+        alcança o nome de usuário.
+        """
         name = (name or '').strip()
         email = type(self).objects.normalize_email(email)
         with transaction.atomic():
@@ -382,20 +401,22 @@ class User(AbstractBaseUser):
                 and not (executor.is_active and executor.is_superadmin)
             ):
                 raise SuperadminOnlyOperation()
-            previous = (self.name, self.email)
+            previous = (self.name, self.email, self.username)
             self.name, self.email = name, email
+            if username is not UNCHANGED:
+                self.username = username
             try:
                 self.full_clean()
-                self.save(update_fields=['name', 'email'])
+                self.save(update_fields=['name', 'email', 'username'])
                 EmailAddress.objects.filter(user=self).exclude(email__iexact=self.email).delete()
                 AuditLog.objects.record_changes(
                     catalog.USER,
                     self.pk,
-                    {'name': previous[0], 'email': previous[1]},
-                    {'name': self.name, 'email': self.email},
+                    {'name': previous[0], 'email': previous[1], 'username': previous[2]},
+                    {'name': self.name, 'email': self.email, 'username': self.username},
                 )
             except BaseException:
-                self.name, self.email = previous
+                self.name, self.email, self.username = previous
                 raise
 
     def deactivate(self):

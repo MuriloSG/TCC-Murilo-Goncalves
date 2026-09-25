@@ -42,7 +42,7 @@ class UserChangeTests(ChangeRecordTestCase):
         entry = self.entries(catalog.CREATE, catalog.USER).filter(resource_id=str(self.user.pk)).get()
         self.assertEqual(
             entry.new_values,
-            {'email': 'ana@ifnmg.edu.br', 'name': 'Ana Souza', 'role': 'DOCENTE'},
+            {'email': 'ana@ifnmg.edu.br', 'name': 'Ana Souza', 'username': None, 'role': 'DOCENTE'},
         )
         self.assertEqual(entry.old_values, {})
 

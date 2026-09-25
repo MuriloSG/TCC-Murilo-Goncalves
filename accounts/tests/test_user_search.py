@@ -33,6 +33,22 @@ class ManagerSearchTests(SearchTestCase):
     def test_trecho_do_email(self):
         self.assertEqual(self.names(User.objects.search('bruno.lima')), ['Bruno Lima'])
 
+    def test_trecho_do_nome_de_usuario(self):
+        aldo = User.objects.register(
+            email='aldo@ifnmg.edu.br', name='Aldo Gomes da Silva',
+            role=self.admin_role, username='Aldo Gomes',
+        )
+        self.assertEqual(self.names(User.objects.search('aldo gomes')), [aldo.name])
+        self.assertEqual(self.names(User.objects.search('ALDO GOMES')), [aldo.name])
+
+    def test_nome_de_usuario_combinado_com_a_situacao(self):
+        User.objects.register(
+            email='aldo@ifnmg.edu.br', name='Aldo Gomes da Silva',
+            role=self.admin_role, username='Aldo Gomes',
+        ).deactivate()
+        self.assertEqual(self.names(User.objects.search('aldo gomes', 'ativos')), [])
+        self.assertEqual(self.names(User.objects.search('aldo gomes', 'inativos')), ['Aldo Gomes da Silva'])
+
     def test_ignora_maiusculas(self):
         self.assertEqual(self.names(User.objects.search('CARLA')), ['Carla Mendes'])
         self.assertEqual(self.names(User.objects.search('IFNMG.EDU')), ['Ana Souza', 'Bruno Lima', 'Carla Mendes'])

@@ -3,6 +3,11 @@
 Cada app estende ImportDefinition e declara colunas, identificador, travamento,
 execução de uma linha, verificações do arquivo e rótulos. O motor trata o plano
 como dado e não interpreta o seu conteúdo.
+
+Uma pendência é um ponto da linha que depende de uma decisão de usuário prevista pela
+importação específica, e não um erro do arquivo: a linha com pendência não é aplicada, e a
+importação sem erro com alguma pendência fica `PENDENTE` (D10 da Change
+manipulacao-dos-espacos).
 """
 
 from contextlib import nullcontext
@@ -48,10 +53,13 @@ class RowError:
 
 @dataclass
 class RowPlan:
-    """Decisão sobre uma linha: ação, alvo, mudanças, avisos e erros (D8).
+    """Decisão sobre uma linha: ação, alvo, mudanças, avisos, pendências e erros (D8).
 
     `created` é a chave do registro criado pela linha. Fica fora da comparação e só
     é gravado na conclusão, porque a chave gerada na prévia desaparece no rollback.
+
+    `pending` é a lista de pendências da linha, cada uma com o código e a chave canônica
+    que a agrupa.
     """
 
     action: str | None = None
@@ -60,6 +68,7 @@ class RowPlan:
     warnings: list = field(default_factory=list)
     errors: list = field(default_factory=list)
     created: str | None = None
+    pending: list = field(default_factory=list)
 
 
 class ImportDefinition:
@@ -71,6 +80,7 @@ class ImportDefinition:
     action_labels = {}
     field_labels = {}
     warning_labels = {}
+    pending_labels = {}
     upload_fields = {}
     row_filters = ()
     max_file_size = None
@@ -93,8 +103,13 @@ class ImportDefinition:
     def normalize_identifier(self, value):
         return value.strip()
 
-    def execution(self):
-        """Contexto aberto em volta de todas as linhas e das verificações do arquivo."""
+    def execution(self, importation=None):
+        """Contexto aberto em volta de todas as linhas e das verificações do arquivo.
+
+        Recebe a importação em curso na atualização da prévia e na confirmação, e nenhuma
+        na primeira prévia, para que a importação específica leia os dados que guarda
+        junto da importação.
+        """
         return nullcontext()
 
     def lock(self, rows, executor):
@@ -118,6 +133,17 @@ class ImportDefinition:
     def check_file(self, executor):
         """Verificações do arquivo inteiro, depois de todas as linhas. Devolve RowError sem coluna."""
         return []
+
+    def check_confirmation(self, importation, executor):
+        """Verificação própria da confirmação, antes de reexecutar as linhas.
+
+        Lança `ValidationError` com a mensagem para recusar a confirmação; a recusa não
+        altera a importação nem nenhum dado.
+        """
+
+    def pending_label(self, code, key):
+        """Texto de uma pendência da linha, a partir do rótulo declarado para o código."""
+        return self.pending_labels.get(code, code).format(key=key)
 
     def audit_metadata(self, rows):
         """Informações adicionais próprias da importação nos registros de auditoria.

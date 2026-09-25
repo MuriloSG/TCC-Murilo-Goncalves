@@ -48,7 +48,7 @@ class UserImport(ImportDefinition):
     def normalize_identifier(self, value):
         return User.objects.normalize_email(value)
 
-    def execution(self):
+    def execution(self, importation=None):
         return deferred_administrative_continuity()
 
     def lock(self, rows, executor):

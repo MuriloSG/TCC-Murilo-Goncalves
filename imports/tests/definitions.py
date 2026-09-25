@@ -14,7 +14,9 @@ class GroupImport(ImportDefinition):
     """Cria o grupo do nome da linha ou o deixa como está.
 
     "ERRO" recusa a linha pelo model, "BANCO" provoca erro do banco, "FALHA" lança
-    uma exceção inesperada e um grupo "PROIBIDO" ao fim reprova o arquivo.
+    uma exceção inesperada e um grupo "PROIBIDO" ao fim reprova o arquivo. "DECIDIR" fica
+    com uma pendência enquanto não existir o grupo "DECIDIDO", e `refusal` recusa a
+    confirmação com a mensagem dada.
     """
 
     kind = 'GRUPO'
@@ -23,9 +25,20 @@ class GroupImport(ImportDefinition):
     identifier = 'Nome'
     columns_by_field = {'name': 'Nome'}
     locked = None
+    refusal = None
+    received = None
+    pending_labels = {'decidir': 'Decida o grupo {key}.'}
+
+    def execution(self, importation=None):
+        self.received = importation
+        return super().execution(importation)
 
     def lock(self, rows, executor):
         self.locked = [row.line_number for row in rows]
+
+    def check_confirmation(self, importation, executor):
+        if self.refusal:
+            raise ValidationError(self.refusal)
 
     def execute_row(self, values, executor):
         name = values['Nome'].strip()
@@ -36,6 +49,9 @@ class GroupImport(ImportDefinition):
                 cursor.execute('SELECT * FROM tabela_inexistente')
         if name == 'FALHA':
             raise RuntimeError('falha inesperada')
+        if name == 'DECIDIR' and not Group.objects.filter(name='DECIDIDO').exists():
+            Group.objects.create(name='DECIDIR')
+            return RowPlan(pending=[{'code': 'decidir', 'key': name}])
         group = Group.objects.filter(name=name).first()
         if group is not None:
             return RowPlan(action='unchanged', target=group.pk)

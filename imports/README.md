@@ -12,7 +12,8 @@ O estado vale para a importação inteira. As linhas não têm estado próprio: 
 
 | Código | Rótulo | Significado | Final |
 |---|---|---|---|
-| `VALIDADA` | Validada | A prévia não tem erros e pode ser confirmada ou descartada | Não |
+| `VALIDADA` | Validada | A prévia não tem erros nem pendências e pode ser confirmada ou descartada | Não |
+| `PENDENTE` | Precisa de decisão | A prévia não tem erros, mas tem pendências que dependem de decisão de usuário. Pode ter a prévia atualizada ou ser descartada, e não pode ser confirmada nem excluída | Não |
 | `COM_ERROS` | Com erros | A prévia tem erros de linha ou de arquivo e não pode ser confirmada | Sim |
 | `CONCLUIDA` | Concluída | A importação foi confirmada e aplicada | Sim |
 | `DESCARTADA` | Descartada | A importação foi descartada sem aplicar nada | Sim |
@@ -23,8 +24,15 @@ Os códigos ficam em `Import.Status` (`imports/models.py`).
 
 ```mermaid
 stateDiagram-v2
-    [*] --> VALIDADA: enviar (prévia sem erros)
+    [*] --> VALIDADA: enviar (prévia sem erros nem pendências)
+    [*] --> PENDENTE: enviar (prévia sem erros, com pendências)
     [*] --> COM_ERROS: enviar (prévia com erros)
+
+    PENDENTE --> PENDENTE: atualizar a prévia (ainda com pendências)
+    PENDENTE --> VALIDADA: atualizar a prévia (sem pendências)
+    PENDENTE --> COM_ERROS: atualizar a prévia (com erros)
+    PENDENTE --> DESCARTADA: descartar
+    VALIDADA --> PENDENTE: atualizar a prévia ou confirmar (plano mudou, com pendências)
 
     VALIDADA --> CONCLUIDA: confirmar (plano idêntico)
     VALIDADA --> VALIDADA: confirmar (plano mudou, sem erros)
@@ -40,7 +48,12 @@ stateDiagram-v2
 
 | Evento | De | Condição | Para | Efeito |
 |---|---|---|---|---|
-| Enviar | (nenhum) | Prévia sem erros de linha nem de arquivo | `VALIDADA` | Grava a importação e o plano das linhas. Nada é aplicado ao domínio |
+| Enviar | (nenhum) | Prévia sem erros de linha nem de arquivo e sem pendências | `VALIDADA` | Grava a importação e o plano das linhas. Nada é aplicado ao domínio |
+| Enviar | (nenhum) | Prévia sem erros, com pelo menos uma pendência | `PENDENTE` | Grava a importação, o plano e as pendências. Nada é aplicado ao domínio |
+| Atualizar a prévia | `PENDENTE` ou `VALIDADA` | Nenhuma | `VALIDADA`, `PENDENTE` ou `COM_ERROS`, conforme o novo plano | Reexecuta as linhas gravadas e desfaz tudo. O novo plano substitui o anterior. Não conta como prévia refeita e não é auditada |
+| Confirmar | `VALIDADA` | A verificação própria da importação específica recusa o executor | (sem mudança) | Recusado com a mensagem da verificação, antes de reexecutar |
+| Confirmar | `PENDENTE` | Nenhuma | (sem mudança) | Recusado com `ImportNeedsDecision` |
+| Descartar | `PENDENTE` | Nenhuma | `DESCARTADA` | Grava quem descartou e quando. Nada é aplicado |
 | Enviar | (nenhum) | Prévia com pelo menos um erro | `COM_ERROS` | Grava a importação, o plano e os erros |
 | Confirmar | `VALIDADA` | O novo plano é idêntico ao gravado | `CONCLUIDA` | Aplica todas as linhas, grava o registro criado de cada cadastro e quem confirmou e quando |
 | Confirmar | `VALIDADA` | O novo plano é diferente, sem erros | `VALIDADA` | Nada é aplicado. O novo plano substitui o anterior, e `revalidation_count` aumenta em 1 |
@@ -122,10 +135,11 @@ Estas capacidades estão previstas no design, mas não implementadas:
 
 - **`PROCESSANDO` e `FALHOU`**, que só fazem sentido com processamento assíncrono. Hoje a prévia e a confirmação são síncronas, então nenhuma das duas situações seria observada.
 - **Cancelamento e progresso**, também dependentes do processamento assíncrono.
+- **Atualização da prévia de uma importação `COM_ERROS`.** Os erros de linha e de arquivo só se corrigem com um arquivo novo, e `COM_ERROS` continua final. A pendência, que se resolve na tela, é a razão de `PENDENTE` existir.
 - **Reenvio de uma importação `COM_ERROS`.** Para corrigir, envia-se o arquivo corrigido, que cria uma importação nova. A anterior continua no histórico.
 
 ## Testes
 
-- `imports/tests/test_models.py`: transições, divergência com e sem erros, erro inesperado na prévia e na confirmação, estados finais, confirmações simultâneas e plano determinístico, com uma importação de teste sobre `auth.Group`.
+- `imports/tests/test_models.py`: transições, pendências, atualização da prévia, verificação própria da confirmação, divergência com e sem erros, erro inesperado na prévia e na confirmação, estados finais, confirmações simultâneas e plano determinístico, com uma importação de teste sobre `auth.Group`.
 - `accounts/tests/test_user_import.py`: as mesmas regras aplicadas à importação de usuários.
 - `accounts/tests/test_user_import_views.py`: os eventos pelas telas, com acesso, CSRF e mensagens.

@@ -1,6 +1,10 @@
 {% load ui %}
-  {% if importation.status == "VALIDADA" %}
+  {% if importation.status == "VALIDADA" and confirm_refusal %}
+    <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>{{ confirm_refusal }}</p></div>
+  {% elif importation.status == "VALIDADA" %}
     <div class="alert tone-info" role="status">{% icon "info" %}<p>Prévia pronta. Nenhum dado foi gravado. Confira as linhas e confirme a importação.</p></div>
+  {% elif importation.status == "PENDENTE" %}
+    <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>A importação precisa de decisão antes de ser confirmada. Nenhum dado foi gravado.</p></div>
   {% elif importation.status == "COM_ERROS" %}
     <div class="alert tone-error" role="status">{% icon "circle-x" %}<p>A importação tem erros e não pode ser confirmada. Corrija a planilha e envie o arquivo de novo.</p></div>
   {% endif %}
@@ -11,7 +15,7 @@
   <details class="card audit-panel" aria-label="Resumo da importação">
     <summary>
       {% include "ui/components/badge.html" with tone=importation.tone icon=importation.icon label=importation.get_status_display %}
-      <span class="audit-panel-result">{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged errors=summary.errors %}</span>
+      <span class="audit-panel-result">{% include "imports/partials/result.html" with created=summary.create updated=summary.update unchanged=summary.unchanged pending=summary.pending errors=summary.errors %}</span>
       <span class="audit-panel-toggle">Detalhes {% icon "chevron-down" %}</span>
     </summary>
     <dl class="audit-grid">

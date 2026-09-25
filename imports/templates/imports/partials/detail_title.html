@@ -4,10 +4,14 @@
       <h1 class="page-title">Importação de {{ importation.file_name }}</h1>
     </div>
     {% if importation.is_validated %}
-      <form id="confirmar-importacao" method="post" action="{{ confirm_url }}">{% csrf_token %}</form>
+      {% if not confirm_refusal %}<form id="confirmar-importacao" method="post" action="{{ confirm_url }}">{% csrf_token %}</form>{% endif %}
       <div class="page-actions">
         <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
-        <button class="btn-primary" type="submit" form="confirmar-importacao">{% icon "check" %}Confirmar importação</button>
+        {% if not confirm_refusal %}<button class="btn-primary" type="submit" form="confirmar-importacao">{% icon "check" %}Confirmar importação</button>{% endif %}
+      </div>
+    {% elif importation.needs_decision %}
+      <div class="page-actions">
+        <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
       </div>
     {% elif importation.status == "COM_ERROS" %}
       <div class="page-actions">

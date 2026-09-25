@@ -309,7 +309,7 @@ class SpaceAllocationImport(ImportDefinition):
                     yield activity_row(cell, content, cell['reference'] + ordinal)
 
     @contextmanager
-    def execution(self):
+    def execution(self, importation=None):
         token = RUN.set(RunState())
         try:
             yield

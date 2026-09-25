@@ -5,18 +5,18 @@
 
 ## 2. Motor de importação: pendências, `PENDENTE` e atualização da prévia
 
-- [ ] 2.1 Acrescentar `pending` a `RowPlan` e o campo `pending` a `ImportRow`, gravado junto do plano, com a migration de `imports` (D10)
-- [ ] 2.2 Incluir as pendências em `Plan`, com `has_pending`, na comparação de planos de `imports/execution.py` e na comparação do plano gravado, e desfazer o savepoint da linha que devolve pendência
-- [ ] 2.3 Acrescentar a situação `PENDENTE`, exibida como "Precisa de decisão", e definir a situação pelo plano na prévia, na divergência da confirmação e na atualização: erro → `COM_ERROS`, pendência → `PENDENTE`, nada → `VALIDADA`
-- [ ] 2.4 Passar a importação em curso a `run()` e a `definition.execution()`, com nenhuma na primeira prévia
-- [ ] 2.5 Criar `Import.refresh(definition, executor)`: trava, aceita só `PENDENTE` e `VALIDADA`, reexecuta num savepoint desfeito, substitui o plano e a situação, sem mexer em `revalidation_count` e sem auditoria, extraindo o trecho do ramo divergente de `confirm`
-- [ ] 2.6 Acrescentar a `ImportDefinition` o gancho opcional `check_confirmation(importation, executor)`, chamado por `confirm` depois de travar a importação e antes de reexecutar, com a recusa exibida como mensagem e sem alterar nada
-- [ ] 2.7 Aceitar o descarte de uma importação `PENDENTE`, recusar a confirmação e a exclusão dela, e recusar a atualização de importação em situação final
-- [ ] 2.8 Exibir "Precisa de decisão" com tom de aviso e ícone no histórico e no detalhe, exibir as pendências de cada linha com o rótulo declarado pela importação específica e permitir que as `ImportScreens` declarem um template de quadro próprio no detalhe
-- [ ] 2.9 Atualizar `imports/README.md` com a situação `PENDENTE`, a atualização da prévia, a verificação própria da confirmação e o diagrama de estados
-- [ ] 2.10 Testar com uma importação de teste: pendência sem erro leva a `PENDENTE`, erro prevalece sobre pendência, pendência entra na comparação, a atualização deixa `VALIDADA` sem contar divergência, o erro inesperado na atualização não muda nada, a verificação própria recusa a confirmação sem reexecutar, `PENDENTE` é descartada e não é confirmada nem excluída
-- [ ] 2.11 Conferir que a importação de usuários continua com o mesmo comportamento, rodando `accounts/tests/test_user_import.py` e `test_user_import_views.py`
-- [ ] 2.12 Commit
+- [x] 2.1 Acrescentar `pending` a `RowPlan` e o campo `pending` a `ImportRow`, gravado junto do plano, com a migration de `imports` (D10)
+- [x] 2.2 Incluir as pendências em `Plan`, com `has_pending`, na comparação de planos de `imports/execution.py` e na comparação do plano gravado, e desfazer o savepoint da linha que devolve pendência
+- [x] 2.3 Acrescentar a situação `PENDENTE`, exibida como "Precisa de decisão", e definir a situação pelo plano na prévia, na divergência da confirmação e na atualização: erro → `COM_ERROS`, pendência → `PENDENTE`, nada → `VALIDADA`
+- [x] 2.4 Passar a importação em curso a `run()` e a `definition.execution()`, com nenhuma na primeira prévia
+- [x] 2.5 Criar `Import.refresh(definition, executor)`: trava, aceita só `PENDENTE` e `VALIDADA`, reexecuta num savepoint desfeito, substitui o plano e a situação, sem mexer em `revalidation_count` e sem auditoria, extraindo o trecho do ramo divergente de `confirm`
+- [x] 2.6 Acrescentar a `ImportDefinition` o gancho opcional `check_confirmation(importation, executor)`, chamado por `confirm` depois de travar a importação e antes de reexecutar, com a recusa exibida como mensagem e sem alterar nada
+- [x] 2.7 Aceitar o descarte de uma importação `PENDENTE`, recusar a confirmação e a exclusão dela, e recusar a atualização de importação em situação final
+- [x] 2.8 Exibir "Precisa de decisão" com tom de aviso e ícone no histórico e no detalhe, exibir as pendências de cada linha com o rótulo declarado pela importação específica e permitir que as `ImportScreens` declarem um template de quadro próprio no detalhe
+- [x] 2.9 Atualizar `imports/README.md` com a situação `PENDENTE`, a atualização da prévia, a verificação própria da confirmação e o diagrama de estados
+- [x] 2.10 Testar com uma importação de teste: pendência sem erro leva a `PENDENTE`, erro prevalece sobre pendência, pendência entra na comparação, a atualização deixa `VALIDADA` sem contar divergência, o erro inesperado na atualização não muda nada, a verificação própria recusa a confirmação sem reexecutar, `PENDENTE` é descartada e não é confirmada nem excluída
+- [x] 2.11 Conferir que a importação de usuários continua com o mesmo comportamento, rodando `accounts/tests/test_user_import.py` e `test_user_import_views.py`
+- [x] 2.12 Commit
 
 ## 3. Nomes, origem e situação do espaço
 

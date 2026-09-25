@@ -43,7 +43,7 @@ class PreviewTests(ImportTestCase):
         )
         self.assertIsNone(first.created_object)
         self.assertEqual(self.definition.locked, [2, 3])
-        self.assertEqual(importation.summary(), {'create': 2, 'update': 0, 'unchanged': 0, 'errors': 0})
+        self.assertEqual(importation.summary(), {'create': 2, 'update': 0, 'unchanged': 0, 'pending': 0, 'errors': 0})
 
     def test_existing_record_is_unchanged_with_target(self):
         group = Group.objects.create(name='Docentes')
@@ -151,6 +151,92 @@ class ConfirmTests(ImportTestCase):
         importation.discard(self.definition, self.other)
         self.assertEqual((importation.status, importation.resolved_by), ('DESCARTADA', self.other))
         self.assertFalse(Group.objects.exists())
+
+
+class PendingTests(ImportTestCase):
+    def test_pending_without_error_needs_decision_and_rolls_back_the_row(self):
+        importation = self.preview('Docentes', 'DECIDIR')
+        self.assertEqual(importation.status, 'PENDENTE')
+        self.assertEqual(importation.get_status_display(), 'Precisa de decisão')
+        row = importation.rows.get(line_number=3)
+        self.assertEqual((row.action, row.pending), (None, [{'code': 'decidir', 'key': 'DECIDIR'}]))
+        self.assertFalse(Group.objects.exists())
+        self.assertEqual(importation.summary()['pending'], 1)
+        self.assertIsNone(self.definition.received)
+
+    def test_error_prevails_over_pending(self):
+        self.assertEqual(self.preview('DECIDIR', 'ERRO').status, 'COM_ERROS')
+
+    def test_pending_enters_the_comparison(self):
+        importation = self.preview('Docentes', 'DECIDIR')
+        Group.objects.create(name='DECIDIDO')
+        self.assertNotEqual(importation.comparable(), self.preview('Docentes', 'DECIDIR').comparable())
+
+    def test_needing_decision_is_not_confirmed_nor_deleted_but_is_discarded(self):
+        importation = self.preview('DECIDIR')
+        with self.assertRaises(ValidationError):
+            importation.confirm(self.definition, self.executor)
+        with self.assertRaises(ValidationError):
+            importation.remove(self.definition, self.executor)
+        importation.refresh_from_db()
+        self.assertEqual(importation.status, 'PENDENTE')
+        importation.discard(self.definition, self.executor)
+        self.assertEqual(importation.status, 'DESCARTADA')
+
+    def test_refresh_replaces_the_plan_without_counting_divergence(self):
+        importation = self.preview('Docentes', 'DECIDIR')
+        Group.objects.create(name='DECIDIDO')
+        self.assertEqual(importation.refresh(self.definition, self.executor), 'VALIDADA')
+        self.assertEqual(importation.revalidation_count, 0)
+        self.assertEqual(importation.rows.get(line_number=3).action, 'create')
+        self.assertEqual(self.definition.received.pk, importation.pk)
+        self.assertEqual(set(Group.objects.values_list('name', flat=True)), {'DECIDIDO'})
+        self.assertFalse(AuditLog.objects.filter(action=catalog.UPDATE).exists())
+        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertEqual(importation.status, 'CONCLUIDA')
+
+    def test_refresh_back_to_pending(self):
+        importation = self.preview('Docentes', 'DECIDIR')
+        Group.objects.create(name='DECIDIDO')
+        importation.refresh(self.definition, self.executor)
+        Group.objects.filter(name='DECIDIDO').delete()
+        self.assertEqual(importation.refresh(self.definition, self.executor), 'PENDENTE')
+
+    def test_unexpected_error_on_refresh_changes_nothing(self):
+        importation = self.preview('Docentes', 'DECIDIR')
+        row = importation.rows.get(line_number=2)
+        row.values = {'Nome': 'FALHA'}
+        row.save()
+        with self.assertRaises(RuntimeError):
+            importation.refresh(self.definition, self.executor)
+        importation.refresh_from_db()
+        self.assertEqual(importation.status, 'PENDENTE')
+        self.assertEqual(importation.rows.get(line_number=2).action, 'create')
+
+    def test_refresh_of_final_status_is_refused(self):
+        importation = self.preview('Docentes')
+        importation.confirm(self.definition, self.executor)
+        with self.assertRaises(ValidationError):
+            importation.refresh(self.definition, self.executor)
+
+    def test_own_check_refuses_confirmation_without_reexecuting(self):
+        importation = self.preview('Docentes')
+        self.definition.refusal = 'Falta a permissão.'
+        self.definition.locked = None
+        with self.assertRaisesMessage(ValidationError, 'Falta a permissão.'):
+            importation.confirm(self.definition, self.executor)
+        importation.refresh_from_db()
+        self.assertEqual((importation.status, importation.revalidation_count), ('VALIDADA', 0))
+        self.assertIsNone(self.definition.locked)
+        self.assertFalse(Group.objects.exists())
+
+    def test_confirmation_with_pending_after_changed_data(self):
+        importation = self.preview('Docentes', 'DECIDIR')
+        Group.objects.create(name='DECIDIDO')
+        importation.refresh(self.definition, self.executor)
+        Group.objects.filter(name='DECIDIDO').delete()
+        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertEqual((importation.status, importation.revalidation_count), ('PENDENTE', 1))
 
 
 class RemoveTests(ImportTestCase):

@@ -29,6 +29,10 @@ class Plan:
     def has_errors(self):
         return bool(self.file_errors) or any(row_plan.errors for _, row_plan in self.rows)
 
+    @property
+    def has_pending(self):
+        return any(row_plan.pending for _, row_plan in self.rows)
+
     def file_errors_data(self):
         return [{'code': error.code, 'message': error.message} for error in self.file_errors]
 
@@ -38,6 +42,7 @@ class Plan:
                 (
                     row.line_number, row_plan.action, row_plan.target, row_plan.changes, row_plan.warnings,
                     [{'column': error.column, 'code': error.code} for error in row_plan.errors],
+                    row_plan.pending,
                 )
                 for row, row_plan in self.rows
             ],
@@ -52,8 +57,8 @@ def canonical(value):
 def comparable(rows, file_errors):
     """Estrutura comparada entre prévia e confirmação (D8).
 
-    Entram ação, alvo, mudanças, avisos e os pares de coluna e código dos erros de
-    cada linha, e os códigos dos erros do arquivo. Mensagens e valores lidos ficam
+    Entram ação, alvo, mudanças, avisos, pendências e os pares de coluna e código dos
+    erros de cada linha, e os códigos dos erros do arquivo. Mensagens e valores lidos ficam
     de fora. A normalização por JSON e a ordenação tornam o resultado determinístico.
     """
     return canonical({
@@ -67,8 +72,9 @@ def comparable(rows, file_errors):
                 'errors': sorted(
                     ((error.get('column') or '', error['code']) for error in errors),
                 ),
+                'pending': sorted((item['code'], item['key']) for item in pending),
             }
-            for line_number, action, target, changes, warnings, errors in rows
+            for line_number, action, target, changes, warnings, errors, pending in rows
         ],
         'file_errors': sorted(error['code'] for error in file_errors),
     })
@@ -80,7 +86,7 @@ def execute_row(definition, row, executor):
     try:
         with transaction.atomic():
             row_plan = definition.execute_row(row.values, executor)
-            if row_plan.errors:
+            if row_plan.errors or row_plan.pending:
                 transaction.set_rollback(True)
     except ValidationError as error:
         return RowPlan(errors=errors_from_validation(error, definition.columns_by_field))
@@ -91,14 +97,15 @@ def execute_row(definition, row, executor):
     return row_plan
 
 
-def run(definition, rows, executor):
+def run(definition, rows, executor, importation=None):
     """Trava, executa cada linha e as verificações do arquivo, e devolve o Plan.
 
     As linhas rodam com a origem de importação na auditoria: o responsável continua
     sendo o executor, e os registros das operações de domínio mostram que vieram de
-    uma planilha (D3 da Change auditar-acoes-do-sistema).
+    uma planilha (D3 da Change auditar-acoes-do-sistema). A importação em curso vai para
+    a execução da importação específica, e é nenhuma na primeira prévia.
     """
-    with definition.execution(), acting_from_import(executor):
+    with definition.execution(importation), acting_from_import(executor):
         definition.lock(rows, executor)
         plan = Plan(rows=[(row, execute_row(definition, row, executor)) for row in rows])
         plan.file_errors = list(definition.check_file(executor))

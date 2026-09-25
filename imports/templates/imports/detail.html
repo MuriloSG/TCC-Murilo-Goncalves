@@ -11,6 +11,7 @@
 
 {% block content %}
 {% include "imports/partials/detail_summary.html" %}
+{% if screens.panel_template %}{% include screens.panel_template %}{% endif %}
   <section class="card" id="linhas-secao" aria-labelledby="linhas-importacao">
     <div class="card-head">
       <div>
@@ -46,6 +47,7 @@
                 <p class="line-action">{{ row.action }}</p>
                 {% for change in row.changes %}<p>{{ change }}</p>{% endfor %}
                 {% for warning in row.warnings %}<p class="line-note">{% icon "triangle-alert" %}{{ warning }}</p>{% endfor %}
+                {% for item in row.pending %}<p class="line-note">{% icon "triangle-alert" %}{{ item }}</p>{% endfor %}
                 {% for error in row.errors %}<p class="line-error">{% icon "circle-x" %}{{ error }}</p>{% endfor %}
               </div>
             </td>

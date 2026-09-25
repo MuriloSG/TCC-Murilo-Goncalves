@@ -44,6 +44,10 @@ class ImportScreens:
     `tabs` declara as abas do detalhe, cada uma com a rota, o rótulo e o ícone, e
     `review_route` é a rota da tabela de linhas. Sem abas, o detalhe é a própria tabela
     (D8 da Change visualizar-grade-do-ensalamento).
+
+    `panel_template` é um quadro próprio da importação específica, mostrado no detalhe
+    antes das linhas, com o contexto que a view dela acrescenta (D10 da Change
+    manipulacao-dos-espacos).
     """
 
     definition: ImportDefinition
@@ -59,6 +63,7 @@ class ImportScreens:
     review_route: str = 'detail'
     delete_permission: str | None = None
     section_permission: str | None = None
+    panel_template: str | None = None
 
     @property
     def has_template(self):
@@ -88,6 +93,7 @@ def screens_context(screens, user):
 
 STATUS_BADGES = {
     Import.Status.VALIDATED.value: ('info', 'info'),
+    Import.Status.PENDING.value: ('warning', 'triangle-alert'),
     Import.Status.WITH_ERRORS.value: ('error', 'circle-x'),
     Import.Status.CONCLUDED.value: ('success', 'circle-check'),
     Import.Status.DISCARDED.value: ('info', 'circle-minus'),
@@ -106,10 +112,22 @@ def detail_tabs(screens, pk, current):
     ]
 
 
+def confirmation_refusal(screens, importation, user):
+    """Mensagem da verificação própria da confirmação para este usuário, ou None quando ele pode confirmar."""
+    if not importation.is_validated:
+        return None
+    try:
+        screens.definition.check_confirmation(importation, user)
+    except ValidationError as error:
+        return ' '.join(error.messages)
+    return None
+
+
 def detail_head_context(screens, importation, current, user):
     """Contexto do cabeçalho do detalhe, igual em todas as abas: situação, ações e resumo."""
     importation.tone, importation.icon = status_badge(importation.status)
     return {
+        'confirm_refusal': confirmation_refusal(screens, importation, user),
         'importation': importation,
         'summary': importation.summary(),
         'upload_values': upload_values(screens.definition, importation),
@@ -146,6 +164,7 @@ def with_summary(queryset):
         created_count=Count('rows', filter=no_errors & Q(rows__action=ImportRow.Action.CREATE)),
         updated_count=Count('rows', filter=no_errors & Q(rows__action=ImportRow.Action.UPDATE)),
         unchanged_count=Count('rows', filter=no_errors & Q(rows__action=ImportRow.Action.UNCHANGED)),
+        pending_count=Count('rows', filter=no_errors & ~Q(rows__pending=[])),
         error_count=Count('rows', filter=~no_errors),
     )
 
@@ -288,11 +307,18 @@ class ImportDetailView(DetailView):
         )
         return context
 
+    def action_label(self, row, definition):
+        if row.errors:
+            return 'Com erro'
+        if row.pending:
+            return 'Precisa de decisão'
+        return definition.action_labels.get(row.action, 'Sem ação')
+
     def describe(self, row, definition, columns):
         return {
             'line_number': row.line_number,
             'cells': [(label, row.values.get(label, '')) for label in columns],
-            'action': 'Com erro' if row.errors else definition.action_labels.get(row.action, 'Sem ação'),
+            'action': self.action_label(row, definition),
             'changes': [
                 f'{definition.field_labels.get(name, name)}: {before} → {after}'
                 if row.action == ImportRow.Action.UPDATE
@@ -301,6 +327,7 @@ class ImportDetailView(DetailView):
                 if row.action in (ImportRow.Action.UPDATE, ImportRow.Action.CREATE)
             ],
             'warnings': [definition.warning_labels.get(code, code) for code in row.warnings],
+            'pending': [definition.pending_label(item['code'], item['key']) for item in row.pending],
             'errors': [
                 f'{error["column"]}: {error["message"]}' if error['column'] else error['message']
                 for error in row.errors

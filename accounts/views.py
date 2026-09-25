@@ -168,7 +168,9 @@ class UserCreateView(OperationFormView):
     submit_label = 'Cadastrar'
 
     def perform(self, data):
-        user = User.objects.register(email=data['email'], name=data['name'], role=data['role'])
+        user = User.objects.register(
+            email=data['email'], name=data['name'], role=data['role'], username=data['username'],
+        )
         messages.success(
             self.request,
             f'Usuário {user.email} cadastrado. O link para definir a senha será enviado para {user.email}.',
@@ -189,7 +191,9 @@ class UserUpdateView(OperationFormView):
         return super().get_form_kwargs() | {'target': self.target, 'executor': self.request.user}
 
     def perform(self, data):
-        self.target.update_details(self.request.user, name=data['name'], email=data['email'])
+        self.target.update_details(
+            self.request.user, name=data['name'], email=data['email'], username=data['username'],
+        )
         messages.success(self.request, f'Dados de {self.target.email} atualizados.')
 
 

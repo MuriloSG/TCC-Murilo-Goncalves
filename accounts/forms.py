@@ -76,6 +76,20 @@ class PasswordResetKeyForm(allauth_forms.ResetPasswordKeyForm):
         return cleaned_data
 
 
+def username_field():
+    """Campo do nome de usuário, opcional, sem restrição de formato (D3).
+
+    O valor aceita espaços, acentos e abreviações, e a normalização e a unicidade
+    ficam no model, que é quem recusa um valor já em uso.
+    """
+    return forms.CharField(
+        label='Nome de usuário',
+        max_length=150,
+        required=False,
+        help_text='Identificador do usuário em dados vindos de fora do sistema. Pode ficar em branco.',
+    )
+
+
 def role_choice_field():
     return forms.ModelChoiceField(
         label='Perfil',
@@ -98,6 +112,7 @@ def clean_single_role(form):
 class UserCreateForm(forms.Form):
     name = forms.CharField(label='Nome', max_length=150)
     email = email_field()
+    username = username_field()
     role = role_choice_field()
 
     def clean_email(self):
@@ -109,7 +124,7 @@ class UserCreateForm(forms.Form):
 
 
 class UserUpdateForm(forms.Form):
-    """Edição de nome e e-mail.
+    """Edição de nome, e-mail e nome de usuário.
 
     Quando o alvo é superadmin e o executor não é superadmin ativo, o e-mail é
     exibido como somente leitura. Isso é só apresentação: a regra está em
@@ -119,9 +134,11 @@ class UserUpdateForm(forms.Form):
 
     name = forms.CharField(label='Nome', max_length=150)
     email = email_field()
+    username = username_field()
 
     def __init__(self, *args, target, executor, **kwargs):
-        kwargs['initial'] = {'name': target.name, 'email': target.email} | (kwargs.get('initial') or {})
+        current = {'name': target.name, 'email': target.email, 'username': target.username}
+        kwargs['initial'] = current | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
         if target.is_superadmin and not (executor.is_active and executor.is_superadmin):
             self.fields['email'].widget.attrs['readonly'] = True
@@ -136,10 +153,10 @@ class UserFilterForm(forms.Form):
     """
 
     busca = forms.CharField(
-        label='Buscar por nome ou e-mail',
+        label='Buscar por nome, e-mail ou nome de usuário',
         max_length=100,
         required=False,
-        widget=forms.TextInput(attrs={'type': 'search', 'class': 'input', 'placeholder': 'Buscar por nome ou e-mail'}),
+        widget=forms.TextInput(attrs={'type': 'search', 'class': 'input', 'placeholder': 'Buscar usuário'}),
     )
     situacao = forms.ChoiceField(
         label='Situação',

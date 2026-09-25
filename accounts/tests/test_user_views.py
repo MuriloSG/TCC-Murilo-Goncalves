@@ -118,9 +118,25 @@ class CreateTests(UserViewsTestCase):
         data = self.data | {'role': self.teacher.pk} | changes
         return self.client.post('/usuarios/novo/', data, follow=True)
 
+    def test_creates_with_username(self):
+        self.post(username='  Aldo   Gomes  ')
+        self.assertEqual(User.objects.get(email='joana@ifnmg.edu.br').username, 'Aldo Gomes')
+
+    def test_creates_without_username(self):
+        self.post(username='')
+        self.assertIsNone(User.objects.get(email='joana@ifnmg.edu.br').username)
+
+    def test_refuses_username_already_taken(self):
+        User.objects.register(
+            email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
+        )
+        response = self.post(username='ALDO GOMES')
+        self.assertIn('username', response.context['form'].errors)
+        self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
+
     def test_form_has_no_password_nor_superadmin_field(self):
         response = self.client.get('/usuarios/novo/')
-        self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'role'})
+        self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'username', 'role'})
         self.assertNotContains(response, 'type="password"')
         self.assertNotContains(response, 'superadmin')
 
@@ -231,9 +247,34 @@ class UpdateTests(UserViewsTestCase):
                 self.client.post(self.url('update', user), {'name': 'Nome Novo', 'email': user.email})
                 self.assertEqual(self.reload(user).name, 'Nome Novo')
 
+    def test_sets_changes_and_clears_the_username(self):
+        self.client.post(self.url('update'), {
+            'name': self.target.name, 'email': self.target.email, 'username': 'Aldo Gomes',
+        })
+        self.assertEqual(self.reload(self.target).username, 'Aldo Gomes')
+        self.client.post(self.url('update'), {
+            'name': self.target.name, 'email': self.target.email, 'username': 'Aldo G. Gomes',
+        })
+        self.assertEqual(self.reload(self.target).username, 'Aldo G. Gomes')
+        self.client.post(self.url('update'), {
+            'name': self.target.name, 'email': self.target.email, 'username': '',
+        })
+        self.assertIsNone(self.reload(self.target).username)
+
+    def test_refuses_username_of_another_user(self):
+        other = User.objects.register(
+            email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
+        )
+        response = self.client.post(self.url('update'), {
+            'name': self.target.name, 'email': self.target.email, 'username': 'aldo gomes',
+        })
+        self.assertIn('username', response.context['form'].errors)
+        self.assertIsNone(self.reload(self.target).username)
+        self.assertEqual(self.reload(other).username, 'Aldo Gomes')
+
     def test_form_has_no_password_field(self):
         response = self.client.get(self.url('update'))
-        self.assertEqual(set(response.context['form'].fields), {'name', 'email'})
+        self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'username'})
         self.assertNotContains(response, 'type="password"')
 
     def test_refuses_empty_name_and_email_of_another_user(self):

@@ -32,7 +32,7 @@
       </div>
       <form class="filters" method="get" action="{% url 'user_list' %}" role="search" hx-get="{% url 'user_list' %}" hx-target="#{{ table_target }}" hx-push-url="true" hx-history="false" hx-trigger="submit, input changed delay:300ms from:input[name=busca], search from:input[name=busca], change from:select[name=situacao]">
         <div class="control">
-          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar por nome ou e-mail</label>
+          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar por nome, e-mail ou nome de usuário</label>
           {% icon "search" %}{{ filters.busca }}
         </div>
         <div>

@@ -114,6 +114,29 @@ A regra já está garantida pela estrutura, e não só por disciplina: o único 
 
 A Change não acrescenta nenhum caminho novo de criação.
 
+### D10. Visual, conferido no navegador
+
+A Change não cria tela nova: o campo entra no modal de cadastro e de edição, que já
+renderiza o formulário inteiro, e o valor entra na linha da tabela de usuários, abaixo
+do e-mail. Por isso não houve imagem de referência nova.
+
+A conferência foi feita com o Playwright num container, contra o banco `visual_check`,
+em 1280 e 360 px, abrindo a lista, o cadastro, a edição e a lista filtrada por um
+nome de usuário, com valores reais da planilha (`Aldo Gomes`, `Érica`, `Gera Jr.`,
+`Élcio José`).
+
+**Corrigido depois da conferência:**
+
+- **O campo de busca ficava com o texto de apoio cortado.** Ao passar a cobrir o nome
+  de usuário, o rótulo virou "Buscar por nome, e-mail ou nome de usuário", e o mesmo
+  texto no interior do campo era truncado em "Buscar por nome, e-mail ou nor" nas duas
+  larguras. O rótulo acessível continua completo, e o texto dentro do campo passou a
+  ser "Buscar usuário".
+
+**Conferido sem ajuste:** o nome de usuário abaixo do e-mail na linha, que empilha em
+360 px sem quebrar a linha nem competir com o nome; o "(opcional)" ao lado do rótulo e
+o texto de ajuda, ambos gerados pelo layout de formulário que já existe.
+
 ## Risks / Trade-offs
 
 - **Coincidência de nome com o atributo do Django.** Quem ler `user.username` pode supor que é a credencial de login. Mitigação: a docstring do campo diz o que ele é, a spec `autenticacao` passa a registrar a distinção e a tarefa 2.6 fixa por teste que `USERNAME_FIELD` continua `email` e que o formulário de login não ganha o campo.

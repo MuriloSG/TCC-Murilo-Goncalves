@@ -7,16 +7,16 @@
 
 ## 2. Estrutura da Grade
 
-- [ ] 2.1 Criar `schedule/timetable.py` com as dataclasses `RoomWeek`, `Day`, `Cell`, `Continued` e `Entry` (D4)
-- [ ] 2.2 Criar a leitura das atividades da importação numa consulta, com o catálogo montado pelas linhas `SALA` e `DOCENTE` e cada atividade interpretada com `parse_weekday`, `parse_slot`, `split_header`, `Catalog.build` e `resolve`, sem função nova de interpretação de texto (D1, D2)
-- [ ] 2.3 Criar `room_week_from_import(importation, space_name, today)`: a lista de salas na ordem da planilha, a sala padrão, as faixas das duas abas na ordem do início, os dias de segunda a sexta e o dia atual (D3)
-- [ ] 2.4 Unir as faixas seguidas com as mesmas entradas e o mesmo estado num bloco com `span`, sem atravessar intervalo (D5, D6)
-- [ ] 2.5 Classificar a célula com mais de uma turma como turmas juntas ou choque, e contar as faixas com choque da sala e as salas com choque (D13)
-- [ ] 2.6 Preencher em cada entrada o estado, o texto da planilha, a ação do plano e os números das linhas, e contar as faixas ocupadas e disponíveis, os erros da sala e as linhas com erro fora da Grade (D7, D10)
-- [ ] 2.7 Testar contra `sources/planilha_example_corrigida.xlsx`: a ordem das salas, a sala padrão, as faixas, um card completo, um bloco de faixas seguidas, um bloco interrompido por intervalo, turmas juntas, choque, as contagens e a sala sem atividade
-- [ ] 2.8 Testar contra `sources/planilha_example.xlsx` o card com erro, com o texto da planilha e os números das linhas, e a contagem de erros fora da Grade
-- [ ] 2.9 Testar que a montagem não grava nada e usa uma quantidade fixa de consultas
-- [ ] 2.10 Commit
+- [x] 2.1 Criar `schedule/timetable.py` com as dataclasses `RoomWeek`, `Day`, `Cell`, `Continued` e `Entry` (D4)
+- [x] 2.2 Criar a leitura das atividades da importação numa consulta, com o catálogo montado pelas linhas `SALA` e `DOCENTE` e cada atividade interpretada com `parse_weekday`, `parse_slot`, `split_header`, `Catalog.build` e `resolve`, sem função nova de interpretação de texto (D1, D2)
+- [x] 2.3 Criar `room_week_from_import(importation, space_name, today)`: a lista de salas na ordem da planilha, a sala padrão, as faixas das duas abas na ordem do início, os dias de segunda a sexta e o dia atual (D3)
+- [x] 2.4 Unir as faixas seguidas com as mesmas entradas e o mesmo estado num bloco com `span`, sem atravessar intervalo (D5, D6)
+- [x] 2.5 Classificar a célula com mais de uma turma como turmas juntas ou choque, e contar as faixas com choque da sala e as salas com choque (D13)
+- [x] 2.6 Preencher em cada entrada o estado, o texto da planilha, a ação do plano e os números das linhas, e contar as faixas ocupadas e disponíveis, os erros da sala e as linhas com erro fora da Grade (D7, D10)
+- [x] 2.7 Testar contra `sources/planilha_example_corrigida.xlsx`: a ordem das salas, a sala padrão, as faixas, um card completo, um bloco de faixas seguidas, um bloco interrompido por intervalo, turmas juntas, choque, as contagens e a sala sem atividade
+- [x] 2.8 Testar contra `sources/planilha_example.xlsx` o card com erro, com o texto da planilha e os números das linhas, e a contagem de erros fora da Grade
+- [x] 2.9 Testar que a montagem não grava nada e usa uma quantidade fixa de consultas
+- [x] 2.10 Commit
 
 ## 3. Abas no motor de importação
 

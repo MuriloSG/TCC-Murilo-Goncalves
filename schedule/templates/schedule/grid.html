@@ -47,6 +47,9 @@
         {% endif %}
         {{ filter_form.semana }}{{ filter_form.mes }}
         <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+        {% if week.rows %}
+          <button class="btn-secondary timetable-expand" type="button" data-expand aria-pressed="false" hidden><span class="expand-on">{% icon "maximize-2" %}Expandir grade</span><span class="expand-off">{% icon "minimize-2" %}Recolher grade</span></button>
+        {% endif %}
       </form>
     </div>
     {% if period_missing %}

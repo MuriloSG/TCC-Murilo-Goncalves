@@ -16,8 +16,13 @@ urlpatterns = [
     ),
     path(
         'ensalamento/importacoes/<int:pk>/',
-        login_required(views.SpaceAllocationImportDetailView.as_view()),
+        login_required(views.SpaceAllocationImportGridView.as_view()),
         name='space_allocation_import_detail',
+    ),
+    path(
+        'ensalamento/importacoes/<int:pk>/conferencia/',
+        login_required(views.SpaceAllocationImportDetailView.as_view()),
+        name='space_allocation_import_review',
     ),
     path(
         'ensalamento/importacoes/<int:pk>/confirmar/',

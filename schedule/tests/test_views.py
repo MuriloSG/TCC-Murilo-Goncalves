@@ -1,5 +1,8 @@
 """Telas da importação de ensalamento: acesso, envio, confirmação, descarte e auditoria."""
 
+from datetime import date
+from unittest import mock
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -10,6 +13,7 @@ from audit.models import AuditLog
 from imports.models import Import
 from schedule.models import Allocation, Semester, Space
 from schedule.tests.test_import import TEACHERS, SPACES, workbook_file
+from schedule.tests.test_timetable import ACTIVITIES
 from schedule.views import SPACE_ALLOCATION_IMPORT_SCREENS
 
 ROWS = len(TEACHERS) + len(SPACES) + 4
@@ -26,7 +30,7 @@ class ScreenTestCase(TestCase):
         return User.objects.register(email=email, name=code.capitalize(), role=role)
 
     def routes(self, pk=None):
-        names = ['list', 'upload'] if pk is None else ['detail', 'confirm', 'discard']
+        names = ['list', 'upload'] if pk is None else ['detail', 'review', 'confirm', 'discard']
         return [SPACE_ALLOCATION_IMPORT_SCREENS.url(name, *([pk] if pk else [])) for name in names]
 
     def upload(self, semester='2026/1', uploaded=None):
@@ -62,6 +66,20 @@ class AccessTests(ScreenTestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Import.objects.exists())
+
+    def test_without_the_permission_the_grid_and_the_review_are_refused(self):
+        importation = self.importation()
+        self.client.force_login(self.other)
+        for name in ('detail', 'review'):
+            with self.subTest(name=name):
+                self.assertEqual(self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url(name, importation.pk)).status_code, 403)
+
+    def test_with_the_permission_the_grid_and_the_review_open(self):
+        importation = self.importation()
+        self.client.force_login(self.importer)
+        for name in ('detail', 'review'):
+            with self.subTest(name=name):
+                self.assertEqual(self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url(name, importation.pk)).status_code, 200)
 
     def test_with_the_permission_the_list_opens(self):
         self.client.force_login(self.importer)
@@ -209,7 +227,7 @@ class RowFilterTests(ScreenTestCase):
         self.client.force_login(self.importer)
 
     def detail(self, query=''):
-        return self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', self.importation.pk) + query)
+        return self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('review', self.importation.pk) + query)
 
     def test_preview_offers_the_filters_with_their_totals(self):
         content = self.detail().content.decode()
@@ -263,6 +281,122 @@ class RowFilterTests(ScreenTestCase):
         self.assertIn('<select name="linhas"', content)
         self.assertIn(f'<option value="salas" selected>Salas ({len(SPACES)})</option>', content)
         self.assertIn('<option value="">Todas as linhas (', content)
+
+
+class GridScreenTests(ScreenTestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.importer)
+        self.client.post(
+            SPACE_ALLOCATION_IMPORT_SCREENS.url('upload'),
+            {'own_semestre': '2026/1', 'file': workbook_file(undergraduate=ACTIVITIES)},
+        )
+        self.importation = Import.objects.get()
+        self.url = SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', self.importation.pk)
+        self.review = SPACE_ALLOCATION_IMPORT_SCREENS.url('review', self.importation.pk)
+
+    def grid(self, query='', today=date(2026, 9, 25)):
+        with mock.patch('schedule.views.timezone.localdate', return_value=today):
+            return self.client.get(self.url + query)
+
+    def test_grid_is_the_default_tab_even_with_errors(self):
+        response = self.grid()
+        self.assertEqual(self.importation.status, Import.Status.WITH_ERRORS)
+        self.assertTemplateUsed(response, 'schedule/import_grid.html')
+        self.assertContains(response, f'<a href="{self.url}" aria-current="page">', html=False)
+        self.assertContains(response, f'href="{self.review}"')
+
+    def test_first_room_of_the_list_is_the_default(self):
+        response = self.grid()
+        self.assertEqual(response.context['week'].space, '1/13')
+        self.assertContains(response, 'QUÍMICA ORGÂNICA')
+        self.assertContains(response, 'Semana da sala 1/13')
+
+    def test_room_in_the_url(self):
+        response = self.grid('?sala=2/6')
+        self.assertEqual(response.context['week'].space, '2/6')
+        self.assertContains(response, '2 turmas juntas')
+
+    def test_unknown_room_falls_back_to_the_default(self):
+        response = self.grid('?sala=Sala 99')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['week'].space, '1/13')
+
+    def test_clash_is_shown_and_marked_in_the_select(self):
+        response = self.grid('?sala=HV 3')
+        self.assertContains(response, 'Choque: 2 turmas neste horário')
+        self.assertContains(response, 'HV 3, com choque')
+        self.assertContains(response, '1 com choque')
+
+    def test_card_has_group_and_teacher(self):
+        response = self.grid()
+        self.assertContains(response, 'Bacharelado em Engenharia de Teste, 2º período')
+        self.assertContains(response, 'Elza')
+
+    def test_error_card_links_to_the_review_with_the_line(self):
+        line = self.importation.rows.get(values__Célula='Horário - Graduação!D11').line_number
+        response = self.grid()
+        self.assertContains(response, 'Com erro')
+        self.assertContains(response, 'Biologia (Fulano) (1/13)')
+        self.assertContains(response, f'href="{self.review}?numero={line}"')
+        self.assertContains(response, '1 atividade desta sala com erro.')
+        self.assertContains(response, '1 linha com erro fora da Grade.')
+
+    def test_error_link_opens_the_line_in_the_review(self):
+        line = self.importation.rows.get(values__Célula='Horário - Graduação!D11').line_number
+        response = self.client.get(f'{self.review}?numero={line}')
+        self.assertEqual(response.context['page'].paginator.count, 1)
+        self.assertContains(response, 'Biologia (Fulano) (1/13)')
+
+    def test_occupation_counts(self):
+        self.assertContains(self.grid(), '4 faixas ocupadas e 16 disponíveis na semana.')
+
+    def test_today_is_marked(self):
+        self.assertContains(self.grid(), 'Hoje')
+        self.assertNotContains(self.grid(today=date(2026, 9, 26)), 'Hoje')
+
+    def test_room_without_activity(self):
+        response = self.grid('?sala=Lab. de Madeira')
+        self.assertContains(response, '0 faixas ocupadas e 20 disponíveis na semana.')
+        self.assertContains(response, 'Sala disponível o dia todo.')
+
+    def test_semester_is_shown(self):
+        self.assertContains(self.grid(), '<strong>2026/1</strong>', html=False)
+
+    def test_grid_changes_nothing(self):
+        before = (Allocation.objects.count(), Space.objects.count(), list(self.importation.rows.values_list('action', 'errors')))
+        for room in ('1/13', '2/6', 'HV 3'):
+            self.grid(f'?sala={room}')
+        self.assertEqual(
+            (Allocation.objects.count(), Space.objects.count(), list(self.importation.rows.values_list('action', 'errors'))),
+            before,
+        )
+
+    def test_rejected_file_has_no_grid(self):
+        broken = Import.objects.create(
+            kind='ENSALAMENTO', status=Import.Status.WITH_ERRORS, file_name='quebrada.xlsx',
+            created_by=self.importer, file_errors=[{'message': 'A aba "Horário - Graduação" não tem nenhuma coluna de turma.'}],
+        )
+        response = self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', broken.pk))
+        self.assertContains(response, 'Nenhuma atividade lida do arquivo.')
+        self.assertContains(response, 'não tem nenhuma coluna de turma')
+
+
+class ClashConfirmationTests(ScreenTestCase):
+    def test_clash_does_not_block_the_confirmation(self):
+        clash = {
+            ('SEGUNDA ', '07:20 - 08:10', 0): 'Física (Viviane) (HV 3)',
+            ('SEGUNDA ', '07:20 - 08:10', 1): 'Química (Elza) (HV 3)',
+        }
+        self.upload(uploaded=workbook_file(undergraduate=clash))
+        importation = Import.objects.get()
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
+        importation.refresh_from_db()
+        self.assertEqual(importation.status, Import.Status.CONCLUDED)
+        self.assertEqual(response.redirect_chain[-1][0], SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', importation.pk))
+        self.assertTemplateUsed(response, 'schedule/import_grid.html')
+        self.assertContains(response, 'Importação confirmada.')
 
 
 class NavigationTests(ScreenTestCase):

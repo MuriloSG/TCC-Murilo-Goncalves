@@ -1,0 +1,83 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Importação de {{ importation.file_name }}{% endblock %}
+
+{% block crumbs %}
+{% include "imports/partials/detail_crumbs.html" %}{% endblock %}
+
+{% block page_head %}
+{% include "imports/partials/detail_title.html" %}{% endblock %}
+
+{% block content %}
+{% include "imports/partials/detail_summary.html" %}
+  <section class="card timetable" id="grade" aria-label="Grade do ensalamento">
+    {% if week.has_activities %}
+      <form class="timetable-head" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=sala]">
+        <div class="timetable-room">
+          <label class="field-label" id="{{ room_form.sala.auto_id }}_rotulo" for="{{ room_form.sala.id_for_label }}">Sala</label>
+          {% include "ui/components/select.html" with field=room_form.sala %}
+          <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+        </div>
+        {% if semester %}<p class="timetable-semester"><span>Semestre</span><strong>{{ semester }}</strong></p>{% endif %}
+      </form>
+      <div class="timetable-status">
+        <p class="timetable-state">{{ status_text }}</p>
+        <p class="timetable-occupation">{{ occupation_text }}</p>
+        {% if week.error_count %}<p class="timetable-errors">{% icon "circle-x" "size-4" %}<span>{{ errors_text }}</span><a class="link" href="{{ review_url }}?linhas=erros">Ver na conferência</a></p>{% endif %}
+        {% if week.outside_error_count %}<p class="timetable-errors">{% icon "circle-x" "size-4" %}<span>{{ outside_text }}</span><a class="link" href="{{ review_url }}?linhas=erros">Ver na conferência</a></p>{% endif %}
+      </div>
+      <div class="timetable-scroll" tabindex="0" role="region" aria-label="Semana da sala {{ week.space }}">
+        <table class="timetable-grid">
+          <caption class="sr-only">Semana da sala {{ week.space }}</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="timetable-corner">Horário</th>
+              {% for day in week.days %}
+                <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in week.rows %}
+              <tr>
+                <th scope="row" class="timetable-time"><span>{{ row.start|time:"H:i" }}</span><span>{{ row.end|time:"H:i" }}</span></th>
+                {% for cell in row.cells %}
+                  {% if cell.is_continued %}
+                  {% elif cell %}
+                    <td class="timetable-slot{% if forloop.counter0 == week.today_index %} is-today{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" %}</td>
+                  {% else %}
+                    <td class="timetable-slot{% if forloop.counter0 == week.today_index %} is-today{% endif %}"><span class="sr-only">Disponível</span></td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="timetable-days">
+        {% for day in week.days %}
+          <section class="timetable-daylist" aria-label="{{ day.label }}">
+            <h3>{{ day.label }}{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}</h3>
+            <ol>
+              {% for cell in day.cells %}
+                {% if cell and not cell.is_continued %}
+                  <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span>{% include "schedule/partials/timetable_cell.html" %}</li>
+                {% endif %}
+              {% endfor %}
+            </ol>
+            {% if not day.has_activity %}<p class="timetable-free">Sala disponível o dia todo.</p>{% endif %}
+          </section>
+        {% endfor %}
+      </div>
+      <p class="timetable-legend">
+        <span class="timetable-key is-undergraduate"></span>Graduação
+        <span class="timetable-key is-secondary"></span>Ensino médio
+        {% icon "users" "size-4" %}Turmas juntas
+        {% icon "triangle-alert" "size-4" %}Choque de turmas
+      </p>
+    {% else %}
+      <p class="timetable-empty">Nenhuma atividade lida do arquivo.</p>
+    {% endif %}
+  </section>
+{% endblock %}

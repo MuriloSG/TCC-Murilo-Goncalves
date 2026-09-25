@@ -1,0 +1,17 @@
+{% load ui %}{% if cell.kind == "joint" %}<div class="timetable-group is-joint"><p class="timetable-group-flag">{% icon "users" "size-4" %}{{ cell.group_count }} turmas juntas</p>{% elif cell.kind == "clash" %}<div class="timetable-group is-clash"><p class="timetable-group-flag">{% icon "triangle-alert" "size-4" %}Choque: {{ cell.group_count }} turmas neste horário</p>{% endif %}
+{% for entry in cell.entries %}
+  {% if entry.is_error %}
+    <a class="timetable-card is-error" href="{{ cell.review_link }}" aria-describedby="dica-{{ entry.lines.0 }}">
+      <span class="timetable-flag">{% icon "circle-x" "size-4" %}Com erro</span>
+      <span class="timetable-raw">{{ entry.raw_text }}</span>
+      <span class="tip" role="tooltip" id="dica-{{ entry.lines.0 }}">{{ entry.message }}</span>
+    </a>
+  {% else %}
+    <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
+      <p class="timetable-subject">{{ entry.subject }}</p>
+      <p class="timetable-line">{% icon "users" "size-4" %}<span>{{ entry.group_label }}</span></p>
+      {% if entry.teachers %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.teachers|join:", " }}</span></p>{% endif %}
+    </div>
+  {% endif %}
+{% endfor %}
+{% if cell.kind != "single" %}</div>{% endif %}

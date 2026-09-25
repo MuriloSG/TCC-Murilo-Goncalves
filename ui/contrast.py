@@ -53,6 +53,14 @@ CONTRAST_PAIRS = [
     ('error-icon', 'error-bg', 3, 'Ícone de erro'),
     ('info-text', 'info-bg', 4.5, 'Texto de informação'),
     ('info-icon', 'info-bg', 3, 'Ícone de informação'),
+    ('text', 'stage-undergraduate-bg', 4.5, 'Disciplina no card da graduação na Grade'),
+    ('text-muted', 'stage-undergraduate-bg', 4.5, 'Docente no card da graduação na Grade'),
+    ('stage-undergraduate-bar', 'stage-undergraduate-bg', 3, 'Barra da etapa no card da graduação'),
+    ('text', 'stage-secondary-bg', 4.5, 'Disciplina no card do ensino médio na Grade'),
+    ('text-muted', 'stage-secondary-bg', 4.5, 'Docente no card do ensino médio na Grade'),
+    ('stage-secondary-bar', 'stage-secondary-bg', 3, 'Barra da etapa no card do ensino médio'),
+    ('stage-undergraduate-bar', 'surface', 3, 'Marca da graduação na legenda da Grade'),
+    ('stage-secondary-bar', 'surface', 3, 'Marca do ensino médio na legenda da Grade'),
 ]
 
 EXEMPT = {

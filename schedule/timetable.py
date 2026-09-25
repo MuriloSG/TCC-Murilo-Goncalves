@@ -23,9 +23,11 @@ from schedule.imports import (
     STAGES,
     sheet_of,
 )
-from schedule.models import Weekday
+from schedule.models import Stage, Weekday
 from schedule.sheets import ACTIVITY_KIND, SPACE_KIND, TEACHER_KIND, parse_slot, parse_weekday, split_header, strip_parentheses
 from schedule.sheets import text as sheet_text
+
+SMALL_WORDS = {'a', 'as', 'o', 'os', 'e', 'em', 'de', 'do', 'da', 'dos', 'das', 'para'}
 
 WEEKDAYS = [Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY]
 
@@ -34,6 +36,32 @@ JOINT = 'joint'
 CLASH = 'clash'
 OK = 'ok'
 ERROR = 'error'
+
+
+def all_caps(name):
+    return bool(name) and name == name.upper() and any(char.isalpha() for char in name)
+
+
+def readable_course(name):
+    """Nome do curso em caixa alta passado para iniciais maiúsculas, só na exibição (D12).
+
+    `LICENCIATURA EM FÍSICA` aparece como `Licenciatura em Física`. O dado gravado não
+    muda, e nomes que já têm minúsculas ficam como estão.
+    """
+    if not all_caps(name):
+        return name
+    words = name.lower().split()
+    return ' '.join(word if position and word in SMALL_WORDS else word[:1].upper() + word[1:] for position, word in enumerate(words))
+
+
+def readable_group(label):
+    """Rótulo da turma em caixa alta passado para caixa de frase: `1º ANO A` vira `1º ano A`."""
+    if not all_caps(label):
+        return label
+    words = label.lower().split()
+    words = [word.upper() if len(word) == 1 and word.isalpha() else word for word in words]
+    text = ' '.join(words)
+    return text[:1].upper() + text[1:]
 
 
 @dataclass(frozen=True)
@@ -74,6 +102,15 @@ class Entry:
     def is_error(self):
         return self.state == ERROR
 
+    @property
+    def is_undergraduate(self):
+        return self.stage == Stage.UNDERGRADUATE
+
+    @property
+    def group_label(self):
+        """Curso e turma, como aparecem no card: `Informática, 2º ano A`."""
+        return ', '.join(part for part in (readable_course(self.course), readable_group(self.class_group)) if part)
+
 
 @dataclass
 class Cell:
@@ -84,6 +121,7 @@ class Cell:
     start: object
     end: object
     span: int = 1
+    is_continued = False
 
     @property
     def group_count(self):
@@ -105,6 +143,8 @@ class Cell:
 class Continued:
     """Faixa coberta pelo bloco de uma faixa anterior do mesmo dia."""
 
+    is_continued = True
+
 
 CONTINUED = Continued()
 
@@ -121,6 +161,10 @@ class Day:
     label: str
     is_today: bool
     cells: list
+
+    @property
+    def has_activity(self):
+        return any(self.cells)
 
 
 @dataclass
@@ -149,6 +193,10 @@ class RoomWeek:
     @property
     def has_activities(self):
         return bool(self.rows)
+
+    @property
+    def today_index(self):
+        return next((index for index, day in enumerate(self.days) if day.is_today), None)
 
 
 @dataclass

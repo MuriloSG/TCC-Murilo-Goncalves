@@ -29,17 +29,17 @@
 
 ## 4. Tela da Grade
 
-- [ ] 4.1 Criar a rota `ensalamento/importacoes/<pk>/conferencia/` com o nome `space_allocation_import_review` para a view atual, e pôr `SpaceAllocationImportGridView` no nome `space_allocation_import_detail`, com `login_required`, `ENSALAMENTO.IMPORTAR` e o `audit_resource` da importação (D8)
-- [ ] 4.2 Criar o formulário do filtro `sala`, com as salas na ordem da planilha e a marca das salas com choque, caindo no padrão quando o valor não existe (D3, D13)
-- [ ] 4.3 Criar os templates da Grade em `schedule/templates/schedule/`: o select de sala e o semestre, a faixa de situação, a tabela da semana com o cabeçalho e a coluna de horário fixos, o dia atual, os blocos com `rowspan`, a legenda e o estado da importação recusada
-- [ ] 4.4 Criar o card com a disciplina, a turma com o curso e o docente, a cor da etapa, os grupos de turmas juntas e de choque, e o card com erro com ícone, texto, dica e link para a Conferência (D7, D12, D13)
-- [ ] 4.5 Trocar a sala pelo htmx, atualizando só a Grade e a URL, e manter o botão "Mostrar" para quem está sem JavaScript
-- [ ] 4.6 Criar a versão abaixo de 640 px, com os dias um abaixo do outro e só as faixas com atividade (D3)
-- [ ] 4.7 Acrescentar ao `app.css` os tokens da etapa, com os pares em `ui/contrast.py`, e os componentes da Grade e das abas; copiar os ícones do Lucide que faltarem (D14)
-- [ ] 4.8 Testar cada rota nas quatro situações das convenções
-- [ ] 4.9 Testar a Grade padrão, a sala na URL, a sala inexistente caindo no padrão, o dia atual e o fim de semana, o card com erro levando à Conferência com os números certos, as turmas juntas, o choque, as contagens e a importação recusada sem grade
-- [ ] 4.10 Testar que o envio, a confirmação e o descarte continuam levando à rota do detalhe, que agora mostra a Grade, e que o choque não impede a confirmação
-- [ ] 4.11 Commit
+- [x] 4.1 Criar a rota `ensalamento/importacoes/<pk>/conferencia/` com o nome `space_allocation_import_review` para a view atual, e pôr `SpaceAllocationImportGridView` no nome `space_allocation_import_detail`, com `login_required`, `ENSALAMENTO.IMPORTAR` e o `audit_resource` da importação (D8)
+- [x] 4.2 Criar o formulário do filtro `sala`, com as salas na ordem da planilha e a marca das salas com choque, caindo no padrão quando o valor não existe (D3, D13)
+- [x] 4.3 Criar os templates da Grade em `schedule/templates/schedule/`: o select de sala e o semestre, a faixa de situação, a tabela da semana com o cabeçalho e a coluna de horário fixos, o dia atual, os blocos com `rowspan`, a legenda e o estado da importação recusada
+- [x] 4.4 Criar o card com a disciplina, a turma com o curso e o docente, a cor da etapa, os grupos de turmas juntas e de choque, e o card com erro com ícone, texto, dica e link para a Conferência (D7, D12, D13)
+- [x] 4.5 Trocar a sala pelo htmx, atualizando só a Grade e a URL, e manter o botão "Mostrar" para quem está sem JavaScript
+- [x] 4.6 Criar a versão abaixo de 640 px, com os dias um abaixo do outro e só as faixas com atividade (D3)
+- [x] 4.7 Acrescentar ao `app.css` os tokens da etapa, com os pares em `ui/contrast.py`, e os componentes da Grade e das abas; copiar os ícones do Lucide que faltarem (D14)
+- [x] 4.8 Testar cada rota nas quatro situações das convenções
+- [x] 4.9 Testar a Grade padrão, a sala na URL, a sala inexistente caindo no padrão, o dia atual e o fim de semana, o card com erro levando à Conferência com os números certos, as turmas juntas, o choque, as contagens e a importação recusada sem grade
+- [x] 4.10 Testar que o envio, a confirmação e o descarte continuam levando à rota do detalhe, que agora mostra a Grade, e que o choque não impede a confirmação
+- [x] 4.11 Commit
 
 ## 5. Fechamento
 

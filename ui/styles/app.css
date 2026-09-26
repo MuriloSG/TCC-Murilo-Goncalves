@@ -603,6 +603,7 @@
 
   .select {
     position: relative;
+    min-width: 0;
   }
 
   .select-trigger {

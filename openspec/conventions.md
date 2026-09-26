@@ -102,7 +102,7 @@ A verificação compara palavras, sem interpretar o sentido: um termo proibido �
 - Botões com verbo no infinitivo, e com objeto quando houver ambiguidade: "Salvar", "Cadastrar usuário", "Desativar usuário".
 - Sucesso: o fato, no particípio, com o objeto identificado. "Usuário ana@ifnmg.edu.br desativado."
 - Erro: o que aconteceu e o que fazer, com o termo do domínio. "Este e-mail já pertence a outro usuário. Use outro e-mail."
-- Confirmação, em modal ou em página: o título é a pergunta com o nome do objeto ("Desativar Ana Souza?"), seguida da consequência em uma ou duas frases, do botão com o verbo específico e do controle "Fechar". "Cancelar" nunca é usado para sair de uma confirmação ou de um formulário, porque é uma ação do domínio (cancelar reserva).
+- Confirmação, em modal ou em página: o título é a pergunta com o nome do objeto ("Desativar Ana Souza?"), seguida da consequência em uma ou duas frases, do botão com o verbo específico e do controle "Fechar". "Cancelar" nunca é usado para sair de uma confirmação ou de um formulário, porque é uma ação do domínio (cancelar agendamento).
 - Botão só com ícone: o `aria-label` e a dica têm o verbo da ação ("Editar", "Trocar perfil") e seguem estas mesmas regras. Os gatilhos "Menu" e "Mais ações" são a exceção.
 - Maiúscula só no início da frase e em nomes próprios e siglas, inclusive em títulos, botões, rótulos e cabeçalhos de tabela: "Cadastrar usuário", e não "Cadastrar Usuário".
 - Estado vazio: o fato e, quando houver, a ação possível. "Nenhum usuário cadastrado." Sem frase motivacional.
@@ -116,15 +116,15 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 | Impedir que um usuário entre no sistema | desativar, reativar | bloquear, suspender, inativar |
 | Situação do usuário | Ativo, Inativo | Bloqueado, Suspenso |
 | Resultado da análise de uma solicitação | aprovar, aprovada; rejeitar, rejeitada | reprovar, reprovada, negar, negada |
-| Desistência de uma reserva | cancelar, cancelada | desmarcar, anular |
+| Desistência de um agendamento | cancelar, cancelada | desmarcar, anular |
 | Apagar um registro | excluir | apagar, deletar, remover |
 | Acesso ao sistema | entrar, sair; página de login | logar, deslogar, logout |
 | Endereço eletrônico | e-mail | email, E-Mail |
 | Local reservável | espaço (geral), laboratório, sala (tipos) | recurso, ambiente, item |
-| Pedido ainda não analisado | solicitação de reserva | pedido, agendamento pendente |
-| Pedido aprovado | reserva | agendamento confirmado |
+| Pedido de uso eventual de um espaço | solicitação de agendamento | pedido, agendamento pendente, reserva |
+| Uso eventual aprovado | agendamento | reserva, agendamento confirmado |
 | Estados de horário | disponível, ocupado | livre, vago, indisponível |
-| Estados da solicitação | pendente, aprovada, rejeitada, cancelada | em análise, aguardando |
+| Estados da solicitação de agendamento | pendente, aprovada, rejeitada, alternativa sugerida, alternativa recusada (com o selo "Resposta pendente" para quem solicitou) | em análise, aguardando |
 | Pessoas e acesso | docente, administrador, perfil, permissão | professor (como perfil), papel, role, grupo |
 | Parte do sistema a que uma ação se refere | módulo | recurso (reservado ao espaço reservável) |
 

@@ -1521,6 +1521,7 @@
   .timetable-request-row {
     width: 100%;
     justify-content: flex-start;
+    white-space: nowrap;
   }
 
   .record-history {

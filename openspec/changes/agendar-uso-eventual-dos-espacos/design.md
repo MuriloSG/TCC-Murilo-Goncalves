@@ -163,7 +163,7 @@ Grade da Agenda: as consultas da Grade do Ensalamento mais uma de agendamentos, 
 - `BookingRequest`: `(requested_by, -created_at)` para "Minhas solicitações" e `(status, date)` para a lista de análise.
 - Ensalamento: o índice `(semester, space, weekday)` existente atende à verificação.
 
-Os planos são conferidos com `EXPLAIN` e registrados aqui na implementação.
+Planos conferidos com `EXPLAIN` no PostgreSQL (banco `visual_check`, 26/09/2026): a verificação de agendamentos e a `BookingSource` usam índice pelo espaço (o GiST da `ExclusionConstraint` fica disponível para volumes maiores); a verificação do ensalamento usa o índice de `space` da alocação; "Solicitações para análise" usa `booking_request_status_idx`; "Minhas solicitações" usa `booking_request_owner_idx`.
 
 ### D14. Tela nova
 

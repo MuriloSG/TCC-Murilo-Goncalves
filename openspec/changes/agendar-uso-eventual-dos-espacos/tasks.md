@@ -51,8 +51,8 @@
 
 ## 8. Fechamento
 
-- [ ] 8.1 Conferir as telas no navegador com o banco `visual_check` e o Playwright em container, a 360 px e 1280 px
-- [ ] 8.2 Conferir os planos com `EXPLAIN` e registrar no `design.md` (D13)
-- [ ] 8.3 Atualizar o glossário da seção 9.4 das convenções e dos testes do app `ui` (D12)
-- [ ] 8.4 Rodar `make test` e `openspec validate --all --strict`
-- [ ] 8.5 Commit
+- [x] 8.1 Conferir as telas no navegador com o banco `visual_check` e o Playwright em container, a 360 px e 1280 px
+- [x] 8.2 Conferir os planos com `EXPLAIN` e registrar no `design.md` (D13)
+- [x] 8.3 Atualizar o glossário da seção 9.4 das convenções e dos testes do app `ui` (D12)
+- [x] 8.4 Rodar `make test` e `openspec validate --all --strict`
+- [x] 8.5 Commit

@@ -52,7 +52,7 @@ class TextRulesTests(SimpleTestCase):
 
     def test_marketing_com_flexoes(self):
         for text in (
-            'Uma jornada de reservas.', 'Experiência intuitiva.', 'Descubra o sistema.',
+            'Uma jornada de agendamentos.', 'Experiência intuitiva.', 'Descubra o sistema.',
             'É simples.', 'Reserve facilmente.', 'Um sistema poderoso.', 'Incríveis recursos.',
             'Potencialize a gestão.', 'Tudo perfeito.', 'Simplesmente reserve.',
         ):
@@ -70,9 +70,9 @@ class TextRulesTests(SimpleTestCase):
         self.assertAllowed('Esqueci minha senha', 'a')
 
     def test_emoji(self):
-        self.assertViolates('Reserva aprovada \U0001F389')
+        self.assertViolates('Agendamento aprovado \U0001F389')
         self.assertViolates('Concluído ✅')
-        self.assertAllowed('Reserva aprovada')
+        self.assertAllowed('Agendamento aprovado')
 
     def test_glossario(self):
         violations = find_violations('Bloquear', 'button')
@@ -89,7 +89,8 @@ class TextRulesTests(SimpleTestCase):
             ('Informe o email', 'e-mail'),
             ('Informe o E-Mail', 'e-mail'),
             ('Horário livre', 'disponível'),
-            ('Pedido em análise', 'solicitação de reserva'),
+            ('Pedido em análise', 'solicitação de agendamento'),
+            ('Reserva aprovada', 'agendamento'),
             ('Papel do usuário', 'perfil'),
             ('Professor', 'docente'),
         ):
@@ -118,7 +119,7 @@ class TextRulesTests(SimpleTestCase):
 
     def test_titulo_com_dois_pontos(self):
         self.assertViolates('Usuários: gerencie a equipe', 'h1')
-        self.assertAllowed('Reserva das 10:00 às 12:00', 'h1')
+        self.assertAllowed('Agendamento das 10:00 às 12:00', 'h1')
         self.assertAllowed('Código: VAR', 'p')
         self.assertAllowed('Nova senha:', 'label')
 

@@ -246,6 +246,20 @@ class SpaceNameTaken(ValidationError):
         super().__init__({field: ValidationError(message, code='name_taken')})
 
 
+class SpaceWithBookings(ValidationError):
+    """Recusa da exclusão de um espaço citado por solicitações de agendamento da Agenda.
+
+    A solicitação e o agendamento protegem o espaço (D3 da Change
+    agendar-uso-eventual-dos-espacos); sem esta recusa, a exclusão falharia no banco.
+    """
+
+    def __init__(self, name):
+        super().__init__(
+            f'O espaço {name} tem solicitações de agendamento na Agenda e não pode ser excluído. Desative o espaço.',
+            code='space_with_bookings',
+        )
+
+
 class SpaceInUse(ValidationError):
     def __init__(self, name):
         super().__init__(
@@ -471,7 +485,10 @@ class Space(NamedRecord):
                 resource_id=space.pk,
                 old_values={'name': space.name, 'outros_nomes': space.other_names, 'origem': space.origin},
             )
-            space.delete()
+            try:
+                space.delete()
+            except models.ProtectedError as error:
+                raise SpaceWithBookings(space.name) from error
 
 
 class SpaceName(models.Model):

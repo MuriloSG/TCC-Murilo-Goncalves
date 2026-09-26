@@ -69,6 +69,8 @@ Guardar data e hora da solicitação em campos separados segue o formulário (fa
 
 `Allocation` não é tocada. Ensalamento, solicitação e agendamento são três conceitos em três tabelas.
 
+Como a solicitação e o agendamento protegem o espaço (`PROTECT`), a exclusão de um espaço citado por uma solicitação seria recusada pelo banco. `Space.delete_space` traduz essa recusa em `SpaceWithBookings`, com a mensagem "O espaço … tem solicitações de agendamento na Agenda e não pode ser excluído. Desative o espaço.", no mesmo formato da recusa do espaço com aulas.
+
 ### D4. Máquina de estados
 
 | De | Para | Quem | Operação | Efeito |

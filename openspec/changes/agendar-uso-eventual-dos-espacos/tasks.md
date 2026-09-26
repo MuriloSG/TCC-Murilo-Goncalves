@@ -12,13 +12,13 @@
 
 ## 3. Models e estados
 
-- [ ] 3.1 Migration da extensão `btree_gist` (D3)
-- [ ] 3.2 Criar `BookingRequest` e `Booking` com as restrições, a `ExclusionConstraint` e os índices (D3, D13)
-- [ ] 3.3 Criar `bookings/occupancy.py` com `conflicts()` em duas consultas, intervalo `[início, fim)` (D5)
-- [ ] 3.4 Criar as operações `submit`, `approve`, `reject`, `suggest`, `accept_suggestion` e `decline_suggestion`, com `transaction.atomic`, `select_for_update` da solicitação e do espaço, verificação de estado e ator e `InvalidTransition` (D4, D6)
-- [ ] 3.5 Testar cada transição válida, cada transição inválida, os campos obrigatórios, o passado, fim antes do início, espaço inativo, bordas `14:00–15:00`/`15:00–16:00`, conflito com alocação e com agendamento
-- [ ] 3.6 Testar em `TransactionTestCase` duas aprovações sobrepostas simultâneas: só uma cria agendamento
-- [ ] 3.7 Commit
+- [x] 3.1 Migration da extensão `btree_gist` (D3)
+- [x] 3.2 Criar `BookingRequest` e `Booking` com as restrições, a `ExclusionConstraint` e os índices (D3, D13)
+- [x] 3.3 Criar `bookings/occupancy.py` com `conflicts()` em duas consultas, intervalo `[início, fim)` (D5)
+- [x] 3.4 Criar as operações `submit`, `approve`, `reject`, `suggest`, `accept_suggestion` e `decline_suggestion`, com `transaction.atomic`, `select_for_update` da solicitação e do espaço, verificação de estado e ator e `InvalidTransition` (D4, D6)
+- [x] 3.5 Testar cada transição válida, cada transição inválida, os campos obrigatórios, o passado, fim antes do início, espaço inativo, bordas `14:00–15:00`/`15:00–16:00`, conflito com alocação e com agendamento
+- [x] 3.6 Testar em `TransactionTestCase` duas aprovações sobrepostas simultâneas: só uma cria agendamento
+- [x] 3.7 Commit
 
 ## 4. Auditoria
 

@@ -76,6 +76,7 @@ class Entry:
     stage: str
     allocation_ids: tuple = field(default=(), compare=False)
     cancel_url: str = field(default='', compare=False)
+    change_url: str = field(default='', compare=False)
 
     @property
     def is_undergraduate(self):

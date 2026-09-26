@@ -208,7 +208,7 @@ def public_allocations(semester, space=None, teacher=None, course=None, stage=No
     return list(
         queryset.select_related('subject', 'time_slot', 'space', 'class_group__course')
         .only(
-            'weekday',
+            'weekday', 'valid_from', 'valid_until',
             'subject', 'subject__name',
             'time_slot', 'time_slot__start_time', 'time_slot__end_time',
             'space', 'space__name',

@@ -23,6 +23,11 @@ urlpatterns = [
         name='space_allocation_occurrence_cancel',
     ),
     path(
+        'ensalamento/recorrencias/alterar/',
+        login_required(views.RecurrenceChangeView.as_view()),
+        name='space_allocation_recurrence_change',
+    ),
+    path(
         'ensalamento/excecoes/',
         login_required(views.AllocationExceptionListView.as_view()),
         name='space_allocation_exception_list',

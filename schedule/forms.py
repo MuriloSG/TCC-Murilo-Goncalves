@@ -1,6 +1,9 @@
-from django import forms
+from datetime import time
 
-from schedule.models import Space, SpaceOrigin
+from django import forms
+from django.db.models import Q
+
+from schedule.models import Space, SpaceOrigin, Teacher, Weekday, interval_choices
 from schedule.timetable import natural_key
 
 
@@ -154,3 +157,50 @@ class PublicCalendarFilterForm(forms.Form):
             if calendar.date_error:
                 self.fields[name].widget.attrs['aria-invalid'] = 'true'
                 self.fields[name].widget.attrs['aria-describedby'] = 'erro-datas'
+
+
+class RecurrenceChangeForm(forms.Form):
+    """Data de corte e dados novos da recorrência de uma aula, iniciados com os atuais.
+
+    Só dia, horário, espaço e docentes são campos: turma, disciplina e semestre são a
+    própria aula. O horário é um intervalo com a mesma quantidade de faixas seguidas do
+    semestre que a aula ocupa, e o espaço é um dos ativos ou o atual (D2 e D3 da Change
+    alterar-recorrencia-do-ensalamento). A conferência das regras fica no model.
+    """
+
+    data = forms.DateField(
+        label='A partir de',
+        help_text='Data da primeira aula com os dados novos.',
+        widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+    )
+    dia = forms.ChoiceField(label='Dia da semana', choices=Weekday.choices, widget=forms.Select(attrs={'class': 'input'}))
+    horario = forms.ChoiceField(label='Horário', widget=forms.Select(attrs={'class': 'input'}))
+    espaco = forms.ModelChoiceField(
+        label='Espaço',
+        queryset=Space.objects.none(),
+        required=False,
+        empty_label='Sem espaço',
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+    docentes = forms.ModelMultipleChoiceField(
+        label='Docentes',
+        queryset=Teacher.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'input'}),
+    )
+
+    def __init__(self, *args, allocations=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        first = allocations[0]
+        self.fields['horario'].choices = [
+            (f'{start:%H:%M}', f'Das {start:%H:%M} às {end:%H:%M}')
+            for start, end in interval_choices(first.semester, len(allocations))
+        ]
+        current = Q(pk=first.space_id) if first.space_id else Q(pk__in=[])
+        self.fields['espaco'].queryset = Space.objects.filter(Q(is_active=True) | current).order_by('name')
+        self.fields['espaco'].label_from_instance = lambda space: space.name
+
+    def clean_horario(self):
+        value = self.cleaned_data['horario']
+        hours, minutes = value.split(':')
+        return time(int(hours), int(minutes))

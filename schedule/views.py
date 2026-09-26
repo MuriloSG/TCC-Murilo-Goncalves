@@ -1,7 +1,8 @@
 """Grade do ensalamento confirmado, telas da importação e cadastro de espaços.
 
 A grade, o cancelamento de ocorrência e a lista de exceções exigem `ENSALAMENTO.VISUALIZAR`;
-quem cancela é conferido por aula no model. As telas da importação exigem
+quem cancela é conferido por aula no model. A alteração da recorrência exige
+`ENSALAMENTO.ALTERAR_RECORRENCIA`, conferida de novo no model. As telas da importação exigem
 `ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`.
 O cadastro de espaços exige a permissão de cada operação do recurso `ESPACO` (D15 da Change
 manipulacao-dos-espacos). A autenticação vem do `login_required` no `urls.py` e a
@@ -25,6 +26,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.views import View
 from django.views.generic import FormView, ListView, TemplateView
+from django_htmx.http import HttpResponseClientRedirect
 
 from accounts import permissions
 from accounts.utils import add_operation_error
@@ -41,7 +43,7 @@ from imports.views import (
     load_importation,
 )
 from imports.models import Import
-from schedule.forms import GridFilterForm, SpaceAssociateForm, SpaceFilterForm, SpaceForm
+from schedule.forms import GridFilterForm, RecurrenceChangeForm, SpaceAssociateForm, SpaceFilterForm, SpaceForm
 from schedule.models import SPACE_PERMISSION_MESSAGE, Allocation, AllocationException, Space, SpaceDecision, Weekday, manages
 from schedule.spaces import CREATE, INACTIVE, REACTIVATE, SIMILAR, classify_import, decision_permissions, options_of
 from schedule.imports import SpaceAllocationImport, concluded_message
@@ -108,9 +110,10 @@ class SpaceAllocationGridView(TemplateView):
     navegável pelo parâmetro `semana`; sem ele, é a semana típica com o aviso (D3 e D7 da
     Change visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda chegam
     como mais uma fonte e aparecem em todas as faixas que cruzam, sem ação de solicitar
-    (Change agendar-uso-eventual-dos-espacos). A única ação da Grade é cancelar a ocorrência
+    (Change agendar-uso-eventual-dos-espacos). As ações da Grade são cancelar a ocorrência
     de uma aula datada, oferecida a quem administra a aula (Change
-    cancelar-ocorrencia-do-ensalamento).
+    cancelar-ocorrencia-do-ensalamento), e alterar a recorrência a partir de uma data de
+    hoje em diante, oferecida a quem tem a permissão (Change alterar-recorrencia-do-ensalamento).
     """
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
@@ -186,6 +189,7 @@ class SpaceAllocationGridView(TemplateView):
         )
         if week.is_dated:
             with_cancel_actions(week, self.request.user)
+            with_change_actions(week, self.request.user, today)
         return context
 
 
@@ -212,6 +216,148 @@ def with_cancel_actions(week, user, url_name='space_allocation_occurrence_cancel
                 if getattr(entry, 'allocation_ids', ()) and manages(user, entry.teachers) else entry
                 for entry in cell.entries
             ]
+
+
+def with_change_actions(week, user, today):
+    """Dá a ação de alterar a recorrência a cada aula datada de hoje em diante.
+
+    A permissão é conferida uma vez por requisição. A view da alteração e o model conferem
+    tudo de novo, e esconder a ação não é a proteção.
+    """
+    if not user.has_perm(permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE):
+        return
+    url = reverse('space_allocation_recurrence_change')
+    for day in week.days:
+        if day.date is None or not day.in_period or day.date < today:
+            continue
+        for cell in day.cells:
+            if not cell or cell.is_continued or cell.is_outside:
+                continue
+            cell.entries = [
+                replace(entry, change_url=f"{url}?{urlencode({'data': day.date.isoformat(), 'alocacao': entry.allocation_ids}, doseq=True)}")
+                if getattr(entry, 'allocation_ids', ()) else entry
+                for entry in cell.entries
+            ]
+
+
+class RecurrenceChangeView(OperationFormView):
+    """Altera a recorrência de uma aula a partir de uma data, em duas etapas no mesmo modal.
+
+    A aula é identificada pelas alocações do bloco da Grade e pela data em que a ação foi
+    aberta; alocação inexistente ou data que não é ocorrência dela respondem 404. O primeiro
+    envio confere tudo em `Allocation.objects.plan_recurrence` e mostra o resumo de antes e
+    de depois, sem gravar; o envio com `confirmar` executa `change_recurrence`, que confere
+    de novo. Recusas voltam como erros do formulário. No sucesso, a Grade abre na semana
+    da data e na sala nova, e não na tela de origem, onde a aula deixou de estar.
+    """
+
+    permission_required = permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE
+    template_name = 'schedule/recurrence_change.html'
+    modal_template_name = 'schedule/recurrence_change_modal.html'
+    summary_template_name = 'schedule/recurrence_change_summary.html'
+    form_class = RecurrenceChangeForm
+    title = 'Alterar recorrência'
+    submit_label = 'Revisar alteração'
+    section_title = 'Ensalamento'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.day = parse_date(request.GET.get('data'))
+        ids = request.GET.getlist('alocacao')
+        if self.day is None or not ids or not all(value.isdigit() for value in ids):
+            raise Http404
+        ids = {int(value) for value in ids}
+        allocations = get_list_or_404(
+            Allocation.objects.filter(pk__in=ids)
+            .select_related('semester', 'subject', 'time_slot', 'space', 'class_group__course')
+            .prefetch_related('teachers')
+            .order_by('time_slot__start_time'),
+        )
+        if len(allocations) != len(ids) or not all(allocation.occurs_on(self.day) for allocation in allocations):
+            raise Http404
+        self.allocations = allocations
+
+    def get_success_url(self):
+        first = self.allocations[0]
+        query = {'semestre': first.semester.code, 'semana': self.plan.cut.isoformat() if getattr(self, 'plan', None) else self.day.isoformat()}
+        space = self.plan.after.space if getattr(self, 'plan', None) else (first.space.name if first.space else '')
+        if space:
+            query['sala'] = space
+        return f"{reverse('space_allocation_grid')}?{urlencode(query)}"
+
+    def get_close_url(self):
+        first = self.allocations[0]
+        query = {'semestre': first.semester.code, 'semana': self.day.isoformat()}
+        if first.space:
+            query['sala'] = first.space.name
+        return f"{reverse('space_allocation_grid')}?{urlencode(query)}"
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'allocations': self.allocations}
+
+    def get_initial(self):
+        first = self.allocations[0]
+        return {
+            'data': self.day,
+            'dia': first.weekday,
+            'horario': f'{first.time_slot.start_time:%H:%M}',
+            'espaco': first.space_id,
+            'docentes': [teacher.pk for teacher in first.teachers.all()],
+        }
+
+    def get_context_data(self, **kwargs):
+        first, last = self.allocations[0], self.allocations[-1]
+        return super().get_context_data(
+            lesson=first,
+            start=first.time_slot.start_time,
+            end=last.time_slot.end_time,
+            section_title=self.section_title,
+            section_url=self.get_close_url(),
+            **kwargs,
+        )
+
+    def arguments(self, data):
+        return {
+            'allocation_ids': [allocation.pk for allocation in self.allocations],
+            'cut': data['data'],
+            'executor': self.request.user,
+            'weekday': data['dia'],
+            'start_time': data['horario'],
+            'space': data['espaco'],
+            'teachers': list(data['docentes']),
+        }
+
+    def form_valid(self, form):
+        data = form.cleaned_data
+        try:
+            if self.request.POST.get('confirmar') != '1':
+                plan = Allocation.objects.plan_recurrence(**self.arguments(data))
+                return self.render_summary(form, plan)
+            self.plan = Allocation.objects.change_recurrence(**self.arguments(data))
+        except ValidationError as error:
+            add_operation_error(form, error)
+            return self.form_invalid(form)
+        messages.success(
+            self.request,
+            f'Recorrência de {self.allocations[0].subject.name} alterada a partir de {date_format(self.plan.cut, "SHORT_DATE_FORMAT")}.',
+        )
+        if self.request.htmx:
+            return HttpResponseClientRedirect(self.get_success_url())
+        return self.redirect_to(self.get_success_url())
+
+    def render_summary(self, form, plan):
+        hidden = [
+            (name, value)
+            for name in form.fields
+            for value in self.request.POST.getlist(name)
+        ]
+        template = self.summary_template_name if self.request.htmx else self.template_name
+        return self.response_class(
+            request=self.request,
+            template=[template],
+            context=self.get_context_data(form=form, plan=plan, hidden=hidden, summary=True),
+            using=self.template_engine,
+        )
 
 
 class OccurrenceCancelView(ConfirmedActionView):

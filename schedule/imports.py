@@ -88,6 +88,7 @@ COURSE_COLUMN = 'Curso'
 COURSE_WITHOUT_TITLE = 'curso_sem_titulo'
 SPACE_WITHOUT_LESSONS = 'sala_sem_aula'
 ASSOCIATED_TO_NEW = 'outro_nome_de_espaco_novo'
+RECURRENCE_CHANGED = 'recorrencia_alterada'
 SPACE_PENDING = 'espaco_a_decidir'
 ACTIVE_LABELS = {True: 'ATIVO', False: 'INATIVO'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -289,6 +290,7 @@ class SpaceAllocationImport(ImportDefinition):
         COURSE_WITHOUT_TITLE: 'O nome do curso veio do cabeçalho da turma, porque a planilha não traz o título.',
         SPACE_WITHOUT_LESSONS: 'A sala está na lista da planilha e não tem aula nesta importação. Ela não será cadastrada.',
         ASSOCIATED_TO_NEW: 'O nome será guardado como outro nome de um espaço cadastrado por esta importação.',
+        RECURRENCE_CHANGED: 'Esta aula teve a recorrência alterada no sistema e não foi atualizada pela planilha.',
     }
     pending_labels = {
         SPACE_PENDING: 'O espaço {key} precisa de decisão no quadro de espaços desta importação.',
@@ -501,6 +503,8 @@ class SpaceAllocationImport(ImportDefinition):
             return plan
         plan.action = action
         plan.changes = changes | self.new_space_change(entry, space)
+        if allocation.is_versioned:
+            plan.warnings.append(RECURRENCE_CHANGED)
         key = (Allocation.__name__, allocation.pk)
         if action == 'create':
             state.created.add(key)

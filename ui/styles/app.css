@@ -1492,14 +1492,16 @@
       margin-top: var(--spacing-1);
     }
 
-    &:has(.timetable-card-action) {
+    &:has(.timetable-card-actions) {
       padding-right: var(--spacing-12);
     }
 
-    & .timetable-card-action {
+    & .timetable-card-actions {
       position: absolute;
       top: 0;
       right: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     &.is-undergraduate {
@@ -2228,6 +2230,12 @@
     gap: var(--spacing-2);
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
+
+    & .request-detail {
+      display: block;
+      font-size: inherit;
+      line-height: inherit;
+    }
 
     & > div {
       display: grid;

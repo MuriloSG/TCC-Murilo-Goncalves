@@ -71,6 +71,7 @@ SPACE = 'ESPACO'
 BOOKING_REQUEST = 'SOLICITACAO_AGENDAMENTO'
 BOOKING = 'AGENDAMENTO'
 SPACE_ALLOCATION_EXCEPTION = 'EXCECAO_ENSALAMENTO'
+SPACE_ALLOCATION = 'ENSALAMENTO'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -85,6 +86,7 @@ RESOURCE_LABELS = {
     BOOKING_REQUEST: 'Solicitações de agendamento',
     BOOKING: 'Agendamentos',
     SPACE_ALLOCATION_EXCEPTION: 'Exceções do ensalamento',
+    SPACE_ALLOCATION: 'Ensalamento',
 }
 
 INTERFACE = 'INTERFACE'
@@ -147,6 +149,11 @@ FIELD_LABELS = {
     'turma': 'Turma',
     'docentes': 'Docentes',
     'dia': 'Dia da semana',
+    'vigente_desde': 'Vigente desde',
+    'vigente_ate': 'Vigente até',
+    'a_partir_de': 'A partir de',
+    'nova_alocacao': 'Nova alocação',
+    'excecoes_transferidas': 'Exceções transferidas',
 }
 
 

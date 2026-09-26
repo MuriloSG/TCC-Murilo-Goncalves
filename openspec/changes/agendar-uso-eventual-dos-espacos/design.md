@@ -113,6 +113,8 @@ A Agenda tem a sua lista de fontes, `agenda_sources()` = `[AllocationSource(), B
 
 A marcação da Grade é reaproveitada pelas estruturas de `timetable.py` e pelas classes `timetable-*`. A Agenda tem o seu template (`bookings/agenda.html`) e o seu card, para colocar a ação "Solicitar agendamento" na faixa disponível sem mexer no `grid.html` do Ensalamento, que continua só de consulta. Se um trecho de template da Grade precisar ser comum, ele é extraído para um include em `schedule/templates/schedule/`, sem mudar o HTML gerado para o Ensalamento.
 
+As faixas das linhas continuam as do semestre, e o agendamento aparece em todas as faixas que cruza (`dated_grid(..., by_overlap=True)` em `schedule/timetable.py`, sem mudar a Grade do Ensalamento). Um agendamento que não cruza nenhuma faixa do semestre, como no almoço, ganha uma linha própria com o seu intervalo, para que nenhum uso aprovado fique fora da Grade. Os auxiliares de datas da Grade (`parse_date`, `parse_month`, `month_reference`, `occupation_text`) passaram para `timetable.py`, e o cabeçalho dos dias e a navegação viraram os includes `schedule/partials/timetable_head.html` e `timetable_nav.html`, usados pelas duas telas.
+
 Card do agendamento: selo "Agendamento" (texto e ícone, não só cor), a descrição e o horário. O card da aula continua como está e ganha, na Agenda, o selo "Ensalamento". O nome do solicitante só aparece para quem tem `AGENDA.ANALISAR`.
 
 Semana e mês, navegação, dias, faixas e comportamento abaixo de 640 px são os da Grade autenticada. Não há representação própria para o celular.

@@ -1,0 +1,110 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui agenda %}
+
+{% block title %}Agenda{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Agenda</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Agenda</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card timetable is-agenda" id="grade" aria-labelledby="grade-titulo">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="grade-titulo">{% if is_month %}Mês{% else %}Semana{% endif %} da sala{% if space %} {{ space.name }}{% endif %}</h2>
+        {% if week.is_dated %}<p class="timetable-range">{% if is_month %}{{ week.start|date:"F" }} de {{ week.start|date:"Y" }}{% else %}{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}{% endif %}</p>{% endif %}
+      </div>
+      <form class="filters" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=semestre], change from:select[name=sala], change from:select[name=visao]">
+        <div>
+          <label class="sr-only" id="{{ filter_form.semestre.auto_id }}_rotulo" for="{{ filter_form.semestre.id_for_label }}">Semestre</label>
+          {% include "ui/components/select.html" with field=filter_form.semestre %}
+        </div>
+        {% if space %}
+          <div>
+            <label class="sr-only" id="{{ filter_form.sala.auto_id }}_rotulo" for="{{ filter_form.sala.id_for_label }}">Sala</label>
+            {% include "ui/components/select.html" with field=filter_form.sala %}
+          </div>
+        {% endif %}
+        {% if week.is_dated %}
+          <div>
+            <label class="sr-only" id="{{ filter_form.visao.auto_id }}_rotulo" for="{{ filter_form.visao.id_for_label }}">Visualização</label>
+            {% include "ui/components/select.html" with field=filter_form.visao %}
+          </div>
+        {% endif %}
+        {{ filter_form.semana }}{{ filter_form.mes }}
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+        {% if week.rows %}
+          <button class="btn-secondary timetable-expand" type="button" data-expand aria-pressed="false" hidden><span class="expand-on">{% icon "maximize-2" %}Expandir grade</span><span class="expand-off">{% icon "minimize-2" %}Recolher grade</span></button>
+        {% endif %}
+      </form>
+    </div>
+    {% if period_missing %}
+      <div class="timetable-notice">
+        <div class="alert tone-info" role="status">{% icon "info" %}<p>Período do semestre {{ semester_code }} não definido. Informe o início e o fim na próxima importação do semestre.</p></div>
+      </div>
+    {% endif %}
+    {% if week.rows %}
+      <div class="timetable-status">
+        {% if week.is_dated %}
+          {% include "schedule/partials/timetable_nav.html" %}
+        {% endif %}
+        <p class="timetable-occupation">{{ occupation_text }}</p>
+      </div>
+      <div class="timetable-scroll{% if is_month %} is-month{% endif %}" tabindex="0" role="region" aria-label="{% if is_month %}Mês{% else %}Semana{% endif %} da sala {{ space.name }}">
+        <table class="timetable-grid{% if is_month %} is-month{% endif %}">
+          <caption class="sr-only">{% if is_month %}Mês{% else %}Semana{% endif %} da sala {{ space.name }} em {{ semester_code }}</caption>
+          {% include "schedule/partials/timetable_head.html" %}
+          <tbody>
+            {% for row in week.rows %}
+              <tr>
+                <th scope="row" class="timetable-time"><span>{{ row.start|time:"H:i" }}</span><span>{{ row.end|time:"H:i" }}</span></th>
+                {% for day, cell in row.day_cells %}
+                  {% if cell.is_continued %}
+                  {% elif cell.is_outside %}
+                    <td class="timetable-outside{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">Fora do semestre</td>
+                  {% elif cell %}
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">{% include "bookings/partials/agenda_cell.html" %}</td>
+                  {% else %}
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span></td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if not is_month %}<div class="timetable-days">
+        {% for day in week.days %}
+          <section class="timetable-daylist" aria-label="{{ day.full_label }}{% if day.date %}, {{ day.date|date:"SHORT_DATE_FORMAT" }}{% endif %}">
+            <h3>{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}</h3>
+            {% if not day.in_period %}
+              <p class="timetable-free">Fora do semestre</p>
+            {% elif day.has_activity %}
+              <ol>
+                {% for cell in day.cells %}
+                  {% if cell and not cell.is_continued %}
+                    <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span><div>{% include "bookings/partials/agenda_cell.html" %}</div></li>
+                  {% endif %}
+                {% endfor %}
+              </ol>
+              {% if day.available %}<p class="timetable-free">{% if day.available == 1 %}1 faixa disponível{% else %}{{ day.available }} faixas disponíveis{% endif %}</p>{% endif %}
+            {% else %}
+              <p class="timetable-free">Sala disponível o dia todo.</p>
+            {% endif %}
+          </section>
+        {% endfor %}
+      </div>{% endif %}
+    {% else %}
+      <p class="timetable-empty">{% if space %}Nenhuma faixa de horário no semestre {{ semester_code }}.{% else %}Nenhum espaço ativo cadastrado.{% endif %}</p>
+    {% endif %}
+  </section>
+{% endblock %}

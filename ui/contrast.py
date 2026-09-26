@@ -59,6 +59,8 @@ CONTRAST_PAIRS = [
     ('text', 'stage-secondary-bg', 4.5, 'Disciplina no card do ensino médio na Grade'),
     ('text-muted', 'stage-secondary-bg', 4.5, 'Docente no card do ensino médio na Grade'),
     ('stage-secondary-bar', 'stage-secondary-bg', 3, 'Barra da etapa no card do ensino médio'),
+    ('text', 'info-bg', 4.5, 'Descrição no card do agendamento na Agenda'),
+    ('text-muted', 'info-bg', 4.5, 'Solicitante no card do agendamento na Agenda'),
     ('stage-undergraduate-bar', 'surface', 3, 'Marca da graduação na legenda da Grade'),
     ('stage-secondary-bar', 'surface', 3, 'Marca do ensino médio na legenda da Grade'),
 ]

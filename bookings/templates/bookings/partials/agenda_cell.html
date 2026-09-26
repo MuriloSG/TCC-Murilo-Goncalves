@@ -1,0 +1,19 @@
+{% load ui agenda %}{% with kind=cell|lesson_kind %}{% if kind == "joint" %}<div class="timetable-group is-joint"><p class="timetable-group-flag">{% icon "users" "size-4" %}{{ cell|lesson_groups }} turmas juntas</p>{% elif kind == "clash" %}<div class="timetable-group is-clash"><p class="timetable-group-flag">{% icon "triangle-alert" "size-4" %}Choque: {{ cell|lesson_groups }} turmas neste horário</p>{% endif %}
+{% for entry in cell.entries %}
+  {% if entry.is_booking %}
+    <div class="timetable-card is-booking">
+      <p class="timetable-kind">{% icon "calendar-clock" "size-4" %}Agendamento</p>
+      <p class="timetable-subject">{{ entry.description }}</p>
+      <p class="timetable-line">{% icon "clock" "size-4" %}<span>Das {{ entry.start|time:"H:i" }} às {{ entry.end|time:"H:i" }}</span></p>
+      {% if shows_requester %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.requester }}</span></p>{% endif %}
+    </div>
+  {% else %}
+    <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
+      <p class="timetable-kind">{% icon "graduation-cap" "size-4" %}Ensalamento</p>
+      <p class="timetable-subject">{{ entry.subject }}</p>
+      <p class="timetable-line">{% icon "users" "size-4" %}<span>{{ entry.group_label }}</span></p>
+      {% if entry.teachers %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.teachers|join:", " }}</span></p>{% endif %}
+    </div>
+  {% endif %}
+{% endfor %}
+{% if kind != "single" %}</div>{% endif %}{% endwith %}

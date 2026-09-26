@@ -60,41 +60,14 @@
     {% if week.rows %}
       <div class="timetable-status">
         {% if week.is_dated %}
-          <nav class="timetable-nav" aria-label="{% if is_month %}Meses{% else %}Semanas{% endif %}">
-            {% if previous_url %}
-              <a class="btn-secondary" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}{% if is_month %}Mês anterior{% else %}Semana anterior{% endif %}</a>
-            {% else %}
-              <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}{% if is_month %}Mês anterior{% else %}Semana anterior{% endif %}</span>
-            {% endif %}
-            {% if is_month %}
-              <a class="btn-secondary" href="{{ today_url }}">Hoje</a>
-            {% else %}
-              <a class="btn-secondary" href="{{ today_url }}" hx-get="{{ today_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
-            {% endif %}
-            {% if following_url %}
-              <a class="btn-secondary" href="{{ following_url }}" hx-get="{{ following_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% if is_month %}Próximo mês{% else %}Próxima semana{% endif %}{% icon "chevron-right" %}</a>
-            {% else %}
-              <span class="btn-secondary" aria-disabled="true">{% if is_month %}Próximo mês{% else %}Próxima semana{% endif %}{% icon "chevron-right" %}</span>
-            {% endif %}
-          </nav>
+          {% include "schedule/partials/timetable_nav.html" %}
         {% endif %}
         <p class="timetable-occupation">{{ occupation_text }}</p>
       </div>
       <div class="timetable-scroll{% if is_month %} is-month{% endif %}" tabindex="0" role="region" aria-label="{% if is_month %}Mês{% else %}Semana{% endif %} da sala {{ space.name }}">
         <table class="timetable-grid{% if is_month %} is-month{% endif %}">
           <caption class="sr-only">{% if is_month %}Mês{% else %}Semana{% endif %} da sala {{ space.name }} em {{ semester_code }}</caption>
-          <thead>
-            <tr>
-              <th scope="col" class="timetable-corner">Horário</th>
-              {% for day in week.days %}
-                {% if is_month %}
-                  <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"{% if day.is_today %} id="hoje"{% endif %} aria-label="{{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}<span class="timetable-daynum">{{ day.date|date:"d" }}</span> <span class="timetable-weekday">{{ day.short_label }}</span></th>
-                {% else %}
-                  <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</th>
-                {% endif %}
-              {% endfor %}
-            </tr>
-          </thead>
+          {% include "schedule/partials/timetable_head.html" %}
           <tbody>
             {% for row in week.rows %}
               <tr>

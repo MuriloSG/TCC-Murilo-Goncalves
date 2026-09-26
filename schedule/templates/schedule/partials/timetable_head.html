@@ -1,0 +1,12 @@
+<thead>
+  <tr>
+    <th scope="col" class="timetable-corner">Horário</th>
+    {% for day in week.days %}
+      {% if is_month %}
+        <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"{% if day.is_today %} id="hoje"{% endif %} aria-label="{{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}<span class="timetable-daynum">{{ day.date|date:"d" }}</span> <span class="timetable-weekday">{{ day.short_label }}</span></th>
+      {% else %}
+        <th scope="col" class="timetable-day{% if day.is_today %} is-today{% endif %}">{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</th>
+      {% endif %}
+    {% endfor %}
+  </tr>
+</thead>

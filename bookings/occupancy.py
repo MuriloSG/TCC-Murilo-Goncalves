@@ -4,15 +4,19 @@ O intervalo é semiaberto, `[início, fim)`: há conflito quando `início < outr
 `fim > outro_início`, e `14:00–15:00` não conflita com `15:00–16:00` (D5 da Change
 agendar-uso-eventual-dos-espacos). A verificação usa duas consultas, uma do ensalamento e
 uma dos agendamentos, e devolve o primeiro intervalo ocupado para a mensagem.
+
+A Grade da Agenda tem a sua lista de fontes, `agenda_sources()`, com o ensalamento e os
+agendamentos; `grid_sources()` do Ensalamento não muda (D7).
 """
 
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.apps import apps
 from django.utils import timezone
 
 from schedule.models import Allocation
+from schedule.occupancy import AllocationSource, Occurrence
 from schedule.timetable import WEEKDAYS
 
 BOOKING = 'AGENDAMENTO'
@@ -71,3 +75,68 @@ def find_conflict(space, day, start, end):
     """Primeiro intervalo ocupado do espaço na data, ou None quando está disponível."""
     return allocation_conflict(space, day, start, end) or booking_conflict(space, day, start, end)
 
+
+@dataclass(frozen=True)
+class BookingEntry:
+    """Agendamento aprovado no card da Grade da Agenda.
+
+    Os campos `subject`, `group_label`, `teachers` e `stage` existem para que a célula da
+    Grade trate a entrada como as demais; o template da Agenda usa `is_booking`.
+    """
+
+    pk: int
+    description: str
+    start: time
+    end: time
+    requester: str
+    subject: str = ''
+    teachers: tuple = ()
+    stage: str = ''
+    is_booking = True
+
+    @property
+    def group_label(self):
+        return f'agendamento {self.pk}'
+
+    @property
+    def is_undergraduate(self):
+        return False
+
+
+class BookingSource:
+    """Ocorrências dos agendamentos aprovados do espaço no intervalo, numa consulta."""
+
+    kind = BOOKING
+
+    def occurrences(self, space, start_date, end_date):
+        Booking = apps.get_model('bookings', 'Booking')
+        first = timezone.make_aware(datetime.combine(start_date, time.min))
+        last = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min))
+        bookings = (
+            Booking.objects.filter(space=space, starts_at__lt=last, ends_at__gt=first)
+            .select_related('requested_by')
+            .only('pk', 'space_id', 'starts_at', 'ends_at', 'description', 'requested_by__name')
+        )
+        result = []
+        for booking in bookings:
+            starts_at, ends_at = timezone.localtime(booking.starts_at), timezone.localtime(booking.ends_at)
+            result.append(Occurrence(
+                date=starts_at.date(),
+                start=starts_at.time(),
+                end=ends_at.time(),
+                space_id=space.pk,
+                kind=self.kind,
+                entry=BookingEntry(
+                    pk=booking.pk,
+                    description=booking.description,
+                    start=starts_at.time(),
+                    end=ends_at.time(),
+                    requester=booking.requested_by.name,
+                ),
+            ))
+        return result
+
+
+def agenda_sources():
+    """Fontes da Grade da Agenda: o ensalamento e os agendamentos aprovados."""
+    return [AllocationSource(), BookingSource()]

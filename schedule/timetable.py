@@ -11,7 +11,7 @@ visualizar-ocupacao-por-semana-e-mes).
 
 import re
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import date, timedelta
 
 from schedule.models import Allocation, Semester, Space, Stage, TimeSlot, Weekday
 
@@ -353,24 +353,53 @@ def previous_month(first):
     return (first - timedelta(days=1)).replace(day=1)
 
 
-def dated_grid(semester, space, dates, today, occurrences):
+def slots_of(occurrence, slots, by_overlap):
+    """Faixas em que a ocorrência aparece: a faixa igual à dela ou, com `by_overlap`, todas
+    as que ela cruza, no intervalo `[início, fim)`.
+
+    A sobreposição serve às ocorrências de horário livre, como o agendamento da Agenda, que
+    não coincidem com as faixas do semestre (D7 da Change agendar-uso-eventual-dos-espacos).
+    """
+    if by_overlap:
+        return [slot for slot in slots if occurrence.start < slot[1] and occurrence.end > slot[0]]
+    slot = (occurrence.start, occurrence.end)
+    return [slot] if slot in slots else []
+
+
+def with_uncovered(slots, occurrences):
+    """Faixas do semestre mais o intervalo de cada ocorrência que não cruza nenhuma delas.
+
+    Um agendamento fora das faixas do semestre, como no almoço, ganha a própria linha, para
+    que nenhum uso aprovado fique fora da Grade da Agenda.
+    """
+    extra = {
+        (occurrence.start, occurrence.end)
+        for occurrence in occurrences
+        if not any(occurrence.start < slot[1] and occurrence.end > slot[0] for slot in slots)
+    }
+    return sorted(set(slots) | extra)
+
+
+def dated_grid(semester, space, dates, today, occurrences, by_overlap=False):
     """Grade datada da sala nas datas pedidas, a partir das ocorrências do intervalo."""
     if semester is None or space is None:
         return Week()
     slots = semester_slots(semester)
-    known = set(slots)
     wanted = set(dates)
+    if by_overlap:
+        slots = with_uncovered(slots, [occurrence for occurrence in occurrences if occurrence.date in wanted])
     by_day_slot = {}
     for occurrence in occurrences:
-        slot = (occurrence.start, occurrence.end)
-        if slot in known and occurrence.date in wanted:
+        if occurrence.date not in wanted:
+            continue
+        for slot in slots_of(occurrence, slots, by_overlap):
             by_day_slot.setdefault((occurrence.date, slot), []).append(occurrence.entry)
     return build_week(slots, by_day_slot, today, dates=dates, semester=semester)
 
 
-def dated_space_week(semester, space, start, today, occurrences):
+def dated_space_week(semester, space, start, today, occurrences, by_overlap=False):
     """Semana datada da sala, com as semanas vizinhas que tocam o período do semestre."""
-    week = dated_grid(semester, space, week_dates(start), today, occurrences)
+    week = dated_grid(semester, space, week_dates(start), today, occurrences, by_overlap)
     if semester is None or space is None:
         return week
     previous, following = start - timedelta(days=7), start + timedelta(days=7)
@@ -380,15 +409,46 @@ def dated_space_week(semester, space, start, today, occurrences):
     return week
 
 
-def dated_space_month(semester, space, first, today, occurrences):
+def dated_space_month(semester, space, first, today, occurrences, by_overlap=False):
     """Mês da sala: a mesma Grade da semana, com um dia útil do mês por coluna (D8).
 
     Os meses vizinhos só são oferecidos quando tocam o período do semestre.
     """
-    month = dated_grid(semester, space, month_dates(first), today, occurrences)
+    month = dated_grid(semester, space, month_dates(first), today, occurrences, by_overlap)
     if semester is None or space is None:
         return month
     previous, following = previous_month(first), next_month(first)
     month.previous = previous if next_month(previous) > semester.start_date else None
     month.following = following if following <= semester.end_date else None
     return month
+
+
+def counted(total, singular, plural):
+    return f'{total} {singular if total == 1 else plural}'
+
+
+def occupation_text(week, is_month=False):
+    """Faixas ocupadas e disponíveis da sala na semana ou no mês."""
+    period = 'no mês' if is_month else 'na semana'
+    return f'{counted(week.occupied, "faixa ocupada", "faixas ocupadas")} e {counted(week.available, "disponível", "disponíveis")} {period}.'
+
+
+def parse_date(value):
+    """Data no formato AAAA-MM-DD da URL, ou None quando não serve."""
+    try:
+        return date.fromisoformat(value or '')
+    except ValueError:
+        return None
+
+
+def month_reference(semester, first, today):
+    """Data que leva do mês à semana: hoje, quando está no mês, ou o primeiro dia dele no período."""
+    in_period = [day for day in month_dates(first) if semester.contains(day)]
+    if today in in_period:
+        return today
+    return in_period[0] if in_period else first
+
+
+def parse_month(value):
+    """Primeiro dia do mês no formato AAAA-MM da URL, ou None quando não serve."""
+    return parse_date(f'{value}-01') if value and len(value) == 7 else None

@@ -29,11 +29,11 @@
 
 ## 5. Grade da Agenda
 
-- [ ] 5.1 Criar `BookingSource` e `agenda_sources()`, sem mudar `grid_sources()` (D7)
-- [ ] 5.2 Criar `AgendaGridView`, a rota `agenda/`, o template e os cards com os selos "Ensalamento" e "Agendamento", reaproveitando `timetable.py` e as classes `timetable-*`, sem alterar o `grid.html` (D7)
-- [ ] 5.3 Acrescentar o item "Agenda" ao menu, visível com `AGENDA.VISUALIZAR`
-- [ ] 5.4 Testar as quatro situações de acesso, o agendamento aprovado na Grade, a solicitação pendente fora da Grade, a Grade do Ensalamento sem agendamentos e a quantidade fixa de consultas
-- [ ] 5.5 Commit
+- [x] 5.1 Criar `BookingSource` e `agenda_sources()`, sem mudar `grid_sources()` (D7)
+- [x] 5.2 Criar `AgendaGridView`, a rota `agenda/`, o template e os cards com os selos "Ensalamento" e "Agendamento", reaproveitando `timetable.py` e as classes `timetable-*`, sem alterar o `grid.html` (D7)
+- [x] 5.3 Acrescentar o item "Agenda" ao menu, visível com `AGENDA.VISUALIZAR`
+- [x] 5.4 Testar as quatro situações de acesso, o agendamento aprovado na Grade, a solicitação pendente fora da Grade, a Grade do Ensalamento sem agendamentos e a quantidade fixa de consultas
+- [x] 5.5 Commit
 
 ## 6. Solicitação
 

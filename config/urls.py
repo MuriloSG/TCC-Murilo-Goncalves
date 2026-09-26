@@ -8,6 +8,7 @@ urlpatterns = [
     path('', include('audit.urls')),
     path('', include('notices.urls')),
     path('', include('schedule.urls')),
+    path('', include('bookings.urls')),
     path('contas/login/', account_views.login, name='account_login'),
     path('contas/logout/', LogoutView.as_view(), name='account_logout'),
     path('contas/senha/recuperar/', account_views.password_reset, name='account_reset_password'),

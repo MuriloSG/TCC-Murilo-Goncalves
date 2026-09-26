@@ -10,7 +10,7 @@ pelo sistema.
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -46,11 +46,14 @@ from ui.views import ModalView
 from schedule.occupancy import occupancy
 from schedule.timetable import (
     current_semester_code,
+    month_reference,
+    occupation_text,
+    parse_date,
+    parse_month,
     dated_space_month,
     dated_space_week,
     imported_semesters,
     month_start,
-    month_dates,
     natural_key,
     space_week,
     spaces_of,
@@ -78,37 +81,6 @@ SPACE_ALLOCATION_IMPORT_SCREENS = ImportScreens(
     delete_permission=permissions.SPACE_ALLOCATION_IMPORT_DELETE,
     panel_template=SPACE_PANEL_TEMPLATE,
 )
-
-
-def counted(total, singular, plural):
-    return f'{total} {singular if total == 1 else plural}'
-
-
-def occupation_text(week, is_month=False):
-    """Faixas ocupadas e disponíveis da sala na semana ou no mês."""
-    period = 'no mês' if is_month else 'na semana'
-    return f'{counted(week.occupied, "faixa ocupada", "faixas ocupadas")} e {counted(week.available, "disponível", "disponíveis")} {period}.'
-
-
-def parse_date(value):
-    """Data no formato AAAA-MM-DD da URL, ou None quando não serve."""
-    try:
-        return date.fromisoformat(value or '')
-    except ValueError:
-        return None
-
-
-def month_reference(semester, first, today):
-    """Data que leva do mês à semana: hoje, quando está no mês, ou o primeiro dia dele no período."""
-    in_period = [day for day in month_dates(first) if semester.contains(day)]
-    if today in in_period:
-        return today
-    return in_period[0] if in_period else first
-
-
-def parse_month(value):
-    """Primeiro dia do mês no formato AAAA-MM da URL, ou None quando não serve."""
-    return parse_date(f'{value}-01') if value and len(value) == 7 else None
 
 
 class SpaceAllocationImportListView(ImportListView):

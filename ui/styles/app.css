@@ -1471,6 +1471,29 @@
       background: var(--color-stage-secondary-bg);
       box-shadow: inset 3px 0 0 var(--color-stage-secondary-bar);
     }
+
+    &.is-booking {
+      background: var(--color-info-bg);
+      box-shadow: inset 0 0 0 1px var(--color-info-border), inset 3px 0 0 var(--color-info-icon);
+    }
+  }
+
+  .timetable-kind {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: var(--font-weight-bold);
+
+    .is-booking > & {
+      color: var(--color-info-text);
+
+      & svg {
+        color: var(--color-info-icon);
+      }
+    }
   }
 
   .timetable-subject {

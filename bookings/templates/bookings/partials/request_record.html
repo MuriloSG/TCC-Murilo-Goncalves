@@ -6,6 +6,10 @@
       {% if show_requester %}
         <div><dt>Solicitante</dt><dd>{{ target.requested_by.name }}<span class="request-detail">{{ target.requested_by.email }}</span></dd></div>
       {% endif %}
+      {% with link=target.teaching_assignment %}{% if link %}
+        <div><dt>Docente</dt><dd>{{ link.teacher.name }}<span class="request-detail">Semestre {{ link.offering.semester.code }}</span></dd></div>
+        <div><dt>Disciplina e turma</dt><dd>{{ link.offering.subject.name }}<span class="request-detail">{{ link.offering.class_group }}</span></dd></div>
+      {% endif %}{% endwith %}
       <div><dt>Espaço</dt><dd><span class="request-value">{% icon "door-open" "size-5" %}{{ target.space.name }}</span></dd></div>
       <div><dt>Data e horário</dt><dd><span class="request-value">{% icon "clock" "size-5" %}{{ target.date|date:"SHORT_DATE_FORMAT" }}</span><span class="request-detail">das {{ target.start_time|time }} às {{ target.end_time|time }}</span></dd></div>
       <div><dt>Descrição</dt><dd>{{ target.description }}</dd></div>

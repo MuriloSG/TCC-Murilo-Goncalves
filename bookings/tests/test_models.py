@@ -88,9 +88,14 @@ class SubmitTests(BookingTestCase):
             submit(self.ana, self.lab, start=time(14, 0), end=time(16, 0))
         self.assertIn('ensalamento das 14:10 às 15:00', caught.exception.messages[0])
 
-    def test_space_allocation_outside_the_period_does_not_conflict(self):
-        request = submit(self.ana, self.lab, date(2027, 1, 7), time(14, 0), time(16, 0))
-        self.assertEqual(request.status, Status.PENDING)
+    def test_date_outside_the_semester_period_is_refused(self):
+        with self.assertRaises(ValidationError) as caught:
+            submit(self.ana, self.lab, date(2027, 1, 7), time(14, 0), time(16, 0))
+        self.assertEqual(
+            caught.exception.message_dict['date'],
+            ['A data 07/01/2027 está fora do período do semestre 2026/2. Escolha outra data.'],
+        )
+        self.assertFalse(BookingRequest.objects.exists())
 
     def test_pending_request_does_not_occupy_the_slot(self):
         submit(self.ana, self.lab)

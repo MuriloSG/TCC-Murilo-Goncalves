@@ -22,6 +22,10 @@ class AuditTests(BookingTestCase):
         self.assertEqual((log.action, log.resource, log.resource_id), (catalog.CREATE, catalog.BOOKING_REQUEST, str(request.pk)))
         self.assertEqual(log.new_values, {
             'situacao': 'PENDENTE',
+            'semestre': '2026/2',
+            'docente': 'ana',
+            'disciplina': 'Redes',
+            'turma': '2º ANO A (INFORMÁTICA)',
             'espaco': 'Laboratório de Informática 2',
             'data': '2026-10-15',
             'horario': '16:00 às 18:00',

@@ -1,0 +1,22 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Enviar a solicitação de {{ prepared.space.name }}?{% endblock %}
+
+{% block description %}A solicitação fica pendente até a análise, e o horário só é ocupado depois da aprovação.{% endblock %}
+
+{% block body %}
+  {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <input type="hidden" name="confirmar" value="1">
+  <dl class="record-pairs">
+    <div><dt>Semestre</dt><dd>{{ prepared.teaching_assignment.offering.semester.code }}</dd></div>
+    <div><dt>Docente</dt><dd>{{ prepared.teaching_assignment.teacher.name }}</dd></div>
+    <div><dt>Turma</dt><dd>{{ prepared.teaching_assignment.offering.class_group }}</dd></div>
+    <div><dt>Disciplina</dt><dd>{{ prepared.teaching_assignment.offering.subject.name }}</dd></div>
+    <div><dt>Espaço</dt><dd>{{ prepared.space.name }}</dd></div>
+    <div><dt>Data e horário</dt><dd>{{ prepared.schedule_text }}</dd></div>
+    <div><dt>Descrição</dt><dd>{{ prepared.description }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "calendar-plus" %}Enviar solicitação</button>{% endblock %}

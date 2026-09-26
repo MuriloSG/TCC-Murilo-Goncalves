@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from accounts import permissions
 from bookings.models import Booking, BookingRequest
-from bookings.tests.base import FRIDAY, REQUESTER, REVIEWER, THURSDAY, frozen_clock, semester_with_lesson, space, submit, user_with
+from bookings.tests.base import FRIDAY, REQUESTER, REVIEWER, THURSDAY, academic, frozen_clock, semester_with_lesson, space, submit, user_with
 from schedule.models import Space
 
 Status = BookingRequest.Status
@@ -25,11 +25,15 @@ class RequestScreenTestCase(TestCase):
         self.bruno = user_with('bruno@ifnmg.edu.br', *REQUESTER)
         self.reviewer = user_with('analise@ifnmg.edu.br', *REVIEWER)
         self.viewer = user_with('consulta@ifnmg.edu.br', permissions.BOOKING_VIEW)
+        self.assignment = academic(teacher='ana')
+        self.offering = self.assignment.offering
 
     def data(self, **values):
         return {
+            'subject': self.offering.subject_id,
+            'teaching_assignment': self.assignment.pk,
             'space': self.lab.pk, 'date': '2026-10-15', 'start_time': '16:00', 'end_time': '18:00',
-            'description': 'Reunião do projeto de extensão com os alunos.',
+            'description': 'Reunião do projeto de extensão com os alunos.', 'confirmar': '1',
         } | values
 
     def suggested(self, owner=None):
@@ -87,9 +91,11 @@ class CreateTests(RequestScreenTestCase):
         response = self.client.get(CREATE, {'espaco': self.lab.pk, 'data': '2026-10-15', 'inicio': '14:00', 'fim': '16:00'}, headers={'HX-Request': 'true'})
         content = response.content.decode()
         self.assertIn('<dialog class="modal"', content)
-        self.assertIn('Laboratório de Informática 2.', content)
-        self.assertIn(f'name="space" value="{self.lab.pk}"', content)
-        self.assertRegex(content, r'name="date" value="2026-10-15"[^>]*readonly')
+        self.assertIn(f'<option value="{self.lab.pk}" selected>Laboratório de Informática 2</option>', content)
+        self.assertIn('Semestre 2026/2.', content)
+        self.assertNotIn('name="semester"', content)
+        self.assertIn('name="date" value="2026-10-15"', content)
+        self.assertNotRegex(content, r'name="date"[^>]*readonly')
         self.assertIn('name="start_time" value="14:00"', content)
         self.assertIn('name="end_time" value="16:00"', content)
         self.assertRegex(content, r'<textarea name="description"[^>]*>\s*</textarea>')
@@ -137,13 +143,13 @@ class CreateTests(RequestScreenTestCase):
         self.other_lab.deactivate()
         self.client.force_login(self.ana)
         response = self.client.post(CREATE, self.data(space=self.other_lab.pk))
-        self.assertContains(response, 'O espaço Laboratório de Informática 3 está desativado. Escolha outro espaço.')
+        self.assertContains(response, 'Escolha um espaço ativo.')
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_forged_unknown_space(self):
         self.client.force_login(self.ana)
         response = self.client.post(CREATE, self.data(space=999999))
-        self.assertContains(response, 'Escolha o espaço na Grade da Agenda.')
+        self.assertContains(response, 'Escolha um espaço ativo.')
         self.assertFalse(BookingRequest.objects.exists())
 
 

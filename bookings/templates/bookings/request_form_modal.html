@@ -1,9 +1,17 @@
 {% extends "ui/components/modal.html" %}
+{% load ui %}
 
 {% block title %}Solicitar agendamento{% endblock %}
 
-{% block description %}{% if chosen_space %}{{ chosen_space.name }}. {% endif %}A solicitação fica pendente até a análise, e o horário só é ocupado depois da aprovação.{% endblock %}
+{% block description %}{% endblock %}
 
-{% block body %}{{ form }}{% endblock %}
+{% block body %}
+  <div id="request-fields">
+    {% if not form.teacher %}<div class="alert tone-warning" role="alert">{% icon "triangle-alert" %}<p>O seu usuário não corresponde a um docente do ensalamento. Só docentes solicitam agendamento.</p></div>{% endif %}
+    {{ form }}
+    <datalist id="horarios-inicio">{% for value in form.slot_starts %}<option value="{{ value }}"></option>{% endfor %}</datalist>
+    <datalist id="horarios-fim">{% for value in form.slot_ends %}<option value="{{ value }}"></option>{% endfor %}</datalist>
+  </div>
+{% endblock %}
 
-{% block submit %}<button class="btn-primary" type="submit">Enviar solicitação</button>{% endblock %}
+{% block submit %}<button class="btn-primary" type="submit">Revisar solicitação</button>{% endblock %}

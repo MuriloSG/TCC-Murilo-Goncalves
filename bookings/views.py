@@ -10,6 +10,7 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -17,6 +18,7 @@ from django.utils.formats import date_format
 from django.views.generic import ListView, TemplateView
 
 from accounts import permissions
+from accounts.utils import add_operation_error
 from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
 from bookings.forms import BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
@@ -152,30 +154,50 @@ def agenda_link(space, day):
 
 
 def request_related(queryset):
-    """Solicitações com o espaço, o espaço sugerido e as pessoas, sem consulta por linha."""
-    return queryset.select_related('space', 'suggested_space', 'requested_by', 'decided_by')
+    """Solicitações com o espaço, o espaço sugerido, as pessoas e o vínculo acadêmico, sem
+    consulta por linha."""
+    return queryset.select_related(
+        'space', 'suggested_space', 'requested_by', 'decided_by',
+        'teaching_assignment__teacher', 'teaching_assignment__offering__semester',
+        'teaching_assignment__offering__subject', 'teaching_assignment__offering__class_group__course',
+    )
+
+
+REQUEST_FIELDS = ('subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description')
 
 
 class BookingRequestCreateView(OperationFormView):
-    """Modal "Solicitar agendamento", com o espaço, a data e o horário vindos da faixa (D8).
+    """Modal "Solicitar agendamento", em duas etapas: o formulário e a revisão.
 
-    O envio cria a solicitação pendente, sem agendamento, e volta para a semana da faixa.
+    Quem solicita é o docente que é o usuário: a disciplina lista as dele no semestre, e a
+    turma, as turmas dele na disciplina escolhida. A faixa da
+    Grade preenche o espaço, a data e o horário, e o semestre é o da Agenda, o que tem a
+    data no período. A troca da data ou da disciplina recarrega as opções seguintes pelo
+    GET desta mesma rota. O primeiro envio confere tudo
+    em `BookingRequest.objects.prepare` e mostra a revisão, sem gravar; o envio com
+    `confirmar` executa `submit`, que confere de novo. A solicitação fica pendente, sem
+    agendamento, e volta para a semana da data (Change
+    solicitar-agendamento-com-vinculo-academico).
     """
 
     permission_required = permissions.BOOKING_REQUEST
     audit_resource = catalog.BOOKING_REQUEST
     template_name = 'bookings/request_form.html'
     modal_template_name = 'bookings/request_form_modal.html'
+    summary_template_name = 'bookings/request_summary_modal.html'
     form_class = BookingRequestForm
     created = None
 
     def get_initial(self):
         query = self.request.GET
-        return {'space': query.get('espaco'), 'date': query.get('data'), 'start_time': query.get('inicio'), 'end_time': query.get('fim')}
+        initial = {
+            'space': query.get('espaco'), 'date': query.get('data'), 'start_time': query.get('inicio'), 'end_time': query.get('fim'),
+        }
+        initial.update({name: query.get(name) for name in REQUEST_FIELDS if query.get(name)})
+        return initial
 
-    def chosen_space(self):
-        value = self.request.POST.get('space') or self.request.GET.get('espaco') or ''
-        return Space.objects.filter(pk=value).first() if value.isdigit() else None
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'user': self.request.user, 'refresh_url': reverse('agenda_request_create')}
 
     def get_close_url(self):
         return reverse('agenda_grid')
@@ -183,16 +205,35 @@ class BookingRequestCreateView(OperationFormView):
     def get_success_url(self):
         return agenda_link(self.created.space, self.created.date)
 
-    def get_context_data(self, **kwargs):
-        return super().get_context_data(chosen_space=self.chosen_space(), **kwargs)
-
-    def perform(self, data):
-        self.created = BookingRequest.objects.submit(
+    def arguments(self, form):
+        data = form.cleaned_data
+        return [
             self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
-        )
+            form.semester, data['teaching_assignment'],
+        ]
+
+    def form_valid(self, form):
+        try:
+            if self.request.POST.get('confirmar') != '1':
+                return self.render_summary(form, BookingRequest.objects.prepare(*self.arguments(form)))
+            self.created = BookingRequest.objects.submit(*self.arguments(form))
+        except ValidationError as error:
+            add_operation_error(form, error)
+            return self.form_invalid(form)
         messages.success(
             self.request,
             f'Solicitação de agendamento de {self.created.space.name} em {self.created.schedule_text()} enviada.',
+        )
+        return self.redirect_to(self.get_success_url())
+
+    def render_summary(self, form, prepared):
+        """Revisão da solicitação conferida, com os valores do envio em campos ocultos."""
+        hidden = [(name, value) for name in REQUEST_FIELDS for value in self.request.POST.getlist(name)]
+        return self.response_class(
+            request=self.request,
+            template=[self.summary_template_name if self.request.htmx else self.template_name],
+            context=self.get_context_data(form=form, prepared=prepared, hidden=hidden, summary=True),
+            using=self.template_engine,
         )
 
 

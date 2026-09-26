@@ -9,4 +9,4 @@
   <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Solicitar agendamento</span></li>
 {% endblock %}
 
-{% block content %}{% include "bookings/request_form_modal.html" %}{% endblock %}
+{% block content %}{% if summary %}{% include "bookings/request_summary_modal.html" %}{% else %}{% include "bookings/request_form_modal.html" %}{% endif %}{% endblock %}

@@ -5,12 +5,9 @@
 
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 
-{% block header %}
-  <div class="public-heading">
-    <h1 class="page-title">Horários do campus</h1>
-  </div>
-  <details class="public-filters" data-public-filters{% if not calendar.has_principal %} open{% endif %}>
-    <summary>{% icon "search" %}<span>Filtros</span>{% if calendar.summary %}<span class="public-summary">{{ calendar.summary }}</span>{% endif %}{% icon "chevron-down" %}</summary>
+{% block content %}
+  <h1 class="sr-only">Horários do campus</h1>
+  <div class="card public-filters" id="filtros">
     <form class="public-form" method="get" action="{{ calendar_url }}" role="search" hx-get="{{ calendar_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, change[target.tagName=='SELECT']" data-public-form>
       {% for field in filter_form %}
         {% if field.widget_type == "select" %}
@@ -32,10 +29,7 @@
       </div>
       <button class="btn-primary public-submit" type="submit">{% icon "search" %}Mostrar</button>
     </form>
-  </details>
-{% endblock %}
-
-{% block content %}
+  </div>
   <section class="card timetable public-calendar" id="calendario" aria-labelledby="calendario-titulo" data-public-calendar>
     <div class="card-head">
       <div>
@@ -55,24 +49,8 @@
     {% endif %}
     {% if calendar.message %}
       <p class="timetable-empty" role="status">{{ calendar.message }}</p>
-    {% elif week.rows %}
-      {% if week.is_dated %}
-        <div class="timetable-status">
-          <nav class="timetable-nav public-nav" aria-label="Intervalos">
-            {% if previous_url %}
-              <a class="btn-secondary" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}Anterior</a>
-            {% else %}
-              <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}Anterior</span>
-            {% endif %}
-            <a class="btn-secondary" href="{{ today_url }}" hx-get="{{ today_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
-            {% if following_url %}
-              <a class="btn-secondary" href="{{ following_url }}" hx-get="{{ following_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true">Próximo{% icon "chevron-right" %}</a>
-            {% else %}
-              <span class="btn-secondary" aria-disabled="true">Próximo{% icon "chevron-right" %}</span>
-            {% endif %}
-          </nav>
-        </div>
-      {% endif %}
+    {% endif %}
+    {% if week.rows %}
       <div class="timetable-scroll is-month is-public" tabindex="0" role="region" aria-label="Calendário{% if week.is_dated %} de {{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}{% endif %}" data-public-scroll>
         <table class="timetable-grid is-month is-public">
           <caption class="sr-only">Calendário do semestre {{ calendar.semester_code }}{% if calendar.summary %}, {{ calendar.summary }}{% endif %}</caption>

@@ -99,7 +99,7 @@ O calendário público DEVE (MUST) aceitar pela URL os filtros `semestre` (códi
 #### Scenario: Curso e nível incompatíveis
 - **GIVEN** o curso Informática, de Ensino médio
 - **WHEN** o calendário é aberto com `curso=Informática&nivel=graduacao`
-- **THEN** a página mostra "Nenhuma aula encontrada com estes filtros." sem erro
+- **THEN** a Grade aparece com as células vazias, sem erro e sem mensagem
 
 #### Scenario: Valor desconhecido descartado
 - **WHEN** o calendário é aberto com `sala=Inexistente&docente=Aldo Gomes`
@@ -150,7 +150,7 @@ O filtro `semestre` DEVE (MUST) representar o semestre letivo (`Semester`) e ofe
 - **THEN** a página mostra a semana típica, sem datas, com o aviso do período não definido
 
 ### Requirement: Datas do calendário público
-A data inicial e a data final DEVEM (MUST) ser informadas juntas. Na primeira visita, sem datas na URL, o formulário DEVE (MUST) vir preenchido com a segunda e a sexta-feira da semana de hoje, levada para dentro do período do semestre, e essas datas DEVEM (MUST) ser usadas. Com só uma data na URL, a página DEVE (MUST) mostrar "Informe a data inicial e a data final."; com data em formato inválido, "Informe uma data válida."; com a data final antes da inicial, "A data final deve ser igual ou posterior à data inicial."; com mais de 31 dias corridos entre as duas, "Escolha um intervalo de até 31 dias.". Na recusa, as aulas NÃO DEVEM (MUST NOT) ser consultadas. As colunas DEVEM (MUST) ser só os dias de segunda a sexta do intervalo, e o dia fora do período do semestre DEVE (MUST) aparecer como "Fora do semestre". Com o intervalo inteiro fora do período, a página DEVE (MUST) mostrar "O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026." e NÃO DEVE (MUST NOT) consultar aulas. A navegação DEVE (MUST) oferecer "Anterior" e "Próximo", que deslocam o intervalo pela quantidade de semanas que ele cobre, arredondada para cima, só quando o intervalo resultante toca o período do semestre, e "Hoje", que volta à semana de hoje.
+A data inicial e a data final DEVEM (MUST) ser informadas juntas. Na primeira visita, sem datas na URL, o formulário DEVE (MUST) vir preenchido com a segunda e a sexta-feira da semana de hoje, levada para dentro do período do semestre, e essas datas DEVEM (MUST) ser usadas. Com só uma data na URL, a página DEVE (MUST) mostrar "Informe a data inicial e a data final."; com data em formato inválido, "Informe uma data válida."; com a data final antes da inicial, "A data final deve ser igual ou posterior à data inicial."; com mais de 31 dias corridos entre as duas, "Escolha um intervalo de até 31 dias.". Na recusa, as aulas NÃO DEVEM (MUST NOT) ser consultadas. As colunas DEVEM (MUST) ser só os dias de segunda a sexta do intervalo, e o dia fora do período do semestre DEVE (MUST) aparecer como "Fora do semestre". Com o intervalo inteiro fora do período, a página DEVE (MUST) mostrar "O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026." e NÃO DEVE (MUST NOT) consultar aulas. A troca de intervalo DEVE (MUST) ser feita só pelos campos de data; a página NÃO DEVE (MUST NOT) ter botões de navegação entre intervalos.
 
 #### Scenario: Intervalo padrão
 - **GIVEN** a data de hoje quarta-feira, 23/09/2026, dentro do período de `2026/2`
@@ -178,17 +178,16 @@ A data inicial e a data final DEVEM (MUST) ser informadas juntas. Na primeira vi
 - **WHEN** o calendário da sala 10 é aberto com `inicio=2027-02-01&fim=2027-02-05`
 - **THEN** a página mostra "O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026." e nenhuma alocação é consultada
 
-#### Scenario: Navegação de duas semanas
-- **GIVEN** o intervalo de 14/09/2026 a 25/09/2026
-- **WHEN** "Próximo" é seguido
-- **THEN** o intervalo passa a ser de 28/09/2026 a 09/10/2026
+#### Scenario: Sem botões de navegação
+- **WHEN** o calendário da sala 10 é aberto de 14/09/2026 a 25/09/2026
+- **THEN** a página não mostra os botões "Anterior", "Hoje" e "Próximo"
 
 #### Scenario: Fim de semana fora das colunas
 - **WHEN** o calendário é aberto com `inicio=2026-09-21&fim=2026-09-27`
 - **THEN** as colunas são de segunda-feira, 21/09/2026, a sexta-feira, 25/09/2026
 
 ### Requirement: Montagem do calendário público
-O calendário DEVE (MUST) ser montado com a estrutura da Grade: faixas do semestre nas linhas, dias nas colunas, faixas seguidas com as mesmas aulas unidas num bloco e "Hoje" marcado. As aulas da mesma faixa e do mesmo dia DEVEM (MUST) ficar na mesma célula, ordenadas pela sala, pelo curso e pela turma, cada uma com a sua sala. "N turmas juntas" DEVE (MUST) ser indicado só quando as aulas têm a mesma sala, a mesma disciplina e os mesmos docentes. A marca "Choque" NÃO DEVE (MUST NOT) aparecer. A faixa sem aula DEVE (MUST) ser anunciada à tecnologia assistiva como "disponível" só quando o único filtro principal é a sala; nos demais casos, como "sem aula".
+O calendário DEVE (MUST) ser montado com a estrutura da Grade: nas linhas, as faixas do semestre da primeira à última aula mostrada no intervalo, com as vazias do meio, ou todas as faixas do semestre quando o intervalo não tem aula, dias nas colunas, faixas seguidas com as mesmas aulas unidas num bloco e "Hoje" marcado. As aulas da mesma faixa e do mesmo dia DEVEM (MUST) ficar na mesma célula, ordenadas pela sala, pelo curso e pela turma, cada uma com a sua sala. "N turmas juntas" DEVE (MUST) ser indicado só quando as aulas têm a mesma sala, a mesma disciplina e os mesmos docentes. A marca "Choque" NÃO DEVE (MUST NOT) aparecer. A faixa sem aula DEVE (MUST) ser anunciada à tecnologia assistiva como "disponível" só quando o único filtro principal é a sala; nos demais casos, como "sem aula".
 
 #### Scenario: Turmas em salas diferentes no mesmo horário
 - **GIVEN** a turma A na sala 1 e a turma B na sala 2 do curso Informática, com disciplinas diferentes, na mesma faixa
@@ -200,30 +199,35 @@ O calendário DEVE (MUST) ser montado com a estrutura da Grade: faixas do semest
 - **WHEN** o calendário do curso é aberto
 - **THEN** a célula mostra "2 turmas juntas"
 
+#### Scenario: Linhas só até a última aula do resultado
+- **GIVEN** o curso Informática com aulas até 17:00 e outros cursos com aulas até 22:40
+- **WHEN** o calendário do curso Informática é aberto
+- **THEN** a última linha da Grade é a faixa que termina às 17:00
+
 #### Scenario: Faixa vazia na consulta por docente
 - **WHEN** o calendário do docente Aldo Gomes é aberto e uma faixa de segunda-feira não tem aula dele
 - **THEN** o texto para tecnologia assistiva da faixa diz "sem aula", e não "disponível"
 
 ### Requirement: Estados vazios do calendário público
-Com o filtro principal válido e as datas aceitas, a página DEVE (MUST) mostrar, quando não há aula no intervalo: "Nenhuma aula de Aldo Gomes neste intervalo." quando o único filtro é o docente; "Nenhuma aula do curso Informática neste intervalo." quando o único filtro é o curso; "Nenhuma aula na sala 10 neste intervalo." quando o único filtro é a sala; "Nenhuma aula encontrada com estes filtros." nos demais casos. Os textos NÃO DEVEM (MUST NOT) ter frase motivacional. Durante a atualização pelo htmx, o calendário DEVE (MUST) ter `aria-busy="true"` e o botão "Mostrar" DEVE (MUST) ficar desabilitado, sem skeleton e sem spinner.
+Com o filtro principal válido e as datas aceitas, quando não há aula no intervalo, a página DEVE (MUST) mostrar só a Grade do intervalo com as células vazias e todas as faixas do semestre, sem mensagem de resultado vazio: o vazio indica que os horários estão disponíveis. Sem filtro principal, com data recusada ou com o intervalo fora do semestre, a Grade NÃO DEVE (MUST NOT) aparecer, e a página DEVE (MUST) mostrar a mensagem do caso. Os textos NÃO DEVEM (MUST NOT) ter frase motivacional. Durante a atualização pelo htmx, o calendário DEVE (MUST) ter `aria-busy="true"` e o botão "Mostrar" DEVE (MUST) ficar desabilitado, sem skeleton e sem spinner.
 
 #### Scenario: Docente sem aulas no intervalo
 - **GIVEN** o docente Aldo Gomes sem aulas às sextas-feiras
 - **WHEN** o calendário dele é aberto com `inicio=2026-09-25&fim=2026-09-25`
-- **THEN** a página mostra "Nenhuma aula de Aldo Gomes neste intervalo."
+- **THEN** a Grade de 25/09/2026 aparece com todas as faixas do semestre e as células vazias
+- **AND** a página não mostra mensagem de resultado vazio
 
 #### Scenario: Sala sem aulas no intervalo
-- **GIVEN** a sala 7, inativa, com aulas no semestre e nenhuma na semana de 21/09/2026
-- **WHEN** o calendário dela é aberto nessa semana
-- **THEN** a página mostra "Nenhuma aula na sala 7 neste intervalo."
+- **GIVEN** a sala 7, inativa, com aulas no semestre e nenhuma de 21/09/2026 a 24/09/2026
+- **WHEN** o calendário dela é aberto nesse intervalo
+- **THEN** a Grade aparece com as células vazias, anunciadas como "disponível"
 
-#### Scenario: Curso sem aulas no intervalo
-- **GIVEN** o curso Informática sem aulas às sextas-feiras
-- **WHEN** o calendário do curso é aberto com `inicio=2026-09-25&fim=2026-09-25`
-- **THEN** a página mostra "Nenhuma aula do curso Informática neste intervalo."
+#### Scenario: Sem filtro principal
+- **WHEN** o calendário é aberto sem sala, docente ou curso
+- **THEN** a página mostra "Escolha uma sala, um docente ou um curso." e não mostra a Grade
 
 ### Requirement: Calendário público no celular
-A página DEVE (MUST) usar a mesma Grade em qualquer largura e NÃO DEVE (MUST NOT) ter uma representação do calendário só para o celular. Abaixo de 640 px, os filtros DEVEM (MUST) ficar empilhados na largura toda, com a data inicial e a final lado a lado, dentro de um grupo recolhível "Filtros", aberto sem filtro principal e fechado depois da consulta, com o resumo do que foi escolhido. Os controles DEVEM (MUST) ter alvo de toque de pelo menos 44x44 px, as datas DEVEM (MUST) usar o seletor nativo, e Sala, Docente e Curso DEVEM (MUST) usar o campo de seleção com busca. A Grade DEVE (MUST) rolar na horizontal só dentro da própria área, rotulada e focável, com a coluna de horários e a linha dos dias fixas, e a página NÃO DEVE (MUST NOT) rolar na horizontal a partir de 360 px. Abaixo de 640 px, a coluna de dia DEVE (MUST) ter largura mínima que mantenha o card legível, e a área DEVE (MUST) abrir rolada até "Hoje" quando ele está no intervalo.
+A página DEVE (MUST) usar a mesma Grade em qualquer largura e NÃO DEVE (MUST NOT) ter uma representação do calendário só para o celular. O cabeçalho DEVE (MUST) ser uma barra única e discreta, com a marca "SaliSpace" e o link "Entrar", discreto e com borda verde clara, sem outro conteúdo. O cabeçalho, os filtros e o calendário DEVEM (MUST) ficar centralizados, com a largura máxima das páginas do sistema. Os filtros DEVEM (MUST) ficar num card com a mesma borda do calendário, sem título visível e sem linha de resumo. Abaixo de 640 px, os filtros DEVEM (MUST) ficar empilhados na largura toda, com a data inicial e a final lado a lado. Valores longos DEVEM (MUST) ser cortados com reticências dentro do próprio campo, sem alargar a coluna nem a página, e a lista de opções aberta DEVE (MUST) aparecer inteira, sem ser cortada pelo card. Os controles DEVEM (MUST) ter alvo de toque de pelo menos 44x44 px, as datas DEVEM (MUST) usar o seletor nativo, e Sala, Docente e Curso DEVEM (MUST) usar o campo de seleção com busca. A Grade DEVE (MUST) rolar na horizontal só dentro da própria área, rotulada e focável, com a coluna de horários e a linha dos dias fixas, e a página NÃO DEVE (MUST NOT) rolar na horizontal a partir de 360 px. Abaixo de 640 px, a coluna de dia DEVE (MUST) ter largura mínima que mantenha o card legível, e a área DEVE (MUST) abrir rolada até "Hoje" quando ele está no intervalo.
 
 #### Scenario: Celular com três semanas
 - **GIVEN** uma tela de 360 px
@@ -231,10 +235,9 @@ A página DEVE (MUST) usar a mesma Grade em qualquer largura e NÃO DEVE (MUST N
 - **THEN** o calendário é a Grade com 15 dias, rolando na horizontal só dentro da própria área
 - **AND** a página não rola na horizontal
 
-#### Scenario: Filtros recolhidos depois da consulta
-- **GIVEN** uma tela de 360 px
-- **WHEN** o calendário é aberto com `docente=Aldo Gomes`
-- **THEN** o grupo "Filtros" está fechado e o resumo mostra "Aldo Gomes"
+#### Scenario: Lista de opções inteira
+- **WHEN** o campo "Docente" é aberto
+- **THEN** a lista de opções aparece inteira sobre o calendário, sem ser cortada pelo card de filtros
 
 ### Requirement: Desempenho do calendário público
 Uma requisição do calendário público DEVE (MUST) usar no máximo 8 consultas ao banco: semestres, salas, docentes e cursos das opções, faixas do semestre, aulas filtradas, docentes das aulas e e-mails desses docentes. A quantidade NÃO DEVE (MUST NOT) crescer com o número de dias do intervalo, de aulas, de docentes ou de células, e NÃO DEVE (MUST NOT) haver consulta por dia, por célula ou por aula. Os filtros DEVEM (MUST) ser aplicados no banco, e as aulas NÃO DEVEM (MUST NOT) ser carregadas sem filtro para serem filtradas em Python. A consulta dos e-mails DEVE (MUST) receber só os nomes dos docentes das aulas encontradas. A página NÃO DEVE (MUST NOT) gravar sessão, cookie, auditoria ou qualquer registro.

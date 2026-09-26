@@ -1,15 +1,6 @@
 (function () {
   "use strict";
 
-  var WIDE = "(min-width: 640px)";
-
-  function openFiltersWhenWide(root) {
-    var filters = root.querySelector("[data-public-filters]");
-    if (filters && window.matchMedia(WIDE).matches) {
-      filters.open = true;
-    }
-  }
-
   function scrollToToday(root) {
     var area = root.querySelector("[data-public-scroll]");
     var today = area && area.querySelector("#hoje");
@@ -21,7 +12,6 @@
   }
 
   function prepare(root) {
-    openFiltersWhenWide(root);
     scrollToToday(root);
   }
 
@@ -45,8 +35,11 @@
     }
   });
 
-  document.addEventListener("htmx:afterSettle", function () {
+  document.addEventListener("htmx:afterRequest", function () {
     setBusy(false);
+  });
+
+  document.addEventListener("htmx:afterSettle", function () {
     prepare(document);
   });
 })();

@@ -5,7 +5,7 @@
     <p class="timetable-line">{% icon "users" "size-4" %}<span>{{ entry.group_label }}</span></p>
     <p class="timetable-line">{% icon "door-open" "size-4" %}<span>{% if entry.space %}<span class="sr-only">Sala </span>{{ entry.space }}{% else %}Sem sala definida{% endif %}</span></p>
     {% for teacher in entry.teachers %}
-      <p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ teacher.name }}{% if teacher.email %}<a class="public-email" href="mailto:{{ teacher.email }}">{{ teacher.email }}</a>{% endif %}</span></p>
+      <p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ teacher.name }}{% if teacher.email %}<a class="public-email" href="mailto:{{ teacher.email }}" >{{ teacher.mailbox }}<wbr>@{{ teacher.domain }}</a>{% endif %}</span></p>
     {% endfor %}
   </div>
 {% endfor %}

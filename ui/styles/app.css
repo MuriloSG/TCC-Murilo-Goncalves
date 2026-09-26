@@ -1602,8 +1602,14 @@
   }
 
   .public-shell {
+    --public-gutter: max(var(--spacing-4), calc((100% - var(--container-page)) / 2));
+
     min-height: 100vh;
     background: var(--color-page);
+
+    @variant sm {
+      --public-gutter: max(var(--spacing-6), calc((100% - var(--container-page)) / 2));
+    }
   }
 
   .public-header {
@@ -1612,90 +1618,67 @@
   }
 
   .public-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     gap: var(--spacing-3);
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-sidebar);
+    min-height: var(--spacing-16);
+    padding-inline: var(--public-gutter);
+    border-bottom: 1px solid var(--color-divider);
+    background: var(--color-surface);
 
-    @variant sm {
-      padding-inline: var(--spacing-6);
+    & .brand {
+      padding-inline: 0;
+      color: var(--color-text);
     }
-  }
 
-  .public-campus {
-    display: none;
-    color: var(--color-on-sidebar-muted);
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
-
-    @variant sm {
-      display: block;
+    & .brand img {
+      height: var(--spacing-8);
     }
   }
 
   .public-login {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-11);
     margin-left: auto;
-  }
+    padding-inline: var(--spacing-4);
+    border: 1px solid var(--color-sidebar-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+    transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
 
-  .public-heading {
-    padding: var(--spacing-4) var(--spacing-4) 0;
+    &:hover {
+      border-color: var(--color-action);
+      background: var(--color-page);
+      color: var(--color-action);
+    }
 
-    @variant sm {
-      padding-inline: var(--spacing-6);
+    &:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 2px;
     }
   }
 
   .public-filters {
-    padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
+    margin-bottom: var(--spacing-5);
+    padding: var(--spacing-4);
 
     @variant sm {
-      padding-inline: var(--spacing-6);
+      padding: var(--spacing-5) var(--spacing-6);
     }
-
-    & > summary {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-2);
-      min-height: var(--spacing-11);
-      padding: var(--spacing-2) var(--spacing-3);
-      border: 1px solid var(--color-control-border);
-      border-radius: var(--radius-lg);
-      background: var(--color-surface);
-      font-weight: var(--font-weight-semibold);
-      cursor: pointer;
-      list-style: none;
-
-      &::-webkit-details-marker {
-        display: none;
-      }
-
-      & > svg:last-child {
-        margin-left: auto;
-        flex: none;
-        transition: transform var(--motion-fast);
-      }
-    }
-
-    &[open] > summary > svg:last-child {
-      transform: rotate(180deg);
-    }
-  }
-
-  .public-summary {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--color-text-muted);
-    font-weight: var(--font-weight-normal);
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .public-form {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--spacing-3);
-    margin-top: var(--spacing-3);
 
     @variant sm {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1707,8 +1690,11 @@
     }
 
     & .select-wrap,
-    & .select {
+    & .select,
+    & select {
       width: 100%;
+      min-width: 0;
+      max-width: 100%;
     }
 
     & select {
@@ -1738,9 +1724,20 @@
     }
 
     & > label {
+      overflow: hidden;
       font-size: var(--text-sm);
       line-height: var(--text-sm--line-height);
       font-weight: var(--font-weight-semibold);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & select,
+    & input {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
@@ -1754,6 +1751,10 @@
       padding-inline: var(--spacing-3);
     }
 
+    @variant sm {
+      grid-column: span 2;
+    }
+
     @variant lg {
       grid-column: span 2;
     }
@@ -1765,11 +1766,7 @@
   }
 
   .public-main {
-    padding: var(--spacing-4);
-
-    @variant sm {
-      padding: var(--spacing-6);
-    }
+    padding: var(--spacing-5) var(--public-gutter) var(--spacing-10);
   }
 
   .public-calendar {
@@ -1778,16 +1775,14 @@
     }
   }
 
-  .public-nav {
-    & > * {
-      min-height: var(--spacing-11);
-    }
-  }
-
   .public-email {
     display: block;
     color: var(--color-action);
     overflow-wrap: anywhere;
+  }
+
+  .timetable-grid.is-public .timetable-card {
+    height: auto;
   }
 
   .timetable-scroll.is-public {

@@ -10,10 +10,8 @@
           <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
           <span class="brand-name">SaliSpace</span>
         </a>
-        <p class="public-campus">IFNMG Campus Salinas</p>
-        <a class="btn-secondary public-login" href="{% url 'account_login' %}">Entrar</a>
+        <a class="public-login" href="{% url 'account_login' %}">Entrar</a>
       </div>
-      {% block header %}{% endblock %}
     </header>
     <main class="public-main" id="conteudo" tabindex="-1">
       {% block content %}{% endblock %}

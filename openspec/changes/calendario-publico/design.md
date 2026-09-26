@@ -100,7 +100,7 @@ A consulta das alocações usa `only()` com as colunas desse card, para não car
 - As duas datas são obrigatórias. Na primeira visita, o formulário vem preenchido com a semana de hoje (segunda a sexta), levada para dentro do período do semestre com `clamp`; essas datas contam como informadas. Na URL, uma data sem a outra é recusada com "Informe a data inicial e a data final."; data em formato inválido, com "Informe uma data válida."; a final antes da inicial, com "A data final deve ser igual ou posterior à data inicial."; intervalo com mais de 31 dias corridos, com "Escolha um intervalo de até 31 dias.". Na recusa, as aulas não são consultadas.
 - As colunas são os dias de segunda a sexta do intervalo. O dia fora do período do semestre aparece como "Fora do semestre". O intervalo todo fora do período mostra "O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026." e não consulta aulas.
 - Semestre sem período: a página mostra a semana típica, sem datas, com "Datas do semestre 2026/2 ainda não definidas. O calendário mostra a semana típica.", e os campos de data ficam desabilitados.
-- Navegação "Anterior", "Hoje" e "Próximo": desloca o intervalo pela quantidade de semanas que ele cobre, arredondada para cima; "Hoje" volta à semana de hoje. "Anterior" e "Próximo" só aparecem quando o intervalo resultante toca o período do semestre.
+- Não há botões "Anterior", "Hoje" e "Próximo": o intervalo muda só pelos campos de data, para a tela ficar mais limpa (decisão do autor depois da conferência visual).
 
 ### D8. Filtro principal obrigatório
 
@@ -159,15 +159,14 @@ Os seq scans são sobre tabelas pequenas, que cabem numa página; o planejador p
 
 ### D12. Layout público e SEO
 
-`ui/layouts/public.html` estende `base.html` com o cabeçalho (marca "SaliSpace", "IFNMG Campus Salinas", o título "Horários do campus", os filtros e o link "Entrar") e o `main` com o calendário. Não inclui menu, sidebar, usuário, notificações, modal, formulário de sair nem `hx-headers` com o token CSRF, e não usa `user` nem `perms`. A Change confere que `notifications.js` não abre conexão sem o painel de notificações; se abrir, o layout público não o carrega. A página tem `<meta name="robots" content="noindex">`.
+`ui/layouts/public.html` estende `base.html` com uma barra fixa no topo, branca e com borda fina, só com a marca "SaliSpace" e o link "Entrar" em estilo de texto, seguida do título "Horários do campus" e dos filtros. O cabeçalho, os filtros e o calendário ficam centralizados, com a largura máxima de `--container-page`. O layout e o `main` com o calendário. Não inclui menu, sidebar, usuário, notificações, modal, formulário de sair nem `hx-headers` com o token CSRF, e não usa `user` nem `perms`. A Change confere que `notifications.js` não abre conexão sem o painel de notificações; se abrir, o layout público não o carrega. A página tem `<meta name="robots" content="noindex">`.
 
 ### D13. Celular
 
 A página usa a mesma Grade em qualquer largura. Não existe outra representação só para o celular.
 
-- **Filtros:** abaixo de 640 px ficam empilhados, um por linha na largura toda, com Data inicial e Data final lado a lado. Ficam num `details` "Filtros", aberto sem filtro principal e fechado depois da consulta, com o resumo do que foi escolhido. Todos os controles têm pelo menos 44 px. Sala, Docente e Curso usam o select com busca; as datas usam `input type="date"`. Os selects atualizam pelo htmx; as datas aplicam no botão "Mostrar". Sem JavaScript, "Mostrar" envia o formulário.
+- **Filtros:** abaixo de 640 px ficam empilhados, um por linha na largura toda, com Data inicial e Data final lado a lado. Ficam num card sempre aberto, com a borda do calendário. Todos os controles têm pelo menos 44 px. Sala, Docente e Curso usam o select com busca; as datas usam `input type="date"`. Os selects atualizam pelo htmx; as datas aplicam no botão "Mostrar". Sem JavaScript, "Mostrar" envia o formulário.
 - **Calendário:** a Grade rola na horizontal só dentro da própria área, rotulada e focável, com a coluna de horários e a linha dos dias fixas (`position: sticky`). A página nunca rola na horizontal a partir de 360 px. Abaixo de 640 px, a coluna de dia tem largura mínima para um card legível sem cortar o texto, e a área rola até "Hoje" quando ele está no intervalo.
-- **Navegação:** "Anterior", "Hoje" e "Próximo" com alvo de 44 px, acima da Grade.
 - **Carregamento:** durante a requisição do htmx, o calendário fica com `aria-busy="true"` e "Mostrar" desabilitado (`busy.js`). Sem skeleton e sem spinner.
 
 A Grade autenticada troca a tabela pela lista por dia abaixo de 640 px. A página pública não faz isso, pela decisão de não ter uma representação só para o celular.
@@ -178,10 +177,7 @@ A Grade autenticada troca a tabela pela lista por dia abaixo de 640 px. A págin
 |---|---|
 | Nenhum filtro principal | "Escolha uma sala, um docente ou um curso." |
 | Semestre sem aulas | "Nenhum horário publicado no semestre 2027/1." |
-| Docente sem aulas no intervalo | "Nenhuma aula de Aldo Gomes neste intervalo." |
-| Curso sem aulas no intervalo | "Nenhuma aula do curso Informática neste intervalo." |
-| Sala sem aulas no intervalo | "Nenhuma aula na sala 10 neste intervalo." |
-| Combinação sem aulas | "Nenhuma aula encontrada com estes filtros." |
+| Filtros sem aula no intervalo | nenhum texto: a Grade aparece com as células vazias |
 | Intervalo fora do semestre | "O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026." |
 | Data inválida | "Informe uma data válida." |
 | Só uma data | "Informe a data inicial e a data final." |
@@ -189,7 +185,6 @@ A Grade autenticada troca a tabela pela lista por dia abaixo de 640 px. A págin
 | Mais de 31 dias | "Escolha um intervalo de até 31 dias." |
 | Semestre sem período | "Datas do semestre 2026/2 ainda não definidas. O calendário mostra a semana típica." |
 
-Com um único filtro principal, vale a mensagem dele; com dois ou mais, ou com o nível, vale a da combinação.
 
 ## Risks / Trade-offs
 
@@ -208,9 +203,12 @@ Não há migration. A rota nova é só acrescentada; nenhuma rota, view ou permi
 
 - A rota é isenta de CSRF (`csrf_exempt` no `urls.py`) para que um POST receba 405, como a spec pede, e não 403 do middleware. A view não grava nada, não usa sessão e só aceita GET e HEAD.
 - O `base.html` ganhou o bloco `head`, vazio por padrão, que a página pública usa para o `noindex`.
-- O comportamento de tela vem de `ui/static/ui/js/calendar.js`, carregado só pelo layout público: abre os filtros a partir de 640 px, rola a Grade até "Hoje" e marca `aria-busy` durante a requisição do htmx.
+- O card de filtros tem a borda do calendário e fica sempre aberto; o título "Horários do campus" ficou só para leitores de tela e a linha de resumo saiu. Valores longos são cortados com reticências, e o card não corta a lista de opções aberta.
+- Depois da conferência visual, o autor retirou "IFNMG Campus Salinas" do cabeçalho e os botões de navegação entre intervalos, e pediu o cabeçalho mais discreto e o conteúdo centralizado.
+- O comportamento de tela vem de `ui/static/ui/js/calendar.js`, carregado só pelo layout público: rola a Grade até "Hoje" e marca `aria-busy` durante a requisição do htmx.
+- As linhas da Grade pública vão da primeira à última aula mostrada no intervalo, e não por todas as faixas do semestre: um curso só de manhã e tarde não ganha as linhas da noite. As faixas vazias entre elas continuam. Sem aula no intervalo, a Grade aparece com todas as faixas do semestre e as células vazias, sem mensagem, para indicar os horários disponíveis (e, no futuro, onde uma reserva poderá ser pedida).
 - A conferência no navegador, com uma cópia dos dados de desenvolvimento, mostrou o campo de data final passando da borda da tela a 360 px; os campos de data passaram a ter `min-width: 0`.
 
 ## Open Questions
 
-1. Imagem de referência da tela (seção 9.8 das convenções): não foi fornecida. A tela foi montada com os tokens, componentes e classes da Grade existente, e fica sujeita a ajuste quando a referência chegar.
+Nenhuma. A imagem de referência (seção 9.8 das convenções) foi substituída pelos ajustes que o autor pediu sobre capturas da própria tela: cabeçalho discreto, filtros em card, sem navegação entre intervalos, Grade vazia sem mensagem.

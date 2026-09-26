@@ -28,8 +28,5 @@ class PublicCalendarView(TemplateView):
             week=calendar.week,
             filter_form=PublicCalendarFilterForm(calendar, STAGE_CHOICES),
             calendar_url=url,
-            previous_url=f'{url}?{calendar.previous_query}' if calendar.previous_query else '',
-            following_url=f'{url}?{calendar.following_query}' if calendar.following_query else '',
-            today_url=f'{url}?{calendar.today_query}' if calendar.today_query else url,
         )
         return context

@@ -206,7 +206,7 @@ class FilterTests(PublicCalendarTestCase):
         self.assertNotIn('Redes', html)
 
     def test_course_and_incompatible_stage(self):
-        self.assertContains(self.get(curso='INFORMÁTICA', nivel='graduacao'), 'Nenhuma aula encontrada com estes filtros.')
+        self.assertEqual(self.calendar(curso='INFORMÁTICA', nivel='graduacao').week.occupied, 0)
 
     def test_unknown_value_is_discarded(self):
         calendar = self.calendar(sala='Inexistente', docente='Aldo Gomes')
@@ -236,7 +236,7 @@ class FilterTests(PublicCalendarTestCase):
 
     def test_stage_filter(self):
         html = self.text(self.get(docente='Érica', nivel='graduacao'))
-        self.assertIn('Nenhuma aula encontrada com estes filtros.', html)
+        self.assertNotIn('timetable-card', html)
 
 
 class PrincipalFilterTests(PublicCalendarTestCase):
@@ -314,14 +314,10 @@ class DateTests(PublicCalendarTestCase):
         html = self.text(self.get(sala='10', inicio='2026-12-21', fim='2026-12-25'))
         self.assertIn('Fora do semestre', html)
 
-    def test_navigation_moves_by_the_covered_weeks(self):
-        calendar = self.calendar(sala='10', inicio='2026-09-14', fim='2026-09-25')
-        self.assertIn('inicio=2026-09-28&fim=2026-10-09', calendar.following_query)
-        self.assertIn('inicio=2026-08-31&fim=2026-09-11', calendar.previous_query)
-
-    def test_navigation_stops_at_the_semester(self):
-        calendar = self.calendar(sala='10', inicio='2026-06-01', fim='2026-06-05')
-        self.assertEqual(calendar.previous_query, '')
+    def test_there_is_no_interval_navigation(self):
+        html = self.text(self.get(sala='10', inicio='2026-09-14', fim='2026-09-25'))
+        for text in ('Anterior', 'Próximo', '>Hoje</a>'):
+            self.assertNotIn(text, html)
 
 
 class GridTests(PublicCalendarTestCase):
@@ -341,22 +337,43 @@ class GridTests(PublicCalendarTestCase):
         self.assertIn(', sem aula</span>', html)
         self.assertNotIn(', disponível</span>', html)
 
+    def test_rows_go_from_the_first_to_the_last_lesson_of_the_result(self):
+        physics = ClassGroup.objects.get(label='4º PERÍODO')
+        allocate(self.semester, physics, 'Física Noturna', Weekday.MONDAY, time(19, 0), time(19, 50), space='20', teachers=['Adailton'])
+        allocate(self.semester, physics, 'Física da Tarde', Weekday.TUESDAY, time(13, 0), time(13, 50), space='20', teachers=['Adailton'])
+        rows = [(row.start, row.end) for row in self.calendar(curso='INFORMÁTICA').week.rows]
+        self.assertEqual(rows, [(time(7, 0), time(7, 50)), (time(7, 50), time(8, 40))])
+        rows = [row.start for row in self.calendar(curso='LICENCIATURA EM FÍSICA').week.rows]
+        self.assertEqual(rows, [time(7, 0), time(7, 50), time(13, 0), time(19, 0)])
+
     def test_today_is_marked(self):
         self.assertContains(self.get(sala='10'), 'id="hoje"')
 
 
 class EmptyStateTests(PublicCalendarTestCase):
-    def test_teacher_without_lessons(self):
-        self.assertContains(self.get(docente='Aldo Gomes', inicio='2026-09-25', fim='2026-09-25'), 'Nenhuma aula de Aldo Gomes neste intervalo.')
+    def assertEmptyGrid(self, **params):
+        html = self.text(self.get(**params))
+        self.assertIn('data-public-scroll', html)
+        self.assertNotIn('timetable-card', html)
+        self.assertNotIn('timetable-empty', html)
+        return html
 
-    def test_course_without_lessons(self):
-        self.assertContains(
-            self.get(curso='LICENCIATURA EM FÍSICA', inicio='2026-09-25', fim='2026-09-25'),
-            'Nenhuma aula do curso LICENCIATURA EM FÍSICA neste intervalo.',
-        )
+    def test_teacher_without_lessons_shows_only_the_empty_grid(self):
+        html = self.assertEmptyGrid(docente='Aldo Gomes', inicio='2026-09-25', fim='2026-09-25')
+        self.assertIn('Sexta-feira, 25/09/2026, das 07:00 às 07:50, sem aula', html)
+        self.assertIn('das 07:50 às 08:40, sem aula', html)
 
-    def test_space_without_lessons(self):
-        self.assertContains(self.get(sala='7', inicio='2026-09-21', fim='2026-09-24'), 'Nenhuma aula na sala 7 neste intervalo.')
+    def test_course_without_lessons_shows_only_the_empty_grid(self):
+        self.assertEmptyGrid(curso='LICENCIATURA EM FÍSICA', inicio='2026-09-25', fim='2026-09-25')
+
+    def test_space_without_lessons_shows_only_the_empty_grid(self):
+        html = self.assertEmptyGrid(sala='7', inicio='2026-09-21', fim='2026-09-24')
+        self.assertIn('disponível', html)
+
+    def test_no_grid_without_principal_filter_or_with_refused_dates(self):
+        self.assertNotContains(self.get(), 'data-public-scroll')
+        self.assertNotContains(self.get(sala='10', inicio='2026-09-01', fim='2026-10-15'), 'data-public-scroll')
+        self.assertNotContains(self.get(sala='10', inicio='2027-02-01', fim='2027-02-05'), 'data-public-scroll')
 
 
 class QueryTests(PublicCalendarTestCase):

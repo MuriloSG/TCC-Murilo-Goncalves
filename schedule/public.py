@@ -11,7 +11,6 @@ A quantidade de consultas é fixa: no máximo oito, qualquer que seja o interval
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from types import SimpleNamespace
-from urllib.parse import urlencode
 
 from django.db.models import Prefetch
 from django.db.models.functions import Lower
@@ -42,7 +41,6 @@ BOTH_DATES_MESSAGE = 'Informe a data inicial e a data final.'
 INVALID_DATE_MESSAGE = 'Informe uma data válida.'
 ORDER_MESSAGE = 'A data final deve ser igual ou posterior à data inicial.'
 LIMIT_MESSAGE = f'Escolha um intervalo de até {MAX_DAYS} dias.'
-COMBINED_EMPTY_MESSAGE = 'Nenhuma aula encontrada com estes filtros.'
 
 
 @dataclass(frozen=True)
@@ -51,6 +49,15 @@ class PublicTeacher:
 
     name: str
     email: str = ''
+
+    @property
+    def mailbox(self):
+        """Parte do e-mail antes do @, para a quebra de linha cair no @ e não numa letra solta."""
+        return self.email.partition('@')[0]
+
+    @property
+    def domain(self):
+        return self.email.partition('@')[2]
 
 
 @dataclass(frozen=True)
@@ -226,12 +233,27 @@ def publish(week):
     return week
 
 
+def result_slots(semester, placed):
+    """Faixas do semestre da primeira à última aula mostrada no intervalo, com as vazias do meio.
+
+    A Grade autenticada mostra todas as faixas do semestre para comparar salas; na consulta
+    pública, um curso só de manhã e tarde não deve ganhar as linhas da noite. Sem aula no
+    intervalo, são todas as faixas do semestre, e a Grade aparece com as células vazias,
+    que indicam os horários disponíveis.
+    """
+    if not placed:
+        return semester_slots(semester)
+    first = min(start for start, _ in placed)
+    last = max(end for _, end in placed)
+    return [slot for slot in semester_slots(semester) if slot[0] >= first and slot[1] <= last]
+
+
 def typical_week(semester, allocations, today):
-    slots = semester_slots(semester)
     by_day_slot = {}
     for allocation, entry in entries_of(allocations):
         slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
         by_day_slot.setdefault((allocation.weekday, slot), []).append(entry)
+    slots = result_slots(semester, {slot for _, slot in by_day_slot})
     return publish(build_week(slots, sorted_entries(by_day_slot), today))
 
 
@@ -241,7 +263,6 @@ def sorted_entries(by_day_slot):
 
 def dated_week(semester, allocations, dates, today):
     """Grade datada: cada alocação em cada data do seu dia da semana dentro do período."""
-    slots = semester_slots(semester)
     by_weekday = {}
     for allocation, entry in entries_of(allocations):
         by_weekday.setdefault(allocation.weekday, []).append((allocation, entry))
@@ -252,6 +273,7 @@ def dated_week(semester, allocations, dates, today):
         for allocation, entry in by_weekday.get(WEEKDAYS[day.weekday()], []):
             slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
             by_day_slot.setdefault((day, slot), []).append(entry)
+    slots = result_slots(semester, {slot for _, slot in by_day_slot})
     return publish(build_week(slots, sorted_entries(by_day_slot), today, dates=dates, semester=semester))
 
 
@@ -297,10 +319,6 @@ def read_range(params):
     return start, end, None
 
 
-def weeks_covered(start, end):
-    return ((end - monday_of(start)).days // 7) + 1
-
-
 def touches(semester, start, end):
     return start <= semester.end_date and end >= semester.start_date
 
@@ -323,9 +341,6 @@ class PublicCalendar:
     notice: str = ''
     week: object = None
     free_label: str = 'sem aula'
-    previous_query: str = ''
-    following_query: str = ''
-    today_query: str = ''
 
     @property
     def has_principal(self):
@@ -333,35 +348,11 @@ class PublicCalendar:
 
     @property
     def summary(self):
-        """Resumo dos filtros escolhidos, mostrado no grupo recolhível "Filtros"."""
+        """Resumo dos filtros escolhidos, usado na legenda da Grade para leitores de tela."""
         parts = [record.name for record in (self.space, self.teacher, self.course) if record is not None]
         if self.stage_key:
             parts.append(STAGES[self.stage_key].label)
         return ', '.join(parts)
-
-    def query(self, start=None, end=None):
-        """Parâmetros da URL dos filtros, com as datas informadas ou nenhuma, sem IDs."""
-        values = {
-            'semestre': self.semester_code,
-            'sala': self.space.name if self.space else '',
-            'docente': self.teacher.name if self.teacher else '',
-            'curso': self.course.name if self.course else '',
-            'nivel': self.stage_key,
-        }
-        if start is not None:
-            values.update(inicio=start.isoformat(), fim=end.isoformat())
-        return urlencode({key: value for key, value in values.items() if value})
-
-
-def empty_message(calendar):
-    principals = [record for record in (calendar.space, calendar.teacher, calendar.course) if record is not None]
-    if len(principals) == 1 and not calendar.stage_key:
-        if calendar.teacher is not None:
-            return f'Nenhuma aula de {calendar.teacher.name} neste intervalo.'
-        if calendar.course is not None:
-            return f'Nenhuma aula do curso {calendar.course.name} neste intervalo.'
-        return f'Nenhuma aula na sala {calendar.space.name} neste intervalo.'
-    return COMBINED_EMPTY_MESSAGE
 
 
 def public_calendar(params, today):
@@ -391,7 +382,6 @@ def public_calendar(params, today):
         if start is None and error is None:
             start, end = default_range(semester, today)
         calendar.start, calendar.end, calendar.date_error = start, end, error or ''
-        calendar.today_query = calendar.query()
     if not calendar.has_principal:
         calendar.message = CHOOSE_MESSAGE
         return calendar
@@ -409,16 +399,7 @@ def public_calendar(params, today):
     )
     if semester.has_period:
         calendar.week = dated_week(semester, allocations, weekdays_between(calendar.start, calendar.end), today)
-        shift = timedelta(days=7 * weeks_covered(calendar.start, calendar.end))
-        previous = (calendar.start - shift, calendar.end - shift)
-        following = (calendar.start + shift, calendar.end + shift)
-        if touches(semester, *previous):
-            calendar.previous_query = calendar.query(*previous)
-        if touches(semester, *following):
-            calendar.following_query = calendar.query(*following)
     else:
         calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'
         calendar.week = typical_week(semester, allocations, today)
-    if not calendar.week.has_activities:
-        calendar.message = empty_message(calendar)
     return calendar

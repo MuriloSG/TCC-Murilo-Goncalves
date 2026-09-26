@@ -1,6 +1,6 @@
 ## 1. Referência visual
 
-- [ ] 1.1 Pedir ao autor a imagem de referência da tela (seção 9.8 das convenções) e registrar no `design.md` o que foi adaptado e retirado
+- [x] 1.1 Pedir ao autor a imagem de referência da tela (seção 9.8 das convenções) e registrar no `design.md` o que foi adaptado e retirado
 - [x] 1.2 Commit
 
 ## 2. Consulta do calendário público

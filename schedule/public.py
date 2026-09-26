@@ -21,6 +21,7 @@ from schedule.timetable import (
     WEEKDAYS,
     Row,
     build_week,
+    listed_spaces,
     clamp,
     current_semester_code,
     group_label,
@@ -113,17 +114,15 @@ class Options:
 
 
 def semester_options(semester):
-    """Salas, docentes e cursos com alocação no semestre, em três consultas (D6).
+    """Salas, docentes e cursos do semestre, em três consultas (D6).
 
-    As salas inativas entram quando têm alocação no semestre. Os docentes vêm de `Teacher`,
+    As salas ativas entram todas, com ou sem aula; as inativas, só quando têm alocação no
+    semestre. Os docentes vêm de `Teacher`,
     nunca da tabela de usuários (D4).
     """
     if semester is None:
         return [], [], []
-    spaces = sorted(
-        Space.objects.filter(allocations__semester=semester).distinct().only('name'),
-        key=natural_key,
-    )
+    spaces = sorted(listed_spaces(semester).only('name'), key=natural_key)
     teachers = list(
         Teacher.objects.filter(allocations__semester=semester).distinct().only('name').order_by('name'),
     )

@@ -87,6 +87,15 @@ class SpaceWeekTests(TestCase):
         self.assertEqual([space.name for space in spaces_of(self.semester)], ['1/4', '1/13', 'HV 3'])
         self.assertEqual(spaces_of(None), [])
 
+    def test_active_space_without_lessons_is_listed(self):
+        Space.objects.register('1/3')
+        inactive = Space.objects.register('Sala 8')
+        inactive.deactivate()
+        names = [space.name for space in spaces_of(self.semester)]
+        self.assertIn('1/3', names)
+        self.assertNotIn('Sala 8', names)
+        self.assertEqual(len(names), len(set(names)))
+
     def test_group_label_is_readable(self):
         self.assertEqual(group_label(self.group), 'Engenharia de Alimentos, 2º período')
 

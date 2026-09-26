@@ -13,6 +13,8 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+from django.db.models import Q
+
 from schedule.models import Allocation, Semester, Space, Stage, TimeSlot, Weekday
 
 SMALL_WORDS = {'a', 'as', 'o', 'os', 'e', 'em', 'de', 'do', 'da', 'dos', 'das', 'para'}
@@ -268,11 +270,20 @@ def imported_semesters():
     return list(Semester.objects.filter(allocations__isnull=False).distinct().order_by('-code'))
 
 
+def listed_spaces(semester):
+    """Espaços ativos e os inativos com alocação no semestre, sem repetição.
+
+    Um espaço ativo sem aula também é listado, e a Grade dele aparece com as faixas vazias
+    (Change listar-salas-sem-aula). O inativo só entra quando tem aula no semestre.
+    """
+    return Space.objects.filter(Q(is_active=True) | Q(allocations__semester=semester)).distinct()
+
+
 def spaces_of(semester):
-    """Salas com alocação no semestre, na ordem natural do nome: `1/4` vem antes de `1/10`."""
+    """Salas da Grade do semestre, na ordem natural do nome: `1/4` vem antes de `1/10`."""
     if semester is None:
         return []
-    return sorted(Space.objects.filter(allocations__semester=semester).distinct(), key=natural_key)
+    return sorted(listed_spaces(semester), key=natural_key)
 
 
 def semester_slots(semester):

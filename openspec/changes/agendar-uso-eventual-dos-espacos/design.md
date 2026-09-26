@@ -117,7 +117,7 @@ As faixas das linhas continuam as do semestre, e o agendamento aparece em todas 
 
 Card do agendamento: selo "Agendamento" (texto e ícone, não só cor), a descrição e o horário. O card da aula continua como está e ganha, na Agenda, o selo "Ensalamento". O nome do solicitante só aparece para quem tem `AGENDA.ANALISAR`.
 
-Semana e mês, navegação, dias, faixas e comportamento abaixo de 640 px são os da Grade autenticada. Não há representação própria para o celular.
+Semana e mês, navegação, dias, faixas e comportamento abaixo de 640 px são os da Grade autenticada, com uma diferença: sem semana na URL, no sábado e no domingo a Agenda abre na semana seguinte, porque a semana atual já passou inteira e não teria faixa para solicitar. Não há representação própria para o celular.
 
 A faixa disponível, na Agenda, é um botão (com `aria-label` "Solicitar agendamento" e dia, data e horário) que abre o modal pelo htmx com a URL `agenda/solicitar/?espaco=...&data=...&inicio=...&fim=...`. Sem `AGENDA.SOLICITAR` ela é a célula vazia de sempre. Dia fora do semestre continua "Fora do semestre", mas a solicitação num dia fora do semestre é aceita, porque o uso eventual não depende do período letivo; para isso, a visão da Agenda mostra as faixas do semestre vigente mesmo nos dias sem aula.
 

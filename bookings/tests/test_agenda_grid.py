@@ -137,3 +137,21 @@ class QueryTests(AgendaTestCase):
         month = self.queries(sala='Laboratório de Informática 2', visao='mes', mes='2026-10')
         self.assertEqual(week, month)
         self.assertEqual(BookingRequest.objects.filter(status=BookingRequest.Status.APPROVED).count(), Booking.objects.count())
+
+
+class WeekendTests(AgendaTestCase):
+    def test_weekend_opens_the_following_week(self):
+        from unittest import mock
+        from django.utils import timezone
+        from datetime import datetime
+        saturday = timezone.make_aware(datetime(2026, 10, 3, 10, 0))
+        with mock.patch('django.utils.timezone.now', return_value=saturday):
+            self.client.force_login(self.ana)
+            response = self.client.get(URL, {'sala': 'Laboratório de Informática 2'})
+        self.assertEqual(response.context['week'].start, date(2026, 10, 5))
+        self.assertContains(response, 'timetable-request')
+
+    def test_weekday_opens_the_current_week(self):
+        self.client.force_login(self.ana)
+        response = self.client.get(URL, {'sala': 'Laboratório de Informática 2'})
+        self.assertEqual(response.context['week'].start, date(2026, 9, 28))

@@ -50,6 +50,15 @@ def bookable_spaces():
     return sorted(Space.objects.filter(is_active=True), key=natural_key)
 
 
+def next_school_day(today):
+    """Hoje, de segunda a sexta; no sábado e no domingo, a segunda-feira seguinte.
+
+    A Agenda serve para solicitar horários futuros: no fim de semana, a semana atual já
+    passou inteira e não teria nenhuma faixa para solicitar.
+    """
+    return today + timedelta(days=7 - today.weekday()) if today.weekday() >= 5 else today
+
+
 class AgendaGridView(TemplateView):
     """Grade da Agenda: a mesma Grade do Ensalamento, com o ensalamento e os agendamentos.
 
@@ -64,6 +73,7 @@ class AgendaGridView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         today = timezone.localdate()
+        upcoming = next_school_day(today)
         semesters = {semester.code: semester for semester in imported_semesters()}
         current = current_semester_code(today)
         codes = sorted(set(semesters) | {current}, reverse=True)
@@ -84,7 +94,7 @@ class AgendaGridView(TemplateView):
             occurrences = occupancy(space, first, month_end, sources=sources) if space else []
             week = dated_space_month(semester, space, first, today, occurrences, by_overlap=True)
         elif dated:
-            reference = chosen_week or (month_reference(semester, chosen_month, today) if chosen_month else None)
+            reference = chosen_week or (month_reference(semester, chosen_month, today) if chosen_month else upcoming)
             start = week_start(semester, reference, today)
             occurrences = occupancy(space, start, start + timedelta(days=4), sources=sources) if space else []
             week = dated_space_week(semester, space, start, today, occurrences, by_overlap=True)

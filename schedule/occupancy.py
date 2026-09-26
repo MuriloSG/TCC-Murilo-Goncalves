@@ -4,7 +4,8 @@ A alocação é a regra semanal do semestre; a ocorrência é a regra posta numa
 intervalo consultado, dentro do período do semestre. A Grade recebe só ocorrências, e cada
 fonte de ocupação devolve as suas: nesta versão, só o ensalamento. A reserva de uma
 funcionalidade futura entra como mais uma fonte em `grid_sources` (D4, D6 e D12 da Change
-visualizar-ocupacao-por-semana-e-mes).
+visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda entram por
+`register_source` (Change agendar-uso-eventual-dos-espacos).
 """
 
 from dataclasses import dataclass
@@ -82,9 +83,30 @@ class AllocationSource:
         return result
 
 
+_registered = []
+_public = []
+
+
+def register_source(source, public=False):
+    """Acrescenta uma fonte de ocupação de outro app, como os agendamentos da Agenda.
+
+    O app registra a fonte no `ready()`, e o `schedule` não passa a depender dele. Com
+    `public`, a fonte também entra no calendário público.
+    """
+    if not any(type(item) is type(source) for item in _registered):
+        _registered.append(source)
+        if public:
+            _public.append(source)
+
+
 def grid_sources():
     """Fontes de ocupação que a Grade reúne, na ordem em que aparecem na célula."""
-    return [AllocationSource()]
+    return [AllocationSource(), *_registered]
+
+
+def public_sources():
+    """Fontes registradas que o calendário público mostra, além do ensalamento."""
+    return list(_public)
 
 
 def occupancy(space, start_date, end_date, sources=None):

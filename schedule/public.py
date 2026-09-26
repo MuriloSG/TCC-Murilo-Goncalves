@@ -1,11 +1,13 @@
 """Consulta e montagem do calendário público do ensalamento (Change calendario-publico).
 
-Tudo o que a página pública expõe sai deste módulo. Ele lê só as alocações do ensalamento
-acadêmico e nunca chama `occupancy()` nem `grid_sources()`, para que reservas, exceções ou
-outras fontes futuras de ocupação não cheguem à página pública (D3). Os templates recebem
-só `PublicEntry` e a estrutura da Grade, sem referência a model e sem IDs (D5).
+Tudo o que a página pública expõe sai deste módulo. Ele lê as alocações do ensalamento
+acadêmico e nunca chama `occupancy()` nem `grid_sources()`: além das aulas, só entram as
+fontes registradas como públicas, hoje os agendamentos aprovados da Agenda, e só na consulta
+por sala, com o horário e a descrição (Change agendar-uso-eventual-dos-espacos). Os
+templates recebem só `PublicEntry`, `PublicBooking` e a estrutura da Grade, sem referência a
+model e sem IDs (D5).
 
-A quantidade de consultas é fixa: no máximo oito, qualquer que seja o intervalo (D10).
+A quantidade de consultas é fixa: no máximo nove, qualquer que seja o intervalo (D10).
 """
 
 from dataclasses import dataclass, field
@@ -17,10 +19,13 @@ from django.db.models.functions import Lower
 
 from accounts.models import User
 from schedule.models import Allocation, Course, Space, Stage, Teacher
+from schedule.occupancy import public_sources
 from schedule.timetable import (
     WEEKDAYS,
     Row,
     build_week,
+    slots_of,
+    with_uncovered,
     listed_spaces,
     clamp,
     current_semester_code,
@@ -81,6 +86,28 @@ class PublicEntry:
 
 
 @dataclass(frozen=True)
+class PublicBooking:
+    """Agendamento aprovado no calendário público: só o horário e a descrição.
+
+    O nome de quem solicitou e qualquer outro dado da solicitação ficam fora da página. Os
+    campos `space`, `group_label`, `subject` e `teachers` existem só para a ordenação da
+    célula.
+    """
+
+    description: str
+    start: object
+    end: object
+    space: str = ''
+    group_label: str = ''
+    teachers: tuple = ()
+    is_booking = True
+
+    @property
+    def subject(self):
+        return self.description
+
+
+@dataclass(frozen=True)
 class Cluster:
     """Aulas de uma célula com a mesma sala, disciplina e docentes: turmas juntas quando mais de uma."""
 
@@ -93,12 +120,14 @@ class Cluster:
 
 @dataclass
 class PublicCell:
-    """Bloco de faixas seguidas com as mesmas aulas, agrupadas em `Cluster`, sem a marca de choque."""
+    """Bloco de faixas seguidas com as mesmas aulas, agrupadas em `Cluster`, sem a marca de choque,
+    e os agendamentos aprovados da faixa."""
 
     clusters: list
     start: object
     end: object
     span: int = 1
+    bookings: list = field(default_factory=list)
     is_continued = False
     is_outside = False
 
@@ -221,7 +250,11 @@ def publish(week):
     """Troca as células da Grade pelas públicas, que não classificam choque."""
     for day in week.days:
         day.cells = [
-            PublicCell(clusters=clusters_of(cell.entries), start=cell.start, end=cell.end, span=cell.span)
+            PublicCell(
+                clusters=clusters_of([entry for entry in cell.entries if not getattr(entry, 'is_booking', False)]),
+                bookings=[entry for entry in cell.entries if getattr(entry, 'is_booking', False)],
+                start=cell.start, end=cell.end, span=cell.span,
+            )
             if cell and not cell.is_continued and not cell.is_outside else cell
             for cell in day.cells
         ]
@@ -232,7 +265,7 @@ def publish(week):
     return week
 
 
-def result_slots(semester, placed):
+def result_slots(semester, placed, every_slot=None):
     """Faixas do semestre da primeira à última aula mostrada no intervalo, com as vazias do meio.
 
     A Grade autenticada mostra todas as faixas do semestre para comparar salas; na consulta
@@ -240,11 +273,12 @@ def result_slots(semester, placed):
     intervalo, são todas as faixas do semestre, e a Grade aparece com as células vazias,
     que indicam os horários disponíveis.
     """
+    every_slot = semester_slots(semester) if every_slot is None else every_slot
     if not placed:
-        return semester_slots(semester)
+        return every_slot
     first = min(start for start, _ in placed)
     last = max(end for _, end in placed)
-    return [slot for slot in semester_slots(semester) if slot[0] >= first and slot[1] <= last]
+    return [slot for slot in every_slot if slot[0] >= first and slot[1] <= last]
 
 
 def typical_week(semester, allocations, today):
@@ -260,8 +294,26 @@ def sorted_entries(by_day_slot):
     return {key: sorted(entries, key=entry_order) for key, entries in by_day_slot.items()}
 
 
-def dated_week(semester, allocations, dates, today):
-    """Grade datada: cada alocação em cada data do seu dia da semana dentro do período."""
+def public_bookings(space, dates):
+    """Agendamentos aprovados da sala nas datas, das fontes públicas, só com horário e descrição."""
+    if space is None or not dates:
+        return []
+    return [
+        SimpleNamespace(
+            date=occurrence.date, start=occurrence.start, end=occurrence.end,
+            entry=PublicBooking(description=occurrence.entry.description, start=occurrence.start, end=occurrence.end),
+        )
+        for source in public_sources()
+        for occurrence in source.occurrences(space, dates[0], dates[-1])
+    ]
+
+
+def dated_week(semester, allocations, dates, today, bookings=()):
+    """Grade datada: cada alocação em cada data do seu dia da semana dentro do período.
+
+    Os agendamentos aprovados entram em todas as faixas que cruzam; o que não cruza nenhuma
+    faixa ganha uma linha própria, como na Grade autenticada.
+    """
     by_weekday = {}
     for allocation, entry in entries_of(allocations):
         by_weekday.setdefault(allocation.weekday, []).append((allocation, entry))
@@ -272,7 +324,15 @@ def dated_week(semester, allocations, dates, today):
         for allocation, entry in by_weekday.get(WEEKDAYS[day.weekday()], []):
             slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
             by_day_slot.setdefault((day, slot), []).append(entry)
-    slots = result_slots(semester, {slot for _, slot in by_day_slot})
+    wanted = {day for day in dates if semester.contains(day)}
+    bookings = [booking for booking in bookings if booking.date in wanted]
+    every_slot = semester_slots(semester)
+    placed = {slot for _, slot in by_day_slot}
+    placed |= {slot for booking in bookings for slot in slots_of(booking, every_slot, True)}
+    slots = with_uncovered(result_slots(semester, placed, every_slot), bookings)
+    for booking in bookings:
+        for slot in slots_of(booking, slots, True):
+            by_day_slot.setdefault((booking.date, slot), []).append(booking.entry)
     return publish(build_week(slots, sorted_entries(by_day_slot), today, dates=dates, semester=semester))
 
 
@@ -397,7 +457,10 @@ def public_calendar(params, today):
         semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key),
     )
     if semester.has_period:
-        calendar.week = dated_week(semester, allocations, weekdays_between(calendar.start, calendar.end), today)
+        dates = weekdays_between(calendar.start, calendar.end)
+        by_space = calendar.free_label == 'disponível'
+        bookings = public_bookings(calendar.space, dates) if by_space else []
+        calendar.week = dated_week(semester, allocations, dates, today, bookings)
     else:
         calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'
         calendar.week = typical_week(semester, allocations, today)

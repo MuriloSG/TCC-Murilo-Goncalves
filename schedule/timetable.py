@@ -92,8 +92,13 @@ class Cell:
     is_outside = False
 
     @property
+    def lessons(self):
+        """Aulas da célula, sem os agendamentos, que têm o próprio selo."""
+        return [entry for entry in self.entries if not getattr(entry, 'is_booking', False)]
+
+    @property
     def group_count(self):
-        return len({entry.group_label for entry in self.entries})
+        return len({entry.group_label for entry in self.lessons})
 
     @property
     def kind(self):
@@ -104,7 +109,7 @@ class Cell:
         """
         if self.group_count <= 1:
             return SINGLE
-        lessons = {(entry.subject.casefold(), frozenset(name.casefold() for name in entry.teachers)) for entry in self.entries}
+        lessons = {(entry.subject.casefold(), frozenset(name.casefold() for name in entry.teachers)) for entry in self.lessons}
         return JOINT if len(lessons) == 1 else CLASH
 
 

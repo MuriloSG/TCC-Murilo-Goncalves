@@ -247,19 +247,36 @@ Um usuário com `AGENDA.ANALISAR` DEVE (MUST) ver, em "Solicitações para anál
 - **WHEN** ele abre o detalhe de uma solicitação
 - **THEN** a tela mostra o nome e o e-mail do solicitante e não mostra o perfil nem as permissões dele
 
-### Requirement: Agendamentos aprovados na Grade da Agenda
-A Grade da Agenda DEVE (MUST) mostrar, na célula do espaço, da data e da faixa, as aulas do ensalamento e os agendamentos aprovados, cada um com o seu tipo indicado por texto e ícone ("Ensalamento" e "Agendamento"), e não só por cor. O card do agendamento DEVE (MUST) mostrar o horário e a descrição, e o nome do solicitante só para quem tem `AGENDA.ANALISAR`. A faixa com agendamento aprovado DEVE (MUST) deixar de contar como disponível. A Grade da Agenda DEVE (MUST) reunir as fontes de ocupação ensalamento e agendamento, e a Grade do Ensalamento e o calendário público NÃO DEVEM (MUST NOT) mostrar agendamentos.
+### Requirement: Agendamentos aprovados nas Grades e no calendário público
+A Grade da Agenda e a Grade do Ensalamento DEVEM (MUST) mostrar, na célula do espaço, da data e da faixa, as aulas do ensalamento e os agendamentos aprovados, em todas as faixas que o agendamento cruza, cada um com o seu tipo indicado por texto e ícone, e não só por cor. O card do agendamento DEVE (MUST) mostrar o selo "Agendamento", o horário e a descrição, e o nome do solicitante só para quem tem `AGENDA.ANALISAR`. Um agendamento que não cruza nenhuma faixa do semestre DEVE (MUST) ganhar uma linha própria com o seu intervalo. A faixa com agendamento aprovado DEVE (MUST) deixar de contar como disponível. A Grade do Ensalamento DEVE (MUST) continuar só de consulta, sem ação de solicitar. O calendário público DEVE (MUST) mostrar o agendamento aprovado só na consulta em que o único filtro principal é a sala, com o selo "Agendamento", o horário e a descrição, e NÃO DEVE (MUST NOT) mostrar o nome, o e-mail nem outro dado de quem solicitou ou de quem aprovou. Solicitações pendentes ou com alternativa sugerida NÃO DEVEM (MUST NOT) aparecer em nenhuma dessas telas.
 
-#### Scenario: Agendamento na Grade
+#### Scenario: Agendamento na Grade da Agenda
 - **GIVEN** um agendamento aprovado da sala em 15/10/2026 das 14:00 às 16:00 e uma aula da mesma sala na segunda-feira da mesma semana
 - **WHEN** a Grade da Agenda da semana é aberta para a sala
 - **THEN** a quinta-feira mostra o card com o selo "Agendamento" e a descrição, e a segunda-feira mostra a aula com o selo "Ensalamento"
 - **AND** a faixa do agendamento não oferece "Solicitar agendamento"
 
-#### Scenario: Grade do Ensalamento sem agendamentos
+#### Scenario: Agendamento na Grade do Ensalamento
 - **GIVEN** o mesmo agendamento
-- **WHEN** a Grade do Ensalamento e o calendário público são abertos para a sala e a semana
-- **THEN** nenhum dos dois mostra o agendamento
+- **WHEN** um usuário com `ENSALAMENTO.VISUALIZAR` e sem `AGENDA.ANALISAR` abre a Grade do Ensalamento da sala e da semana
+- **THEN** a Grade mostra o card do agendamento com o horário e a descrição, sem o nome de quem solicitou
+- **AND** a Grade não tem ação de solicitar agendamento
+
+#### Scenario: Agendamento no calendário público
+- **GIVEN** o mesmo agendamento
+- **WHEN** um visitante abre o calendário público da sala nessa semana
+- **THEN** o calendário mostra o selo "Agendamento", o horário e a descrição
+- **AND** a página não contém o nome nem o e-mail de quem solicitou ou aprovou
+
+#### Scenario: Calendário público por docente
+- **GIVEN** o mesmo agendamento
+- **WHEN** o calendário público é aberto com o filtro de um docente
+- **THEN** o agendamento não aparece
+
+#### Scenario: Solicitação pendente fora das telas
+- **GIVEN** uma solicitação pendente da sala
+- **WHEN** a Grade da Agenda, a Grade do Ensalamento e o calendário público da sala são abertos
+- **THEN** a solicitação não aparece em nenhum deles
 
 ### Requirement: Auditoria da Agenda
 As mudanças de estado da Agenda DEVEM (MUST) gerar registros de auditoria no padrão existente: a criação da solicitação (`CRIAR`), a aprovação (`APROVAR`), a rejeição com o motivo (`REJEITAR`), a sugestão de alternativa (`SUGERIR`), o aceite (`ACEITAR`) e a recusa (`RECUSAR`), com o recurso `SOLICITACAO_AGENDAMENTO`, e a criação do agendamento (`CRIAR`), com o recurso `AGENDAMENTO`. Operação recusada, por permissão, posse, estado, validação ou conflito, NÃO DEVE (MUST NOT) gerar registro.

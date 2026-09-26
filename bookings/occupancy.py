@@ -5,8 +5,8 @@ O intervalo é semiaberto, `[início, fim)`: há conflito quando `início < outr
 agendar-uso-eventual-dos-espacos). A verificação usa duas consultas, uma do ensalamento e
 uma dos agendamentos, e devolve o primeiro intervalo ocupado para a mensagem.
 
-A Grade da Agenda tem a sua lista de fontes, `agenda_sources()`, com o ensalamento e os
-agendamentos; `grid_sources()` do Ensalamento não muda (D7).
+Os agendamentos aprovados entram em `grid_sources()` e no calendário público por
+`register_source`, feito no `ready()` do app (D7).
 """
 
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ from django.apps import apps
 from django.utils import timezone
 
 from schedule.models import Allocation
-from schedule.occupancy import AllocationSource, Occurrence
+from schedule.occupancy import Occurrence, grid_sources
 from schedule.timetable import WEEKDAYS
 
 BOOKING = 'AGENDAMENTO'
@@ -138,5 +138,6 @@ class BookingSource:
 
 
 def agenda_sources():
-    """Fontes da Grade da Agenda: o ensalamento e os agendamentos aprovados."""
-    return [AllocationSource(), BookingSource()]
+    """Fontes da Grade da Agenda: o ensalamento e os agendamentos aprovados, as mesmas da
+    Grade do Ensalamento."""
+    return grid_sources()

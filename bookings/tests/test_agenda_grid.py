@@ -102,19 +102,51 @@ class GridTests(AgendaTestCase):
         self.assertNotContains(self.grid(self.viewer), '<option value="Sala 101"')
 
 
-class IsolationTests(AgendaTestCase):
-    def test_space_allocation_grid_does_not_show_bookings(self):
-        self.book()
-        self.client.force_login(user_with('ensalamento@ifnmg.edu.br', permissions.SPACE_ALLOCATION_VIEW, *REQUESTER))
-        response = self.client.get(reverse('space_allocation_grid'), WEEK)
-        self.assertContains(response, 'Redes')
-        self.assertNotContains(response, 'Reunião do projeto de extensão')
-        self.assertNotContains(response, 'Agendamento')
-        self.assertNotContains(response, 'agenda/solicitar')
+class OtherCalendarsTests(AgendaTestCase):
+    """Os agendamentos aprovados aparecem também na Grade do Ensalamento e no calendário público."""
 
-    def test_public_calendar_does_not_show_bookings(self):
+    PUBLIC = {'sala': 'Laboratório de Informática 2', 'inicio': '2026-10-12', 'fim': '2026-10-16'}
+
+    def space_allocation_grid(self, *codes):
+        self.client.force_login(user_with(f'ensalamento{"abcd"[len(codes)]}@ifnmg.edu.br', permissions.SPACE_ALLOCATION_VIEW, *codes))
+        return self.client.get(reverse('space_allocation_grid'), WEEK)
+
+    def test_space_allocation_grid_shows_the_approved_booking(self):
         self.book()
-        response = self.client.get(reverse('public_calendar'), {'sala': 'Laboratório de Informática 2', 'inicio': '2026-10-12', 'fim': '2026-10-16'})
+        response = self.space_allocation_grid(*REQUESTER)
+        self.assertContains(response, 'Redes')
+        self.assertContains(response, 'Reunião do projeto de extensão com os alunos.')
+        self.assertContains(response, 'Das 16:00 às 18:00')
+        self.assertContains(response, 'Agendamento</p>')
+        self.assertNotContains(response, 'agenda/solicitar')
+        self.assertNotContains(response, self.ana.name)
+        self.assertEqual(response.context['week'].days[3].available, 0)
+
+    def test_space_allocation_grid_shows_the_requester_to_the_reviewer(self):
+        self.book()
+        self.assertContains(self.space_allocation_grid(permissions.BOOKING_REVIEW), self.ana.name)
+
+    def test_pending_request_is_not_shown(self):
+        submit(self.ana, self.lab, description='Solicitação ainda pendente.')
+        self.assertNotContains(self.space_allocation_grid(), 'Solicitação ainda pendente.')
+        self.client.logout()
+        self.assertNotContains(self.client.get(reverse('public_calendar'), self.PUBLIC), 'Solicitação ainda pendente.')
+
+    def test_public_calendar_shows_time_and_description_only(self):
+        self.book()
+        self.client.logout()
+        response = self.client.get(reverse('public_calendar'), self.PUBLIC)
+        self.assertContains(response, 'Redes')
+        self.assertContains(response, 'Reunião do projeto de extensão com os alunos.')
+        self.assertContains(response, 'Das 16:00 às 18:00')
+        self.assertNotContains(response, self.ana.name)
+        self.assertNotContains(response, self.ana.email)
+        self.assertNotContains(response, self.reviewer.name)
+
+    def test_public_calendar_by_teacher_does_not_show_bookings(self):
+        self.book()
+        self.client.logout()
+        response = self.client.get(reverse('public_calendar'), {'docente': 'Viviane', 'inicio': '2026-10-12', 'fim': '2026-10-16'})
         self.assertContains(response, 'Redes')
         self.assertNotContains(response, 'Reunião do projeto de extensão')
 

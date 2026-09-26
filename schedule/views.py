@@ -102,7 +102,9 @@ class SpaceAllocationGridView(TemplateView):
     com alocação confirmada. A sala padrão é a primeira do semestre, pelo nome, e um valor que não
     existe na lista cai no padrão, sem erro. Com o período do semestre, a semana é datada e
     navegável pelo parâmetro `semana`; sem ele, é a semana típica com o aviso (D3 e D7 da
-    Change visualizar-ocupacao-por-semana-e-mes).
+    Change visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda chegam
+    como mais uma fonte e aparecem em todas as faixas que cruzam; a Grade continua só de
+    consulta, sem ação de solicitar (Change agendar-uso-eventual-dos-espacos).
     """
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
@@ -128,12 +130,12 @@ class SpaceAllocationGridView(TemplateView):
             first = month_start(semester, chosen_month or chosen_week, today)
             month_end = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
             occurrences = occupancy(space, first, month_end) if space else []
-            week = dated_space_month(semester, space, first, today, occurrences)
+            week = dated_space_month(semester, space, first, today, occurrences, by_overlap=True)
         elif dated:
             reference = chosen_week or (month_reference(semester, chosen_month, today) if chosen_month else None)
             start = week_start(semester, reference, today)
             occurrences = occupancy(space, start, start + timedelta(days=4)) if space else []
-            week = dated_space_week(semester, space, start, today, occurrences)
+            week = dated_space_week(semester, space, start, today, occurrences, by_overlap=True)
         else:
             view = WEEK_VIEW
             week = space_week(semester, space, today)
@@ -174,6 +176,7 @@ class SpaceAllocationGridView(TemplateView):
             today_url=grid_link(view, fragment='#hoje' if is_month else ''),
             import_list_url=SPACE_ALLOCATION_IMPORT_SCREENS.url('list'),
             occupation_text=occupation_text(week, is_month),
+            shows_requester=self.request.user.has_perm(permissions.BOOKING_REVIEW),
         )
         return context
 

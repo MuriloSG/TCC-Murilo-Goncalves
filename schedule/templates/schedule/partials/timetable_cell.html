@@ -1,9 +1,14 @@
 {% load ui %}{% if cell.kind == "joint" %}<div class="timetable-group is-joint"><p class="timetable-group-flag">{% icon "users" "size-4" %}{{ cell.group_count }} turmas juntas</p>{% elif cell.kind == "clash" %}<div class="timetable-group is-clash"><p class="timetable-group-flag">{% icon "triangle-alert" "size-4" %}Choque: {{ cell.group_count }} turmas neste horário</p>{% endif %}
 {% for entry in cell.entries %}
+  {% if entry.is_booking %}
+    {% include "schedule/partials/timetable_booking.html" %}
+  {% else %}
   <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
+    {% if lesson_kind_label %}<p class="timetable-kind">{% icon "graduation-cap" "size-4" %}Ensalamento</p>{% endif %}
     <p class="timetable-subject">{{ entry.subject }}</p>
     <p class="timetable-line">{% icon "users" "size-4" %}<span>{{ entry.group_label }}</span></p>
     {% if entry.teachers %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.teachers|join:", " }}</span></p>{% endif %}
   </div>
+  {% endif %}
 {% endfor %}
 {% if cell.kind != "single" %}</div>{% endif %}

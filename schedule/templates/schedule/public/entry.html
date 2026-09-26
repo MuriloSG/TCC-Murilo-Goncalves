@@ -10,3 +10,4 @@
   </div>
 {% endfor %}
 {% if cluster.is_joint %}</div>{% endif %}{% endfor %}
+{% for entry in cell.bookings %}{% include "schedule/partials/timetable_booking.html" %}{% endfor %}

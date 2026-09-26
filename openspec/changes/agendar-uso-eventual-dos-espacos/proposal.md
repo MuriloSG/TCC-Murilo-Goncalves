@@ -7,7 +7,7 @@ Esta Change cria a **Agenda**, uma área autenticada própria, separada do Ensal
 ## What Changes
 
 - **Menu "Agenda"** com rota própria, `agenda/`, e view própria. O Ensalamento continua igual e não ganha fluxo de solicitação.
-- **Grade compartilhada**: a Agenda usa as estruturas de `schedule/timetable.py` (`build_week`, `Week`, `Day`, `Cell`) e as classes `timetable-*`, com a sua própria lista de fontes de ocupação (ensalamento e agendamento). A Grade do Ensalamento continua só com a fonte `ENSALAMENTO`.
+- **Grade compartilhada**: a Agenda usa as estruturas de `schedule/timetable.py` (`build_week`, `Week`, `Day`, `Cell`) e as classes `timetable-*`, e os agendamentos aprovados entram como fonte de ocupação registrada pela Agenda. Eles aparecem na Grade da Agenda, na Grade do Ensalamento (só consulta) e no calendário público na consulta por sala, com o horário e a descrição.
 - **App novo `bookings`**, com dois models:
   - `BookingRequest` (solicitação de agendamento): o pedido do usuário, com espaço, data, início, fim, descrição obrigatória, estado, decisão e alternativa sugerida;
   - `Booking` (agendamento): o uso eventual aprovado, avulso, não recorrente, ligado à solicitação que o originou.
@@ -26,7 +26,7 @@ Esta Change cria a **Agenda**, uma área autenticada própria, separada do Ensal
 - Cancelamento de agendamento aprovado: o conceito fica registrado, e a regra entra numa Change futura.
 - Agendamento recorrente, agendamento em mais de um dia e edição de solicitação depois de enviada.
 - Solicitação pendente bloqueando o horário.
-- Mudança na importação do ensalamento, no calendário público e na Grade do Ensalamento.
+- Mudança na importação do ensalamento.
 
 ## Capabilities
 
@@ -36,7 +36,8 @@ Esta Change cria a **Agenda**, uma área autenticada própria, separada do Ensal
 
 ### Modified Capabilities
 
-- `ensalamento`: o requisito das fontes de ocupação deixa de prever que reservas entrem na Grade do Ensalamento; a Grade do Ensalamento continua só com o ensalamento e a Agenda monta a sua própria lista de fontes.
+- `ensalamento`: os agendamentos aprovados entram como fonte de ocupação registrada pela Agenda e aparecem na Grade do Ensalamento, que continua só de consulta.
+- `calendario-publico`: o agendamento aprovado aparece na consulta por sala, só com o horário e a descrição.
 
 ## Impact
 

@@ -337,7 +337,8 @@ class GridScreenTests(ScreenTestCase):
         response = self.grid('?sala=HV 3')
         self.assertEqual(response.context['space'].name, 'HV 3')
         self.assertContains(response, 'Biologia')
-        self.assertContains(response, 'Agroindústria, 1º ano A')
+        self.assertContains(response, 'Agroindústria')
+        self.assertContains(response, '1º ano A')
         self.assertContains(response, 'Érica')
 
     def test_unknown_space_falls_back_to_the_first(self):

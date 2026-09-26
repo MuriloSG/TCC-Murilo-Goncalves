@@ -65,11 +65,11 @@ class GridTests(AgendaTestCase):
         response = self.grid(self.viewer)
         content = response.content.decode()
         self.assertContains(response, 'Semana da sala Laboratório de Informática 2')
-        self.assertIn('Reunião do projeto de extensão com os alunos.', content)
+        self.assertNotIn('Reunião do projeto de extensão com os alunos.', content)
         self.assertIn('Agendamento</p>', content)
         self.assertIn('Ensalamento</p>', content)
         self.assertIn('Redes', content)
-        self.assertIn('Das 16:00 às 18:00', content)
+        self.assertNotIn('Das 16:00 às 18:00', content)
 
     def test_booking_fills_every_slot_it_crosses(self):
         request = submit(self.ana, self.lab, date(2026, 10, 14), time(14, 30), time(15, 30), 'Banca de defesa.')
@@ -94,7 +94,7 @@ class GridTests(AgendaTestCase):
         response = self.grid(self.viewer, sala='Laboratório de Informática 2', visao='mes', mes='2026-10')
         self.assertTrue(response.context['is_month'])
         self.assertContains(response, 'Mês da sala Laboratório de Informática 2')
-        self.assertContains(response, 'Reunião do projeto de extensão com os alunos.')
+        self.assertContains(response, 'Agendamento</p>')
 
     def test_inactive_space_is_not_offered(self):
         other = space('Sala 101')
@@ -116,8 +116,6 @@ class OtherCalendarsTests(AgendaTestCase):
         self.book()
         response = self.space_allocation_grid(*REQUESTER)
         self.assertContains(response, 'Redes')
-        self.assertContains(response, 'Reunião do projeto de extensão com os alunos.')
-        self.assertContains(response, 'Das 16:00 às 18:00')
         self.assertContains(response, 'Agendamento</p>')
         self.assertNotContains(response, 'agenda/solicitar')
         self.assertNotContains(response, self.ana.name)

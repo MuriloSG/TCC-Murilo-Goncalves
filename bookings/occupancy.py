@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from schedule.models import Allocation
 from schedule.occupancy import Occurrence, grid_sources
+from schedule.timetable import readable_course, readable_group
 
 BOOKING = 'AGENDAMENTO'
 SPACE_ALLOCATION = 'ENSALAMENTO'
@@ -73,7 +74,8 @@ class BookingEntry:
     """Agendamento aprovado no card da Grade da Agenda.
 
     Os campos `subject`, `group_label`, `teachers` e `stage` existem para que a célula da
-    Grade trate a entrada como as demais; o template da Agenda usa `is_booking`.
+    Grade trate a entrada como as demais; o template da Agenda usa `is_booking`. `subject`,
+    `course`, `group` e `teacher` vêm do docente da oferta e ficam vazios sem ele.
     """
 
     pk: int
@@ -84,6 +86,9 @@ class BookingEntry:
     subject: str = ''
     teachers: tuple = ()
     stage: str = ''
+    course: str = ''
+    group: str = ''
+    teacher: str = ''
     is_booking = True
 
     @property
@@ -93,6 +98,19 @@ class BookingEntry:
     @property
     def is_undergraduate(self):
         return False
+
+
+def offering_fields(assignment):
+    """Disciplina, curso, turma e docente do agendamento, vazios quando não há oferta."""
+    if assignment is None:
+        return {}
+    class_group = assignment.offering.class_group
+    return {
+        'subject': assignment.offering.subject.name,
+        'course': readable_course(class_group.course.name),
+        'group': readable_group(class_group.label),
+        'teacher': assignment.teacher.name,
+    }
 
 
 class BookingSource:
@@ -106,8 +124,12 @@ class BookingSource:
         last = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min))
         bookings = (
             Booking.objects.filter(space=space, starts_at__lt=last, ends_at__gt=first)
-            .select_related('requested_by')
-            .only('pk', 'space_id', 'starts_at', 'ends_at', 'description', 'requested_by__name')
+            .select_related(
+                'requested_by',
+                'request__teaching_assignment__teacher',
+                'request__teaching_assignment__offering__subject',
+                'request__teaching_assignment__offering__class_group__course',
+            )
         )
         result = []
         for booking in bookings:
@@ -124,6 +146,7 @@ class BookingSource:
                     start=starts_at.time(),
                     end=ends_at.time(),
                     requester=booking.requested_by.name,
+                    **offering_fields(booking.request.teaching_assignment),
                 ),
             ))
         return result

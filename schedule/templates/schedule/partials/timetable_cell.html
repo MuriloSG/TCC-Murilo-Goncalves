@@ -6,8 +6,9 @@
   <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
     {% if lesson_kind_label %}<p class="timetable-kind">{% icon "graduation-cap" "size-4" %}Ensalamento</p>{% endif %}
     <p class="timetable-subject">{{ entry.subject }}</p>
-    <p class="timetable-line">{% icon "users" "size-4" %}<span>{{ entry.group_label }}</span></p>
-    {% if entry.teachers %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.teachers|join:", " }}</span></p>{% endif %}
+    {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
+    {% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group|default:entry.group_label %}
+    {% for teacher in entry.teachers %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=teacher muted=True %}{% endfor %}
     {% if entry.cancel_url or entry.change_url %}<div class="timetable-card-actions">
       {% if entry.cancel_url %}<a class="icon-btn" href="{{ entry.cancel_url }}" hx-get="{{ entry.cancel_url }}" hx-target="#modal" aria-label="Cancelar esta ocorrência">{% icon "calendar-x" %}<span class="tip" role="tooltip">Cancelar esta ocorrência</span></a>{% endif %}
       {% if entry.change_url %}<a class="icon-btn" href="{{ entry.change_url }}" hx-get="{{ entry.change_url }}" hx-target="#modal" aria-label="Alterar recorrência">{% icon "pencil" %}<span class="tip" role="tooltip">Alterar recorrência</span></a>{% endif %}

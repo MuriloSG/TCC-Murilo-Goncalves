@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date, time, timedelta
 
 from schedule.models import Allocation, AllocationException, Semester
-from schedule.timetable import WEEKDAYS, Entry, group_label
+from schedule.timetable import WEEKDAYS, Entry, group_fields
 
 SPACE_ALLOCATION = 'ENSALAMENTO'
 
@@ -81,7 +81,7 @@ class AllocationSource:
                     kind=self.kind,
                     entry=Entry(
                         subject=allocation.subject.name,
-                        group_label=group_label(allocation.class_group),
+                        **group_fields(allocation.class_group),
                         teachers=tuple(sorted(teacher.name for teacher in allocation.teachers.all())),
                         stage=allocation.class_group.course.stage,
                         allocation_ids=(allocation.pk,),

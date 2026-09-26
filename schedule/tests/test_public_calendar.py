@@ -152,7 +152,7 @@ class FutureSourceTests(PublicCalendarTestCase):
 class ExposedDataTests(PublicCalendarTestCase):
     def test_card_shows_subject_group_space_teacher_and_email(self):
         html = self.text(self.get(sala='10', inicio='2026-09-21', fim='2026-09-25'))
-        for text in ('Banco de Dados', 'Informática, 2º ano A', '10', 'Aldo Gomes', 'aldo.gomes@ifnmg.edu.br'):
+        for text in ('Banco de Dados', 'Informática', '2º ano A', '10', 'Aldo Gomes', 'aldo.gomes@ifnmg.edu.br'):
             self.assertIn(text, html)
 
     def test_allocation_without_space(self):

@@ -1,6 +1,8 @@
 {% load ui %}<div class="timetable-card is-booking">
   <p class="timetable-kind">{% icon "calendar-clock" "size-4" %}Agendamento</p>
-  <p class="timetable-subject">{{ entry.description }}</p>
-  <p class="timetable-line">{% icon "clock" "size-4" %}<span>Das {{ entry.start|time:"H:i" }} às {{ entry.end|time:"H:i" }}</span></p>
-  {% if shows_requester and entry.requester %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.requester }}</span></p>{% endif %}
+  {% if entry.subject %}<p class="timetable-subject">{{ entry.subject }}</p>{% endif %}
+  {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
+  {% if entry.group %}{% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group %}{% endif %}
+  {% if entry.teacher %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=entry.teacher %}{% endif %}
+  {% if shows_requester and entry.requester %}{% include "schedule/partials/timetable_line.html" with name="user-check" label="Solicitante" value=entry.requester muted=True %}{% endif %}
 </div>

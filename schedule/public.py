@@ -32,7 +32,7 @@ from schedule.timetable import (
     listed_spaces,
     clamp,
     current_semester_code,
-    group_label,
+    group_fields,
     imported_semesters,
     monday_of,
     natural_key,
@@ -78,6 +78,8 @@ class PublicEntry:
     space: str
     teachers: tuple
     stage: str
+    course: str = ''
+    group: str = ''
 
     @property
     def is_undergraduate(self):
@@ -232,7 +234,7 @@ def entries_of(allocations):
         )
         result.append((allocation, PublicEntry(
             subject=allocation.subject.name,
-            group_label=group_label(allocation.class_group),
+            **group_fields(allocation.class_group),
             space=allocation.space.name if allocation.space else '',
             teachers=teachers,
             stage=allocation.class_group.course.stage,

@@ -53,8 +53,17 @@ def readable_group(label):
 
 
 def group_label(class_group):
-    """Curso e turma, como aparecem no card: `Informática, 2º ano A`."""
+    """Curso e turma numa linha, para ordenar e para mensagens: `Informática, 2º ano A`."""
     return ', '.join(part for part in (readable_course(class_group.course.name), readable_group(class_group.label)) if part)
+
+
+def group_fields(class_group):
+    """Curso e turma separados, cada um numa linha do card, junto do rótulo combinado."""
+    return {
+        'group_label': group_label(class_group),
+        'course': readable_course(class_group.course.name),
+        'group': readable_group(class_group.label),
+    }
 
 
 def natural_key(space):
@@ -77,6 +86,8 @@ class Entry:
     allocation_ids: tuple = field(default=(), compare=False)
     cancel_url: str = field(default='', compare=False)
     change_url: str = field(default='', compare=False)
+    course: str = field(default='', compare=False)
+    group: str = field(default='', compare=False)
 
     @property
     def is_undergraduate(self):
@@ -326,7 +337,7 @@ def space_week(semester, space, today):
         slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
         by_day_slot.setdefault((allocation.weekday, slot), []).append(Entry(
             subject=allocation.subject.name,
-            group_label=group_label(allocation.class_group),
+            **group_fields(allocation.class_group),
             teachers=tuple(sorted(teacher.name for teacher in allocation.teachers.all())),
             stage=allocation.class_group.course.stage,
         ))

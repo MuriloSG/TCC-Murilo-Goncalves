@@ -19,7 +19,7 @@ from django.views.generic import ListView, TemplateView
 from accounts import permissions
 from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
-from bookings.forms import BookingRequestForm
+from bookings.forms import BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
 from bookings.models import BookingRequest
 from bookings.occupancy import agenda_sources
 from schedule.forms import GridFilterForm
@@ -308,3 +308,107 @@ class DeclineSuggestionView(OwnRequestActionView):
     def perform(self):
         self.target.decline_suggestion(self.request.user)
         messages.success(self.request, 'Alternativa recusada. A solicitação foi encerrada sem agendamento.')
+
+
+class BookingRequestReviewListView(ListView):
+    """Solicitações de todos para quem analisa: por padrão, as que precisam de decisão,
+    das mais antigas para as mais recentes."""
+
+    permission_required = permissions.BOOKING_REVIEW
+    audit_resource = catalog.BOOKING_REQUEST
+    template_name = 'bookings/review_list.html'
+    context_object_name = 'requests'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.filters = ReviewFilterForm(request.GET or {'situacao': 'decidir'})
+
+    def get_queryset(self):
+        requests = request_related(BookingRequest.objects.all())
+        if self.filters.only_open():
+            requests = requests.filter(status__in=BookingRequest.OPEN)
+        return requests.order_by('created_at', 'pk')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(filters=self.filters, only_open=self.filters.only_open(), **kwargs)
+        context['page'] = paginate(self.request, self.object_list)
+        context['requests'] = decorate(context['page'].object_list, 'agenda_review_detail')
+        return context
+
+
+class BookingRequestReviewDetailView(TemplateView):
+    """Detalhe para quem analisa: solicitante, espaço, horário, descrição, estado e histórico."""
+
+    permission_required = permissions.BOOKING_REVIEW
+    audit_resource = catalog.BOOKING_REQUEST
+    template_name = 'bookings/review_detail.html'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = get_object_or_404(request_related(BookingRequest.objects), pk=kwargs['pk'])
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(target=detailed(self.target), **kwargs)
+
+
+def review_detail_url(target):
+    return reverse('agenda_review_detail', args=[target.pk])
+
+
+class ApproveView(ConfirmedActionView):
+    """Aprovação, com a disponibilidade verificada de novo no momento do POST (D4)."""
+
+    permission_required = permissions.BOOKING_REVIEW
+    audit_resource = catalog.BOOKING_REQUEST
+    model = BookingRequest
+    template_name = 'bookings/review_page.html'
+    modal_template_name = 'bookings/approve_confirm_modal.html'
+
+    def get_success_url(self):
+        return review_detail_url(self.target)
+
+    def perform(self):
+        self.target.approve(self.request.user)
+        messages.success(self.request, f'Solicitação de {self.target.space.name} em {self.target.schedule_text()} aprovada.')
+
+
+class ReviewFormView(OperationFormView):
+    permission_required = permissions.BOOKING_REVIEW
+    audit_resource = catalog.BOOKING_REQUEST
+    model = BookingRequest
+    template_name = 'bookings/review_page.html'
+
+    def get_success_url(self):
+        return review_detail_url(self.target)
+
+    def get_close_url(self):
+        return review_detail_url(self.target)
+
+
+class RejectView(ReviewFormView):
+    modal_template_name = 'bookings/reject_form_modal.html'
+    form_class = RejectForm
+    title = 'Rejeitar solicitação'
+
+    def perform(self, data):
+        self.target.reject(self.request.user, data['rejection_reason'])
+        messages.success(self.request, f'Solicitação de {self.target.space.name} em {self.target.schedule_text()} rejeitada.')
+
+
+class SuggestView(ReviewFormView):
+    modal_template_name = 'bookings/suggest_form_modal.html'
+    form_class = SuggestForm
+    title = 'Sugerir alternativa'
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def perform(self, data):
+        self.target.suggest(
+            self.request.user, data['suggested_space'], data['suggested_date'], data['suggested_start_time'],
+            data['suggested_end_time'], data['suggestion_message'],
+        )
+        messages.success(
+            self.request,
+            f'Alternativa de {self.target.suggested_space.name} em {self.target.suggested_schedule_text()} sugerida.',
+        )

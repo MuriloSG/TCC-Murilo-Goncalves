@@ -1,0 +1,34 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Solicitação de agendamento{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'agenda_review_list' %}">Solicitações para análise</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Solicitação {{ target.pk }}</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Solicitação de agendamento</h1>
+    </div>
+    {% if target.is_open %}
+      <div class="page-actions">
+        <a class="btn-secondary" href="{% url 'agenda_review_reject' target.pk %}" hx-get="{% url 'agenda_review_reject' target.pk %}" hx-target="#modal">{% icon "x" %}Rejeitar</a>
+        <a class="btn-secondary" href="{% url 'agenda_review_suggest' target.pk %}" hx-get="{% url 'agenda_review_suggest' target.pk %}" hx-target="#modal">{% icon "arrow-left-right" %}Sugerir alternativa</a>
+        {% if target.status == "PENDENTE" %}<a class="btn-primary" href="{% url 'agenda_review_approve' target.pk %}" hx-get="{% url 'agenda_review_approve' target.pk %}" hx-target="#modal">{% icon "check" %}Aprovar</a>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="solicitacao-titulo">
+    <div class="card-head">
+      <h2 class="card-title" id="solicitacao-titulo">{{ target.space.name }}, {{ target.schedule_text }}</h2>
+    </div>
+    <div class="card-body">{% include "bookings/partials/request_record.html" with show_requester=True %}</div>
+  </section>
+{% endblock %}

@@ -44,10 +44,10 @@
 
 ## 7. Análise
 
-- [ ] 7.1 Criar "Solicitações para análise", o detalhe e as ações "Aprovar", "Rejeitar" e "Sugerir alternativa" em modal (D1)
-- [ ] 7.2 Testar as quatro situações de acesso de cada rota, a aprovação com o horário ocupado depois da solicitação, o motivo obrigatório da rejeição e a ausência de dados pessoais além do nome e do e-mail do solicitante
-- [ ] 7.3 Testar a quantidade fixa de consultas das listas
-- [ ] 7.4 Commit
+- [x] 7.1 Criar "Solicitações para análise", o detalhe e as ações "Aprovar", "Rejeitar" e "Sugerir alternativa" em modal (D1)
+- [x] 7.2 Testar as quatro situações de acesso de cada rota, a aprovação com o horário ocupado depois da solicitação, o motivo obrigatório da rejeição e a ausência de dados pessoais além do nome e do e-mail do solicitante
+- [x] 7.3 Testar a quantidade fixa de consultas das listas
+- [x] 7.4 Commit
 
 ## 8. Fechamento
 

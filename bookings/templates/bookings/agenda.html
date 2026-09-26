@@ -13,9 +13,10 @@
     <div>
       <h1 class="page-title">Agenda</h1>
     </div>
-    {% if perms.AGENDA.SOLICITAR %}
+    {% if perms.AGENDA.SOLICITAR or perms.AGENDA.ANALISAR %}
       <div class="page-actions">
-        <a class="btn-secondary" href="{% url 'agenda_my_requests' %}">{% icon "list-checks" %}Minhas solicitações</a>
+        {% if perms.AGENDA.ANALISAR %}<a class="btn-secondary" href="{% url 'agenda_review_list' %}">{% icon "check-check" %}Solicitações para análise</a>{% endif %}
+        {% if perms.AGENDA.SOLICITAR %}<a class="btn-secondary" href="{% url 'agenda_my_requests' %}">{% icon "list-checks" %}Minhas solicitações</a>{% endif %}
       </div>
     {% endif %}
   </div>

@@ -61,3 +61,57 @@ class BookingRequestForm(forms.Form):
 
     def add_error(self, field, error):
         super().add_error(None if field == 'space' else field, error)
+
+
+class ReviewFilterForm(forms.Form):
+    """Recorte da lista de análise pela URL: as que precisam de decisão ou todas."""
+
+    CHOICES = [('decidir', 'Para decidir'), ('todas', 'Todas')]
+
+    situacao = forms.ChoiceField(label='Situação', required=False, choices=CHOICES, widget=forms.Select(attrs={'class': 'input'}))
+
+    def only_open(self):
+        return not (self.is_valid() and self.cleaned_data['situacao'] == 'todas')
+
+
+class RejectForm(forms.Form):
+    rejection_reason = forms.CharField(
+        label='Motivo da rejeição',
+        max_length=REASON_MAX_LENGTH,
+        help_text='O motivo aparece para quem solicitou.',
+        widget=forms.Textarea(attrs={'rows': 3}),
+        error_messages={'required': REASON_REQUIRED_MESSAGE},
+    )
+
+
+class SuggestForm(forms.Form):
+    """Outro espaço, outra data, outro horário ou a combinação deles, com a mensagem opcional."""
+
+    suggested_space = forms.ModelChoiceField(
+        label='Espaço sugerido',
+        queryset=Space.objects.none(),
+        widget=forms.Select(attrs={'class': 'input'}),
+        error_messages={'required': 'Escolha o espaço sugerido.', 'invalid_choice': 'Escolha um espaço ativo.'},
+    )
+    suggested_date = date_field('Data sugerida')
+    suggested_start_time = time_field('Início sugerido', START_REQUIRED_MESSAGE)
+    suggested_end_time = time_field('Fim sugerido', END_REQUIRED_MESSAGE)
+    suggestion_message = forms.CharField(
+        label='Mensagem para quem solicitou',
+        max_length=REASON_MAX_LENGTH,
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3}),
+    )
+
+    def __init__(self, *args, target=None, **kwargs):
+        if target is not None:
+            kwargs['initial'] = {
+                'suggested_space': target.suggested_space_id or target.space_id,
+                'suggested_date': target.suggested_date or target.date,
+                'suggested_start_time': target.suggested_start_time or target.start_time,
+                'suggested_end_time': target.suggested_end_time or target.end_time,
+                'suggestion_message': target.suggestion_message,
+            } | (kwargs.get('initial') or {})
+        super().__init__(*args, **kwargs)
+        field = self.fields['suggested_space']
+        field.queryset = Space.objects.filter(is_active=True).order_by('name')

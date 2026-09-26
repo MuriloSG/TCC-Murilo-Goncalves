@@ -1,0 +1,10 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Sugerir alternativa{% endblock %}
+
+{% block description %}Solicitado {{ target.space.name }} em {{ target.schedule_text }}. A alternativa não ocupa o horário até o aceite de quem solicitou.{% endblock %}
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "arrow-left-right" %}Sugerir alternativa</button>{% endblock %}

@@ -13,10 +13,11 @@
     </div>
   </div>
   {% for group in widget.groups %}
-    <details class="checklist-group" open>
+    <details class="checklist-group">
       <summary>
         <span class="checklist-group-name">{{ group.name }}</span>
         <span class="count" data-checklist-group-count>{{ group.selected }}/{{ group.total }}</span>
+        <input class="checklist-group-toggle" type="checkbox" data-checklist-group-toggle aria-label="Selecionar todas as permissões de {{ group.name }}">
         {% icon "chevron-down" %}
       </summary>
       <div class="checklist-options">

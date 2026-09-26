@@ -1005,11 +1005,18 @@
         outline-offset: -2px;
       }
 
+      & > .checklist-group-toggle {
+        width: var(--spacing-5);
+        height: var(--spacing-5);
+        flex: none;
+        margin: 0 0 0 auto;
+        accent-color: var(--color-action);
+        cursor: pointer;
+      }
       & > svg {
         width: var(--spacing-5);
         height: var(--spacing-5);
         flex: none;
-        margin-left: auto;
         color: var(--color-text-muted);
         transition: rotate var(--motion-base) ease;
       }

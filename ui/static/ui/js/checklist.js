@@ -27,9 +27,12 @@
     list.querySelector("[data-checklist-selected]").textContent = checked;
     list.querySelector("[data-checklist-unsaved]").hidden = !changed;
     list.querySelectorAll(".checklist-group").forEach(function (group) {
-      var inGroup = group.querySelectorAll("input[type=checkbox]");
-      var checkedInGroup = group.querySelectorAll("input[type=checkbox]:checked").length;
+      var inGroup = group.querySelectorAll(".check-option input[type=checkbox]");
+      var checkedInGroup = group.querySelectorAll(".check-option input[type=checkbox]:checked").length;
       group.querySelector("[data-checklist-group-count]").textContent = checkedInGroup + "/" + inGroup.length;
+      var master = group.querySelector("[data-checklist-group-toggle]");
+      master.checked = checkedInGroup === inGroup.length;
+      master.indeterminate = checkedInGroup > 0 && checkedInGroup < inGroup.length;
     });
     var visible = visibleBoxes(list);
     var allChecked = visible.length > 0 && visible.every(function (box) { return box.checked; });
@@ -72,6 +75,12 @@
   document.addEventListener("change", function (event) {
     var list = event.target.closest("[data-checklist]");
     if (list && event.target.type === "checkbox") {
+      if (event.target.matches("[data-checklist-group-toggle]")) {
+        var checked = event.target.checked;
+        event.target.closest(".checklist-group").querySelectorAll(".check-option input[type=checkbox]").forEach(function (box) {
+          box.checked = checked;
+        });
+      }
       update(list);
     }
   });

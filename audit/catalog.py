@@ -26,6 +26,11 @@ EXPORT = 'EXPORTAR'
 PUBLISH = 'PUBLICAR'
 SEND = 'ENVIAR'
 FAIL = 'FALHAR'
+APPROVE = 'APROVAR'
+REJECT = 'REJEITAR'
+SUGGEST = 'SUGERIR'
+ACCEPT = 'ACEITAR'
+DECLINE = 'RECUSAR'
 
 ACTION_LABELS = {
     LOGIN: 'Entrada',
@@ -45,6 +50,11 @@ ACTION_LABELS = {
     PUBLISH: 'Publicação',
     SEND: 'Envio',
     FAIL: 'Falha no envio',
+    APPROVE: 'Aprovação',
+    REJECT: 'Rejeição',
+    SUGGEST: 'Sugestão de alternativa',
+    ACCEPT: 'Aceite da alternativa',
+    DECLINE: 'Recusa da alternativa',
 }
 
 AUTHENTICATION = 'AUTENTICACAO'
@@ -56,6 +66,8 @@ EMAIL = 'EMAIL'
 AUDIT = 'AUDITORIA'
 NOTICE = 'NOTIFICACAO'
 SPACE = 'ESPACO'
+BOOKING_REQUEST = 'SOLICITACAO_AGENDAMENTO'
+BOOKING = 'AGENDAMENTO'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -67,6 +79,8 @@ RESOURCE_LABELS = {
     AUDIT: 'Auditoria',
     NOTICE: 'Notificações',
     SPACE: 'Espaços',
+    BOOKING_REQUEST: 'Solicitações de agendamento',
+    BOOKING: 'Agendamentos',
 }
 
 INTERFACE = 'INTERFACE'
@@ -116,6 +130,14 @@ FIELD_LABELS = {
     'espacos_cadastrados': 'Espaços cadastrados',
     'outros_nomes_associados': 'Outros nomes associados',
     'espacos_reativados': 'Espaços reativados',
+    'data': 'Data',
+    'horario': 'Horário',
+    'motivo': 'Motivo',
+    'espaco_sugerido': 'Espaço sugerido',
+    'data_sugerida': 'Data sugerida',
+    'horario_sugerido': 'Horário sugerido',
+    'mensagem': 'Mensagem',
+    'solicitacao': 'Solicitação',
 }
 
 

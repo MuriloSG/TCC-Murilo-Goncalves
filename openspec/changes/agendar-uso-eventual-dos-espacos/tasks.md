@@ -22,10 +22,10 @@
 
 ## 4. Auditoria
 
-- [ ] 4.1 Acrescentar os recursos `SOLICITACAO_AGENDAMENTO` e `AGENDAMENTO` e as ações `APROVAR`, `REJEITAR`, `SUGERIR`, `ACEITAR` e `RECUSAR` ao `audit/catalog.py` (D9)
-- [ ] 4.2 Registrar cada transição e a criação do agendamento nas operações do model
-- [ ] 4.3 Testar um registro por transição e nenhum registro nas recusas
-- [ ] 4.4 Commit
+- [x] 4.1 Acrescentar os recursos `SOLICITACAO_AGENDAMENTO` e `AGENDAMENTO` e as ações `APROVAR`, `REJEITAR`, `SUGERIR`, `ACEITAR` e `RECUSAR` ao `audit/catalog.py` (D9)
+- [x] 4.2 Registrar cada transição e a criação do agendamento nas operações do model
+- [x] 4.3 Testar um registro por transição e nenhum registro nas recusas
+- [x] 4.4 Commit
 
 ## 5. Grade da Agenda
 

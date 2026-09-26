@@ -24,6 +24,8 @@ from django.utils import timezone
 from django.utils.formats import date_format
 
 from accounts import permissions
+from audit import catalog
+from audit.models import AuditLog
 from bookings.occupancy import conflict_message, find_conflict
 from schedule.models import Space
 
@@ -70,6 +72,21 @@ class SlotUnavailable(ValidationError):
         super().__init__(message, code='unavailable')
 
 
+def hours(start, end):
+    return f'{start:%H:%M} às {end:%H:%M}'
+
+
+def record_transition(action, request, previous, **values):
+    """Registra a mudança de estado da solicitação, com o estado anterior e o posterior (D9)."""
+    AuditLog.objects.record(
+        action,
+        catalog.BOOKING_REQUEST,
+        resource_id=request.pk,
+        old_values={'situacao': previous},
+        new_values={'situacao': request.status, **values},
+    )
+
+
 def require(user, code):
     if not user.has_perm(code):
         raise ValidationError(PERMISSION_MESSAGE, code='permission')
@@ -107,6 +124,18 @@ class BookingRequestManager(models.Manager):
         with transaction.atomic():
             check_slot(space, day, start, end)
             request.save()
+            AuditLog.objects.record(
+                catalog.CREATE,
+                catalog.BOOKING_REQUEST,
+                resource_id=request.pk,
+                new_values={
+                    'situacao': request.status,
+                    'espaco': space.name,
+                    'data': day.isoformat(),
+                    'horario': hours(start, end),
+                    'description': request.description,
+                },
+            )
         return request
 
 
@@ -214,6 +243,7 @@ class BookingRequest(models.Model):
             current.decided_by = user
             current.decided_at = timezone.now()
             current.save(update_fields=['status', 'decided_by', 'decided_at'])
+            record_transition(catalog.APPROVE, current, self.Status.PENDING)
             Booking.objects.book(current, space, current.date, current.start_time, current.end_time, user)
         self.refresh_from_db()
 
@@ -227,11 +257,13 @@ class BookingRequest(models.Model):
             current = self.locked()
             if current.status not in self.OPEN:
                 raise InvalidTransition(current.status)
+            previous = current.status
             current.status = self.Status.REJECTED
             current.rejection_reason = reason[:REASON_MAX_LENGTH]
             current.decided_by = user
             current.decided_at = timezone.now()
             current.save(update_fields=['status', 'rejection_reason', 'decided_by', 'decided_at'])
+            record_transition(catalog.REJECT, current, previous, motivo=current.rejection_reason)
         self.refresh_from_db()
 
     def suggest(self, user, space, day, start, end, message=''):
@@ -247,6 +279,7 @@ class BookingRequest(models.Model):
             if (space.pk, day, start, end) == (current.space_id, current.date, current.start_time, current.end_time):
                 raise ValidationError(SAME_SUGGESTION_MESSAGE, code='same')
             check_slot(space, day, start, end, prefix='suggested_')
+            previous = current.status
             current.status = self.Status.SUGGESTED
             current.suggested_space = space
             current.suggested_date = day
@@ -256,6 +289,11 @@ class BookingRequest(models.Model):
             current.decided_by = user
             current.decided_at = timezone.now()
             current.save()
+            record_transition(
+                catalog.SUGGEST, current, previous,
+                espaco_sugerido=space.name, data_sugerida=day.isoformat(), horario_sugerido=hours(start, end),
+                mensagem=current.suggestion_message,
+            )
         self.refresh_from_db()
 
     def check_owner(self, user):
@@ -275,6 +313,7 @@ class BookingRequest(models.Model):
             current.status = self.Status.APPROVED
             current.responded_at = timezone.now()
             current.save(update_fields=['status', 'responded_at'])
+            record_transition(catalog.ACCEPT, current, self.Status.SUGGESTED)
             Booking.objects.book(
                 current, space, current.suggested_date, current.suggested_start_time, current.suggested_end_time,
                 current.decided_by,
@@ -291,6 +330,7 @@ class BookingRequest(models.Model):
             current.status = self.Status.DECLINED
             current.responded_at = timezone.now()
             current.save(update_fields=['status', 'responded_at'])
+            record_transition(catalog.DECLINE, current, self.Status.SUGGESTED)
         self.refresh_from_db()
 
     def schedule_text(self):
@@ -310,7 +350,7 @@ class BookingManager(models.Manager):
         """Cria o agendamento da solicitação aprovada; a restrição do banco é a garantia final."""
         try:
             with transaction.atomic():
-                return self.create(
+                booking = self.create(
                     request=request,
                     space=space,
                     starts_at=moment(day, start),
@@ -321,6 +361,13 @@ class BookingManager(models.Manager):
                 )
         except IntegrityError as error:
             raise SlotUnavailable('Este espaço está ocupado nesse horário. Escolha outro horário.') from error
+        AuditLog.objects.record(
+            catalog.CREATE,
+            catalog.BOOKING,
+            resource_id=booking.pk,
+            new_values={'espaco': space.name, 'data': day.isoformat(), 'horario': hours(start, end), 'solicitacao': request.pk},
+        )
+        return booking
 
 
 class Booking(models.Model):

@@ -25,6 +25,10 @@ SPACE_ALLOCATION_CHANGE_CODE = 'ENSALAMENTO.ALTERAR_RECORRENCIA'
 NEW_CODES = [SPACE_ALLOCATION_VIEW_CODE, IMPORT_DELETE_CODE, SPACE_ALLOCATION_DELETE_CODE]
 SPACE_CODES = {'ESPACO.VISUALIZAR', 'ESPACO.CRIAR', 'ESPACO.EDITAR', 'ESPACO.ALTERAR_SITUACAO', 'ESPACO.EXCLUIR'}
 BOOKING_CODES = {'AGENDA.VISUALIZAR', 'AGENDA.SOLICITAR', 'AGENDA.ANALISAR'}
+ACADEMIC_CODES = {
+    'DISCIPLINA.VISUALIZAR', 'DISCIPLINA.CRIAR', 'DISCIPLINA.EDITAR', 'DISCIPLINA.EXCLUIR',
+    'TURMA.VISUALIZAR', 'TURMA.CRIAR', 'TURMA.EDITAR', 'TURMA.EXCLUIR',
+}
 TEACHER_CODES = {'AGENDA.VISUALIZAR', 'AGENDA.SOLICITAR'}
 ROLE_CODES = {
     'PERFIL.VISUALIZAR',
@@ -60,12 +64,12 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.SPACE_CHANGE_STATUS, 'ESPACO.ALTERAR_SITUACAO')
         self.assertEqual(permissions.SPACE_DELETE, 'ESPACO.EXCLUIR')
 
-    def test_all_permissions_has_the_twenty_seven_codes(self):
+    def test_all_permissions_has_the_thirty_five_codes(self):
         self.assertEqual(
             permissions.ALL_PERMISSIONS,
-            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE} | SPACE_CODES | BOOKING_CODES | ROLE_CODES,
+            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE} | SPACE_CODES | BOOKING_CODES | ACADEMIC_CODES | ROLE_CODES,
         )
-        self.assertEqual(len(permissions.ALL_PERMISSIONS), 27)
+        self.assertEqual(len(permissions.ALL_PERMISSIONS), 35)
 
     def test_codes_follow_the_format(self):
         for code in permissions.ALL_PERMISSIONS:
@@ -98,7 +102,7 @@ class InitialCatalogTests(TestCase):
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))
-        self.assertEqual(Permission.objects.count(), 27)
+        self.assertEqual(Permission.objects.count(), 35)
 
     def test_reserved_permissions_exist_in_database(self):
         codes = set(Permission.objects.values_list('code', flat=True))
@@ -124,7 +128,8 @@ class InitialCatalogTests(TestCase):
             set(permissions.ADMINISTRATIVE_CAPABILITY)
             | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE}
             | SPACE_CODES
-            | BOOKING_CODES,
+            | BOOKING_CODES
+            | ACADEMIC_CODES,
         )
 
     def test_teacher_grants_only_the_booking_request(self):

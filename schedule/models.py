@@ -543,6 +543,59 @@ class Course(NamedRecord):
         constraints = [models.UniqueConstraint(Lower('name'), name='course_name_unique_ci')]
 
 
+class AcademicRecordInUse(ValidationError):
+    """Recusa de renomear ou excluir disciplina ou turma que o ensalamento já usa.
+
+    Com oferta ou aula, a importação identifica o registro pelo nome ou pelo rótulo: renomear
+    faria a próxima importação criar outro registro com o nome da planilha, e excluir é barrado
+    pelo `PROTECT` das alocações e das ofertas (D8 e D9 da Change gerenciar-disciplinas-e-turmas).
+    """
+
+    def __init__(self, description, operation):
+        if operation == 'renomear':
+            message = (
+                f'{description} tem ofertas ou aulas no ensalamento e não pode ser renomeada, '
+                'porque a próxima importação criaria outro cadastro com o nome da planilha.'
+            )
+        else:
+            message = f'{description} tem ofertas ou aulas no ensalamento e não pode ser excluída.'
+        super().__init__(message, code='academic_record_in_use')
+
+
+def teacher_scope(queryset, user):
+    """Registros do escopo do usuário, filtrados no banco (D1 e D2 da Change gerenciar-disciplinas-e-turmas).
+
+    O superadmin alcança todos. Os demais alcançam as disciplinas ou turmas das ofertas em que
+    o docente correspondente ao usuário (`teacher_of`) tem vínculo, atual ou histórico. Sem
+    docente correspondente, o escopo é vazio. Não há vínculo gravado entre usuário e registro.
+    """
+    if user.is_active and user.is_superadmin:
+        return queryset
+    teacher = teacher_of(user)
+    if teacher is None:
+        return queryset.none()
+    return queryset.filter(offerings__assignments__teacher=teacher).distinct()
+
+
+class SubjectQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        return teacher_scope(self, user)
+
+    def search(self, term=''):
+        return self.filter(name__icontains=term) if term else self
+
+
+class SubjectManager(NamedManager.from_queryset(SubjectQuerySet)):
+    def register(self, name):
+        """Cadastra a disciplina pela tela de Disciplinas, com o registro de auditoria."""
+        with transaction.atomic():
+            subject = self.model(name=name)
+            subject.full_clean()
+            subject.save()
+            AuditLog.objects.record(catalog.CREATE, catalog.SUBJECT, resource_id=subject.pk, new_values=subject.snapshot())
+            return subject
+
+
 class Subject(NamedRecord):
     """Disciplina, única pelo nome em todo o sistema.
 
@@ -550,13 +603,80 @@ class Subject(NamedRecord):
     diferentes, na mesma sala e no mesmo horário (D12).
     """
 
+    objects = SubjectManager()
+
     class Meta(NamedRecord.Meta):
         verbose_name = 'disciplina'
         verbose_name_plural = 'disciplinas'
         constraints = [models.UniqueConstraint(Lower('name'), name='subject_name_unique_ci')]
 
+    @property
+    def description(self):
+        return f'A disciplina {self.name}'
 
-class ClassGroupManager(models.Manager):
+    @property
+    def is_in_use(self):
+        """Diz se o ensalamento usa a disciplina, por oferta ou por aula."""
+        return self.offerings.exists() or self.allocations.exists()
+
+    def snapshot(self):
+        return {'name': self.name}
+
+    def lock(self):
+        return type(self).objects.select_for_update().get(pk=self.pk)
+
+    def update_details(self, name):
+        """Altera o nome, recusado quando a disciplina tem uso no ensalamento; sem efeito quando igual."""
+        with transaction.atomic():
+            subject = self.lock()
+            previous = subject.snapshot()
+            subject.name = name
+            subject.full_clean()
+            if subject.name == previous['name']:
+                return
+            if subject.is_in_use:
+                raise AcademicRecordInUse(f'A disciplina {previous["name"]}', 'renomear')
+            subject.save(update_fields=['name'])
+            AuditLog.objects.record_changes(catalog.SUBJECT, subject.pk, previous, subject.snapshot())
+        self.refresh_from_db()
+
+    def delete_subject(self):
+        """Exclui a disciplina sem oferta e sem aula, com o registro de auditoria."""
+        with transaction.atomic():
+            subject = self.lock()
+            if subject.is_in_use:
+                raise AcademicRecordInUse(subject.description, 'excluir')
+            AuditLog.objects.record(catalog.DELETE, catalog.SUBJECT, resource_id=subject.pk, old_values=subject.snapshot())
+            try:
+                subject.delete()
+            except models.ProtectedError as error:
+                raise AcademicRecordInUse(subject.description, 'excluir') from error
+
+
+class ClassGroupQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        return teacher_scope(self, user)
+
+    def search(self, term='', course=None):
+        """Busca pelo rótulo ou pelo nome do curso e filtra pelo curso informado."""
+        queryset = self
+        if term:
+            queryset = queryset.filter(models.Q(label__icontains=term) | models.Q(course__name__icontains=term))
+        if course is not None:
+            queryset = queryset.filter(course=course)
+        return queryset
+
+
+class ClassGroupManager(models.Manager.from_queryset(ClassGroupQuerySet)):
+    def register(self, course, label):
+        """Cadastra a turma do curso pela tela de Turmas, com o registro de auditoria."""
+        with transaction.atomic():
+            group = self.model(course=course, label=label)
+            group.full_clean()
+            group.save()
+            AuditLog.objects.record(catalog.CREATE, catalog.CLASS_GROUP, resource_id=group.pk, new_values=group.snapshot())
+            return group
+
     def resolve(self, course, label):
         """Devolve a turma deste curso e rótulo, criando-a quando não existir."""
         normalized = normalize_name(label)
@@ -611,6 +731,56 @@ class ClassGroup(models.Model):
             raise ValidationError(
                 {'label': ValidationError('Já existe uma turma com este rótulo neste curso.', code='label_taken')},
             )
+
+    @property
+    def description(self):
+        return f'A turma {self.label} de {self.course.name}'
+
+    @property
+    def is_in_use(self):
+        """Diz se o ensalamento usa a turma, por oferta ou por aula."""
+        return self.offerings.exists() or self.allocations.exists()
+
+    def snapshot(self):
+        return {'curso': self.course.name, 'rotulo': self.label}
+
+    def lock(self):
+        return type(self).objects.select_for_update().select_related('course').get(pk=self.pk)
+
+    def update_details(self, label, course=None):
+        """Altera o rótulo; o curso é imutável e a turma com uso no ensalamento não é renomeada.
+
+        O curso chega do formulário mesmo sem poder mudar, para que um valor forjado seja
+        recusado com mensagem, e não ignorado.
+        """
+        with transaction.atomic():
+            group = self.lock()
+            if course is not None and course.pk != group.course_id:
+                raise ValidationError(
+                    {'course': ValidationError('O curso da turma não pode ser alterado.', code='course_immutable')},
+                )
+            previous = group.snapshot()
+            group.label = label
+            group.full_clean()
+            if group.label == previous['rotulo']:
+                return
+            if group.is_in_use:
+                raise AcademicRecordInUse(f'A turma {previous["rotulo"]} de {group.course.name}', 'renomear')
+            group.save(update_fields=['label'])
+            AuditLog.objects.record_changes(catalog.CLASS_GROUP, group.pk, previous, group.snapshot())
+        self.refresh_from_db()
+
+    def delete_class_group(self):
+        """Exclui a turma sem oferta e sem aula, com o registro de auditoria."""
+        with transaction.atomic():
+            group = self.lock()
+            if group.is_in_use:
+                raise AcademicRecordInUse(group.description, 'excluir')
+            AuditLog.objects.record(catalog.DELETE, catalog.CLASS_GROUP, resource_id=group.pk, old_values=group.snapshot())
+            try:
+                group.delete()
+            except models.ProtectedError as error:
+                raise AcademicRecordInUse(group.description, 'excluir') from error
 
 
 class TimeSlotManager(models.Manager):

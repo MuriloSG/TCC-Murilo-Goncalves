@@ -69,7 +69,11 @@ class OperationFormView(ModalView, FormView):
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
         if 'pk' in kwargs:
-            self.target = get_object_or_404(self.model, pk=kwargs['pk'])
+            self.target = get_object_or_404(self.get_target_queryset(), pk=kwargs['pk'])
+
+    def get_target_queryset(self):
+        """Registros entre os quais o alvo da rota é procurado; fora deles, a resposta é 404."""
+        return self.model._default_manager.all()
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
@@ -97,7 +101,11 @@ class ConfirmedActionView(ModalView, TemplateView):
 
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
-        self.target = get_object_or_404(self.model, pk=kwargs['pk'])
+        self.target = get_object_or_404(self.get_target_queryset(), pk=kwargs['pk'])
+
+    def get_target_queryset(self):
+        """Registros entre os quais o alvo da rota é procurado; fora deles, a resposta é 404."""
+        return self.model._default_manager.all()
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(target=self.target, **kwargs)

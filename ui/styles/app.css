@@ -2537,6 +2537,74 @@
     gap: var(--spacing-3);
   }
 
+  .detail-card {
+    overflow: hidden;
+    padding: 0;
+    interpolate-size: allow-keywords;
+
+    &::details-content {
+      block-size: 0;
+      overflow-y: clip;
+      transition: block-size var(--motion-base) ease, content-visibility var(--motion-base) allow-discrete;
+    }
+
+    &[open]::details-content {
+      block-size: auto;
+    }
+
+    & > summary {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-4);
+      cursor: pointer;
+      list-style: none;
+      transition: background-color var(--motion-fast) ease;
+
+      @variant sm {
+        padding-inline: var(--spacing-6);
+      }
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      &:hover {
+        background: var(--color-hover);
+      }
+
+      &:focus-visible {
+        outline-offset: -2px;
+      }
+
+      & > svg {
+        width: var(--spacing-5);
+        height: var(--spacing-5);
+        flex: none;
+        color: var(--color-text-muted);
+        transition: rotate var(--motion-base) ease;
+      }
+    }
+
+    &[open] > summary > svg {
+      rotate: 180deg;
+    }
+  }
+
+  .detail-card-heading {
+    display: grid;
+    flex: 1;
+    gap: var(--spacing-1);
+    min-width: 0;
+  }
+
+  .detail-card-summary {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    overflow-wrap: anywhere;
+  }
+
   .perm-group {
     overflow: hidden;
     border: 1px solid var(--color-divider);

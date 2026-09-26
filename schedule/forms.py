@@ -3,7 +3,7 @@ from datetime import time
 from django import forms
 from django.db.models import Q
 
-from schedule.models import Space, SpaceOrigin, Teacher, Weekday, interval_choices
+from schedule.models import Course, Space, SpaceOrigin, Teacher, Weekday, interval_choices
 from schedule.timetable import natural_key
 
 
@@ -59,6 +59,78 @@ class SpaceFilterForm(forms.Form):
         self.is_valid()
         data = self.cleaned_data
         return data.get('busca', ''), data.get('situacao') or 'todos', data.get('origem') or 'todas'
+
+
+class SubjectFilterForm(forms.Form):
+    """Busca da lista de disciplinas, recebida pela URL."""
+
+    busca = forms.CharField(
+        label='Buscar pelo nome',
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'search', 'class': 'input', 'placeholder': 'Buscar disciplina'}),
+    )
+
+    def criteria(self):
+        self.is_valid()
+        return self.cleaned_data.get('busca', '')
+
+
+class SubjectForm(forms.Form):
+    """Nome da disciplina, no cadastro e na edição pela tela de Disciplinas."""
+
+    name = forms.CharField(label='Nome', max_length=200, widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+
+    def __init__(self, *args, target=None, **kwargs):
+        if target is not None:
+            kwargs['initial'] = {'name': target.name} | (kwargs.get('initial') or {})
+        super().__init__(*args, **kwargs)
+
+
+class ClassGroupFilterForm(forms.Form):
+    """Busca e filtro de curso da lista de turmas, recebidos pela URL.
+
+    Um curso inválido é descartado sem mensagem, e a lista trata o campo como todos.
+    """
+
+    busca = forms.CharField(
+        label='Buscar pelo rótulo ou pelo curso',
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'search', 'class': 'input', 'placeholder': 'Buscar turma'}),
+    )
+    curso = forms.ModelChoiceField(
+        label='Curso',
+        queryset=Course.objects.all(),
+        required=False,
+        empty_label='Todos os cursos',
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+
+    def criteria(self):
+        self.is_valid()
+        data = self.cleaned_data
+        return data.get('busca', ''), data.get('curso')
+
+
+class ClassGroupForm(forms.Form):
+    """Curso e rótulo da turma, no cadastro e na edição pela tela de Turmas.
+
+    Na edição o curso é `readonly`, e não `disabled`, para que um curso forjado chegue ao
+    model e seja recusado com mensagem.
+    """
+
+    course = forms.ModelChoiceField(
+        label='Curso', queryset=Course.objects.all(), empty_label='Selecione o curso', widget=forms.Select(attrs={'class': 'input'}),
+    )
+    label = forms.CharField(label='Rótulo', max_length=200, widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+
+    def __init__(self, *args, target=None, **kwargs):
+        if target is not None:
+            kwargs['initial'] = {'course': target.course_id, 'label': target.label} | (kwargs.get('initial') or {})
+        super().__init__(*args, **kwargs)
+        if target is not None:
+            self.fields['course'].widget.attrs['readonly'] = True
 
 
 class SpaceForm(forms.Form):

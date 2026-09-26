@@ -321,7 +321,9 @@ class ContinuityGuardTests(ContinuityTestCase):
                 permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE,
             }
             | permissions.SPACE_PERMISSIONS
-            | permissions.BOOKING_PERMISSIONS,
+            | permissions.BOOKING_PERMISSIONS
+            | permissions.SUBJECT_PERMISSIONS
+            | permissions.CLASS_GROUP_PERMISSIONS,
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 

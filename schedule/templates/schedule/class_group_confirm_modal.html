@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Excluir {{ target.label }}?{% endblock %}
+
+{% block consequence %}A turma {{ target.label }} de {{ target.course.name }} deixa de existir. A exclusão não pode ser desfeita.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "trash-2" %}Excluir turma</button>{% endblock %}

@@ -1,0 +1,39 @@
+{% load ui %}<table class="data-table compact-rows">
+  <thead>
+    <tr>
+      <th scope="col">Disciplina</th>
+      <th scope="col">Ofertas</th>
+      <th scope="col">Aulas</th>
+      <th scope="col" class="cell-actions">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in subjects %}
+      <tr>
+        <td class="cell-primary" data-label="Disciplina"><a class="link person-name" href="{% url 'subjects_detail' item.pk %}">{{ item.name }}</a></td>
+        <td class="cell-meta" data-label="Ofertas">{{ item.offering_count }}</td>
+        <td class="cell-meta" data-label="Aulas">{{ item.lesson_count }}</td>
+        <td class="cell-actions" data-label="Ações">
+          {% row_action "subjects_update" item.pk "Editar" "pencil" when=perms.DISCIPLINA.EDITAR as edit %}
+          {% row_action "subjects_delete" item.pk "Excluir disciplina" "trash-2" when=item.deletable danger=True as delete %}
+          {% action_list edit as visible %}
+          {% action_list delete item.history_action as more %}
+          {% action_list edit delete item.history_action as compact %}
+          {% include "ui/components/row_actions.html" %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td class="cell-primary" colspan="4">
+          {% if filtered %}
+            <p>Nenhuma disciplina encontrada.</p>
+            <p><a class="link" href="{% url 'subjects_list' %}">Limpar busca</a></p>
+          {% else %}
+            Nenhuma disciplina cadastrada.
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include "ui/components/pagination.html" with noun="disciplina" noun_plural="disciplinas" hx_target=table_target %}

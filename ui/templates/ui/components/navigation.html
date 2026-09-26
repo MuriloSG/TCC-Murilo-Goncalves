@@ -5,6 +5,8 @@
     {% if perms.ENSALAMENTO.VISUALIZAR %}{% nav_link "space_allocation_grid" "Ensalamento" "calendar-check" prefix="space_allocation_" %}{% elif perms.ENSALAMENTO.IMPORTAR %}{% nav_link "space_allocation_import_list" "Ensalamento" "calendar-check" prefix="space_allocation_" %}{% endif %}
     {% if perms.AGENDA.VISUALIZAR %}{% nav_link "agenda_grid" "Agenda" "calendar-clock" prefix="agenda_" %}{% endif %}
     {% if perms.ESPACO.VISUALIZAR %}{% nav_link "spaces_list" "Espaços" "door-open" prefix="spaces_" %}{% endif %}
+    {% if perms.DISCIPLINA.VISUALIZAR %}{% nav_link "subjects_list" "Disciplinas" "graduation-cap" prefix="subjects_" %}{% endif %}
+    {% if perms.TURMA.VISUALIZAR %}{% nav_link "class_groups_list" "Turmas" "school" prefix="class_groups_" %}{% endif %}
     {% if perms.USUARIO.VISUALIZAR %}{% nav_link "user_list" "Usuários" "users" prefix="user_" %}{% endif %}
     {% if perms.PERFIL.VISUALIZAR %}{% nav_link "role_list" "Perfis" "shield-check" prefix="role_" %}{% endif %}
     {% if perms.NOTIFICACAO.PUBLICAR %}{% nav_link "notice_list" "Notificações" "bell" prefix="notice_" %}{% endif %}

@@ -20,7 +20,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.http import Http404, HttpResponseRedirect
-from django.shortcuts import get_list_or_404
+from django.shortcuts import get_list_or_404, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import date_format
@@ -43,8 +43,29 @@ from imports.views import (
     load_importation,
 )
 from imports.models import Import
-from schedule.forms import GridFilterForm, RecurrenceChangeForm, SpaceAssociateForm, SpaceFilterForm, SpaceForm
-from schedule.models import SPACE_PERMISSION_MESSAGE, Allocation, AllocationException, Space, SpaceDecision, Weekday, manages
+from schedule.forms import (
+    ClassGroupFilterForm,
+    ClassGroupForm,
+    GridFilterForm,
+    RecurrenceChangeForm,
+    SpaceAssociateForm,
+    SpaceFilterForm,
+    SpaceForm,
+    SubjectFilterForm,
+    SubjectForm,
+)
+from schedule.models import (
+    SPACE_PERMISSION_MESSAGE,
+    Allocation,
+    AllocationException,
+    ClassGroup,
+    ClassOffering,
+    Space,
+    SpaceDecision,
+    Subject,
+    Weekday,
+    manages,
+)
 from schedule.spaces import CREATE, INACTIVE, REACTIVATE, SIMILAR, classify_import, decision_permissions, options_of
 from schedule.imports import SpaceAllocationImport, concluded_message
 from ui.pagination import paginate
@@ -592,6 +613,245 @@ class SpaceDeleteView(SpaceActionView):
     def perform(self):
         self.target.delete_space()
         messages.success(self.request, f'Espaço {self.target.name} excluído.')
+
+
+def audit_history_action(resource, pk):
+    """Ação da linha que abre a consulta da auditoria filtrada pelo registro."""
+    query = urlencode({'recurso': resource, 'registro': pk})
+    return {'url': f"{reverse('audit_log_list')}?{query}", 'label': 'Ver auditoria', 'icon': 'scroll-text', 'danger': False, 'page': True}
+
+
+class AcademicListView(ListView):
+    """Lista de disciplinas ou de turmas do escopo do usuário, com busca pela URL.
+
+    O escopo é aplicado na consulta (`visible_to`), e o superadmin alcança todos os registros
+    (D1, D2 e D5 da Change gerenciar-disciplinas-e-turmas). Quando o formulário de filtros pede
+    pelo htmx, responde só com a tabela e o rodapé.
+    """
+
+    model = None
+    filter_form_class = None
+    table_template_name = ''
+    table_target = ''
+    delete_permission = ''
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.filters = self.filter_form_class(request.GET)
+        self.criteria = self.filters.criteria()
+
+    def scope(self):
+        return self.model.objects.visible_to(self.request.user)
+
+    def get_queryset(self):
+        return self.filtered(self.scope()).annotate(
+            offering_count=Count('offerings', distinct=True), lesson_count=Count('allocations', distinct=True),
+        )
+
+    def get_template_names(self):
+        if self.request.htmx and self.request.htmx.target == self.table_target:
+            return [self.table_template_name]
+        return super().get_template_names()
+
+    def is_filtered(self):
+        return bool(self.criteria)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(
+            filters=self.filters, filtered=self.is_filtered(), total=self.scope().count(), table_target=self.table_target, **kwargs,
+        )
+        context['page'] = paginate(self.request, self.object_list)
+        context[self.context_object_name] = context['page'].object_list
+        user = self.request.user
+        for item in context['page'].object_list:
+            item.deletable = not item.offering_count and not item.lesson_count and user.has_perm(self.delete_permission)
+            item.history_action = audit_history_action(self.audit_resource, item.pk) if user.has_perm(permissions.AUDIT_VIEW) else None
+        return context
+
+
+class SubjectListView(AcademicListView):
+    permission_required = permissions.SUBJECT_VIEW
+    audit_resource = catalog.SUBJECT
+    model = Subject
+    filter_form_class = SubjectFilterForm
+    template_name = 'schedule/subject_list.html'
+    table_template_name = 'schedule/partials/subject_table.html'
+    table_target = 'tabela-disciplinas'
+    context_object_name = 'subjects'
+    delete_permission = permissions.SUBJECT_DELETE
+
+    def filtered(self, queryset):
+        return queryset.search(self.criteria).order_by('name')
+
+
+class ClassGroupListView(AcademicListView):
+    permission_required = permissions.CLASS_GROUP_VIEW
+    audit_resource = catalog.CLASS_GROUP
+    model = ClassGroup
+    filter_form_class = ClassGroupFilterForm
+    template_name = 'schedule/class_group_list.html'
+    table_template_name = 'schedule/partials/class_group_table.html'
+    table_target = 'tabela-turmas'
+    context_object_name = 'class_groups'
+    delete_permission = permissions.CLASS_GROUP_DELETE
+
+    def filtered(self, queryset):
+        term, course = self.criteria
+        return queryset.search(term, course).select_related('course').order_by('course__name', 'label')
+
+    def is_filtered(self):
+        term, course = self.criteria
+        return bool(term) or course is not None
+
+
+class AcademicDetailView(TemplateView):
+    """Detalhe de disciplina ou turma do escopo do usuário, com as ofertas por semestre.
+
+    O alvo é procurado só no escopo, e fora dele a resposta é 404 (D4 e D6).
+    """
+
+    model = None
+    offering_field = ''
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = get_object_or_404(self.model.objects.visible_to(request.user), pk=kwargs['pk'])
+
+    def get_context_data(self, **kwargs):
+        offerings = (
+            ClassOffering.objects.filter(**{self.offering_field: self.target})
+            .select_related('semester', 'subject', 'class_group__course')
+            .prefetch_related('assignments__teacher')
+            .order_by('-semester__code', 'subject__name', 'class_group__course__name', 'class_group__label')
+        )
+        user = self.request.user
+        history = audit_history_action(self.audit_resource, self.target.pk) if user.has_perm(permissions.AUDIT_VIEW) else None
+        return super().get_context_data(
+            target=self.target, offerings=offerings, lessons=self.target.allocations.count(),
+            in_use=self.target.is_in_use, history=history, **kwargs,
+        )
+
+
+class SubjectDetailView(AcademicDetailView):
+    permission_required = permissions.SUBJECT_VIEW
+    audit_resource = catalog.SUBJECT
+    model = Subject
+    offering_field = 'subject'
+    template_name = 'schedule/subject_detail.html'
+
+
+class ClassGroupDetailView(AcademicDetailView):
+    permission_required = permissions.CLASS_GROUP_VIEW
+    audit_resource = catalog.CLASS_GROUP
+    model = ClassGroup
+    offering_field = 'class_group'
+    template_name = 'schedule/class_group_detail.html'
+
+
+class SubjectFormView(OperationFormView):
+    audit_resource = catalog.SUBJECT
+    template_name = 'schedule/subject_form.html'
+    modal_template_name = 'schedule/subject_form_modal.html'
+    success_url = reverse_lazy('subjects_list')
+    form_class = SubjectForm
+
+
+class SubjectCreateView(SubjectFormView):
+    permission_required = permissions.SUBJECT_CREATE
+    title = 'Cadastrar disciplina'
+    submit_label = 'Cadastrar'
+
+    def perform(self, data):
+        subject = Subject.objects.register(data['name'])
+        messages.success(self.request, f'Disciplina {subject.name} cadastrada.')
+
+
+class SubjectUpdateView(SubjectFormView):
+    permission_required = permissions.SUBJECT_EDIT
+    model = Subject
+    title = 'Editar disciplina'
+
+    def get_target_queryset(self):
+        return Subject.objects.visible_to(self.request.user)
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(in_use=self.target.is_in_use, **kwargs)
+
+    def perform(self, data):
+        self.target.update_details(data['name'])
+        messages.success(self.request, f'Disciplina {self.target.name} atualizada.')
+
+
+class SubjectDeleteView(ConfirmedActionView):
+    permission_required = permissions.SUBJECT_DELETE
+    audit_resource = catalog.SUBJECT
+    model = Subject
+    template_name = 'schedule/subject_confirm.html'
+    modal_template_name = 'schedule/subject_confirm_modal.html'
+    success_url = reverse_lazy('subjects_list')
+
+    def get_target_queryset(self):
+        return Subject.objects.visible_to(self.request.user)
+
+    def perform(self):
+        self.target.delete_subject()
+        messages.success(self.request, f'Disciplina {self.target.name} excluída.')
+
+
+class ClassGroupFormView(OperationFormView):
+    audit_resource = catalog.CLASS_GROUP
+    template_name = 'schedule/class_group_form.html'
+    modal_template_name = 'schedule/class_group_form_modal.html'
+    success_url = reverse_lazy('class_groups_list')
+    form_class = ClassGroupForm
+
+
+class ClassGroupCreateView(ClassGroupFormView):
+    permission_required = permissions.CLASS_GROUP_CREATE
+    title = 'Cadastrar turma'
+    submit_label = 'Cadastrar'
+
+    def perform(self, data):
+        group = ClassGroup.objects.register(data['course'], data['label'])
+        messages.success(self.request, f'Turma {group.label} de {group.course.name} cadastrada.')
+
+
+class ClassGroupUpdateView(ClassGroupFormView):
+    permission_required = permissions.CLASS_GROUP_EDIT
+    model = ClassGroup
+    title = 'Editar turma'
+
+    def get_target_queryset(self):
+        return ClassGroup.objects.visible_to(self.request.user).select_related('course')
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(in_use=self.target.is_in_use, **kwargs)
+
+    def perform(self, data):
+        self.target.update_details(data['label'], course=data['course'])
+        messages.success(self.request, f'Turma {self.target.label} de {self.target.course.name} atualizada.')
+
+
+class ClassGroupDeleteView(ConfirmedActionView):
+    permission_required = permissions.CLASS_GROUP_DELETE
+    audit_resource = catalog.CLASS_GROUP
+    model = ClassGroup
+    template_name = 'schedule/class_group_confirm.html'
+    modal_template_name = 'schedule/class_group_confirm_modal.html'
+    success_url = reverse_lazy('class_groups_list')
+
+    def get_target_queryset(self):
+        return ClassGroup.objects.visible_to(self.request.user).select_related('course')
+
+    def perform(self):
+        self.target.delete_class_group()
+        messages.success(self.request, f'Turma {self.target.label} de {self.target.course.name} excluída.')
 
 
 PERMISSION_MESSAGE = SPACE_PERMISSION_MESSAGE

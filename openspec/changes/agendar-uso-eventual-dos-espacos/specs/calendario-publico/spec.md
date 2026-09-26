@@ -43,7 +43,7 @@ Cada aula do calendário público DEVE (MUST) mostrar só a data e o horário (p
 - **THEN** o HTML não contém "Sala Dez", a origem, a importação, a auditoria, "Choque" nem o ID da sala, do docente, do curso, da turma ou da alocação
 
 ### Requirement: Montagem do calendário público
-O calendário DEVE (MUST) ser montado com a estrutura da Grade: nas linhas, as faixas do semestre da primeira à última aula mostrada no intervalo, com as vazias do meio, ou todas as faixas do semestre quando o intervalo não tem aula, dias nas colunas, faixas seguidas com as mesmas aulas unidas num bloco e "Hoje" marcado. As aulas da mesma faixa e do mesmo dia DEVEM (MUST) ficar na mesma célula, ordenadas pela sala, pelo curso e pela turma, cada uma com a sua sala. "N turmas juntas" DEVE (MUST) ser indicado só quando as aulas têm a mesma sala, a mesma disciplina e os mesmos docentes. A marca "Choque" NÃO DEVE (MUST NOT) aparecer. Quando o único filtro principal é a sala, os agendamentos aprovados da sala DEVEM (MUST) entrar em todas as faixas que cruzam, contando para as linhas mostradas, e o que não cruza nenhuma faixa DEVE (MUST) ganhar uma linha própria; nas consultas por docente ou por curso, eles NÃO DEVEM (MUST NOT) aparecer. A faixa sem aula DEVE (MUST) ser anunciada à tecnologia assistiva como "disponível" só quando o único filtro principal é a sala; nos demais casos, como "sem aula".
+O calendário DEVE (MUST) ser montado com a estrutura da Grade: nas linhas, sempre todas as faixas do semestre, com ou sem aula no resultado, como na Grade autenticada, dias nas colunas, faixas seguidas com as mesmas aulas unidas num bloco e "Hoje" marcado. As aulas da mesma faixa e do mesmo dia DEVEM (MUST) ficar na mesma célula, ordenadas pela sala, pelo curso e pela turma, cada uma com a sua sala. "N turmas juntas" DEVE (MUST) ser indicado só quando as aulas têm a mesma sala, a mesma disciplina e os mesmos docentes. A marca "Choque" NÃO DEVE (MUST NOT) aparecer. Quando o único filtro principal é a sala, os agendamentos aprovados da sala DEVEM (MUST) entrar em todas as faixas que cruzam, contando para as linhas mostradas, e o que não cruza nenhuma faixa DEVE (MUST) ganhar uma linha própria; nas consultas por docente ou por curso, eles NÃO DEVEM (MUST NOT) aparecer. A faixa sem aula DEVE (MUST) ser anunciada à tecnologia assistiva como "disponível" só quando o único filtro principal é a sala; nos demais casos, como "sem aula".
 
 #### Scenario: Turmas em salas diferentes no mesmo horário
 - **GIVEN** a turma A na sala 1 e a turma B na sala 2 do curso Informática, com disciplinas diferentes, na mesma faixa
@@ -55,10 +55,10 @@ O calendário DEVE (MUST) ser montado com a estrutura da Grade: nas linhas, as f
 - **WHEN** o calendário do curso é aberto
 - **THEN** a célula mostra "2 turmas juntas"
 
-#### Scenario: Linhas só até a última aula do resultado
+#### Scenario: Grade completa mesmo sem aula na faixa
 - **GIVEN** o curso Informática com aulas até 17:00 e outros cursos com aulas até 22:40
 - **WHEN** o calendário do curso Informática é aberto
-- **THEN** a última linha da Grade é a faixa que termina às 17:00
+- **THEN** a Grade mostra todas as faixas do semestre, até a que termina às 22:40, com as células sem aula vazias
 
 #### Scenario: Faixa vazia na consulta por docente
 - **WHEN** o calendário do docente Aldo Gomes é aberto e uma faixa de segunda-feira não tem aula dele

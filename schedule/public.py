@@ -266,19 +266,13 @@ def publish(week):
 
 
 def result_slots(semester, placed, every_slot=None):
-    """Faixas do semestre da primeira à última aula mostrada no intervalo, com as vazias do meio.
+    """Todas as faixas do semestre, com ou sem aula no resultado.
 
-    A Grade autenticada mostra todas as faixas do semestre para comparar salas; na consulta
-    pública, um curso só de manhã e tarde não deve ganhar as linhas da noite. Sem aula no
-    intervalo, são todas as faixas do semestre, e a Grade aparece com as células vazias,
-    que indicam os horários disponíveis.
+    A Grade aparece sempre completa, como na área autenticada, mesmo quando a consulta não
+    tem aula no intervalo; as células vazias indicam os horários sem aula. `placed` fica na
+    assinatura para as chamadas existentes e não recorta as linhas.
     """
-    every_slot = semester_slots(semester) if every_slot is None else every_slot
-    if not placed:
-        return every_slot
-    first = min(start for start, _ in placed)
-    last = max(end for _, end in placed)
-    return [slot for slot in every_slot if slot[0] >= first and slot[1] <= last]
+    return semester_slots(semester) if every_slot is None else every_slot
 
 
 def typical_week(semester, allocations, today):

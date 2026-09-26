@@ -337,14 +337,15 @@ class GridTests(PublicCalendarTestCase):
         self.assertIn(', sem aula</span>', html)
         self.assertNotIn(', disponível</span>', html)
 
-    def test_rows_go_from_the_first_to_the_last_lesson_of_the_result(self):
+    def test_grid_always_has_every_slot_of_the_semester(self):
         physics = ClassGroup.objects.get(label='4º PERÍODO')
         allocate(self.semester, physics, 'Física Noturna', Weekday.MONDAY, time(19, 0), time(19, 50), space='20', teachers=['Adailton'])
         allocate(self.semester, physics, 'Física da Tarde', Weekday.TUESDAY, time(13, 0), time(13, 50), space='20', teachers=['Adailton'])
-        rows = [(row.start, row.end) for row in self.calendar(curso='INFORMÁTICA').week.rows]
-        self.assertEqual(rows, [(time(7, 0), time(7, 50)), (time(7, 50), time(8, 40))])
-        rows = [row.start for row in self.calendar(curso='LICENCIATURA EM FÍSICA').week.rows]
-        self.assertEqual(rows, [time(7, 0), time(7, 50), time(13, 0), time(19, 0)])
+        every = [row.start for row in self.calendar(sala='20').week.rows]
+        self.assertIn(time(19, 0), every)
+        for course in ('INFORMÁTICA', 'LICENCIATURA EM FÍSICA'):
+            with self.subTest(course=course):
+                self.assertEqual([row.start for row in self.calendar(curso=course).week.rows], every)
 
     def test_today_is_marked(self):
         self.assertContains(self.get(sala='10'), 'id="hoje"')

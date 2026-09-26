@@ -137,6 +137,51 @@ class BookingSource:
         return result
 
 
+    def public_occurrences(self, start_date, end_date, space=None, teacher_name=None):
+        """Agendamentos aprovados do intervalo para o calendário público, numa consulta.
+
+        Filtra pela sala, por quem solicitou ou pelos dois. Quem solicitou corresponde ao
+        docente quando o `username` do usuário é igual ao nome do docente, sem diferenciar a
+        caixa, a mesma regra do e-mail do docente no calendário público. Devolve só a data,
+        o horário, a sala, o nome e o e-mail de quem solicitou, sem a descrição.
+        """
+        Booking = apps.get_model('bookings', 'Booking')
+        first = timezone.make_aware(datetime.combine(start_date, time.min))
+        last = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min))
+        bookings = Booking.objects.filter(starts_at__lt=last, ends_at__gt=first)
+        if space is not None:
+            bookings = bookings.filter(space=space)
+        if teacher_name is not None:
+            bookings = bookings.filter(requested_by__username__iexact=teacher_name)
+        bookings = bookings.select_related('space', 'requested_by').only(
+            'starts_at', 'ends_at', 'space__name', 'requested_by__name', 'requested_by__email',
+        )
+        result = []
+        for booking in bookings:
+            starts_at, ends_at = timezone.localtime(booking.starts_at), timezone.localtime(booking.ends_at)
+            result.append(PublicOccurrence(
+                date=starts_at.date(),
+                start=starts_at.time(),
+                end=ends_at.time(),
+                space=booking.space.name,
+                requester=booking.requested_by.name,
+                email=booking.requested_by.email,
+            ))
+        return result
+
+
+@dataclass(frozen=True)
+class PublicOccurrence:
+    """Agendamento aprovado como o calendário público recebe: sem descrição e sem IDs."""
+
+    date: object
+    start: time
+    end: time
+    space: str
+    requester: str
+    email: str
+
+
 def agenda_sources():
     """Fontes da Grade da Agenda: o ensalamento e os agendamentos aprovados, as mesmas da
     Grade do Ensalamento."""

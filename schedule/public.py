@@ -3,7 +3,8 @@
 Tudo o que a página pública expõe sai deste módulo. Ele lê as alocações do ensalamento
 acadêmico e nunca chama `occupancy()` nem `grid_sources()`: além das aulas, só entram as
 fontes registradas como públicas, hoje os agendamentos aprovados da Agenda, e só na consulta
-por sala, com o horário e a descrição (Change agendar-uso-eventual-dos-espacos). Os
+por sala ou por docente, com o horário, a sala, o nome e o e-mail de quem solicitou, sem a
+descrição (Change agendar-uso-eventual-dos-espacos). Os
 templates recebem só `PublicEntry`, `PublicBooking` e a estrutura da Grade, sem referência a
 model e sem IDs (D5).
 
@@ -87,24 +88,29 @@ class PublicEntry:
 
 @dataclass(frozen=True)
 class PublicBooking:
-    """Agendamento aprovado no calendário público: só o horário e a descrição.
+    """Agendamento aprovado no calendário público: horário, sala, nome e e-mail de quem solicitou.
 
-    O nome de quem solicitou e qualquer outro dado da solicitação ficam fora da página. Os
-    campos `space`, `group_label`, `subject` e `teachers` existem só para a ordenação da
-    célula.
+    A descrição fica fora da página. Os campos `group_label`, `subject` e `teachers` existem
+    só para a ordenação da célula.
     """
 
-    description: str
     start: object
     end: object
-    space: str = ''
+    space: str
+    requester: str
+    email: str
     group_label: str = ''
+    subject: str = ''
     teachers: tuple = ()
     is_booking = True
 
     @property
-    def subject(self):
-        return self.description
+    def mailbox(self):
+        return self.email.partition('@')[0]
+
+    @property
+    def domain(self):
+        return self.email.partition('@')[2]
 
 
 @dataclass(frozen=True)
@@ -288,17 +294,20 @@ def sorted_entries(by_day_slot):
     return {key: sorted(entries, key=entry_order) for key, entries in by_day_slot.items()}
 
 
-def public_bookings(space, dates):
-    """Agendamentos aprovados da sala nas datas, das fontes públicas, só com horário e descrição."""
-    if space is None or not dates:
+def public_bookings(dates, space=None, teacher=None):
+    """Agendamentos aprovados das datas, das fontes públicas, pela sala, pelo docente ou pelos dois."""
+    if not dates or (space is None and teacher is None):
         return []
     return [
         SimpleNamespace(
             date=occurrence.date, start=occurrence.start, end=occurrence.end,
-            entry=PublicBooking(description=occurrence.entry.description, start=occurrence.start, end=occurrence.end),
+            entry=PublicBooking(
+                start=occurrence.start, end=occurrence.end, space=occurrence.space,
+                requester=occurrence.requester, email=occurrence.email,
+            ),
         )
         for source in public_sources()
-        for occurrence in source.occurrences(space, dates[0], dates[-1])
+        for occurrence in source.public_occurrences(dates[0], dates[-1], space, teacher.name if teacher else None)
     ]
 
 
@@ -452,8 +461,8 @@ def public_calendar(params, today):
     )
     if semester.has_period:
         dates = weekdays_between(calendar.start, calendar.end)
-        by_space = calendar.free_label == 'disponível'
-        bookings = public_bookings(calendar.space, dates) if by_space else []
+        with_bookings = calendar.course is None and not calendar.stage_key
+        bookings = public_bookings(dates, calendar.space, calendar.teacher) if with_bookings else []
         calendar.week = dated_week(semester, allocations, dates, today, bookings)
     else:
         calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'

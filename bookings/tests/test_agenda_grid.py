@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from accounts import permissions
 from bookings.models import Booking, BookingRequest
+from accounts.models import User
 from schedule.models import Space
 from bookings.tests.base import REQUESTER, REVIEWER, THURSDAY, frozen_clock, semester_with_lesson, space, submit, user_with
 
@@ -132,23 +133,38 @@ class OtherCalendarsTests(AgendaTestCase):
         self.client.logout()
         self.assertNotContains(self.client.get(reverse('public_calendar'), self.PUBLIC), 'Solicitação ainda pendente.')
 
-    def test_public_calendar_shows_time_and_description_only(self):
+    def test_public_calendar_shows_the_requester_without_the_description(self):
         self.book()
         self.client.logout()
         response = self.client.get(reverse('public_calendar'), self.PUBLIC)
         self.assertContains(response, 'Redes')
-        self.assertContains(response, 'Reunião do projeto de extensão com os alunos.')
+        self.assertContains(response, 'Agendamento</p>')
         self.assertContains(response, 'Das 16:00 às 18:00')
-        self.assertNotContains(response, self.ana.name)
-        self.assertNotContains(response, self.ana.email)
+        self.assertContains(response, self.ana.name)
+        self.assertContains(response, f'mailto:{self.ana.email}')
+        self.assertNotContains(response, 'Reunião do projeto de extensão')
         self.assertNotContains(response, self.reviewer.name)
 
-    def test_public_calendar_by_teacher_does_not_show_bookings(self):
+    def test_public_calendar_by_teacher_shows_the_teacher_bookings(self):
+        User.objects.filter(pk=self.ana.pk).update(username='Viviane')
         self.book()
         self.client.logout()
         response = self.client.get(reverse('public_calendar'), {'docente': 'Viviane', 'inicio': '2026-10-12', 'fim': '2026-10-16'})
         self.assertContains(response, 'Redes')
+        self.assertContains(response, 'Agendamento</p>')
+        self.assertContains(response, 'Laboratório de Informática 2')
+        self.assertContains(response, self.ana.name)
         self.assertNotContains(response, 'Reunião do projeto de extensão')
+
+    def test_public_calendar_by_another_teacher_or_course_does_not_show_it(self):
+        User.objects.filter(pk=self.ana.pk).update(username='Outra Pessoa')
+        self.book()
+        self.client.logout()
+        for query in ({'docente': 'Viviane'}, {'curso': 'INFORMÁTICA'}):
+            with self.subTest(query=query):
+                response = self.client.get(reverse('public_calendar'), query | {'inicio': '2026-10-12', 'fim': '2026-10-16'})
+                self.assertContains(response, 'Redes')
+                self.assertNotContains(response, 'Agendamento</p>')
 
 
 class QueryTests(AgendaTestCase):

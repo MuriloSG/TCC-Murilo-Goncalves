@@ -388,7 +388,7 @@ class QueryTests(PublicCalendarTestCase):
             week = self.count(**principal, inicio='2026-09-21', fim='2026-09-25')
             month = self.count(**principal, inicio='2026-09-01', fim='2026-10-01')
             self.assertEqual(week, month, principal)
-            self.assertLessEqual(week, 9 if 'sala' in principal else 8, principal)
+            self.assertLessEqual(week, 8 if 'curso' in principal else 9, principal)
 
     def test_more_lessons_do_not_add_queries(self):
         before = self.count(docente='Aldo Gomes', inicio='2026-09-01', fim='2026-10-01')

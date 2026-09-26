@@ -248,7 +248,7 @@ Um usuário com `AGENDA.ANALISAR` DEVE (MUST) ver, em "Solicitações para anál
 - **THEN** a tela mostra o nome e o e-mail do solicitante e não mostra o perfil nem as permissões dele
 
 ### Requirement: Agendamentos aprovados nas Grades e no calendário público
-A Grade da Agenda e a Grade do Ensalamento DEVEM (MUST) mostrar, na célula do espaço, da data e da faixa, as aulas do ensalamento e os agendamentos aprovados, em todas as faixas que o agendamento cruza, cada um com o seu tipo indicado por texto e ícone, e não só por cor. O card do agendamento DEVE (MUST) mostrar o selo "Agendamento", o horário e a descrição, e o nome do solicitante só para quem tem `AGENDA.ANALISAR`. Um agendamento que não cruza nenhuma faixa do semestre DEVE (MUST) ganhar uma linha própria com o seu intervalo. A faixa com agendamento aprovado DEVE (MUST) deixar de contar como disponível. A Grade do Ensalamento DEVE (MUST) continuar só de consulta, sem ação de solicitar. O calendário público DEVE (MUST) mostrar o agendamento aprovado só na consulta em que o único filtro principal é a sala, com o selo "Agendamento", o horário e a descrição, e NÃO DEVE (MUST NOT) mostrar o nome, o e-mail nem outro dado de quem solicitou ou de quem aprovou. Solicitações pendentes ou com alternativa sugerida NÃO DEVEM (MUST NOT) aparecer em nenhuma dessas telas.
+A Grade da Agenda e a Grade do Ensalamento DEVEM (MUST) mostrar, na célula do espaço, da data e da faixa, as aulas do ensalamento e os agendamentos aprovados, em todas as faixas que o agendamento cruza, cada um com o seu tipo indicado por texto e ícone, e não só por cor. O card do agendamento DEVE (MUST) mostrar o selo "Agendamento", o horário e a descrição, e o nome do solicitante só para quem tem `AGENDA.ANALISAR`. Um agendamento que não cruza nenhuma faixa do semestre DEVE (MUST) ganhar uma linha própria com o seu intervalo. A faixa com agendamento aprovado DEVE (MUST) deixar de contar como disponível. A Grade do Ensalamento DEVE (MUST) continuar só de consulta, sem ação de solicitar. O calendário público DEVE (MUST) mostrar o agendamento aprovado na consulta por sala, por docente ou pelos dois, e NÃO DEVE (MUST NOT) mostrá-lo na consulta por curso nem por nível. O card público DEVE (MUST) mostrar o selo "Agendamento", o horário, a sala, o nome e o e-mail de quem solicitou, e NÃO DEVE (MUST NOT) mostrar a descrição nem quem aprovou. Na consulta por docente, o agendamento DEVE (MUST) aparecer quando o `username` de quem solicitou é igual ao nome do docente, sem diferenciar a caixa. Solicitações pendentes ou com alternativa sugerida NÃO DEVEM (MUST NOT) aparecer em nenhuma dessas telas.
 
 #### Scenario: Agendamento na Grade da Agenda
 - **GIVEN** um agendamento aprovado da sala em 15/10/2026 das 14:00 às 16:00 e uma aula da mesma sala na segunda-feira da mesma semana
@@ -263,14 +263,19 @@ A Grade da Agenda e a Grade do Ensalamento DEVEM (MUST) mostrar, na célula do e
 - **AND** a Grade não tem ação de solicitar agendamento
 
 #### Scenario: Agendamento no calendário público
-- **GIVEN** o mesmo agendamento
+- **GIVEN** o mesmo agendamento, solicitado por Ana Souza
 - **WHEN** um visitante abre o calendário público da sala nessa semana
-- **THEN** o calendário mostra o selo "Agendamento", o horário e a descrição
-- **AND** a página não contém o nome nem o e-mail de quem solicitou ou aprovou
+- **THEN** o calendário mostra o selo "Agendamento", o horário, a sala, o nome e o e-mail de Ana Souza
+- **AND** a página não contém a descrição nem o nome de quem aprovou
 
 #### Scenario: Calendário público por docente
+- **GIVEN** o mesmo agendamento e Ana Souza com o `username` Viviane, o nome da docente no ensalamento
+- **WHEN** o calendário público é aberto com `docente=Viviane`
+- **THEN** o calendário mostra as aulas de Viviane e o agendamento, com a sala
+
+#### Scenario: Calendário público por curso
 - **GIVEN** o mesmo agendamento
-- **WHEN** o calendário público é aberto com o filtro de um docente
+- **WHEN** o calendário público é aberto com o filtro de um curso
 - **THEN** o agendamento não aparece
 
 #### Scenario: Solicitação pendente fora das telas

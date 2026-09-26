@@ -37,10 +37,10 @@
 
 ## 6. Solicitação
 
-- [ ] 6.1 Criar o formulário e o modal "Solicitar agendamento" com os campos preenchidos pela faixa (D8)
-- [ ] 6.2 Criar "Minhas solicitações", o detalhe com original e alternativa, e as ações "Aceitar alternativa" e "Recusar alternativa" (D1)
-- [ ] 6.3 Testar as quatro situações de acesso de cada rota, a descrição obrigatória, o horário ocupado e o 404 em solicitação de outro usuário
-- [ ] 6.4 Commit
+- [x] 6.1 Criar o formulário e o modal "Solicitar agendamento" com os campos preenchidos pela faixa (D8)
+- [x] 6.2 Criar "Minhas solicitações", o detalhe com original e alternativa, e as ações "Aceitar alternativa" e "Recusar alternativa" (D1)
+- [x] 6.3 Testar as quatro situações de acesso de cada rota, a descrição obrigatória, o horário ocupado e o 404 em solicitação de outro usuário
+- [x] 6.4 Commit
 
 ## 7. Análise
 

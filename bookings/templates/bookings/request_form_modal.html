@@ -1,0 +1,9 @@
+{% extends "ui/components/modal.html" %}
+
+{% block title %}Solicitar agendamento{% endblock %}
+
+{% block description %}{% if chosen_space %}{{ chosen_space.name }}. {% endif %}A solicitação fica pendente até a análise, e o horário só é ocupado depois da aprovação.{% endblock %}
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">Enviar solicitação</button>{% endblock %}

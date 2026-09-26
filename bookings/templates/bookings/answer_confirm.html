@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{% if action == 'aceitar' %}Aceitar alternativa{% else %}Recusar alternativa{% endif %}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'agenda_my_requests' %}">Minhas solicitações</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{% if action == 'aceitar' %}Aceitar alternativa{% else %}Recusar alternativa{% endif %}</span></li>
+{% endblock %}
+
+{% block content %}{% include "bookings/answer_confirm_modal.html" %}{% endblock %}

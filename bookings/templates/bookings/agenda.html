@@ -13,6 +13,11 @@
     <div>
       <h1 class="page-title">Agenda</h1>
     </div>
+    {% if perms.AGENDA.SOLICITAR %}
+      <div class="page-actions">
+        <a class="btn-secondary" href="{% url 'agenda_my_requests' %}">{% icon "list-checks" %}Minhas solicitações</a>
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
 
@@ -74,7 +79,7 @@
                   {% elif cell %}
                     <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">{% include "bookings/partials/agenda_cell.html" %}</td>
                   {% else %}
-                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span></td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}">{% if can_request %}{% request_url space day.date row.start row.end as url %}{% else %}{% firstof "" as url %}{% endif %}{% if url %}<a class="timetable-request" href="{{ url }}" hx-get="{{ url }}" hx-target="#modal" aria-label="Solicitar agendamento: {{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}, das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível">{% icon "calendar-plus" %}<span class="timetable-request-label" aria-hidden="true">Solicitar agendamento</span></a>{% else %}<span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span>{% endif %}</td>
                   {% endif %}
                 {% endfor %}
               </tr>
@@ -88,17 +93,18 @@
             <h3>{{ day.label }}{% if day.date %}<span class="timetable-date">{{ day.date|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}{% if day.is_today %}<span class="timetable-today">Hoje</span>{% endif %}</h3>
             {% if not day.in_period %}
               <p class="timetable-free">Fora do semestre</p>
-            {% elif day.has_activity %}
+            {% else %}
               <ol>
-                {% for cell in day.cells %}
+                {% for row, cell in week|day_rows:day %}
                   {% if cell and not cell.is_continued %}
                     <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span><div>{% include "bookings/partials/agenda_cell.html" %}</div></li>
+                  {% elif not cell %}
+                    {% if can_request %}{% request_url space day.date row.start row.end as url %}{% else %}{% firstof "" as url %}{% endif %}
+                    {% if url %}<li><span class="timetable-time"><span>{{ row.start|time:"H:i" }}</span><span>{{ row.end|time:"H:i" }}</span></span><div><a class="btn-secondary timetable-request-row" href="{{ url }}" hx-get="{{ url }}" hx-target="#modal">{% icon "calendar-plus" %}Solicitar agendamento<span class="sr-only">: {{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}, das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}</span></a></div></li>{% endif %}
                   {% endif %}
                 {% endfor %}
               </ol>
               {% if day.available %}<p class="timetable-free">{% if day.available == 1 %}1 faixa disponível{% else %}{{ day.available }} faixas disponíveis{% endif %}</p>{% endif %}
-            {% else %}
-              <p class="timetable-free">Sala disponível o dia todo.</p>
             {% endif %}
           </section>
         {% endfor %}

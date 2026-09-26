@@ -9,11 +9,18 @@ usuário responde 404. As regras ficam nas operações do model; as views só as
 from datetime import timedelta
 from urllib.parse import urlencode
 
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from django.views.generic import TemplateView
+from django.utils.formats import date_format
+from django.views.generic import ListView, TemplateView
 
 from accounts import permissions
+from accounts.views import ConfirmedActionView, OperationFormView
+from audit import catalog
+from bookings.forms import BookingRequestForm
+from bookings.models import BookingRequest
 from bookings.occupancy import agenda_sources
 from schedule.forms import GridFilterForm
 from schedule.models import Space
@@ -32,6 +39,7 @@ from schedule.timetable import (
     space_week,
     week_start,
 )
+from ui.pagination import paginate
 
 WEEK_VIEW = 'semana'
 MONTH_VIEW = 'mes'
@@ -123,3 +131,180 @@ class AgendaGridView(TemplateView):
             shows_requester=self.request.user.has_perm(permissions.BOOKING_REVIEW),
         )
         return context
+
+
+def agenda_link(space, day):
+    """Grade da Agenda na sala e na semana de uma data."""
+    return f"{reverse('agenda_grid')}?{urlencode({'sala': space.name, 'semana': day.isoformat()})}"
+
+
+def request_related(queryset):
+    """Solicitações com o espaço, o espaço sugerido e as pessoas, sem consulta por linha."""
+    return queryset.select_related('space', 'suggested_space', 'requested_by', 'decided_by')
+
+
+class BookingRequestCreateView(OperationFormView):
+    """Modal "Solicitar agendamento", com o espaço, a data e o horário vindos da faixa (D8).
+
+    O envio cria a solicitação pendente, sem agendamento, e volta para a semana da faixa.
+    """
+
+    permission_required = permissions.BOOKING_REQUEST
+    audit_resource = catalog.BOOKING_REQUEST
+    template_name = 'bookings/request_form.html'
+    modal_template_name = 'bookings/request_form_modal.html'
+    form_class = BookingRequestForm
+    created = None
+
+    def get_initial(self):
+        query = self.request.GET
+        return {'space': query.get('espaco'), 'date': query.get('data'), 'start_time': query.get('inicio'), 'end_time': query.get('fim')}
+
+    def chosen_space(self):
+        value = self.request.POST.get('space') or self.request.GET.get('espaco') or ''
+        return Space.objects.filter(pk=value).first() if value.isdigit() else None
+
+    def get_close_url(self):
+        return reverse('agenda_grid')
+
+    def get_success_url(self):
+        return agenda_link(self.created.space, self.created.date)
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(chosen_space=self.chosen_space(), **kwargs)
+
+    def perform(self, data):
+        self.created = BookingRequest.objects.submit(
+            self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
+        )
+        messages.success(
+            self.request,
+            f'Solicitação de agendamento de {self.created.space.name} em {self.created.schedule_text()} enviada.',
+        )
+
+
+def status_badge(request):
+    """Tom, ícone e rótulo do selo da situação; o texto sempre acompanha a cor."""
+    Status = BookingRequest.Status
+    return {
+        Status.PENDING: ('info', 'clock', 'Pendente'),
+        Status.APPROVED: ('success', 'check', 'Aprovada'),
+        Status.REJECTED: ('error', 'x', 'Rejeitada'),
+        Status.SUGGESTED: ('warning', 'arrow-left-right', 'Alternativa sugerida'),
+        Status.DECLINED: ('info', 'circle-minus', 'Alternativa recusada'),
+    }[request.status]
+
+
+def when(moment):
+    return date_format(timezone.localtime(moment), 'DATETIME_FORMAT')
+
+
+def history_of(request):
+    """Histórico da solicitação montado dos campos dela, sem tabela de eventos (D3)."""
+    Status = BookingRequest.Status
+    lines = [f'Criada por {request.requested_by.name} em {when(request.created_at)}.']
+    if request.decided_by_id:
+        who = f'{request.decided_by.name} em {when(request.decided_at)}'
+        if request.status == Status.REJECTED:
+            if request.has_suggestion:
+                lines.append('Alternativa sugerida.')
+            lines.append(f'Rejeitada por {who}.')
+        elif request.has_suggestion:
+            lines.append(f'Alternativa sugerida por {who}.')
+        else:
+            lines.append(f'Aprovada por {who}.')
+    if request.responded_at:
+        answer = 'aceita' if request.status == Status.APPROVED else 'recusada'
+        lines.append(f'Alternativa {answer} por {request.requested_by.name} em {when(request.responded_at)}.')
+    return lines
+
+
+def detailed(request):
+    request.badge = status_badge(request)
+    request.history = history_of(request)
+    return request
+
+
+def decorate(requests, url_name):
+    """Selo e ação de abrir o detalhe de cada solicitação da página."""
+    for item in requests:
+        item.badge = status_badge(item)
+        item.detail_action = {
+            'url': reverse(url_name, args=[item.pk]), 'label': 'Ver solicitação', 'icon': 'list-checks', 'danger': False, 'page': True,
+        }
+    return requests
+
+
+class MyBookingRequestListView(ListView):
+    """Solicitações do próprio usuário, da mais recente para a mais antiga."""
+
+    permission_required = permissions.BOOKING_REQUEST
+    audit_resource = catalog.BOOKING_REQUEST
+    template_name = 'bookings/my_requests.html'
+    context_object_name = 'requests'
+
+    def get_queryset(self):
+        return request_related(BookingRequest.objects.filter(requested_by=self.request.user)).order_by('-created_at', '-pk')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page'] = paginate(self.request, self.object_list)
+        context['requests'] = decorate(context['page'].object_list, 'agenda_my_request')
+        return context
+
+
+class MyBookingRequestDetailView(TemplateView):
+    """Detalhe de uma solicitação do usuário, com o original e a alternativa lado a lado.
+
+    O ID de uma solicitação de outro usuário responde 404, sem revelar que ela existe.
+    """
+
+    permission_required = permissions.BOOKING_REQUEST
+    audit_resource = catalog.BOOKING_REQUEST
+    template_name = 'bookings/my_request_detail.html'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = get_object_or_404(request_related(BookingRequest.objects), pk=kwargs['pk'], requested_by=request.user)
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(target=detailed(self.target), **kwargs)
+
+
+class OwnRequestActionView(ConfirmedActionView):
+    """Resposta do solicitante à alternativa: só a própria solicitação, e o resto responde 404."""
+
+    permission_required = permissions.BOOKING_REQUEST
+    audit_resource = catalog.BOOKING_REQUEST
+    template_name = 'bookings/answer_confirm.html'
+    modal_template_name = 'bookings/answer_confirm_modal.html'
+    action = ''
+
+    def setup(self, request, *args, **kwargs):
+        super(ConfirmedActionView, self).setup(request, *args, **kwargs)
+        self.target = get_object_or_404(request_related(BookingRequest.objects), pk=kwargs['pk'], requested_by=request.user)
+
+    def get_success_url(self):
+        return reverse('agenda_my_request', args=[self.target.pk])
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(action=self.action, **kwargs)
+
+
+class AcceptSuggestionView(OwnRequestActionView):
+    action = 'aceitar'
+
+    def perform(self):
+        self.target.accept_suggestion(self.request.user)
+        messages.success(
+            self.request,
+            f'Alternativa aceita. Agendamento de {self.target.suggested_space.name} em {self.target.suggested_schedule_text()} aprovado.',
+        )
+
+
+class DeclineSuggestionView(OwnRequestActionView):
+    action = 'recusar'
+
+    def perform(self):
+        self.target.decline_suggestion(self.request.user)
+        messages.success(self.request, 'Alternativa recusada. A solicitação foi encerrada sem agendamento.')

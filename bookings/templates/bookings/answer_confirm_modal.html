@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}{% if action == 'aceitar' %}Aceitar a alternativa de {{ target.suggested_space.name }}?{% else %}Recusar a alternativa de {{ target.suggested_space.name }}?{% endif %}{% endblock %}
+
+{% block consequence %}{% if action == 'aceitar' %}O agendamento de {{ target.suggested_space.name }} em {{ target.suggested_schedule_text }} é aprovado, se o horário continuar disponível.{% else %}A solicitação é encerrada sem agendamento. Para usar outro horário, envie uma nova solicitação.{% endif %}{% endblock %}
+
+{% block submit %}{% if action == 'aceitar' %}<button class="btn-primary" type="submit">{% icon "check" %}Aceitar alternativa</button>{% else %}<button class="btn-danger" type="submit">{% icon "x" %}Recusar alternativa</button>{% endif %}{% endblock %}

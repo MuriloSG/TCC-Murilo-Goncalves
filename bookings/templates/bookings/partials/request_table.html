@@ -1,0 +1,33 @@
+{% load ui %}<table class="data-table">
+  <thead>
+    <tr>
+      {% if show_requester %}<th scope="col">Solicitante</th>{% endif %}
+      <th scope="col">Espaço</th>
+      <th scope="col">Data e horário</th>
+      <th scope="col">Descrição</th>
+      <th scope="col">Situação</th>
+      <th scope="col" class="cell-actions">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in requests %}
+      <tr>
+        {% if show_requester %}<td class="cell-primary" data-label="Solicitante"><span class="person-name">{{ item.requested_by.name }}</span><span class="person-detail">{{ item.requested_by.email }}</span></td>{% endif %}
+        <td class="{% if show_requester %}cell-meta{% else %}cell-primary{% endif %}" data-label="Espaço"><a class="link" href="{% url detail_url item.pk %}">{{ item.space.name }}</a></td>
+        <td class="cell-meta" data-label="Data e horário">{{ item.schedule_text }}</td>
+        <td class="cell-meta" data-label="Descrição">{{ item.description }}</td>
+        <td class="cell-meta" data-label="Situação">
+          {% include "ui/components/badge.html" with tone=item.badge.0 icon=item.badge.1 label=item.badge.2 %}
+          {% if item.awaits_response and not show_requester %}<span class="person-detail">Resposta pendente</span>{% endif %}
+        </td>
+        <td class="cell-actions" data-label="Ações">
+          {% action_list item.detail_action as visible %}
+          {% include "ui/components/row_actions.html" %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td class="cell-primary" colspan="{% if show_requester %}6{% else %}5{% endif %}">{{ empty }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include "ui/components/pagination.html" with noun="solicitação" noun_plural="solicitações" %}

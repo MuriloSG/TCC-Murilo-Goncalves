@@ -17,7 +17,7 @@ from audit.models import AuditLog
 from bookings.occupancy import find_conflict
 from bookings.tests.base import submit
 from schedule.imports import RECURRENCE_CHANGED, SpaceAllocationImport
-from schedule.models import Allocation, AllocationException, ClassGroup, Course, Origin, Semester, Space, Stage, Teacher, Weekday
+from schedule.models import Allocation, AllocationException, ClassGroup, ClassOffering, Course, Origin, Semester, Space, Stage, Teacher, Weekday
 from schedule.occupancy import AllocationSource, occupancy
 from schedule.tests.test_occurrence_cancel import user_with
 from schedule.tests.test_timetable import allocate
@@ -582,3 +582,30 @@ class ReimportTests(RecurrenceTestCase):
             space=self.new_room, teachers=[],
         )
         self.assertEqual((allocation.pk, action), (self.chemistry[0].pk, 'update'))
+
+
+class AcademicLinkTests(RecurrenceTestCase):
+    """A alteração da recorrência preserva os docentes da oferta (Change
+    relacionar-professor-disciplina-turma)."""
+
+    def setUp(self):
+        super().setUp()
+        self.offering = ClassOffering.objects.record(self.semester, self.first.subject, self.group)
+
+    def teachers(self):
+        return {item.teacher.name: item.is_current for item in self.offering.assignments.select_related('teacher')}
+
+    def test_day_time_and_room_keep_the_links(self):
+        before = sorted(self.offering.assignments.values_list('pk', 'teacher', 'is_current'))
+        self.change(weekday=Weekday.TUESDAY, start=time(8, 0))
+        self.assertEqual(sorted(self.offering.assignments.values_list('pk', 'teacher', 'is_current')), before)
+        self.assertEqual(ClassOffering.objects.filter(subject=self.first.subject, class_group=self.group).count(), 1)
+
+    def test_teacher_change_keeps_the_previous_as_history(self):
+        self.change(teachers=[self.otavio])
+        self.assertEqual(self.teachers(), {'Viviane': False, 'Otávio': True})
+
+    def test_refused_change_leaves_no_link(self):
+        with self.assertRaises(ValidationError):
+            self.change(cut=date(2026, 8, 3), teachers=[self.otavio])
+        self.assertEqual(self.teachers(), {'Viviane': True})

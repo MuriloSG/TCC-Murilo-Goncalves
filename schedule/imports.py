@@ -47,6 +47,7 @@ from schedule.models import (
     SEMESTER_CODE_PATTERN,
     Allocation,
     ClassGroup,
+    ClassOffering,
     Course,
     Semester,
     SPACE_PERMISSION_MESSAGE,
@@ -498,6 +499,7 @@ class SpaceAllocationImport(ImportDefinition):
                 space=space,
                 teachers=teachers,
             )
+            ClassOffering.objects.record(state.semester, subject, group)
         except ValidationError as error:
             plan.errors = errors_from_validation(error, self.columns_by_field)
             return plan

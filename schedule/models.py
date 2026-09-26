@@ -988,6 +988,7 @@ class RecurrenceChange:
         version.full_clean(exclude=['space'])
         version.save()
         version.teachers.set(self.teachers)
+        ClassOffering.objects.record(version.semester, version.subject, version.class_group)
         moved_ids = [exception.pk for exception in self.moved]
         AllocationException.objects.filter(pk__in=moved_ids).update(allocation=version)
         for exception in self.moved:
@@ -1092,6 +1093,18 @@ class RecurrencePlan:
                 'Mantenha o dia da semana ou escolha uma data de início posterior a elas.',
                 code='exceptions',
             )
+
+
+def teacher_of(user):
+    """Docente do ensalamento que corresponde ao usuário, ou None.
+
+    É a mesma regra de `manages`: o nome do docente igual ao `username`, sem diferenciar
+    a caixa. Não há vínculo gravado entre docente e usuário (D7 da Change
+    importar-ensalamento-da-planilha).
+    """
+    if not user.is_active or not user.username:
+        return None
+    return Teacher.objects.filter(name__iexact=user.username).first()
 
 
 def manages(user, teacher_names):
@@ -1246,6 +1259,139 @@ class Allocation(models.Model):
             'vigente_desde': iso(self.valid_from),
             'vigente_ate': iso(self.valid_until),
         }
+
+
+class ClassOfferingManager(models.Manager):
+    def record(self, semester, subject, class_group):
+        """Devolve a oferta da disciplina para a turma no semestre, criando-a quando não
+        existir, e sincroniza os docentes dela com as alocações atuais.
+
+        É a operação que a importação e a alteração de recorrência chamam, na transação de
+        quem chama. Nada é excluído, e chamar de novo com os mesmos dados não muda nada
+        (D5 da Change relacionar-professor-disciplina-turma).
+        """
+        with transaction.atomic():
+            offering, _ = self.get_or_create(semester=semester, subject=subject, class_group=class_group)
+            offering.sync_assignments()
+            return offering
+
+
+class ClassOffering(models.Model):
+    """Oferta de uma disciplina para uma turma num semestre (D2).
+
+    A disciplina e a turma valem para todos os semestres; é a oferta que as liga a um
+    semestre. Uma disciplina tem várias turmas e uma turma tem várias disciplinas, sempre por
+    oferta. A oferta é identificada pela mesma tripla de semestre, disciplina e turma das
+    alocações, sem FK entre elas (D4), e nunca é excluída automaticamente.
+    """
+
+    semester = models.ForeignKey(
+        Semester, on_delete=models.PROTECT, related_name='offerings', verbose_name='semestre',
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.PROTECT, related_name='offerings', verbose_name='disciplina',
+    )
+    class_group = models.ForeignKey(
+        ClassGroup, on_delete=models.PROTECT, related_name='offerings', verbose_name='turma',
+    )
+
+    objects = ClassOfferingManager()
+
+    class Meta:
+        verbose_name = 'oferta de disciplina'
+        verbose_name_plural = 'ofertas de disciplina'
+        ordering = ['semester__code', 'subject__name', 'class_group__label']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['semester', 'subject', 'class_group'],
+                name='class_offering_unique',
+                violation_error_message='Esta turma já tem esta disciplina neste semestre.',
+            ),
+        ]
+        indexes = [models.Index(fields=['semester', 'class_group'], name='class_offering_group_idx')]
+
+    def __str__(self):
+        return f'{self.semester} {self.subject} {self.class_group}'
+
+    def current_allocations(self):
+        """Alocações atuais da oferta: a mesma tripla e sem fim de vigência (D3)."""
+        return Allocation.objects.filter(
+            semester=self.semester_id, subject=self.subject_id, class_group=self.class_group_id, valid_until__isnull=True,
+        )
+
+    def sync_assignments(self):
+        """Marca como atuais os docentes das alocações atuais e como históricos os demais.
+
+        Cria o vínculo que falta e nunca exclui nenhum: o docente que saiu das alocações
+        atuais fica registrado com `is_current=False` e volta a `True` se reaparecer.
+        """
+        present = set(
+            self.current_allocations().filter(teachers__isnull=False).values_list('teachers', flat=True),
+        )
+        TeachingAssignment.objects.bulk_create(
+            [TeachingAssignment(offering=self, teacher_id=teacher, is_current=True) for teacher in present],
+            ignore_conflicts=True,
+        )
+        self.assignments.filter(teacher__in=present, is_current=False).update(is_current=True)
+        self.assignments.exclude(teacher__in=present).filter(is_current=True).update(is_current=False)
+
+
+class TeachingAssignmentQuerySet(models.QuerySet):
+    def available(self, semester, teacher=None, subject=None, class_group=None):
+        """Combinações atuais de docente, disciplina e turma do semestre, numa consulta só.
+
+        Só os vínculos com `is_current=True` entram: o histórico fica fora, e combinação que
+        não existe como vínculo nunca é devolvida (D7). Os filtros são opcionais.
+        """
+        queryset = self.filter(is_current=True, offering__semester=semester)
+        if teacher is not None:
+            queryset = queryset.filter(teacher=teacher)
+        if subject is not None:
+            queryset = queryset.filter(offering__subject=subject)
+        if class_group is not None:
+            queryset = queryset.filter(offering__class_group=class_group)
+        return queryset.select_related('teacher', 'offering__subject', 'offering__class_group__course')
+
+    def is_available(self, semester, teacher, subject, class_group):
+        """Diz se a combinação é um vínculo atual do semestre."""
+        return self.available(semester, teacher, subject, class_group).exists()
+
+
+class TeachingAssignment(models.Model):
+    """Docente de uma oferta de disciplina (D3).
+
+    Histórico e disponibilidade atual são conceitos diferentes. O histórico são todos os
+    vínculos da oferta, que nunca são excluídos automaticamente. `is_current=True` indica
+    que o docente está presente em alguma alocação atual da oferta, e `is_current=False`
+    que o vínculo é preservado como histórico, sem o docente nas alocações atuais. Não
+    significa docente responsável pela disciplina. A Agenda oferece só os vínculos atuais.
+    """
+
+    offering = models.ForeignKey(
+        ClassOffering, on_delete=models.PROTECT, related_name='assignments', verbose_name='oferta',
+    )
+    teacher = models.ForeignKey(
+        Teacher, on_delete=models.PROTECT, related_name='assignments', verbose_name='docente',
+    )
+    is_current = models.BooleanField('atual', default=True)
+
+    objects = TeachingAssignmentQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = 'docente da oferta'
+        verbose_name_plural = 'docentes das ofertas'
+        ordering = ['teacher__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['offering', 'teacher'],
+                name='teaching_assignment_unique',
+                violation_error_message='Este docente já está nesta oferta.',
+            ),
+        ]
+        indexes = [models.Index(fields=['teacher', 'offering'], name='assignment_teacher_idx')]
+
+    def __str__(self):
+        return f'{self.teacher} {self.offering}'
 
 
 class AllocationExceptionManager(models.Manager):

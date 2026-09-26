@@ -24,6 +24,7 @@ from schedule.imports import SpaceAllocationImport, concluded_message
 from schedule.models import (
     Allocation,
     ClassGroup,
+    ClassOffering,
     Course,
     Origin,
     Semester,
@@ -31,6 +32,7 @@ from schedule.models import (
     Stage,
     Subject,
     Teacher,
+    TeachingAssignment,
     TimeSlot,
     Weekday,
 )
@@ -627,3 +629,72 @@ class RealSpreadsheetTests(ImportTestCase):
         with self.assertRaises(Exception):
             importation.confirm(self.definition, self.executor)
         self.assertFalse(Allocation.objects.exists())
+
+
+def offering_teachers(subject='QUÍMICA ORGÂNICA', label='2º PERÍODO', semester='2026/1'):
+    offering = ClassOffering.objects.get(semester__code=semester, subject__name=subject, class_group__label=label)
+    return {assignment.teacher.name: assignment.is_current for assignment in offering.assignments.select_related('teacher')}
+
+
+def chemistry_by(teacher):
+    return workbook_file(undergraduate={
+        ('SEGUNDA ', '07:20 - 08:10', 0): f'QUÍMICA ORGÂNICA ({teacher}) (1/13)',
+        ('SEGUNDA ', '08:10 - 09:00', 0): f'QUÍMICA ORGÂNICA ({teacher}) (1/13)',
+        ('SEGUNDA ', '09:20 - 10:10', 1): 'Cálculo III (Viviane) (2/6)',
+    })
+
+
+class AcademicLinkTests(ImportTestCase):
+    """Ofertas e docentes das ofertas estabelecidos pela importação (Change
+    relacionar-professor-disciplina-turma)."""
+
+    def test_confirmation_records_offerings_and_teachers(self):
+        self.conclude()
+        self.assertEqual(ClassOffering.objects.count(), 3)
+        self.assertEqual(offering_teachers(), {'Elza': True})
+        self.assertEqual(offering_teachers('Cálculo III', '4º PERÍODO'), {'Viviane': True})
+
+    def test_preview_leaves_no_link(self):
+        importation = self.preview()
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), (0, 0))
+
+    def test_divergent_confirmation_leaves_no_link(self):
+        importation = self.preview()
+        Space.objects.register('1/13')
+        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), (0, 0))
+
+    def test_refused_row_leaves_no_link(self):
+        importation = self.preview(workbook_file(undergraduate={
+            ('SEGUNDA ', '07:20 - 08:10', 0): 'QUÍMICA ORGÂNICA (Desconhecido) (1/13)',
+        }))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertFalse(ClassOffering.objects.filter(subject__name='QUÍMICA ORGÂNICA').exists())
+
+    def test_reimport_does_not_duplicate(self):
+        self.conclude()
+        counts = (ClassOffering.objects.count(), TeachingAssignment.objects.count())
+        self.conclude()
+        self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), counts)
+
+    def test_replaced_teacher_is_kept_as_history(self):
+        self.conclude()
+        self.conclude(chemistry_by('Viviane'))
+        self.assertEqual(offering_teachers(), {'Elza': False, 'Viviane': True})
+
+    def test_teacher_that_comes_back_is_current_again(self):
+        self.conclude()
+        self.conclude(chemistry_by('Viviane'))
+        assignment = TeachingAssignment.objects.get(teacher__name='Elza')
+        self.conclude()
+        self.assertEqual(offering_teachers(), {'Elza': True, 'Viviane': False})
+        self.assertTrue(TeachingAssignment.objects.get(pk=assignment.pk).is_current)
+
+    def test_previous_semester_is_untouched(self):
+        self.conclude()
+        before = sorted(TeachingAssignment.objects.filter(offering__semester__code='2026/1').values_list('pk', 'is_current'))
+        self.conclude(chemistry_by('Viviane'), semester='2026/2')
+        after = sorted(TeachingAssignment.objects.filter(offering__semester__code='2026/1').values_list('pk', 'is_current'))
+        self.assertEqual(after, before)
+        self.assertEqual(offering_teachers(semester='2026/2'), {'Viviane': True})

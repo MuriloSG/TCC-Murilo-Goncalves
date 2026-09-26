@@ -1,0 +1,55 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Exceções do ensalamento{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ section_url }}">{{ section_title }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Exceções</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Exceções do ensalamento</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-excecoes">
+    <div class="card-head">
+      <h2 class="card-title" id="lista-excecoes">Todas as exceções <span class="count">{{ page.paginator.count }}</span></h2>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Data e horário</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Aula</th>
+          <th scope="col">Espaço</th>
+          <th scope="col">Docentes</th>
+          <th scope="col">Recorrência</th>
+          <th scope="col">Registrada por</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in exceptions %}
+          <tr>
+            <td class="cell-primary" data-label="Data e horário">{{ item.date|date:"SHORT_DATE_FORMAT" }}, das {{ item.allocation.time_slot.start_time|time:"H:i" }} às {{ item.allocation.time_slot.end_time|time:"H:i" }}</td>
+            <td class="cell-meta" data-label="Tipo">{% include "ui/components/badge.html" with tone="warning" icon="calendar-x" label=item.get_kind_display %}</td>
+            <td class="cell-meta" data-label="Aula"><span class="person-name">{{ item.allocation.subject.name }}</span><span class="person-detail">{{ item.allocation.class_group }}</span></td>
+            <td class="cell-meta" data-label="Espaço">{% if item.allocation.space %}{{ item.allocation.space.name }}{% else %}Sem sala definida{% endif %}</td>
+            <td class="cell-meta" data-label="Docentes">{% for teacher in item.allocation.teachers.all %}{{ teacher.name }}{% if not forloop.last %}, {% endif %}{% empty %}Sem docente{% endfor %}</td>
+            <td class="cell-meta" data-label="Recorrência">{{ item.allocation.get_weekday_display }}, {{ item.allocation.time_slot }}, semestre {{ item.allocation.semester.code }}</td>
+            <td class="cell-meta" data-label="Registrada por"><span class="person-name">{{ item.created_by.name }}</span><span class="person-detail">{{ item.created_at|date:"SHORT_DATETIME_FORMAT" }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td class="cell-primary" colspan="7">Nenhuma exceção registrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "ui/components/pagination.html" with noun="exceção" noun_plural="exceções" %}
+  </section>
+{% endblock %}

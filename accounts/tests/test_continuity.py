@@ -317,6 +317,7 @@ class ContinuityGuardTests(ContinuityTestCase):
                 permissions.SPACE_ALLOCATION_VIEW,
                 permissions.SPACE_ALLOCATION_IMPORT,
                 permissions.SPACE_ALLOCATION_IMPORT_DELETE,
+                permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE,
             }
             | permissions.SPACE_PERMISSIONS
             | permissions.BOOKING_PERMISSIONS,

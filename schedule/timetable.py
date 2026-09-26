@@ -10,12 +10,12 @@ visualizar-ocupacao-por-semana-e-mes).
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 
 from django.db.models import Q
 
-from schedule.models import Allocation, Semester, Space, Stage, TimeSlot, Weekday
+from schedule.models import WEEKDAY_ORDER, Allocation, Semester, Space, Stage, TimeSlot, Weekday
 
 SMALL_WORDS = {'a', 'as', 'o', 'os', 'e', 'em', 'de', 'do', 'da', 'dos', 'das', 'para'}
 
@@ -23,7 +23,7 @@ SINGLE = 'single'
 JOINT = 'joint'
 CLASH = 'clash'
 
-WEEKDAYS = [Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY]
+WEEKDAYS = WEEKDAY_ORDER
 
 
 def all_caps(name):
@@ -74,6 +74,8 @@ class Entry:
     group_label: str
     teachers: tuple
     stage: str
+    allocation_ids: tuple = field(default=(), compare=False)
+    cancel_url: str = field(default='', compare=False)
 
     @property
     def is_undergraduate(self):
@@ -206,7 +208,11 @@ def weekday_of(today):
 
 
 def build_day(slots, by_slot):
-    """Células do dia, uma por faixa, com as faixas seguidas de mesmas aulas unidas num bloco."""
+    """Células do dia, uma por faixa, com as faixas seguidas de mesmas aulas unidas num bloco.
+
+    O bloco junta as alocações de cada aula das faixas unidas, para que cancelar a
+    ocorrência do bloco alcance todas elas.
+    """
     cells, previous_entries, open_cell, previous_slot = [], None, None, None
     for slot in slots:
         entries = by_slot.get(slot)
@@ -214,6 +220,11 @@ def build_day(slots, by_slot):
         if entries and entries == previous_entries and contiguous:
             open_cell.span += 1
             open_cell.end = slot[1]
+            open_cell.entries = [
+                replace(kept, allocation_ids=kept.allocation_ids + joined.allocation_ids)
+                if hasattr(kept, 'allocation_ids') else kept
+                for kept, joined in zip(open_cell.entries, entries)
+            ]
             cells.append(CONTINUED)
         elif entries:
             open_cell = Cell(entries=entries, start=slot[0], end=slot[1])

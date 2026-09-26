@@ -8,6 +8,7 @@
     <p class="timetable-subject">{{ entry.subject }}</p>
     <p class="timetable-line">{% icon "users" "size-4" %}<span>{{ entry.group_label }}</span></p>
     {% if entry.teachers %}<p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.teachers|join:", " }}</span></p>{% endif %}
+    {% if entry.cancel_url %}<a class="icon-btn timetable-card-action" href="{{ entry.cancel_url }}" hx-get="{{ entry.cancel_url }}" hx-target="#modal" aria-label="Cancelar esta ocorrência">{% icon "calendar-x" %}<span class="tip" role="tooltip">Cancelar esta ocorrência</span></a>{% endif %}
   </div>
   {% endif %}
 {% endfor %}

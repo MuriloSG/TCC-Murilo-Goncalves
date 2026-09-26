@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.views.generic import ListView, TemplateView
@@ -25,6 +25,7 @@ from bookings.occupancy import agenda_sources
 from schedule.forms import GridFilterForm
 from schedule.models import Space
 from schedule.occupancy import occupancy
+from schedule.views import AllocationExceptionListView, OccurrenceCancelView, with_cancel_actions
 from schedule.timetable import (
     current_semester_code,
     dated_space_month,
@@ -140,6 +141,8 @@ class AgendaGridView(TemplateView):
             can_request=self.request.user.has_perm(permissions.BOOKING_REQUEST),
             shows_requester=self.request.user.has_perm(permissions.BOOKING_REVIEW),
         )
+        if week.is_dated:
+            with_cancel_actions(week, self.request.user, 'agenda_occurrence_cancel')
         return context
 
 
@@ -428,3 +431,24 @@ class SuggestView(ReviewFormView):
             self.request,
             f'Alternativa de {self.target.suggested_space.name} em {self.target.suggested_schedule_text()} sugerida.',
         )
+
+
+class AgendaOccurrenceCancelView(OccurrenceCancelView):
+    """Cancelamento da ocorrência pela Grade da Agenda, a tela que o docente usa.
+
+    A rota exige `AGENDA.VISUALIZAR`; quem pode cancelar cada aula é conferido pela mesma
+    view do Ensalamento, que carrega só as aulas que o usuário administra (404 nas demais),
+    e de novo pelo model no POST.
+    """
+
+    permission_required = permissions.BOOKING_VIEW
+    success_url = reverse_lazy('agenda_grid')
+    section_title = 'Agenda'
+
+
+class AgendaExceptionListView(AllocationExceptionListView):
+    """Exceções do ensalamento pela Agenda, com a mesma regra de visibilidade do Ensalamento."""
+
+    permission_required = permissions.BOOKING_VIEW
+    section_title = 'Agenda'
+    section_url = reverse_lazy('agenda_grid')

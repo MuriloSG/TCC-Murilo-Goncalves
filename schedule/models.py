@@ -17,6 +17,9 @@ from django.core.validators import RegexValidator
 from django.conf import settings
 from django.db import IntegrityError, models, transaction
 from django.db.models.functions import Lower
+from django.utils.formats import date_format
+
+from accounts import permissions
 
 from audit import catalog
 from audit.models import AuditLog
@@ -700,6 +703,42 @@ class AllocationManager(models.Manager):
                 return allocation, 'create', changes
             return existing, *existing.update_details(space, teachers)
 
+    def active_on(self, day):
+        """Alocações que ocorrem na data: o dia da semana dela, o período do semestre e sem
+        exceção nesta data. É a mesma regra de `Allocation.occurs_on`, em consulta."""
+        if day.weekday() >= len(WEEKDAY_ORDER):
+            return self.none()
+        return self.filter(
+            weekday=WEEKDAY_ORDER[day.weekday()],
+            semester__start_date__lte=day,
+            semester__end_date__gte=day,
+        ).exclude(exceptions__date=day)
+
+    def managed_by(self, user):
+        """Alocações cujas ocorrências o usuário pode cancelar, pela mesma regra de `manages`."""
+        if user.has_perm(permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE):
+            return self.all()
+        if not user.is_active or not user.username:
+            return self.none()
+        return self.filter(teachers__name__iexact=user.username).distinct()
+
+
+WEEKDAY_ORDER = [Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY]
+
+
+def manages(user, teacher_names):
+    """Diz se o usuário pode cancelar ocorrências de uma aula com estes docentes.
+
+    Pode quem tem `ENSALAMENTO.CANCELAR_OCORRENCIA` (o superadmin tem todas) e o docente da
+    aula, reconhecido pelo nome do docente igual ao `username`, sem diferenciar a caixa. Não
+    há vínculo gravado entre docente e usuário (D7 da Change importar-ensalamento-da-planilha).
+    """
+    if user.has_perm(permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE):
+        return True
+    if not user.is_active or not user.username:
+        return False
+    return user.username.casefold() in {name.casefold() for name in teacher_names}
+
 
 class Allocation(models.Model):
     """Ocupação recorrente de um espaço por uma turma, numa disciplina, num dia e numa faixa.
@@ -758,6 +797,14 @@ class Allocation(models.Model):
                 {'time_slot': ValidationError('A faixa de horário é de outro semestre.', code='other_semester')},
             )
 
+    def occurs_on(self, day):
+        """Diz se a regra semanal gera uma ocorrência na data: o dia da semana e o período do semestre."""
+        return (
+            day.weekday() < len(WEEKDAY_ORDER)
+            and WEEKDAY_ORDER[day.weekday()] == self.weekday
+            and self.semester.contains(day)
+        )
+
     def update_details(self, space, teachers):
         """Atualiza o espaço e os docentes, devolvendo a ação e as mudanças.
 
@@ -780,6 +827,123 @@ class Allocation(models.Model):
             if 'teachers' in changes:
                 self.teachers.set(teachers)
         return 'update', changes
+
+    def audit_values(self):
+        """Identificação da alocação para o registro de auditoria, em valores canônicos."""
+        return {
+            'alocacao': self.pk,
+            'semestre': self.semester.code,
+            'disciplina': self.subject.name,
+            'turma': str(self.class_group),
+            'dia': self.weekday,
+            'horario': str(self.time_slot),
+            'espaco': self.space.name if self.space else None,
+            'docentes': teacher_names(self.teachers.all()),
+        }
+
+
+class AllocationExceptionManager(models.Manager):
+    def cancelled(self, allocation_ids, start_date, end_date):
+        """Pares (alocação, data) cancelados no intervalo, numa consulta só.
+
+        É o filtro único que a ocupação do ensalamento aplica antes de montar a Grade, a
+        Agenda e o calendário público.
+        """
+        allocation_ids = list(allocation_ids)
+        if not allocation_ids:
+            return set()
+        return set(
+            self.filter(
+                allocation__in=allocation_ids,
+                date__range=(start_date, end_date),
+                kind=AllocationException.Kind.CANCELLED,
+            ).values_list('allocation_id', 'date'),
+        )
+
+    def cancel(self, allocation_ids, day, executor):
+        """Cancela a ocorrência das alocações na data, sem alterar as alocações.
+
+        Todas as alocações são travadas e conferidas antes de qualquer gravação: o executor
+        precisa administrar cada uma, a data precisa ser uma ocorrência dela e a ocorrência
+        não pode estar cancelada. Cada exceção criada gera um registro de auditoria.
+        """
+        allocation_ids = sorted(set(allocation_ids))
+        with transaction.atomic():
+            locked = list(
+                Allocation.objects.select_for_update(of=('self',))
+                .filter(pk__in=allocation_ids)
+                .select_related('semester', 'subject', 'time_slot', 'space', 'class_group__course')
+                .prefetch_related('teachers')
+                .order_by('pk'),
+            )
+            if not allocation_ids or len(locked) != len(allocation_ids):
+                raise ValidationError('A aula informada não existe. Atualize a Grade.', code='missing')
+            shown = date_format(day, 'SHORT_DATE_FORMAT')
+            for allocation in locked:
+                if not manages(executor, [teacher.name for teacher in allocation.teachers.all()]):
+                    raise ValidationError(
+                        'Só um docente da aula ou quem tem permissão cancela esta ocorrência.',
+                        code='not_allowed',
+                    )
+                if not allocation.occurs_on(day):
+                    raise ValidationError(
+                        f'A aula não acontece em {shown}. Escolha uma data da aula.', code='not_occurrence',
+                    )
+            if self.filter(allocation__in=locked, date=day).exists():
+                raise ValidationError(f'A ocorrência de {shown} já está cancelada.', code='already_cancelled')
+            created = []
+            for allocation in locked:
+                exception = self.create(
+                    allocation=allocation, date=day, kind=AllocationException.Kind.CANCELLED, created_by=executor,
+                )
+                AuditLog.objects.record(
+                    catalog.CANCEL,
+                    catalog.SPACE_ALLOCATION_EXCEPTION,
+                    resource_id=exception.pk,
+                    new_values={'tipo': exception.kind, 'data': iso(day)},
+                    metadata=allocation.audit_values(),
+                )
+                created.append(exception)
+            return created
+
+
+class AllocationException(models.Model):
+    """Alteração de uma ocorrência da alocação numa data, sem alterar a regra semanal.
+
+    Nesta versão o único tipo é o cancelamento. A exceção aponta para a alocação com
+    PROTECT, e a importação reaproveita a alocação pela identidade, sem excluir nem recriar,
+    por isso a exceção continua valendo depois de uma nova importação.
+    """
+
+    class Kind(models.TextChoices):
+        CANCELLED = 'CANCELADA', 'Cancelada'
+
+    allocation = models.ForeignKey(
+        Allocation, on_delete=models.PROTECT, related_name='exceptions', verbose_name='alocação',
+    )
+    date = models.DateField('data')
+    kind = models.CharField('tipo', max_length=9, choices=Kind.choices, default=Kind.CANCELLED)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='registrada por',
+    )
+    created_at = models.DateTimeField('registrada em', auto_now_add=True)
+
+    objects = AllocationExceptionManager()
+
+    class Meta:
+        verbose_name = 'exceção do ensalamento'
+        verbose_name_plural = 'exceções do ensalamento'
+        ordering = ['-created_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['allocation', 'date'],
+                name='allocation_exception_unique',
+                violation_error_message='Esta ocorrência já tem uma exceção.',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.allocation} {self.date} {self.get_kind_display()}'
 
 
 def decision_values(decision):

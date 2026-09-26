@@ -11,7 +11,7 @@ visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda entra
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 
-from schedule.models import Allocation, Semester
+from schedule.models import Allocation, AllocationException, Semester
 from schedule.timetable import WEEKDAYS, Entry, group_label
 
 SPACE_ALLOCATION = 'ENSALAMENTO'
@@ -39,8 +39,10 @@ def dates_between(start_date, end_date):
 class AllocationSource:
     """Ocorrências do ensalamento: cada alocação da sala em cada data do seu dia da semana.
 
-    São três consultas, qualquer que seja o intervalo: os semestres que o cruzam, as
-    alocações da sala neles e os docentes delas.
+    São quatro consultas, qualquer que seja o intervalo: os semestres que o cruzam, as
+    alocações da sala neles, os docentes delas e as ocorrências canceladas no intervalo. A
+    ocorrência cancelada não é gerada, e por isso some da Grade do ensalamento e da Grade da
+    Agenda, que reúnem esta fonte (Change cancelar-ocorrencia-do-ensalamento).
     """
 
     kind = SPACE_ALLOCATION
@@ -59,13 +61,17 @@ class AllocationSource:
         )
         by_weekday = {}
         for allocation in allocations:
+            allocation.semester = semesters[allocation.semester_id]
             by_weekday.setdefault(allocation.weekday, []).append(allocation)
+        cancelled = AllocationException.objects.cancelled(
+            [allocation.pk for items in by_weekday.values() for allocation in items], start_date, end_date,
+        )
         result = []
         for day in dates_between(start_date, end_date):
             if day.weekday() >= len(WEEKDAYS):
                 continue
             for allocation in by_weekday.get(WEEKDAYS[day.weekday()], []):
-                if not semesters[allocation.semester_id].contains(day):
+                if not allocation.occurs_on(day) or (allocation.pk, day) in cancelled:
                     continue
                 result.append(Occurrence(
                     date=day,
@@ -78,6 +84,7 @@ class AllocationSource:
                         group_label=group_label(allocation.class_group),
                         teachers=tuple(sorted(teacher.name for teacher in allocation.teachers.all())),
                         stage=allocation.class_group.course.stage,
+                        allocation_ids=(allocation.pk,),
                     ),
                 ))
         return result

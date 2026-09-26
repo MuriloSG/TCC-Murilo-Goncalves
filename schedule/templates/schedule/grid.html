@@ -13,11 +13,10 @@
     <div>
       <h1 class="page-title">Ensalamento</h1>
     </div>
-    {% if perms.ENSALAMENTO.IMPORTAR %}
-      <div class="page-actions">
-        <a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>
-      </div>
-    {% endif %}
+    <div class="page-actions">
+      <a class="btn-secondary" href="{% url 'space_allocation_exception_list' %}">{% icon "calendar-x" %}Ver exceções</a>
+      {% if perms.ENSALAMENTO.IMPORTAR %}<a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>{% endif %}
+    </div>
   </div>
 {% endblock %}
 

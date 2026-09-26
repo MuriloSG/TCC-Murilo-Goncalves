@@ -5,6 +5,12 @@ from bookings import views
 
 urlpatterns = [
     path('agenda/', login_required(views.AgendaGridView.as_view()), name='agenda_grid'),
+    path(
+        'agenda/ocorrencias/cancelar/',
+        login_required(views.AgendaOccurrenceCancelView.as_view()),
+        name='agenda_occurrence_cancel',
+    ),
+    path('agenda/excecoes/', login_required(views.AgendaExceptionListView.as_view()), name='agenda_exception_list'),
     path('agenda/solicitar/', login_required(views.BookingRequestCreateView.as_view()), name='agenda_request_create'),
     path('agenda/minhas-solicitacoes/', login_required(views.MyBookingRequestListView.as_view()), name='agenda_my_requests'),
     path('agenda/minhas-solicitacoes/<int:pk>/', login_required(views.MyBookingRequestDetailView.as_view()), name='agenda_my_request'),

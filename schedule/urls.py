@@ -18,6 +18,16 @@ urlpatterns = [
         name='space_allocation_grid',
     ),
     path(
+        'ensalamento/ocorrencias/cancelar/',
+        login_required(views.OccurrenceCancelView.as_view()),
+        name='space_allocation_occurrence_cancel',
+    ),
+    path(
+        'ensalamento/excecoes/',
+        login_required(views.AllocationExceptionListView.as_view()),
+        name='space_allocation_exception_list',
+    ),
+    path(
         'ensalamento/importacoes/',
         login_required(views.SpaceAllocationImportListView.as_view()),
         name='space_allocation_import_list',

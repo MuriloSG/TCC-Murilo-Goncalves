@@ -1492,6 +1492,16 @@
       margin-top: var(--spacing-1);
     }
 
+    &:has(.timetable-card-action) {
+      padding-right: var(--spacing-12);
+    }
+
+    & .timetable-card-action {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
     &.is-undergraduate {
       background: var(--color-stage-undergraduate-bg);
       box-shadow: inset 3px 0 0 var(--color-stage-undergraduate-bar);

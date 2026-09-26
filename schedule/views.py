@@ -1,6 +1,7 @@
 """Grade do ensalamento confirmado, telas da importação e cadastro de espaços.
 
-A grade exige `ENSALAMENTO.VISUALIZAR`, as telas da importação exigem
+A grade, o cancelamento de ocorrência e a lista de exceções exigem `ENSALAMENTO.VISUALIZAR`;
+quem cancela é conferido por aula no model. As telas da importação exigem
 `ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`.
 O cadastro de espaços exige a permissão de cada operação do recurso `ESPACO` (D15 da Change
 manipulacao-dos-espacos). A autenticação vem do `login_required` no `urls.py` e a
@@ -10,15 +11,18 @@ pelo sistema.
 """
 
 import logging
+from dataclasses import replace
 from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
+from django.shortcuts import get_list_or_404
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.formats import date_format
 from django.views import View
 from django.views.generic import FormView, ListView, TemplateView
 
@@ -38,7 +42,7 @@ from imports.views import (
 )
 from imports.models import Import
 from schedule.forms import GridFilterForm, SpaceAssociateForm, SpaceFilterForm, SpaceForm
-from schedule.models import SPACE_PERMISSION_MESSAGE, Space, SpaceDecision, Weekday
+from schedule.models import SPACE_PERMISSION_MESSAGE, Allocation, AllocationException, Space, SpaceDecision, Weekday, manages
 from schedule.spaces import CREATE, INACTIVE, REACTIVATE, SIMILAR, classify_import, decision_permissions, options_of
 from schedule.imports import SpaceAllocationImport, concluded_message
 from ui.pagination import paginate
@@ -103,8 +107,10 @@ class SpaceAllocationGridView(TemplateView):
     existe na lista cai no padrão, sem erro. Com o período do semestre, a semana é datada e
     navegável pelo parâmetro `semana`; sem ele, é a semana típica com o aviso (D3 e D7 da
     Change visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda chegam
-    como mais uma fonte e aparecem em todas as faixas que cruzam; a Grade continua só de
-    consulta, sem ação de solicitar (Change agendar-uso-eventual-dos-espacos).
+    como mais uma fonte e aparecem em todas as faixas que cruzam, sem ação de solicitar
+    (Change agendar-uso-eventual-dos-espacos). A única ação da Grade é cancelar a ocorrência
+    de uma aula datada, oferecida a quem administra a aula (Change
+    cancelar-ocorrencia-do-ensalamento).
     """
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
@@ -178,6 +184,115 @@ class SpaceAllocationGridView(TemplateView):
             occupation_text=occupation_text(week, is_month),
             shows_requester=self.request.user.has_perm(permissions.BOOKING_REVIEW),
         )
+        if week.is_dated:
+            with_cancel_actions(week, self.request.user)
+        return context
+
+
+def cancel_url(entry, day, url_name):
+    query = urlencode({'data': day.isoformat(), 'alocacao': entry.allocation_ids}, doseq=True)
+    return f'{reverse(url_name)}?{query}'
+
+
+def with_cancel_actions(week, user, url_name='space_allocation_occurrence_cancel'):
+    """Dá a ação de cancelar a cada aula datada que o usuário administra.
+
+    A decisão usa os docentes já carregados no card, pela mesma regra de `manages`, sem
+    consulta por aula. Esconder a ação não é a proteção: a view do cancelamento carrega só
+    as aulas que o usuário administra e o model confere tudo de novo no POST.
+    """
+    for day in week.days:
+        if day.date is None or not day.in_period:
+            continue
+        for cell in day.cells:
+            if not cell or cell.is_continued or cell.is_outside:
+                continue
+            cell.entries = [
+                replace(entry, cancel_url=cancel_url(entry, day.date, url_name))
+                if getattr(entry, 'allocation_ids', ()) and manages(user, entry.teachers) else entry
+                for entry in cell.entries
+            ]
+
+
+class OccurrenceCancelView(ConfirmedActionView):
+    """Cancela a ocorrência de uma aula numa data, sem alterar a regra semanal.
+
+    A aula é identificada pelas alocações do bloco da Grade e pela data. Alocação
+    inexistente, de outro docente ou data que não é ocorrência dela respondem 404, sem
+    revelar a aula, como o detalhe de solicitação de outro usuário na Agenda. O POST confere
+    tudo de novo em `AllocationException.objects.cancel`.
+    """
+
+    permission_required = permissions.SPACE_ALLOCATION_VIEW
+    template_name = 'schedule/occurrence_cancel.html'
+    modal_template_name = 'schedule/occurrence_cancel_modal.html'
+    success_url = reverse_lazy('space_allocation_grid')
+    section_title = 'Ensalamento'
+
+    def setup(self, request, *args, **kwargs):
+        super(ConfirmedActionView, self).setup(request, *args, **kwargs)
+        self.day = parse_date(request.GET.get('data'))
+        ids = request.GET.getlist('alocacao')
+        if self.day is None or not ids or not all(value.isdigit() for value in ids):
+            raise Http404
+        ids = {int(value) for value in ids}
+        allocations = get_list_or_404(
+            Allocation.objects.managed_by(request.user)
+            .filter(pk__in=ids)
+            .select_related('semester', 'subject', 'time_slot', 'space', 'class_group__course')
+            .order_by('time_slot__start_time'),
+        )
+        if len(allocations) != len(ids) or not all(allocation.occurs_on(self.day) for allocation in allocations):
+            raise Http404
+        self.allocations = allocations
+
+    def get_context_data(self, **kwargs):
+        first, last = self.allocations[0], self.allocations[-1]
+        return super(ConfirmedActionView, self).get_context_data(
+            day=self.day,
+            lesson=first,
+            start=first.time_slot.start_time,
+            end=last.time_slot.end_time,
+            section_title=self.section_title,
+            section_url=self.success_url,
+            **kwargs,
+        )
+
+    def perform(self):
+        AllocationException.objects.cancel([allocation.pk for allocation in self.allocations], self.day, self.request.user)
+        messages.success(self.request, f'Ocorrência de {date_format(self.day, "SHORT_DATE_FORMAT")} cancelada.')
+
+
+class AllocationExceptionListView(ListView):
+    """Exceções do ensalamento, das mais recentes para as mais antigas.
+
+    Quem tem `ENSALAMENTO.CANCELAR_OCORRENCIA` vê todas; o docente vê as das aulas dele,
+    pela mesma regra de `Allocation.objects.managed_by`.
+    """
+
+    permission_required = permissions.SPACE_ALLOCATION_VIEW
+    audit_resource = catalog.SPACE_ALLOCATION_EXCEPTION
+    template_name = 'schedule/exception_list.html'
+    context_object_name = 'exceptions'
+    section_title = 'Ensalamento'
+    section_url = reverse_lazy('space_allocation_grid')
+
+    def get_queryset(self):
+        return (
+            AllocationException.objects.filter(allocation__in=Allocation.objects.managed_by(self.request.user))
+            .select_related(
+                'allocation__semester', 'allocation__subject', 'allocation__time_slot',
+                'allocation__space', 'allocation__class_group__course', 'created_by',
+            )
+            .prefetch_related('allocation__teachers')
+            .order_by('-created_at', '-pk')
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page'] = paginate(self.request, self.object_list)
+        context['exceptions'] = context['page'].object_list
+        context.update(section_title=self.section_title, section_url=self.section_url)
         return context
 
 

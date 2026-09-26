@@ -17,7 +17,6 @@ from django.utils import timezone
 
 from schedule.models import Allocation
 from schedule.occupancy import Occurrence, grid_sources
-from schedule.timetable import WEEKDAYS
 
 BOOKING = 'AGENDAMENTO'
 SPACE_ALLOCATION = 'ENSALAMENTO'
@@ -37,18 +36,11 @@ def conflict_message(conflict):
 
 
 def allocation_conflict(space, day, start, end):
-    """Aula do espaço na data: semestre com período que a contém, no dia da semana dela."""
-    if day.weekday() >= len(WEEKDAYS):
-        return None
+    """Aula do espaço que ocorre na data, pela regra de `Allocation.objects.active_on`, que
+    deixa de fora a ocorrência cancelada."""
     found = (
-        Allocation.objects.filter(
-            space=space,
-            weekday=WEEKDAYS[day.weekday()],
-            semester__start_date__lte=day,
-            semester__end_date__gte=day,
-            time_slot__start_time__lt=end,
-            time_slot__end_time__gt=start,
-        )
+        Allocation.objects.active_on(day)
+        .filter(space=space, time_slot__start_time__lt=end, time_slot__end_time__gt=start)
         .order_by('time_slot__start_time')
         .values_list('time_slot__start_time', 'time_slot__end_time')
         .first()

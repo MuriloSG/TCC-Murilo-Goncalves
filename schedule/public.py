@@ -8,7 +8,9 @@ descrição (Change agendar-uso-eventual-dos-espacos). Os
 templates recebem só `PublicEntry`, `PublicBooking` e a estrutura da Grade, sem referência a
 model e sem IDs (D5).
 
-A quantidade de consultas é fixa: no máximo nove, qualquer que seja o intervalo (D10).
+A quantidade de consultas é fixa: no máximo dez, qualquer que seja o intervalo (D10), com a
+consulta das ocorrências canceladas, que somem da Grade datada sem expor a exceção (Change
+cancelar-ocorrencia-do-ensalamento).
 """
 
 from dataclasses import dataclass, field
@@ -19,7 +21,7 @@ from django.db.models import Prefetch
 from django.db.models.functions import Lower
 
 from accounts.models import User
-from schedule.models import Allocation, Course, Space, Stage, Teacher
+from schedule.models import Allocation, AllocationException, Course, Space, Stage, Teacher
 from schedule.occupancy import public_sources
 from schedule.timetable import (
     WEEKDAYS,
@@ -319,12 +321,18 @@ def dated_week(semester, allocations, dates, today, bookings=()):
     """
     by_weekday = {}
     for allocation, entry in entries_of(allocations):
+        allocation.semester = semester
         by_weekday.setdefault(allocation.weekday, []).append((allocation, entry))
+    cancelled = AllocationException.objects.cancelled(
+        [allocation.pk for allocation in allocations], dates[0], dates[-1],
+    ) if dates else set()
     by_day_slot = {}
     for day in dates:
         if not semester.contains(day):
             continue
         for allocation, entry in by_weekday.get(WEEKDAYS[day.weekday()], []):
+            if not allocation.occurs_on(day) or (allocation.pk, day) in cancelled:
+                continue
             slot = (allocation.time_slot.start_time, allocation.time_slot.end_time)
             by_day_slot.setdefault((day, slot), []).append(entry)
     wanted = {day for day in dates if semester.contains(day)}

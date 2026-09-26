@@ -31,6 +31,7 @@ REJECT = 'REJEITAR'
 SUGGEST = 'SUGERIR'
 ACCEPT = 'ACEITAR'
 DECLINE = 'RECUSAR'
+CANCEL = 'CANCELAR'
 
 ACTION_LABELS = {
     LOGIN: 'Entrada',
@@ -55,6 +56,7 @@ ACTION_LABELS = {
     SUGGEST: 'Sugestão de alternativa',
     ACCEPT: 'Aceite da alternativa',
     DECLINE: 'Recusa da alternativa',
+    CANCEL: 'Cancelamento',
 }
 
 AUTHENTICATION = 'AUTENTICACAO'
@@ -68,6 +70,7 @@ NOTICE = 'NOTIFICACAO'
 SPACE = 'ESPACO'
 BOOKING_REQUEST = 'SOLICITACAO_AGENDAMENTO'
 BOOKING = 'AGENDAMENTO'
+SPACE_ALLOCATION_EXCEPTION = 'EXCECAO_ENSALAMENTO'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -81,6 +84,7 @@ RESOURCE_LABELS = {
     SPACE: 'Espaços',
     BOOKING_REQUEST: 'Solicitações de agendamento',
     BOOKING: 'Agendamentos',
+    SPACE_ALLOCATION_EXCEPTION: 'Exceções do ensalamento',
 }
 
 INTERFACE = 'INTERFACE'
@@ -138,6 +142,11 @@ FIELD_LABELS = {
     'horario_sugerido': 'Horário sugerido',
     'mensagem': 'Mensagem',
     'solicitacao': 'Solicitação',
+    'alocacao': 'Alocação',
+    'disciplina': 'Disciplina',
+    'turma': 'Turma',
+    'docentes': 'Docentes',
+    'dia': 'Dia da semana',
 }
 
 

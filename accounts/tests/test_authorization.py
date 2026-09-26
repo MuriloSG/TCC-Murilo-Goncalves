@@ -11,6 +11,8 @@ def grant(role, *codes):
         RolePermission.objects.create(role=role, permission=Permission.objects.get(code=code))
 
 
+TEACHER_PERMISSIONS = frozenset({permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST})
+
 class AuthorizationTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -69,15 +71,15 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.SPACE_ALLOCATION_VIEW,
             permissions.SPACE_ALLOCATION_IMPORT,
             permissions.SPACE_ALLOCATION_IMPORT_DELETE,
-        } | permissions.SPACE_PERMISSIONS
+        } | permissions.SPACE_PERMISSIONS | permissions.BOOKING_PERMISSIONS
         self.assertEqual(user.effective_permissions(), granted)
         for code in granted:
             with self.subTest(code=code):
                 self.assertTrue(user.has_perm(code))
 
-    def test_teacher_holds_nothing(self):
+    def test_teacher_holds_only_the_booking_request(self):
         user = self.create_user('docente@ifnmg.edu.br', self.teacher)
-        self.assertEqual(user.effective_permissions(), frozenset())
+        self.assertEqual(user.effective_permissions(), TEACHER_PERMISSIONS)
         self.assertFalse(user.has_perm(permissions.USER_VIEW))
         self.assertFalse(user.has_module_perms('USUARIO'))
 
@@ -131,7 +133,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.SPACE_ALLOCATION_VIEW,
             permissions.SPACE_ALLOCATION_IMPORT,
             permissions.SPACE_ALLOCATION_IMPORT_DELETE,
-        } | permissions.SPACE_PERMISSIONS
+        } | permissions.SPACE_PERMISSIONS | permissions.BOOKING_PERMISSIONS
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)
         coordinator = self.create_user('coord@ifnmg.edu.br', self.coordination)
@@ -156,13 +158,13 @@ class RolePermissionsTests(AuthorizationTestCase):
         for user in (first, second):
             with self.subTest(user=user.email):
                 reloaded = User.objects.get(pk=user.pk)
-                self.assertEqual(reloaded.effective_permissions(), {permissions.USER_VIEW})
+                self.assertEqual(reloaded.effective_permissions(), {permissions.USER_VIEW} | TEACHER_PERMISSIONS)
 
     def test_previous_role_permissions_do_not_remain(self):
         user = self.create_user('admin@ifnmg.edu.br', self.administrator)
         UserRole.objects.filter(user=user).update(role=self.teacher)
         reloaded = User.objects.get(pk=user.pk)
-        self.assertEqual(reloaded.effective_permissions(), frozenset())
+        self.assertEqual(reloaded.effective_permissions(), TEACHER_PERMISSIONS)
         self.assertFalse(reloaded.has_perm(permissions.USER_VIEW))
 
     def test_effective_permissions_computed_once_per_instance(self):

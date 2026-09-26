@@ -318,7 +318,8 @@ class ContinuityGuardTests(ContinuityTestCase):
                 permissions.SPACE_ALLOCATION_IMPORT,
                 permissions.SPACE_ALLOCATION_IMPORT_DELETE,
             }
-            | permissions.SPACE_PERMISSIONS,
+            | permissions.SPACE_PERMISSIONS
+            | permissions.BOOKING_PERMISSIONS,
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 

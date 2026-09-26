@@ -69,7 +69,7 @@ class AccessTests(RoleViewsTestCase):
         client.force_login(self.admin)
         response = client.post(self.url('permissions', self.teacher), {'permissions': [permissions.USER_CREATE]})
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(self.codes(self.teacher), set())
+        self.assertEqual(self.codes(self.teacher), {permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST})
 
     def test_active_superadmin_with_teacher_role_has_access(self):
         for route in ROUTES:

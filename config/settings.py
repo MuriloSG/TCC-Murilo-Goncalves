@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'audit',
     'notices',
     'schedule',
+    'bookings',
     'allauth',
     'allauth.account',
 ]

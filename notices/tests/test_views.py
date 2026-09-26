@@ -138,6 +138,25 @@ class PanelTests(NotificationViewTestCase):
         self.assertIn('<span class="notifications-count" aria-hidden="true">1</span>', content)
         self.assertEqual(content.count('<li class="notification'), 1)
 
+    def test_fragment_returns_to_the_open_screen(self):
+        self.notify()
+        content = self.client.get('/notificacoes/sino/', {'origem': '/agenda/?semana=2'}).content.decode()
+        self.assertIn('name="next" value="/agenda/?semana=2"', content)
+        self.assertNotIn('value="/notificacoes/sino/', content)
+
+    def test_fragment_never_returns_to_itself_nor_outside(self):
+        self.notify()
+        for origin in ('', 'https://externo.com/'):
+            content = self.client.get('/notificacoes/sino/', {'origem': origin}).content.decode()
+            self.assertIn('name="next" value="/inicio/"', content)
+
+    def test_read_all_from_the_fragment_goes_back_to_the_screen(self):
+        self.notify()
+        content = self.client.get('/notificacoes/sino/', {'origem': '/agenda/'}).content.decode()
+        self.assertIn('value="/agenda/"', content)
+        response = self.client.post('/notificacoes/lidas/', {'next': '/agenda/'})
+        self.assertRedirects(response, '/agenda/', fetch_redirect_response=False)
+
     def test_fragment_without_notifications(self):
         content = self.client.get('/notificacoes/sino/').content.decode()
         self.assertIn('<p class="notifications-empty">Nenhuma notificação.</p>', content)

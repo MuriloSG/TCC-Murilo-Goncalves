@@ -6,7 +6,7 @@
       {% if unread %}
         <form method="post" action="{% url 'notifications_read_all' %}">
           {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="next" value="{{ origin }}">
           <button class="notifications-read-all" type="submit">{% icon "check-check" "size-4" %}Marcar todas como lidas</button>
         </form>
       {% endif %}
@@ -22,7 +22,7 @@
             <span class="notification-icon tone-{{ item.tone }}">{% icon item.icon %}</span>
             <form class="notification-body" method="post" action="{% url 'notification_open' item.pk %}">
               {% csrf_token %}
-              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <input type="hidden" name="next" value="{{ origin }}">
               <button class="notification-open" type="submit">
                 <span class="notification-title">{{ item.title }}{% if item.unread %}<span class="sr-only"> (não lida)</span>{% endif %}</span>
                 <span class="notification-text">{{ item.message }}</span>

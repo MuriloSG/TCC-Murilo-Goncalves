@@ -45,7 +45,8 @@
     if (!first) {
       return;
     }
-    fetch(first.dataset.notificationsPanel, { credentials: "same-origin" })
+    var url = first.dataset.notificationsPanel + "?origem=" + encodeURIComponent(window.location.pathname + window.location.search);
+    fetch(url, { credentials: "same-origin" })
       .then(function (response) {
         return response.ok ? response.text() : Promise.reject(response.status);
       })

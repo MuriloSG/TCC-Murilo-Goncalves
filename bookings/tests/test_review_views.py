@@ -112,7 +112,7 @@ class DetailTests(ReviewTestCase):
         content = self.client.get(url('agenda_review_detail', self.request)).content.decode()
         for text in (
             self.ana.name, 'ana@ifnmg.edu.br', 'Laboratório de Informática 2', '15/10/2026, das 16:00 às 18:00',
-            'Reunião do projeto de extensão com os alunos.', 'Pendente', f'Criada por {self.ana.name}', 'Aprovar', 'Rejeitar', 'Sugerir alternativa',
+            'Reunião do projeto de extensão com os alunos.', 'Pendente', 'Solicitação criada', 'Aprovar', 'Rejeitar', 'Sugerir alternativa',
         ):
             with self.subTest(text=text):
                 self.assertIn(text, content)
@@ -126,7 +126,8 @@ class DetailTests(ReviewTestCase):
         self.request.reject(self.reviewer, 'Motivo.')
         content = self.client.get(url('agenda_review_detail', self.request)).content.decode()
         self.assertNotIn(url('agenda_review_approve', self.request), content)
-        self.assertIn(f'Rejeitada por {self.reviewer.name}', content)
+        self.assertIn('Rejeitada', content)
+        self.assertIn(f'por {self.reviewer.name}', content)
 
 
 class DecisionTests(ReviewTestCase):

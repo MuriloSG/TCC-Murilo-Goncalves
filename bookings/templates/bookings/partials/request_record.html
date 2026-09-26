@@ -1,41 +1,66 @@
-{% load ui %}<div class="record-sections">
-  <section class="record-section">
-    <h2>Solicitação</h2>
-    <dl class="record-fields">
+{% load ui %}<div class="request-layout{% if target.has_suggestion or target.rejection_reason %} has-aside{% endif %}">
+  <section class="card request-card" aria-labelledby="resumo-titulo">
+    <p class="eyebrow">Resumo da solicitação</p>
+    <h2 class="request-title" id="resumo-titulo">Solicitação {{ target.pk }}</h2>
+    <dl class="request-summary">
       {% if show_requester %}
-        <div><dt>Solicitante</dt><dd>{{ target.requested_by.name }}<span class="person-detail">{{ target.requested_by.email }}</span></dd></div>
+        <div><dt>Solicitante</dt><dd>{{ target.requested_by.name }}<span class="request-detail">{{ target.requested_by.email }}</span></dd></div>
       {% endif %}
-      <div><dt>Espaço</dt><dd>{{ target.space.name }}</dd></div>
-      <div><dt>Data e horário</dt><dd>{{ target.schedule_text }}</dd></div>
+      <div><dt>Espaço</dt><dd><span class="request-value">{% icon "door-open" "size-5" %}{{ target.space.name }}</span></dd></div>
+      <div><dt>Data e horário</dt><dd><span class="request-value">{% icon "clock" "size-5" %}{{ target.date|date:"SHORT_DATE_FORMAT" }}</span><span class="request-detail">das {{ target.start_time|time }} às {{ target.end_time|time }}</span></dd></div>
       <div><dt>Descrição</dt><dd>{{ target.description }}</dd></div>
-      <div><dt>Situação</dt><dd>{% include "ui/components/badge.html" with tone=target.badge.0 icon=target.badge.1 label=target.badge.2 %}</dd></div>
     </dl>
+    <div class="request-status">
+      <p class="eyebrow">Situação atual</p>
+      {% include "ui/components/badge.html" with tone=target.badge.0 icon=target.badge.1 label=target.badge.2 %}
+    </div>
   </section>
 
-  {% if target.has_suggestion %}
-    <section class="record-section record-panel">
-      <h2>Alternativa sugerida</h2>
-      <dl class="record-pairs">
-        <div><dt>Espaço</dt><dd><span class="pair-before">{{ target.space.name }}</span>{% icon "arrow-right" "size-4" %}{{ target.suggested_space.name }}</dd></div>
-        <div><dt>Data e horário</dt><dd><span class="pair-before">{{ target.schedule_text }}</span>{% icon "arrow-right" "size-4" %}{{ target.suggested_schedule_text }}</dd></div>
-        <div><dt>Mensagem de quem analisou</dt><dd>{{ target.suggestion_message|default:"Sem mensagem" }}</dd></div>
-      </dl>
+  {% if target.has_suggestion or target.rejection_reason %}
+    <section class="card request-card" aria-labelledby="retorno-titulo">
+      <p class="eyebrow">Retorno da análise</p>
+      {% if target.has_suggestion %}
+        <h2 class="request-title" id="retorno-titulo">Alternativa sugerida</h2>
+        <div class="record-panel">
+          <dl class="record-pairs">
+            <div><dt>Espaço</dt><dd><span class="pair-before">{{ target.space.name }}</span>{% icon "chevron-right" "size-4" %}{{ target.suggested_space.name }}</dd></div>
+            <div><dt>Data e horário</dt><dd><span class="pair-before">{{ target.schedule_text }}</span>{% icon "chevron-right" "size-4" %}{{ target.suggested_schedule_text }}</dd></div>
+          </dl>
+          <div class="request-message">
+            <p>Mensagem de quem analisou</p>
+            {% if target.suggestion_message %}<blockquote>“{{ target.suggestion_message }}”</blockquote>{% else %}<blockquote>Sem mensagem</blockquote>{% endif %}
+          </div>
+        </div>
+      {% endif %}
+      {% if target.rejection_reason %}
+        {% if not target.has_suggestion %}<h2 class="request-title" id="retorno-titulo">Rejeição</h2>{% endif %}
+        <div class="record-panel">
+          <div class="request-message">
+            <p>Motivo da rejeição</p>
+            <blockquote>“{{ target.rejection_reason }}”</blockquote>
+          </div>
+        </div>
+      {% endif %}
     </section>
   {% endif %}
 
-  {% if target.rejection_reason %}
-    <section class="record-section">
-      <h2>Rejeição</h2>
-      <dl class="record-fields">
-        <div><dt>Motivo</dt><dd>{{ target.rejection_reason }}</dd></div>
-      </dl>
-    </section>
-  {% endif %}
-
-  <section class="record-section">
-    <h2>Histórico</h2>
-    <ol class="record-history">
-      {% for line in target.history %}<li>{{ line }}</li>{% endfor %}
+  <section class="card request-card request-wide" aria-labelledby="historico-titulo">
+    <div class="request-head">
+      <div>
+        <p class="eyebrow">Linha do tempo</p>
+        <h2 class="request-title" id="historico-titulo">Histórico da solicitação</h2>
+      </div>
+      {% if perms.AUDITORIA.VISUALIZAR %}<a class="btn-outline" href="{% url 'audit_log_list' %}?recurso=SOLICITACAO_AGENDAMENTO&amp;registro={{ target.pk }}">Ver auditoria completa{% icon "arrow-right" %}</a>{% endif %}
+    </div>
+    <ol class="timeline">
+      {% for item in target.history %}
+        <li>
+          <span class="timeline-icon tone-{{ item.tone }}">{% icon item.icon %}</span>
+          <p class="timeline-title">{{ item.title }}</p>
+          {% if item.who %}<p class="timeline-meta">por {{ item.who }}</p>{% endif %}
+          {% if item.when %}<p class="timeline-when">{{ item.when }}</p>{% endif %}
+        </li>
+      {% endfor %}
     </ol>
   </section>
 </div>

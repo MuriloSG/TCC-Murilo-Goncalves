@@ -201,7 +201,7 @@ def status_badge(request):
         Status.APPROVED: ('success', 'check', 'Aprovada'),
         Status.REJECTED: ('error', 'x', 'Rejeitada'),
         Status.SUGGESTED: ('warning', 'arrow-left-right', 'Alternativa sugerida'),
-        Status.DECLINED: ('info', 'circle-minus', 'Alternativa recusada'),
+        Status.DECLINED: ('error', 'x', 'Alternativa recusada'),
     }[request.status]
 
 
@@ -209,24 +209,30 @@ def when(moment):
     return date_format(timezone.localtime(moment), 'DATETIME_FORMAT')
 
 
+def event(title, icon, tone, who, moment):
+    return {'title': title, 'icon': icon, 'tone': tone, 'who': who.name if who else '', 'when': when(moment) if moment else ''}
+
+
 def history_of(request):
-    """Histórico da solicitação montado dos campos dela, sem tabela de eventos (D3)."""
+    """Linha do tempo da solicitação montada dos campos dela, sem tabela de eventos (D3)."""
     Status = BookingRequest.Status
-    lines = [f'Criada por {request.requested_by.name} em {when(request.created_at)}.']
+    events = [event('Solicitação criada', 'calendar-plus', 'success', request.requested_by, request.created_at)]
     if request.decided_by_id:
-        who = f'{request.decided_by.name} em {when(request.decided_at)}'
+        who, moment = request.decided_by, request.decided_at
         if request.status == Status.REJECTED:
             if request.has_suggestion:
-                lines.append('Alternativa sugerida.')
-            lines.append(f'Rejeitada por {who}.')
+                events.append(event('Alternativa sugerida', 'arrow-left-right', 'warning', None, None))
+            events.append(event('Rejeitada', 'x', 'error', who, moment))
         elif request.has_suggestion:
-            lines.append(f'Alternativa sugerida por {who}.')
+            events.append(event('Alternativa sugerida', 'arrow-left-right', 'warning', who, moment))
         else:
-            lines.append(f'Aprovada por {who}.')
+            events.append(event('Aprovada', 'check', 'success', who, moment))
     if request.responded_at:
-        answer = 'aceita' if request.status == Status.APPROVED else 'recusada'
-        lines.append(f'Alternativa {answer} por {request.requested_by.name} em {when(request.responded_at)}.')
-    return lines
+        if request.status == Status.APPROVED:
+            events.append(event('Alternativa aceita', 'check', 'success', request.requested_by, request.responded_at))
+        else:
+            events.append(event('Alternativa recusada', 'x', 'error', request.requested_by, request.responded_at))
+    return events
 
 
 def detailed(request):

@@ -25,10 +25,5 @@
 {% endblock %}
 
 {% block content %}
-  <section class="card" aria-labelledby="solicitacao-titulo">
-    <div class="card-head">
-      <h2 class="card-title" id="solicitacao-titulo">{{ target.space.name }}, {{ target.schedule_text }}</h2>
-    </div>
-    <div class="card-body">{% include "bookings/partials/request_record.html" with show_requester=True %}</div>
-  </section>
+  {% include "bookings/partials/request_record.html" with show_requester=True %}
 {% endblock %}

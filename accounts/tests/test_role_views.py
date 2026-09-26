@@ -199,7 +199,6 @@ class UpdateTests(RoleViewsTestCase):
     def test_code_is_shown_but_not_editable(self):
         response = self.client.get(self.url('update'))
         self.assertEqual(set(response.context['form'].fields), {'name', 'description'})
-        self.assertContains(response, 'COORDENACAO')
 
     def test_changes_name_and_description_only(self):
         response = self.client.post(
@@ -238,7 +237,6 @@ class PermissionsTests(RoleViewsTestCase):
         for code in permissions.SUPERADMIN_RESERVED_PERMISSIONS:
             self.assertNotContains(response, f'value="{code}"')
         self.assertContains(response, f'value="{permissions.USER_CREATE}"')
-        self.assertContains(response, '1 usuário vinculado')
 
     def test_grants_and_revokes_in_the_same_request(self):
         self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT])

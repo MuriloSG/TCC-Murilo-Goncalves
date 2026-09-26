@@ -132,7 +132,6 @@ class FormModalTests(ModalTestCase):
         self.assertIn('data-reload-on-close', step)
         self.assertIn('<p class="modal-step">Etapa 2 de 2</p>', step)
         self.assertIn('Permissões do perfil Novo perfil</h1>', step)
-        self.assertIn('Perfil NOVO criado.', step)
         self.assertIn('action="/perfis/%d/permissoes/?etapa=2"' % role.pk, step)
         response = self.client.post(f'/perfis/{role.pk}/permissoes/?etapa=2', {'permissions': [permissions.USER_VIEW]}, headers=HTMX)
         self.assertClientRedirect(response, f'/perfis/{role.pk}/')

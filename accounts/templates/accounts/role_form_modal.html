@@ -8,7 +8,6 @@
 
 {% block title %}{% if step == 2 %}Permissões do perfil {{ target.name }}{% else %}{{ title }}{% endif %}{% endblock %}
 
-{% block description %}{% if step == 1 %}Informe os dados do perfil. Na próxima etapa, escolha as permissões que ele concede.{% elif step == 2 %}Perfil {{ target.code }} criado. Escolha as permissões que ele concede. Sem nenhuma escolhida, o perfil fica sem acesso até receber permissões.{% elif user_count is not None %}{{ user_count }} usuário{{ user_count|pluralize }} vinculado{{ user_count|pluralize }} a este perfil. A alteração vale para todos a partir da próxima requisição de cada um.{% elif target %}Perfil {{ target.code }}. O código não pode ser alterado.{% else %}O código identifica o perfil e não pode ser alterado depois.{% endif %}{% endblock %}
 
 {% block body %}{{ form }}{% endblock %}
 

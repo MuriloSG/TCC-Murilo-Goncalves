@@ -151,7 +151,6 @@ class OperationTests(SpaceScreenTestCase):
     def test_update_keeps_the_previous_name_and_shows_the_origin(self):
         url = reverse('spaces_update', args=[self.space.pk])
         page = self.client.get(url)
-        self.assertContains(page, 'com a origem manual')
         self.assertContains(page, 'HV5')
         response = self.client.post(url, {'name': 'Sala HV 05', 'other_names': 'HV5', 'origin': 'PLANILHA'}, follow=True)
         self.assertContains(response, 'Espaço Sala HV 05 atualizado.')

@@ -3436,13 +3436,6 @@
     overflow-wrap: anywhere;
   }
 
-  .modal-description {
-    margin-top: var(--spacing-1);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
-  }
-
   .modal-body {
     display: grid;
     gap: var(--spacing-5);

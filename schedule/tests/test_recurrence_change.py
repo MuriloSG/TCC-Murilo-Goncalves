@@ -383,7 +383,6 @@ class ViewTests(RecurrenceTestCase):
         response = self.client.get(self.url(), headers={'HX-Request': 'true'})
         text = self.text(response)
         self.assertIn('Alterar recorrência', text)
-        self.assertIn('As ocorrências anteriores permanecem no histórico.', text)
         self.assertIn('A partir de', text)
         self.assertIn('value="2026-10-05"', text)
         self.assertIn('Das 08:00 às 10:00', text)

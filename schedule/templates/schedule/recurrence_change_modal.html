@@ -2,7 +2,6 @@
 
 {% block title %}Alterar recorrência{% endblock %}
 
-{% block description %}{{ lesson.subject.name }}, turma {{ lesson.class_group }}, {{ lesson.get_weekday_display|lower }} das {{ start|time:"H:i" }} às {{ end|time:"H:i" }}{% if lesson.space %} em {{ lesson.space.name }}{% endif %}. Esta alteração vale para todas as aulas a partir da data informada, e não só para uma ocorrência. As ocorrências anteriores permanecem no histórico.{% endblock %}
 
 {% block body %}{{ form }}{% endblock %}
 

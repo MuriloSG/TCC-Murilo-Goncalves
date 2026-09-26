@@ -3,7 +3,6 @@
 
 {% block title %}Alterar a recorrência de {{ lesson.subject.name }}?{% endblock %}
 
-{% block description %}Turma {{ lesson.class_group }}. As aulas antes de {{ plan.cut|date:"SHORT_DATE_FORMAT" }} continuam no histórico como estão, e as aulas a partir dessa data passam a usar os dados novos.{% endblock %}
 
 {% block body %}
   {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}

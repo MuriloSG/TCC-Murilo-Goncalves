@@ -168,6 +168,20 @@
     this.root.style.minHeight = "";
   };
 
+  State.prototype.liftModal = function () {
+    var modal = this.root.closest("dialog.modal");
+    if (modal && modal.scrollHeight <= modal.clientHeight) {
+      modal.dataset.selectOpen = "true";
+    }
+  };
+
+  State.prototype.dropModal = function () {
+    var modal = this.root.closest("dialog.modal");
+    if (modal) {
+      delete modal.dataset.selectOpen;
+    }
+  };
+
   State.prototype.ensureRoom = function () {
     var element = this.control || this.trigger;
     var chrome = this.panel.offsetHeight - this.list.offsetHeight;
@@ -236,6 +250,7 @@
   };
 
   State.prototype.open = function () {
+    this.liftModal();
     this.panel.hidden = false;
     this.trigger.setAttribute("aria-expanded", "true");
     this.search.value = "";
@@ -249,6 +264,7 @@
   State.prototype.close = function (focusTrigger) {
     this.panel.hidden = true;
     this.trigger.setAttribute("aria-expanded", "false");
+    this.dropModal();
     this.releaseControl();
     if (focusTrigger) {
       this.trigger.focus();

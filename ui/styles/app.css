@@ -3064,6 +3064,10 @@
     border: 0;
     box-shadow: var(--shadow-overlay);
 
+    &[data-select-open="true"] {
+      overflow: visible;
+    }
+
     &::backdrop {
       background: var(--color-overlay);
     }

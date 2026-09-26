@@ -55,7 +55,7 @@ class PanelTests(PanelTestCase):
         importation = self.upload()
         response = self.detail(importation)
         self.assertContains(response, 'Espaços desta importação')
-        self.assertContains(response, 'Nenhuma alteração foi feita no cadastro de espaços.')
+        self.assertNotContains(response, 'Nenhuma alteração foi feita no cadastro de espaços.')
         self.assertContains(response, '3 espaços novos serão cadastrados ao confirmar esta importação.')
         self.assertContains(response, 'A lista de salas da planilha tem 1 sala sem aula, que não será cadastrada.')
         self.assertContains(response, 'Pronta para confirmar. Ao confirmar, serão cadastrados 3 espaços.')

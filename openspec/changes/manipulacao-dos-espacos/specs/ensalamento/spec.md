@@ -397,7 +397,7 @@ Quando o cadastro de espaços mudar entre a prévia e a confirmação, o plano d
 - **THEN** a segunda não aplica nada, a prévia dela é refeita com `Sala 101` reconhecido e existe um único espaço `Sala 101`
 
 ### Requirement: Quadro de espaços da prévia
-O detalhe de uma importação de ensalamento DEVE (MUST) mostrar, antes das linhas, o quadro "Espaços desta importação", calculado pela classificação, dentro da experiência de importar o ensalamento e sem etapa separada de cadastro. Enquanto a importação estiver `PENDENTE` ou `VALIDADA`, o quadro DEVE (MUST) mostrar a frase "Nenhuma alteração foi feita no cadastro de espaços." e as quantidades, cada uma com a lista dos nomes que ela conta, recolhida:
+O detalhe de uma importação de ensalamento DEVE (MUST) mostrar, antes das linhas, o quadro "Espaços desta importação", calculado pela classificação, dentro da experiência de importar o ensalamento e sem etapa separada de cadastro. Enquanto a importação estiver `PENDENTE` ou `VALIDADA`, o quadro DEVE (MUST) mostrar as quantidades, cada uma com a lista dos nomes que ela conta, recolhida:
 
 - "<n> espaços já cadastrados foram reconhecidos.";
 - "<n> espaços novos serão cadastrados ao confirmar esta importação.", com os novos propostos e os decididos como novos;
@@ -413,7 +413,7 @@ Até a confirmação, os textos DEVEM (MUST) usar o futuro ("será cadastrado", 
 #### Scenario: Prévia com propostas e pendências
 - **GIVEN** uma importação `PENDENTE` com 57 nomes reconhecidos, 3 novos propostos, 1 nome decidido como associação e 2 que precisam de decisão
 - **WHEN** a prévia é exibida
-- **THEN** o quadro mostra "Nenhuma alteração foi feita no cadastro de espaços.", "57 espaços já cadastrados foram reconhecidos.", "3 espaços novos serão cadastrados ao confirmar esta importação.", "1 nome será associado como outro nome de um espaço cadastrado." e "2 espaços precisam de decisão antes de concluir."
+- **THEN** o quadro mostra "57 espaços já cadastrados foram reconhecidos.", "3 espaços novos serão cadastrados ao confirmar esta importação.", "1 nome será associado como outro nome de um espaço cadastrado." e "2 espaços precisam de decisão antes de concluir."
 - **AND** nenhum texto diz que um espaço foi cadastrado
 
 #### Scenario: Pendência de nome parecido

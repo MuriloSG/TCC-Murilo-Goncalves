@@ -16,7 +16,6 @@
           <p>Esta importação não cadastrou espaços.</p>
         {% endif %}
       {% else %}
-        {% if panel.open %}<p class="space-status">{% icon "info" %}Nenhuma alteração foi feita no cadastro de espaços.</p>{% endif %}
         <div class="alert tone-info" role="status" data-busy-status hidden>{% icon "info" %}<p>Atualizando a prévia com a decisão. A atualização lê todas as linhas da planilha e leva alguns segundos.</p></div>
         {% if panel.refresh_failed %}
           <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>Não foi possível atualizar a prévia.</p>

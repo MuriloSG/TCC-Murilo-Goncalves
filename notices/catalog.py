@@ -15,6 +15,12 @@ INFORMATION = 'INFORMACAO'
 SUCCESS = 'SUCESSO'
 WARNING = 'AVISO'
 ROLE_CHANGED = 'PERFIL_ALTERADO'
+BOOKING_REQUESTED = 'AGENDA_SOLICITADA'
+BOOKING_APPROVED = 'AGENDA_APROVADA'
+BOOKING_REJECTED = 'AGENDA_REJEITADA'
+BOOKING_SUGGESTED = 'AGENDA_ALTERNATIVA'
+SUGGESTION_ACCEPTED = 'AGENDA_ALTERNATIVA_ACEITA'
+SUGGESTION_DECLINED = 'AGENDA_ALTERNATIVA_RECUSADA'
 
 TYPES = {
     INFORMATION: {
@@ -42,6 +48,48 @@ TYPES = {
         'label': 'Perfil alterado',
         'description': 'O perfil de acesso do usuário mudou',
         'icon': 'shield-check',
+        'tone': 'info',
+        'manual': False,
+    },
+    BOOKING_REQUESTED: {
+        'label': 'Nova solicitação de agendamento',
+        'description': 'Uma solicitação de agendamento aguarda análise',
+        'icon': 'calendar-plus',
+        'tone': 'info',
+        'manual': False,
+    },
+    BOOKING_APPROVED: {
+        'label': 'Agendamento aprovado',
+        'description': 'A solicitação de agendamento foi aprovada',
+        'icon': 'calendar-check',
+        'tone': 'success',
+        'manual': False,
+    },
+    BOOKING_REJECTED: {
+        'label': 'Solicitação rejeitada',
+        'description': 'A solicitação de agendamento foi rejeitada',
+        'icon': 'calendar-x',
+        'tone': 'warning',
+        'manual': False,
+    },
+    BOOKING_SUGGESTED: {
+        'label': 'Alternativa sugerida',
+        'description': 'A solicitação de agendamento recebeu uma alternativa',
+        'icon': 'calendar-clock',
+        'tone': 'warning',
+        'manual': False,
+    },
+    SUGGESTION_ACCEPTED: {
+        'label': 'Alternativa aceita',
+        'description': 'O solicitante aceitou a alternativa sugerida',
+        'icon': 'calendar-check',
+        'tone': 'success',
+        'manual': False,
+    },
+    SUGGESTION_DECLINED: {
+        'label': 'Alternativa recusada',
+        'description': 'O solicitante recusou a alternativa sugerida',
+        'icon': 'calendar-x',
         'tone': 'info',
         'manual': False,
     },

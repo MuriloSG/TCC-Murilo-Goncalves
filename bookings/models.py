@@ -26,7 +26,9 @@ from django.utils.formats import date_format
 from accounts import permissions
 from audit import catalog
 from audit.models import AuditLog
+from bookings import notifications
 from bookings.occupancy import conflict_message, find_conflict
+from notices.events import announce
 from schedule.models import Space
 
 DESCRIPTION_MAX_LENGTH = 500
@@ -136,6 +138,7 @@ class BookingRequestManager(models.Manager):
                     'description': request.description,
                 },
             )
+            announce(notifications.REQUESTED, request=request)
         return request
 
 
@@ -245,6 +248,7 @@ class BookingRequest(models.Model):
             current.save(update_fields=['status', 'decided_by', 'decided_at'])
             record_transition(catalog.APPROVE, current, self.Status.PENDING)
             Booking.objects.book(current, space, current.date, current.start_time, current.end_time, user)
+            announce(notifications.APPROVED, request=current)
         self.refresh_from_db()
 
     def reject(self, user, reason):
@@ -264,6 +268,7 @@ class BookingRequest(models.Model):
             current.decided_at = timezone.now()
             current.save(update_fields=['status', 'rejection_reason', 'decided_by', 'decided_at'])
             record_transition(catalog.REJECT, current, previous, motivo=current.rejection_reason)
+            announce(notifications.REJECTED, request=current)
         self.refresh_from_db()
 
     def suggest(self, user, space, day, start, end, message=''):
@@ -294,6 +299,7 @@ class BookingRequest(models.Model):
                 espaco_sugerido=space.name, data_sugerida=day.isoformat(), horario_sugerido=hours(start, end),
                 mensagem=current.suggestion_message,
             )
+            announce(notifications.SUGGESTED, request=current)
         self.refresh_from_db()
 
     def check_owner(self, user):
@@ -318,6 +324,7 @@ class BookingRequest(models.Model):
                 current, space, current.suggested_date, current.suggested_start_time, current.suggested_end_time,
                 current.decided_by,
             )
+            announce(notifications.ACCEPTED, request=current)
         self.refresh_from_db()
 
     def decline_suggestion(self, user):
@@ -331,6 +338,7 @@ class BookingRequest(models.Model):
             current.responded_at = timezone.now()
             current.save(update_fields=['status', 'responded_at'])
             record_transition(catalog.DECLINE, current, self.Status.SUGGESTED)
+            announce(notifications.DECLINED, request=current)
         self.refresh_from_db()
 
     def schedule_text(self):

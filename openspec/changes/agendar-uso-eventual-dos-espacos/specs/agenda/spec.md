@@ -303,8 +303,31 @@ A Grade da Agenda DEVE (MUST) usar uma quantidade fixa de consultas por requisi�
 - **THEN** as duas requisições usam a mesma quantidade de consultas
 
 ### Requirement: Escopo da primeira versão da Agenda
-O agendamento DEVE (MUST) ser avulso, numa única data, e NÃO DEVE (MUST NOT) ser recorrente. Esta versão NÃO DEVE (MUST NOT) enviar notificações, NÃO DEVE (MUST NOT) permitir editar uma solicitação enviada e NÃO DEVE (MUST NOT) oferecer cancelamento de agendamento aprovado; o cancelamento fica para uma Change futura.
+O agendamento DEVE (MUST) ser avulso, numa única data, e NÃO DEVE (MUST NOT) ser recorrente. Esta versão NÃO DEVE (MUST NOT) enviar e-mail, NÃO DEVE (MUST NOT) permitir editar uma solicitação enviada e NÃO DEVE (MUST NOT) oferecer cancelamento de agendamento aprovado; o cancelamento fica para uma Change futura.
 
-#### Scenario: Sem notificação
+#### Scenario: Sem e-mail
 - **WHEN** uma solicitação é criada, aprovada, rejeitada ou recebe alternativa
-- **THEN** nenhuma notificação nem e-mail é gerado
+- **THEN** nenhum e-mail é gerado
+
+### Requirement: Notificações da Agenda
+Cada transição concluída da solicitação DEVE (MUST) gerar, na mesma transação e pelo mecanismo de notificações existente, uma notificação para quem precisa agir ou tomar conhecimento, com o destino na tela da solicitação. A solicitação criada DEVE (MUST) notificar os usuários ativos com `AGENDA.ANALISAR`, incluindo o superadmin e excluindo o próprio solicitante, com destino em "Solicitações para análise". A aprovação, a rejeição e a alternativa sugerida DEVEM (MUST) notificar o solicitante, com destino em "Minhas solicitações". O aceite e a recusa da alternativa DEVEM (MUST) notificar quem a sugeriu; se ele estiver inativo ou sem `AGENDA.ANALISAR`, os demais usuários ativos com a permissão. Cada destinatário DEVE (MUST) receber uma única notificação por transição. Uma transição recusada NÃO DEVE (MUST NOT) gerar notificação, e o destino NÃO DEVE (MUST NOT) conceder acesso: a rota continua verificando a permissão.
+
+#### Scenario: Nova solicitação
+- **WHEN** Ana solicita o Laboratório de Informática 2 e Carla e Davi têm `AGENDA.ANALISAR`
+- **THEN** Carla e Davi recebem "Nova solicitação de agendamento", que abre a solicitação para análise
+
+#### Scenario: Solicitante que analisa
+- **WHEN** Carla, que tem `AGENDA.ANALISAR`, solicita um agendamento
+- **THEN** Carla não é notificada da própria solicitação
+
+#### Scenario: Alternativa sugerida
+- **WHEN** Carla sugere outro espaço para a solicitação de Ana
+- **THEN** Ana recebe "Alternativa sugerida", que abre a solicitação com "Aceitar" e "Recusar"
+
+#### Scenario: Resposta à alternativa
+- **WHEN** Ana aceita ou recusa a alternativa sugerida por Carla
+- **THEN** só Carla é notificada; com Carla inativa ou sem `AGENDA.ANALISAR`, os demais que analisam são notificados
+
+#### Scenario: Transição recusada
+- **WHEN** a aprovação é recusada porque a solicitação já foi decidida
+- **THEN** nenhuma notificação é gerada

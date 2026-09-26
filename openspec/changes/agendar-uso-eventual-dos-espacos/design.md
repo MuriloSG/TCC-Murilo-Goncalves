@@ -20,7 +20,7 @@
 
 **Non-Goals**
 
-- Notificações, cancelamento, recorrência, edição de solicitação enviada, bloqueio por solicitação pendente.
+- E-mail, cancelamento, recorrência, edição de solicitação enviada, bloqueio por solicitação pendente.
 
 ## Decisions
 
@@ -141,9 +141,9 @@ Recursos novos em `audit/catalog.py`: `SOLICITACAO_AGENDAMENTO` ("Solicitações
 
 Os valores anteriores e posteriores trazem só o estado e os campos que mudaram; a descrição entra só na criação. Operação recusada não gera registro. As views das telas declaram `audit_resource` como as demais.
 
-### D10. Notificações futuras
+### D10. Notificações
 
-Nada é enviado nesta Change. Transições que poderão notificar numa Change futura: solicitação criada (para quem tem `AGENDA.ANALISAR`), aprovada, rejeitada e alternativa sugerida (para o solicitante), alternativa aceita ou recusada (para quem decidiu). As operações do model ficam como o único ponto dessas transições, para que a notificação entre ali, por `transaction.on_commit`.
+As transições notificam pelo app `notices`: `bookings/notifications.py` descreve cada evento, `BookingsConfig.ready` os registra e cada operação do model chama `announce` dentro da própria transação, depois de gravar o novo estado; o aviso em tempo real sai no `on_commit` do próprio `notices`. Solicitação criada vai para os ativos com `AGENDA.ANALISAR` (`User.objects.with_permission`, numa consulta), sem o solicitante; aprovada, rejeitada e alternativa sugerida vão para o solicitante; aceite e recusa vão para quem sugeriu, ou para os demais que analisam quando ele está inativo ou perdeu a permissão. O texto não repete o motivo nem a mensagem da análise, que aparecem no destino, e é cortado no limite da notificação.
 
 ### D11. Cancelamento
 

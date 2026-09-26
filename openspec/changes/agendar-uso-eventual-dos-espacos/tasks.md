@@ -56,3 +56,11 @@
 - [x] 8.3 Atualizar o glossário da seção 9.4 das convenções e dos testes do app `ui` (D12)
 - [x] 8.4 Rodar `make test` e `openspec validate --all --strict`
 - [x] 8.5 Commit
+
+## 9. Notificações
+
+- [x] 9.1 Criar `User.objects.with_permission` e os tipos da Agenda no catálogo de notificações (D10)
+- [x] 9.2 Anunciar as seis transições em `bookings/notifications.py`, na transação de cada operação
+- [x] 9.3 Testar destinatários, texto, destino, recusa sem notificação e acesso pelo destino
+- [x] 9.4 Rodar `make test` e `openspec validate --all --strict`
+- [x] 9.5 Commit

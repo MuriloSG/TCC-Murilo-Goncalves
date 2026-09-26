@@ -22,7 +22,7 @@ Esta Change cria a **Agenda**, uma área autenticada própria, separada do Ensal
 
 ### Fora do escopo
 
-- Notificações (as transições que poderão gerá-las ficam registradas no `design.md`).
+- E-mail (as transições notificam só pelo sino, conforme o `design.md`).
 - Cancelamento de agendamento aprovado: o conceito fica registrado, e a regra entra numa Change futura.
 - Agendamento recorrente, agendamento em mais de um dia e edição de solicitação depois de enviada.
 - Solicitação pendente bloqueando o horário.

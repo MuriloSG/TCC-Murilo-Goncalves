@@ -178,6 +178,17 @@ class UserQuerySet(models.QuerySet):
             queryset = queryset.filter(is_active=USER_STATUS_FILTERS[status])
         return queryset
 
+    def with_permission(self, code):
+        """Usuários ativos que têm a permissão, pelo perfil ou por serem superadmin.
+
+        Segue a mesma regra de `User.has_perm`, numa única consulta: uma permissão
+        reservada ao superadmin não é alcançada pelo perfil.
+        """
+        by_role = models.Q(roles__permissions__code=code)
+        if code in SUPERADMIN_RESERVED_PERMISSIONS:
+            by_role = models.Q(pk__in=[])
+        return self.filter(models.Q(is_superadmin=True) | by_role, is_active=True).distinct()
+
     def with_administrative_capability(self):
         return (
             self.filter(is_active=True)

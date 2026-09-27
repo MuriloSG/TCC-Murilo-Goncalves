@@ -104,11 +104,11 @@ class AccessTests(UserViewsTestCase):
         for label in ['Cadastrar usuário', 'Editar', 'Trocar perfil', 'Desativar']:
             self.assertNotContains(response, label)
 
-    def test_home_shows_the_users_shortcut_only_with_permission(self):
-        self.assertContains(self.client.get('/inicio/'), 'href="/usuarios/"')
+    def test_menu_shows_the_users_item_only_with_permission(self):
+        self.assertContains(self.client.get('/inicio/', follow=True), 'href="/usuarios/"')
         client = Client()
         client.force_login(self.target)
-        self.assertNotContains(client.get('/inicio/'), 'href="/usuarios/"')
+        self.assertNotContains(client.get('/inicio/', follow=True), 'href="/usuarios/"')
 
 
 class CreateTests(UserViewsTestCase):

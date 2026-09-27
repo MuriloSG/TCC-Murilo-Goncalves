@@ -62,7 +62,7 @@ class AppLayoutTests(LayoutTestCase):
         self.client.force_login(self.admin)
 
     def test_barra_lateral_com_simbolo_e_nome_do_sistema(self):
-        response = self.client.get('/inicio/')
+        response = self.client.get('/inicio/', follow=True)
         content = response.content.decode()
         sidebar = content[content.index('<aside class="sidebar" id="menu-lateral">'):content.index('</aside>')]
         self.assertRegex(sidebar, r'<a class="brand" href="/inicio/">\s*<img src="/static/ui/img/simbolo-if.png" alt=""')
@@ -73,7 +73,7 @@ class AppLayoutTests(LayoutTestCase):
     def test_primeiro_focavel_e_o_link_para_o_conteudo(self):
         for url in ('/inicio/', '/usuarios/', '/perfis/'):
             with self.subTest(url=url):
-                response = self.client.get(url)
+                response = self.client.get(url, follow=True)
                 tag, attributes, text = parse(response).focusable[0]
                 self.assertEqual((tag, attributes.get('href'), text), ('a', '#conteudo', 'Ir para o conteúdo'))
                 self.assertContains(response, '<main class="page" id="conteudo" tabindex="-1">')
@@ -91,7 +91,7 @@ class AppLayoutTests(LayoutTestCase):
         self.assertRegex(response.content.decode(), r'<a href="/perfis/" aria-current="page">')
 
     def test_menu_do_usuario(self):
-        response = self.client.get('/inicio/')
+        response = self.client.get('/inicio/', follow=True)
         content = response.content.decode()
         menu = content[content.index('<details class="menu user-menu">'):]
         menu = menu[:menu.index('</details>')]
@@ -106,7 +106,7 @@ class AppLayoutTests(LayoutTestCase):
     def test_sino_de_notificacoes_no_cabecalho_e_no_celular(self):
         notify(self.admin, 'Comunicado do sistema')
         notify(self.admin, 'Outro comunicado')
-        content = self.client.get('/inicio/').content.decode()
+        content = self.client.get('/inicio/', follow=True).content.decode()
         header = content[content.index('<header class="header">'):content.index('</header>')]
         topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
         for area in (header, topbar):
@@ -125,7 +125,7 @@ class AppLayoutTests(LayoutTestCase):
         lida = notify(self.admin, 'Comunicado lido')
         lida.mark_as_read()
         notify(self.admin, 'Comunicado novo')
-        content = self.client.get('/inicio/').content.decode()
+        content = self.client.get('/inicio/', follow=True).content.decode()
         panel = content[content.index('<div class="notifications-panel">'):]
         panel = panel[:panel.index('</details>')]
         self.assertEqual(panel.count('<li class="notification'), 2)
@@ -139,7 +139,7 @@ class AppLayoutTests(LayoutTestCase):
         self.assertRegex(panel, r'<button class="notifications-read-all" type="submit">')
 
     def test_painel_sem_notificacoes(self):
-        content = self.client.get('/inicio/').content.decode()
+        content = self.client.get('/inicio/', follow=True).content.decode()
         panel = content[content.index('<div class="notifications-panel">'):]
         panel = panel[:panel.index('</details>')]
         self.assertIn('<p class="notifications-empty">Nenhuma notificação.</p>', panel)
@@ -147,7 +147,7 @@ class AppLayoutTests(LayoutTestCase):
         self.assertNotIn('notifications-read-all', panel)
 
     def test_menu_do_celular_sem_javascript(self):
-        response = self.client.get('/inicio/')
+        response = self.client.get('/inicio/', follow=True)
         content = response.content.decode()
         topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
         self.assertRegex(topbar, r'<details class="topbar-menu">\s*<summary class="icon-btn" aria-label="Menu"><svg')
@@ -159,7 +159,7 @@ class AppLayoutTests(LayoutTestCase):
         self.assertIn('<button class="icon-btn" type="button" data-drawer-close aria-label="Fechar menu" hidden>', topbar)
 
     def test_rodape_da_barra_lateral_com_usuario_e_sair(self):
-        content = self.client.get('/inicio/').content.decode()
+        content = self.client.get('/inicio/', follow=True).content.decode()
         footer = content[content.index('<div class="sidebar-footer">'):content.index('</aside>')]
         self.assertIn('<span class="avatar" aria-hidden="true">AS</span>', footer)
         self.assertIn('<span class="who-name" title="Ana Maria Souza">Ana</span>', footer)
@@ -167,7 +167,7 @@ class AppLayoutTests(LayoutTestCase):
         self.assertIn('<span class="tip" role="tooltip">Sair</span>', footer)
 
     def test_botao_de_recolher_a_barra_lateral(self):
-        content = self.client.get('/inicio/').content.decode()
+        content = self.client.get('/inicio/', follow=True).content.decode()
         self.assertRegex(
             content,
             r'<button class="icon-btn" type="button" data-sidebar-toggle aria-controls="menu-lateral" '
@@ -178,9 +178,9 @@ class AppLayoutTests(LayoutTestCase):
 
     def test_barra_lateral_recolhida_vem_do_cookie(self):
         self.client.cookies['menu_lateral'] = 'recolhido'
-        self.assertContains(self.client.get('/inicio/'), '<div class="app-shell is-collapsed">')
+        self.assertContains(self.client.get('/inicio/', follow=True), '<div class="app-shell is-collapsed">')
         self.client.cookies['menu_lateral'] = 'expandido'
-        self.assertContains(self.client.get('/inicio/'), '<div class="app-shell">')
+        self.assertContains(self.client.get('/inicio/', follow=True), '<div class="app-shell">')
 
     def test_confirmacao_de_saida_em_modal(self):
         response = self.client.get('/contas/logout/', headers={'HX-Request': 'true'})
@@ -210,7 +210,7 @@ class AppLayoutTests(LayoutTestCase):
         self.assertNotContains(response, 'Perfis')
 
     def test_htmx_e_csrf_so_nas_paginas_autenticadas(self):
-        response = self.client.get('/inicio/')
+        response = self.client.get('/inicio/', follow=True)
         self.assertContains(response, '<script src="/static/ui/js/htmx.min.js" defer></script>', html=True)
         self.assertRegex(response.content.decode(), r'<body hx-headers=\'\{"X-CSRFToken": "\w+"\}\'>')
         self.assertContains(response, '<div id="modal"></div>', html=True)
@@ -270,7 +270,7 @@ class BrandTests(LayoutTestCase):
 
     def test_titulo_e_icone_na_pagina_autenticada(self):
         self.client.force_login(self.admin)
-        response = self.client.get('/inicio/')
+        response = self.client.get('/inicio/', follow=True)
         self.assertContains(response, '· IFAgenda</title>')
         for icon in self.ICONS:
             self.assertContains(response, icon, html=True)

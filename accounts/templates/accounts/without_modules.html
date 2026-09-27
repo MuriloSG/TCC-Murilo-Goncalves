@@ -1,0 +1,9 @@
+{% extends "ui/layouts/app.html" %}
+
+{% block title %}Acesso restrito{% endblock %}
+
+{% block crumbs %}<li><span aria-current="page">Acesso restrito</span></li>{% endblock %}
+
+{% block content %}
+  {% include "ui/components/access_denied.html" with title="O seu perfil ainda não dá acesso a nenhum módulo" text="Para obter acesso, procure um administrador do sistema." without_modules=True %}
+{% endblock %}

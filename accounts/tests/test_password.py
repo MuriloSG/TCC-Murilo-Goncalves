@@ -181,9 +181,9 @@ class ResetTests(PasswordFlowTestCase):
     def test_reset_invalidates_existing_sessions(self):
         other_browser = Client()
         other_browser.post('/contas/login/', {'login': 'maria@ifnmg.edu.br', 'password': PASSWORD})
-        self.assertEqual(other_browser.get('/inicio/').status_code, 200)
+        self.assertEqual(other_browser.get('/inicio/', follow=True).status_code, 200)
         self.request_link()
         response = self.set_password(reset_link(mail.outbox[-1]), 'Nova-senha-forte-456')
         self.assertRedirects(response, '/contas/senha/redefinir/concluido/', fetch_redirect_response=False)
-        response = other_browser.get('/inicio/')
+        response = other_browser.get('/inicio/', follow=True)
         self.assertRedirects(response, '/contas/login/?next=/inicio/', fetch_redirect_response=False)

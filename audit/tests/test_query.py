@@ -72,8 +72,8 @@ class AuthorizationTests(AuditQueryTestCase):
         self.assertEqual(AuditLog.objects.count(), before)
 
     def test_navigation_shows_the_item_only_with_the_permission(self):
-        self.assertContains(self.client.get('/inicio/'), 'Auditoria')
-        self.assertNotContains(self.client_for(self.plain).get('/inicio/'), 'Auditoria')
+        self.assertContains(self.client.get('/inicio/', follow=True), 'Auditoria')
+        self.assertNotContains(self.client_for(self.plain).get('/inicio/', follow=True), 'Auditoria')
 
     def test_consulting_the_audit_is_audited(self):
         self.client.get(LIST_URL)

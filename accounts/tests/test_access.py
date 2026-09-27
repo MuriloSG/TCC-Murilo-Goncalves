@@ -2,6 +2,7 @@ from io import StringIO
 
 from django.core.management import call_command
 from django.test import Client, TestCase
+from django.urls import reverse
 
 from accounts import permissions
 from accounts.models import Role, User
@@ -74,21 +75,22 @@ class RoleNameIndependenceTests(AccessTestCase):
                 self.assertEqual(len({client.get(url).status_code for client in clients}), 1)
 
 
-class ShortcutsTests(AccessTestCase):
-    def test_superadmin_sees_users_and_roles_shortcuts(self):
+class EntryPageTests(AccessTestCase):
+    def test_superadmin_opens_the_first_menu_item(self):
         response = self.client_for(self.superadmin).get('/inicio/')
-        self.assertContains(response, 'href="/usuarios/"')
-        self.assertContains(response, 'href="/perfis/"')
+        self.assertRedirects(response, reverse('space_allocation_grid'), fetch_redirect_response=False)
 
-    def test_administrator_sees_only_the_users_shortcut(self):
-        response = self.client_for(self.register('admin@ifnmg.edu.br', self.administrator)).get('/inicio/')
-        self.assertContains(response, 'href="/usuarios/"')
-        self.assertNotContains(response, 'href="/perfis/"')
+    def test_opens_the_first_item_the_role_grants(self):
+        reader = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])
+        response = self.client_for(self.register('leitor@ifnmg.edu.br', reader)).get('/inicio/')
+        self.assertRedirects(response, '/usuarios/', fetch_redirect_response=False)
 
-    def test_teacher_sees_no_shortcut(self):
-        response = self.client_for(self.register('docente@ifnmg.edu.br', self.teacher)).get('/inicio/')
-        self.assertNotContains(response, 'href="/usuarios/"')
-        self.assertNotContains(response, 'href="/perfis/"')
+    def test_role_without_modules_sees_the_notice(self):
+        empty = Role.objects.create_role(code='VAZIO', name='Vazio', permissions=[])
+        response = self.client_for(self.register('vazio@ifnmg.edu.br', empty)).get('/inicio/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhum módulo')
+        self.assertNotContains(response, 'Voltar para o início')
 
 
 class ChangesOnTheSameSessionTests(AccessTestCase):

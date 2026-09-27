@@ -82,11 +82,11 @@ class AccessTests(RoleViewsTestCase):
         self.assertRedirects(response, f'/contas/login/?next={self.url("delete")}', fetch_redirect_response=False)
         self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
 
-    def test_home_shows_the_roles_shortcut_only_to_the_superadmin(self):
-        self.assertContains(self.client.get('/inicio/'), 'href="/perfis/"')
+    def test_menu_shows_the_roles_item_only_to_the_superadmin(self):
+        self.assertContains(self.client.get('/inicio/', follow=True), 'href="/perfis/"')
         client = Client()
         client.force_login(self.admin)
-        self.assertNotContains(client.get('/inicio/'), 'href="/perfis/"')
+        self.assertNotContains(client.get('/inicio/', follow=True), 'href="/perfis/"')
 
     def test_post_without_csrf_is_refused(self):
         client = Client(enforce_csrf_checks=True)

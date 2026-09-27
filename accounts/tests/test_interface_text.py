@@ -113,8 +113,8 @@ class ManagementScreensTextTests(TestCase):
     def test_pagina_inicial_sem_saudacao(self):
         client = Client()
         client.force_login(self.target)
-        response = client.get('/inicio/')
-        self.assertContains(response, '<h1 class="page-title">Início</h1>', html=True)
+        response = client.get('/inicio/', follow=True)
+        self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'Olá')
         self.assertNotIn('!', response.content.decode().removeprefix('<!DOCTYPE html>'))
 

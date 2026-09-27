@@ -125,11 +125,11 @@ class AccessTests(AcademicTestCase):
 
     def test_menu_items_follow_the_view_permission(self):
         self.client.force_login(self.joao)
-        page = self.client.get(reverse('home'))
+        page = self.client.get(reverse('home'), follow=True)
         self.assertContains(page, reverse('subjects_list'))
         self.assertContains(page, reverse('class_groups_list'))
         self.client.force_login(self.stranger)
-        page = self.client.get(reverse('home'))
+        page = self.client.get(reverse('home'), follow=True)
         self.assertNotContains(page, reverse('subjects_list'))
         self.assertNotContains(page, reverse('class_groups_list'))
 

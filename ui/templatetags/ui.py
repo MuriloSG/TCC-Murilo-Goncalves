@@ -4,6 +4,7 @@ from django import template
 from django.template.loader import get_template
 from django.urls import reverse
 
+from ui.navigation import menu_for
 from ui.pagination import PAGE_PARAMETER
 
 register = template.Library()
@@ -15,12 +16,16 @@ def icon(name, css='size-5'):
     return get_template(f'ui/icons/{name}.svg').render({'class_name': css})
 
 
-@register.inclusion_tag('ui/components/nav_link.html', takes_context=True)
-def nav_link(context, url_name, label, icon_name, prefix=None):
-    """Item da navegação, marcado como atual quando o nome da rota começa com `prefix`."""
-    match = getattr(context.get('request'), 'resolver_match', None)
-    current = bool(match and match.url_name and match.url_name.startswith(prefix or url_name))
-    return {'url': reverse(url_name), 'label': label, 'icon_name': icon_name, 'current': current}
+@register.simple_tag(takes_context=True)
+def navigation(context):
+    """Itens do menu liberados ao usuário, com a marca do item atual."""
+    request = context.get('request')
+    match = getattr(request, 'resolver_match', None)
+    current_name = (match and match.url_name) or ''
+    return [
+        {'url': url, 'label': item.label, 'icon_name': item.icon, 'current': current_name.startswith(item.prefix)}
+        for item, url in menu_for(request.user)
+    ]
 
 
 @register.filter

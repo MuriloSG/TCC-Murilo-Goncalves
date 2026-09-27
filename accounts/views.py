@@ -3,7 +3,7 @@ from allauth.account import views as allauth_views
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
@@ -18,6 +18,7 @@ from imports.views import (
     ImportTemplateView,
     ImportUploadView,
 )
+from ui.navigation import first_url_for
 from ui.pagination import paginate
 from ui.views import ModalView
 
@@ -51,7 +52,18 @@ class LogoutView(allauth_views.LogoutView):
 
 
 class HomeView(TemplateView):
-    template_name = 'accounts/home.html'
+    """Ponto de entrada depois do login: abre o primeiro módulo do menu liberado ao usuário.
+
+    Quando o perfil não libera nenhum módulo, mostra o aviso de acesso restrito.
+    """
+
+    template_name = 'accounts/without_modules.html'
+
+    def get(self, request, *args, **kwargs):
+        url = first_url_for(request.user)
+        if url:
+            return redirect(url)
+        return super().get(request, *args, **kwargs)
 
 
 class OperationFormView(ModalView, FormView):

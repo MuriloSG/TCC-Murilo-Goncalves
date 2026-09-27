@@ -154,7 +154,7 @@ class RenderedPagesTextTests(TestCase):
             f'/perfis/{self.role.pk}/permissoes/', f'/perfis/{self.role.pk}/excluir/',
         ):
             with self.subTest(url=url):
-                response = self.client.get(url)
+                response = self.client.get(url, follow=True)
                 self.assertEqual(response.status_code, 200)
                 self.assertPageFollowsRules(response)
         response = self.client.post('/usuarios/novo/', {'name': '', 'email': 'invalido', 'role': ''})

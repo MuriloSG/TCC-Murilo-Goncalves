@@ -24,7 +24,7 @@ class GlobalLoadingTests(TestCase):
 
     def test_pagina_autenticada(self):
         self.client.force_login(self.admin)
-        self.assert_single_hidden_loading(self.client.get('/inicio/'))
+        self.assert_single_hidden_loading(self.client.get('/inicio/', follow=True))
 
     def test_login_e_calendario_publico(self):
         for url in ('/contas/login/', '/calendario/'):

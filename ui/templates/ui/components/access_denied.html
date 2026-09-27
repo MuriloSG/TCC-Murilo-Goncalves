@@ -1,11 +1,13 @@
 {% load ui %}<section class="access-denied" aria-labelledby="access-denied-title">
   <span class="access-denied-icon">{% icon "shield-alert" "size-8" %}</span>
   <p class="access-denied-eyebrow">Acesso restrito</p>
-  <h1 class="access-denied-title" id="access-denied-title">Esta página não está disponível para o seu perfil</h1>
-  <p class="access-denied-text">Esta página exige uma permissão que o seu perfil não concede. Para obter acesso, procure um administrador do sistema.</p>
+  <h1 class="access-denied-title" id="access-denied-title">{{ title|default:"Esta página não está disponível para o seu perfil" }}</h1>
+  <p class="access-denied-text">{{ text|default:"Esta página exige uma permissão que o seu perfil não concede. Para obter acesso, procure um administrador do sistema." }}</p>
   <div class="access-denied-foot">
-    {% if user.is_authenticated %}
+    {% if user.is_authenticated and not without_modules %}
       <a class="btn-primary" href="{% url 'home' %}">{% icon "house" "size-5" %}Voltar para o início</a>
+    {% elif user.is_authenticated %}
+      <a class="btn-primary" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal">{% icon "log-out" "size-5" %}Sair</a>
     {% else %}
       <a class="btn-primary" href="{% url 'account_login' %}">{% icon "arrow-right" "size-5" %}Entrar</a>
     {% endif %}

@@ -73,7 +73,7 @@ class AccessRecordTests(TestCase):
         self.assertFalse(self.accesses().exists())
 
     def test_home_is_not_a_feature(self):
-        self.assertEqual(self.client.get('/inicio/').status_code, 200)
+        self.assertEqual(self.client.get('/inicio/', follow=True).status_code, 200)
         self.assertFalse(self.accesses().exists())
 
     def test_template_download_is_not_an_access(self):

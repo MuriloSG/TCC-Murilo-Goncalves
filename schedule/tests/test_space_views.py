@@ -74,9 +74,9 @@ class AccessTests(SpaceScreenTestCase):
 
     def test_menu_item_follows_the_view_permission(self):
         self.client.force_login(self.viewer)
-        self.assertContains(self.client.get(reverse('home')), 'Espaços')
+        self.assertContains(self.client.get(reverse('home'), follow=True), 'Espaços')
         self.client.force_login(self.importer)
-        self.assertNotContains(self.client.get(reverse('home')), reverse('spaces_list'))
+        self.assertNotContains(self.client.get(reverse('home'), follow=True), reverse('spaces_list'))
 
 
 class ListTests(SpaceScreenTestCase):

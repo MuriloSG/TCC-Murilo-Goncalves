@@ -16,11 +16,13 @@ class HomeTests(TestCase):
         response = self.client.get('/inicio/')
         self.assertRedirects(response, '/contas/login/?next=/inicio/', fetch_redirect_response=False)
 
-    def test_requires_only_authentication(self):
+    def test_without_modules_shows_the_restricted_access_notice(self):
+        self.user.role.set_permissions([])
         self.client.force_login(self.user)
         response = self.client.get('/inicio/')
         self.assertContains(response, 'Maria Sousa')
-        self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhuma funcionalidade')
+        self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhum módulo')
+        self.assertTemplateUsed(response, 'ui/components/access_denied.html')
 
     def test_login_redirects_to_home(self):
         self.user.set_password('Senha-forte-123')
@@ -28,7 +30,7 @@ class HomeTests(TestCase):
         response = self.client.post(
             '/contas/login/', {'login': 'maria@ifnmg.edu.br', 'password': 'Senha-forte-123'},
         )
-        self.assertRedirects(response, '/inicio/')
+        self.assertRedirects(response, '/inicio/', fetch_redirect_response=False)
 
     def test_logout_redirects_to_login(self):
         self.client.force_login(self.user)

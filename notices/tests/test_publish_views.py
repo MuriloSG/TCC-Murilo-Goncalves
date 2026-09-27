@@ -60,9 +60,9 @@ class AccessTests(PublishTestCase):
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_navigation_shows_the_item_only_with_the_permission(self):
-        self.assertContains(self.client.get('/inicio/'), '<span class="nav-text">Notificações</span>')
+        self.assertContains(self.client.get('/inicio/', follow=True), '<span class="nav-text">Notificações</span>')
         self.client.force_login(self.ana)
-        self.assertNotContains(self.client.get('/inicio/'), '<span class="nav-text">Notificações</span>')
+        self.assertNotContains(self.client.get('/inicio/', follow=True), '<span class="nav-text">Notificações</span>')
 
 
 class CreateStepTests(PublishTestCase):

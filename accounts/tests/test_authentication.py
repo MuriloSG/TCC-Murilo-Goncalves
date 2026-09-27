@@ -101,7 +101,7 @@ class LoginPageTests(AuthenticationTestCase):
 class LoginTests(AuthenticationTestCase):
     def test_successful_login_redirects_to_home(self):
         response = self.login()
-        self.assertRedirects(response, '/inicio/')
+        self.assertRedirects(response, '/inicio/', fetch_redirect_response=False)
         self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
 
     def test_email_is_compared_ignoring_case(self):
@@ -118,7 +118,7 @@ class LoginTests(AuthenticationTestCase):
 
     def test_no_email_verification_step(self):
         response = self.login()
-        self.assertRedirects(response, '/inicio/')
+        self.assertRedirects(response, '/inicio/', fetch_redirect_response=False)
         self.assertTrue(self.is_authenticated())
 
 

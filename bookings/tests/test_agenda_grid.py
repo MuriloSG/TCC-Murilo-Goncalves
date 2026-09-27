@@ -44,7 +44,7 @@ class AccessTests(AgendaTestCase):
     def test_without_the_view_permission(self):
         response = self.grid(self.outsider)
         self.assertEqual(response.status_code, 403)
-        self.assertNotContains(self.client.get(reverse('home')), URL)
+        self.assertNotContains(self.client.get(reverse('home'), follow=True), URL)
 
     def test_with_the_view_permission(self):
         response = self.grid(self.viewer)
@@ -54,7 +54,7 @@ class AccessTests(AgendaTestCase):
     def test_menu_has_agenda_apart_from_the_space_allocation(self):
         both = user_with('ambos@ifnmg.edu.br', permissions.BOOKING_VIEW, permissions.SPACE_ALLOCATION_VIEW)
         self.client.force_login(both)
-        content = self.client.get(reverse('home')).content.decode()
+        content = self.client.get(reverse('home'), follow=True).content.decode()
         self.assertIn(f'href="{URL}"', content)
         self.assertIn(f'href="{reverse("space_allocation_grid")}"', content)
 

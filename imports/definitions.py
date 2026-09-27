@@ -72,6 +72,14 @@ class RowPlan:
 
 
 class ImportDefinition:
+    """Importação específica, declarada por atributos e operações sobre as linhas.
+
+    `optional_sheets` são as abas da fonte em grade que a planilha pode não ter: a ausência
+    delas não recusa o arquivo, e a leitura de cada uma, quando presente, é feita pela
+    própria importação específica. O motor só as cita no texto de ajuda do envio (D4 da
+    Change importar-usuarios-com-o-ensalamento).
+    """
+
     kind = ''
     audit_resource = ''
     columns = ()
@@ -83,6 +91,7 @@ class ImportDefinition:
     pending_labels = {}
     upload_fields = {}
     row_filters = ()
+    optional_sheets = ()
     max_file_size = None
     max_rows = None
     has_template = True

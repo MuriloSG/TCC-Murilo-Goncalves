@@ -524,8 +524,10 @@ class Teacher(NamedRecord):
     """Docente do ensalamento, identificado pelo nome que a planilha usa.
 
     O nome guarda o mesmo valor que o `User.username`, com a mesma normalização, e é isso
-    que torna possível uma correspondência futura exata com um usuário existente. Este
-    model não tem vínculo com `User`, e a importação não cria nem consulta usuário (D7).
+    que torna possível a correspondência exata com um usuário, por `teacher_of`. Este model
+    não tem vínculo com `User` (D7). A importação só cadastra usuário a partir da aba opcional
+    de usuários, e o docente continua sem vínculo gravado com ele (Change
+    importar-usuarios-com-o-ensalamento).
     """
 
     class Meta(NamedRecord.Meta):

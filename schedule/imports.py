@@ -18,6 +18,13 @@ seguem a classificação de `schedule.spaces`, aplicada ao cadastro em `lock()`,
 linhas; toda sala da lista entra na classificação, com ou sem aula, e o nome que precisa de
 decisão vira pendência (D5 e D8 da Change manipulacao-dos-espacos e Change
 importar-salas-sem-aula).
+
+A aba opcional `usuários - sistema`, quando existe, produz uma linha por usuário, lida antes
+dos catálogos: a execução cadastra os usuários que ainda não existem, pelas operações da
+importação de usuários, e não altera os existentes. Sem a aba não há linha de usuário, e a
+execução vai direto aos catálogos. Os usuários ficam na mesma transação e no mesmo savepoint
+do ensalamento, para que a prévia os desfaça e a confirmação só os grave junto com ele (D1,
+D2 e D6 da Change importar-usuarios-com-o-ensalamento).
 """
 
 import contextvars
@@ -29,6 +36,8 @@ from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import RegexValidator
 from django.utils import formats
 
+from accounts.imports import UserImport
+from accounts.models import User, normalize_username
 from audit import catalog
 from imports.definitions import (
     Column,
@@ -39,7 +48,7 @@ from imports.definitions import (
     errors_from_validation,
 )
 from audit.models import AuditLog
-from imports.models import Import
+from imports.models import Import, ImportRow
 from imports.reader import listing
 from imports.workbook import WorkbookSource
 from schedule.activities import ACTIVITY_COLUMN, Catalog, resolve, split_activities
@@ -65,12 +74,19 @@ from schedule.sheets import (
     SPACE_KIND,
     TEACHER_KIND,
     UNDERGRADUATE_SHEET,
+    USER_COLUMNS,
+    USER_EMAIL_COLUMN,
+    USER_KIND,
+    USER_ROLE_COLUMN,
+    USER_USERNAME_COLUMN,
+    USERS_SHEET,
     catalog_entries,
     parse_slot,
     parse_weekday,
     sheet_cells,
     split_header,
     strip_parentheses,
+    user_entries,
 )
 from schedule.sheets import text as sheet_text
 from schedule.spaces import ASSOCIATE, CREATE, PENDING, classify, classify_import, key_of
@@ -91,9 +107,15 @@ COURSE_WITHOUT_TITLE = 'curso_sem_titulo'
 ASSOCIATED_TO_NEW = 'outro_nome_de_espaco_novo'
 RECURRENCE_CHANGED = 'recorrencia_alterada'
 SPACE_PENDING = 'espaco_a_decidir'
+USER_WITH_OTHER_DATA = 'usuario_com_outros_dados'
+INACTIVE_USER = 'usuario_inativo'
+REQUIRED_USER_COLUMNS = (USER_EMAIL_COLUMN, NAME_COLUMN, USER_ROLE_COLUMN)
+USERS = UserImport()
 ACTIVE_LABELS = {True: 'ATIVO', False: 'INATIVO'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_ROWS = 5000
+
+EMPTY_USER_VALUES = {USER_EMAIL_COLUMN: '', USER_ROLE_COLUMN: '', USER_USERNAME_COLUMN: ''}
 
 STAGES = {layout.title: layout.stage for layout in SHEET_LAYOUTS}
 
@@ -119,6 +141,9 @@ class RunState:
 
     `resolution` é a classificação dos espaços, `applied` o que ela aplicou ao cadastro e
     `reported` os nomes da lista de salas cuja linha já recebeu a ação.
+
+    `user_duplicates` guarda, pela célula de origem, os erros de e-mail ou de nome de usuário
+    repetido na aba de usuários (D8 da Change importar-usuarios-com-o-ensalamento).
     """
 
     def __init__(self, importation=None):
@@ -130,6 +155,7 @@ class RunState:
         self.resolution = None
         self.applied = None
         self.reported = set()
+        self.user_duplicates = {}
 
 
 def semester_field():
@@ -222,6 +248,7 @@ def catalog_row(entry):
         GROUP_COLUMN: '',
         COURSE_COLUMN: '',
         ACTIVITY_COLUMN: '',
+        **EMPTY_USER_VALUES,
     }
 
 
@@ -236,7 +263,54 @@ def activity_row(cell, content, reference):
         GROUP_COLUMN: cell['group'].header_text,
         COURSE_COLUMN: cell['group'].banner_text,
         ACTIVITY_COLUMN: content,
+        **EMPTY_USER_VALUES,
     }
+
+
+def user_row(entry):
+    """Linha de um usuário da aba opcional, com as colunas do ensalamento vazias."""
+    return {
+        SEMESTER_COLUMN: '',
+        KIND_COLUMN: USER_KIND,
+        CELL_COLUMN: entry['reference'],
+        DAY_COLUMN: '',
+        SLOT_COLUMN: '',
+        GROUP_COLUMN: '',
+        COURSE_COLUMN: '',
+        ACTIVITY_COLUMN: '',
+    } | {label: entry['values'].get(label, '') for label in USER_COLUMNS}
+
+
+def repeated_users(rows):
+    """Erros de duplicidade da aba de usuários, pela célula de origem (D8).
+
+    O e-mail é comparado normalizado e o nome de usuário sem diferenciar a caixa. Todas as
+    linhas envolvidas recebem o erro, calculado das linhas, e não do arquivo, para que a
+    confirmação chegue ao mesmo resultado da prévia.
+    """
+    user_rows = [row for row in rows if row.values.get(KIND_COLUMN) == USER_KIND]
+    keys = (
+        (USER_EMAIL_COLUMN, lambda value: User.objects.normalize_email(value),
+         'O e-mail aparece também nas células {cells}. Deixe só uma linha por usuário.'),
+        (USER_USERNAME_COLUMN, lambda value: (normalize_username(value) or '').casefold(),
+         'O nome de usuário aparece também nas células {cells}. Use um nome de usuário por usuário.'),
+    )
+    errors = {}
+    for column, normalize, message in keys:
+        groups = {}
+        for row in user_rows:
+            key = normalize(row.values.get(column, ''))
+            if key:
+                groups.setdefault(key, []).append(row)
+        for repeated in groups.values():
+            if len(repeated) < 2:
+                continue
+            for row in repeated:
+                others = [other.values.get(CELL_COLUMN) for other in repeated if other is not row]
+                errors.setdefault(row.values.get(CELL_COLUMN), []).append(
+                    RowError(column, 'duplicate', message.format(cells=listing(others)))
+                )
+    return errors
 
 
 class SpaceAllocationImport(ImportDefinition):
@@ -256,6 +330,9 @@ class SpaceAllocationImport(ImportDefinition):
         Column(GROUP_COLUMN, required=False),
         Column(COURSE_COLUMN, required=False),
         Column(ACTIVITY_COLUMN, required=False),
+        Column(USER_EMAIL_COLUMN, required=False),
+        Column(USER_ROLE_COLUMN, required=False),
+        Column(USER_USERNAME_COLUMN, required=False),
     )
     identifier = CELL_COLUMN
     upload_fields = {
@@ -264,6 +341,13 @@ class SpaceAllocationImport(ImportDefinition):
         END_COLUMN: period_field('Fim do semestre', 'Último dia letivo, informado junto com o início.'),
     }
     row_filters = (
+        RowFilter(
+            'usuarios',
+            'Usuários',
+            KIND_COLUMN,
+            USER_KIND,
+            (CELL_COLUMN, USER_EMAIL_COLUMN, NAME_COLUMN, USER_ROLE_COLUMN, USER_USERNAME_COLUMN),
+        ),
         RowFilter('salas', 'Salas', KIND_COLUMN, SPACE_KIND, (CELL_COLUMN, NAME_COLUMN)),
         RowFilter('docentes', 'Docentes', KIND_COLUMN, TEACHER_KIND, (CELL_COLUMN, NAME_COLUMN)),
         RowFilter(
@@ -275,6 +359,7 @@ class SpaceAllocationImport(ImportDefinition):
         ),
     )
     sheets = (UNDERGRADUATE_SHEET, SECONDARY_SHEET, CATALOG_SHEET)
+    optional_sheets = (USERS_SHEET,)
     has_template = False
     max_file_size = MAX_FILE_SIZE
     max_rows = MAX_ROWS
@@ -286,11 +371,19 @@ class SpaceAllocationImport(ImportDefinition):
         'outros_nomes': 'Outros nomes',
         'situacao': 'Situação',
         'novo_espaco': 'Espaço cadastrado',
+        'email': 'E-mail',
+        'role': 'Perfil',
+        'username': 'Nome de usuário',
     }
     warning_labels = {
         COURSE_WITHOUT_TITLE: 'O nome do curso veio do cabeçalho da turma, porque a planilha não traz o título.',
         ASSOCIATED_TO_NEW: 'O nome será guardado como outro nome de um espaço cadastrado por esta importação.',
         RECURRENCE_CHANGED: 'Esta aula teve a recorrência alterada no sistema e não foi atualizada pela planilha.',
+        USER_WITH_OTHER_DATA: (
+            'Usuário já cadastrado com outros dados. A importação do ensalamento não altera o cadastro. '
+            'Use a tela de usuários ou a importação de usuários.'
+        ),
+        INACTIVE_USER: 'Usuário inativo. A importação do ensalamento não o reativa.',
     }
     pending_labels = {
         SPACE_PENDING: 'O espaço {key} precisa de decisão no quadro de espaços desta importação.',
@@ -303,6 +396,9 @@ class SpaceAllocationImport(ImportDefinition):
         'code': SEMESTER_COLUMN,
         'start_date': START_COLUMN,
         'end_date': END_COLUMN,
+        'email': USER_EMAIL_COLUMN,
+        'role': USER_ROLE_COLUMN,
+        'username': USER_USERNAME_COLUMN,
     }
 
     def source(self):
@@ -327,7 +423,9 @@ class SpaceAllocationImport(ImportDefinition):
         return value
 
     def read_cells(self, workbook):
-        """Linhas da importação: primeiro os catálogos, depois as atividades."""
+        """Linhas da importação: os usuários da aba opcional, os catálogos e as atividades (D1)."""
+        for entry in user_entries(workbook):
+            yield user_row(entry)
         for entry in catalog_entries(workbook):
             yield catalog_row(entry)
         for layout in SHEET_LAYOUTS:
@@ -363,12 +461,25 @@ class SpaceAllocationImport(ImportDefinition):
         state.semester, _ = Semester.objects.resolve(code)
         self.apply_period(state.semester, rows)
         state.duplicates = repeated_activities(rows, state.catalog)
+        state.user_duplicates = repeated_users(rows)
+        self.lock_users(rows)
         list(
             Allocation.objects.filter(semester=state.semester)
             .order_by('pk')
             .select_for_update()
             .values_list('pk', flat=True)
         )
+
+    def lock_users(self, rows):
+        """Trava os usuários com os e-mails da aba, e nada consulta quando ela não existe (D12)."""
+        emails = [
+            User.objects.normalize_email(row.values.get(USER_EMAIL_COLUMN))
+            for row in rows
+            if row.values.get(KIND_COLUMN) == USER_KIND
+        ]
+        if not emails:
+            return
+        list(User.objects.filter(email__in=emails).order_by('pk').select_for_update().values_list('pk', flat=True))
 
     def apply_period(self, semester, rows):
         """Aplica ao semestre o período gravado nas linhas, e guarda a mudança para a auditoria.
@@ -393,11 +504,50 @@ class SpaceAllocationImport(ImportDefinition):
 
     def execute_row(self, values, executor):
         row_kind = values.get(KIND_COLUMN)
+        if row_kind == USER_KIND:
+            return self.execute_user(values, executor)
         if row_kind == SPACE_KIND:
             return self.execute_space(self.catalog_name(values))
         if row_kind == TEACHER_KIND:
             return self.execute_catalog(Teacher, self.catalog_name(values))
         return self.execute_activity(values)
+
+    def execute_user(self, values, executor):
+        """Cadastra o usuário que ainda não existe, e deixa o existente como está (D3, D6 e D7).
+
+        A validação e o cadastro são os da importação de usuários. O usuário é reconhecido pelo
+        e-mail. A célula obrigatória é conferida aqui porque a fonte em grade não a confere.
+        """
+        errors = [
+            RowError(column, 'required', f'Preencha a coluna {column}.')
+            for column in REQUIRED_USER_COLUMNS
+            if not sheet_text(values.get(column))
+        ]
+        errors += RUN.get().user_duplicates.get(values.get(CELL_COLUMN), [])
+        if errors:
+            return RowPlan(errors=errors)
+        cleaned, errors = USERS.clean_values(values)
+        user = User.objects.filter(email__iexact=cleaned['email']).first()
+        if user is None:
+            return USERS.create(cleaned, errors, executor)
+        if errors:
+            return RowPlan(target=user.pk, errors=errors)
+        return RowPlan(action='unchanged', target=user.pk, warnings=self.user_warnings(user, cleaned))
+
+    def user_warnings(self, user, cleaned):
+        """Avisos do usuário existente: outros dados no cadastro e situação inativa (D7)."""
+        warnings = []
+        role = user.role
+        differs = (
+            cleaned.get('name') != user.name
+            or cleaned['username'] != user.username
+            or cleaned['role'] != role
+        )
+        if differs:
+            warnings.append(USER_WITH_OTHER_DATA)
+        if not user.is_active:
+            warnings.append(INACTIVE_USER)
+        return warnings
 
     def execute_space(self, name):
         """Plano da linha da lista de salas, pelo que a classificação decidiu para o nome.
@@ -553,7 +703,17 @@ class SpaceAllocationImport(ImportDefinition):
         parent = getattr(rows[0], 'parent_id', None) if rows else None
         if parent is not None and Import.objects.filter(pk=parent, status=Import.Status.CONCLUDED).exists():
             metadata |= space_totals(parent)
+            users = created_users(parent)
+            if users:
+                metadata['usuarios_cadastrados'] = users
         return metadata
+
+
+def created_users(importation_pk):
+    """Usuários cadastrados pelas linhas da aba de usuários de uma importação."""
+    return ImportRow.objects.filter(
+        parent_id=importation_pk, values__Tipo=USER_KIND, action=ImportRow.Action.CREATE,
+    ).count()
 
 
 def space_totals(importation_pk):
@@ -603,8 +763,15 @@ def concluded_message(summary, importation=None):
         parts.append(f'{updated} atualizado{"s" if updated > 1 else ""}')
     if unchanged:
         parts.append(f'{unchanged} sem alteração')
+    users = 0
     if importation is not None:
         parts.extend(space_totals_text(importation))
+        users = created_users(importation.pk)
+        if users:
+            parts.append(f'{users} usuário{"s" if users > 1 else ""} cadastrado{"s" if users > 1 else ""}')
     if not parts:
         return 'Importação concluída. Nenhum registro foi cadastrado ou alterado.'
-    return f'Importação do ensalamento concluída. {", ".join(parts)}.'
+    message = f'Importação do ensalamento concluída. {", ".join(parts)}.'
+    if users:
+        message += ' O link para definir a senha será enviado aos usuários cadastrados.'
+    return message

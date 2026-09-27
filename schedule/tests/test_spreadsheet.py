@@ -6,10 +6,13 @@ da leitura diante do arquivo real.
 """
 
 import collections
+from unittest.mock import patch
 
 from django.conf import settings
 from django.test import SimpleTestCase
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+
+from imports.reader import FileRejected
 
 from schedule.activities import Catalog, resolve
 from schedule.imports import (
@@ -32,10 +35,14 @@ from schedule.sheets import (
     SPACE_KIND,
     TEACHER_KIND,
     UNDERGRADUATE_SHEET,
+    USER_COLUMNS,
+    USER_KIND,
+    USERS_SHEET,
     catalog_entries,
     group_columns,
     header_rows,
     parse_weekday,
+    user_entries,
 )
 
 SPREADSHEET = settings.BASE_DIR / 'sources' / 'planilha_example.xlsx'
@@ -313,3 +320,78 @@ class RealFileProblemTests(SpreadsheetTestCase):
         self.assertEqual(codes, ['docente_desconhecido', 'sem_disciplina'])
         by_code = collections.Counter(code for found in with_problem for code, _ in found)
         self.assertEqual(by_code, {'docente_desconhecido': 120, 'sem_disciplina': 1})
+
+
+class UserSheetReadingTests(SimpleTestCase):
+    """Leitura da aba opcional `usuários - sistema` (D4 e D5 da Change importar-usuarios-com-o-ensalamento)."""
+
+    def book(self, rows=None, title=USERS_SHEET):
+        book = Workbook()
+        book.remove(book.active)
+        catalog_sheet = book.create_sheet(CATALOG_SHEET)
+        catalog_sheet['A1'] = 'Disciplina (Professor)'
+        catalog_sheet['B1'] = 'Salas Disponíveis'
+        catalog_sheet['A2'] = 'Elza'
+        catalog_sheet['B2'] = '(1/13)'
+        if rows is not None:
+            sheet = book.create_sheet(title)
+            for row in rows:
+                sheet.append(list(row))
+        return book
+
+    def test_missing_sheet_gives_no_users(self):
+        self.assertEqual(user_entries(self.book()), [])
+
+    def test_one_entry_per_data_row_with_raw_values(self):
+        entries = user_entries(self.book([
+            USER_COLUMNS,
+            (' elza@ifnmg.edu.br ', 'Elza', 'DOCENTE', 'Elza'),
+            (None, None, None, None),
+            ('viviane@ifnmg.edu.br', 'Viviane', 'DOCENTE', None),
+        ]))
+        self.assertEqual([entry['reference'] for entry in entries], ['usuários - sistema!A2', 'usuários - sistema!A4'])
+        self.assertEqual(entries[0]['values']['E-mail'], ' elza@ifnmg.edu.br ')
+        self.assertEqual(entries[1]['values']['Nome de usuário'], '')
+
+    def test_sheet_title_without_case_and_accents(self):
+        book = self.book([USER_COLUMNS, ('elza@ifnmg.edu.br', 'Elza', 'DOCENTE', 'Elza')], title='Usuarios - Sistema')
+        self.assertEqual(user_entries(book)[0]['reference'], 'Usuarios - Sistema!A2')
+
+    def test_header_without_case_and_accents_and_extra_column(self):
+        entries = user_entries(self.book([
+            ('e-mail', 'NOME', 'Observação', 'perfil', 'nome de usuario'),
+            ('elza@ifnmg.edu.br', 'Elza', 'qualquer', 'DOCENTE', 'Elza'),
+        ]))
+        self.assertEqual(
+            entries[0]['values'],
+            {'E-mail': 'elza@ifnmg.edu.br', 'Nome': 'Elza', 'Perfil': 'DOCENTE', 'Nome de usuário': 'Elza'},
+        )
+
+    def test_missing_column_rejects_the_file(self):
+        with self.assertRaises(FileRejected) as raised:
+            user_entries(self.book([('E-mail', 'Nome', 'Nome de usuário'), ('a@ifnmg.edu.br', 'A', 'A')]))
+        self.assertIn('"Perfil"', raised.exception.message)
+        self.assertIn('"usuários - sistema"', raised.exception.message)
+
+    def test_repeated_column_rejects_the_file(self):
+        with self.assertRaises(FileRejected) as raised:
+            user_entries(self.book([(*USER_COLUMNS, 'Perfil')]))
+        self.assertIn('"Perfil" aparece mais de uma vez', raised.exception.message)
+
+    def test_empty_sheet_and_header_only_give_no_users(self):
+        self.assertEqual(user_entries(self.book([])), [])
+        self.assertEqual(user_entries(self.book([USER_COLUMNS])), [])
+
+    def test_user_rows_come_before_catalog_rows(self):
+        book = self.book([USER_COLUMNS, ('elza@ifnmg.edu.br', 'Elza', 'DOCENTE', 'Elza')])
+        with patch('schedule.imports.SHEET_LAYOUTS', ()):
+            rows = list(SpaceAllocationImport().read_cells(book))
+        self.assertEqual([row[KIND_COLUMN] for row in rows], [USER_KIND, SPACE_KIND, TEACHER_KIND])
+
+    def test_help_text_cites_the_optional_sheet(self):
+        definition = SpaceAllocationImport()
+        self.assertIn('e, se houver, a aba "usuários - sistema"', definition.source().help_text(definition))
+
+    def test_real_spreadsheet_has_no_user_rows(self):
+        rows = list(SpaceAllocationImport().read_cells(workbook()))
+        self.assertFalse(any(row[KIND_COLUMN] == USER_KIND for row in rows))

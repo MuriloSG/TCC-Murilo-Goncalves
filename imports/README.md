@@ -88,6 +88,10 @@ transação externa
 commit
 ```
 
+As linhas rodam na ordem em que a leitura as entrega, e uma importação específica pode usar essa ordem para executar fases sem estado novo. O ensalamento executa primeiro os usuários da aba opcional `usuários - sistema`, depois os catálogos e por fim as atividades; sem a aba, não há linha de usuário e a execução começa pelos catálogos. Todas as fases ficam no mesmo savepoint, e por isso a prévia desfaz os usuários junto com o resto e a confirmação só os grava junto com o ensalamento (Change `importar-usuarios-com-o-ensalamento`).
+
+Na fonte de planilha em grade, a importação declara as abas obrigatórias (`sheets`), cuja ausência recusa o arquivo, e as opcionais (`optional_sheets`), cuja ausência não recusa nada e cuja leitura é feita pela própria importação.
+
 Com isso, a prévia e a confirmação usam o mesmo código, e erros que só o banco detecta (unicidade, continuidade administrativa) já aparecem na prévia. Cada linha roda num savepoint próprio para que a recusa de uma linha, inclusive por erro do banco, não interrompa as seguintes. A prévia mostra todos os erros de uma vez.
 
 ## Confirmação: o plano precisa ser idêntico

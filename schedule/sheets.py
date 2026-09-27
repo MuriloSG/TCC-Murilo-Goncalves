@@ -19,7 +19,7 @@ from datetime import time
 
 from openpyxl.utils import get_column_letter
 
-from imports.reader import FileRejected, listing
+from imports.reader import FileRejected, listing, normalize_header
 from schedule.models import Stage, Weekday
 from schedule.utils import normalize_name
 
@@ -49,6 +49,14 @@ CATALOG_FIRST_ROW = 2
 TEACHER_KIND = 'DOCENTE'
 SPACE_KIND = 'SALA'
 ACTIVITY_KIND = 'ATIVIDADE'
+USERS_SHEET = 'usuários - sistema'
+USER_KIND = 'USUARIO'
+USER_EMAIL_COLUMN = 'E-mail'
+USER_NAME_COLUMN = 'Nome'
+USER_ROLE_COLUMN = 'Perfil'
+USER_USERNAME_COLUMN = 'Nome de usuário'
+USER_COLUMNS = (USER_EMAIL_COLUMN, USER_NAME_COLUMN, USER_ROLE_COLUMN, USER_USERNAME_COLUMN)
+USER_HEADER_ROW = 1
 
 
 @dataclass(frozen=True)
@@ -291,3 +299,65 @@ def strip_parentheses(value):
     if value.startswith('(') and value.endswith(')'):
         return normalize_name(value[1:-1]) or value
     return value
+
+
+def find_sheet(workbook, title):
+    """Aba cujo nome é igual a `title` sem diferenciar caixa, acentos e bordas, ou None.
+
+    Serve à aba opcional de usuários: como a ausência dela não gera aviso, um nome com
+    outra caixa ou sem acento não pode passar por ausente (D4 da Change
+    importar-usuarios-com-o-ensalamento).
+    """
+    wanted = normalize_header(title)
+    return next((workbook[name] for name in workbook.sheetnames if normalize_header(name) == wanted), None)
+
+
+def user_header_positions(sheet):
+    """Coluna de cada rótulo do cabeçalho da aba de usuários, recusando coluna faltando ou repetida (D5).
+
+    Coluna a mais é ignorada, como nas demais abas da grade.
+    """
+    labels = {normalize_header(label): label for label in USER_COLUMNS}
+    positions, repeated = {}, []
+    for column in range(1, sheet.max_column + 1):
+        label = labels.get(normalize_header(text(sheet.cell(USER_HEADER_ROW, column).value)))
+        if label is None:
+            continue
+        if label in positions:
+            repeated.append(f'"{label}"')
+        else:
+            positions[label] = column
+    expected = listing(USER_COLUMNS)
+    if repeated:
+        raise FileRejected(
+            f'A coluna {listing(repeated)} aparece mais de uma vez na aba "{sheet.title}". Deixe só uma.'
+        )
+    missing = [f'"{label}"' for label in USER_COLUMNS if label not in positions]
+    if missing:
+        noun = 'a coluna' if len(missing) == 1 else 'as colunas'
+        raise FileRejected(
+            f'Falta {noun} {listing(missing)} na aba "{sheet.title}". Use as colunas {expected}.'
+        )
+    return positions
+
+
+def user_entries(workbook):
+    """Usuários da aba opcional, um por linha de dado, com a célula de origem (D4 e D5).
+
+    Sem a aba, ou com a aba sem nenhuma célula preenchida, não há usuário e nada é
+    recusado. A primeira linha é o cabeçalho, e as linhas vazias são ignoradas. Os valores
+    vão crus, para que a confirmação normalize igual à prévia.
+    """
+    sheet = find_sheet(workbook, USERS_SHEET)
+    if sheet is None:
+        return []
+    if not any(text(value) for row in sheet.iter_rows(values_only=True) for value in row):
+        return []
+    positions = user_header_positions(sheet)
+    entries = []
+    for row in range(USER_HEADER_ROW + 1, sheet.max_row + 1):
+        values = {label: raw_text(sheet.cell(row, column).value) for label, column in positions.items()}
+        if not any(text(value) for value in values.values()):
+            continue
+        entries.append({'values': values, 'reference': f'{sheet.title}!A{row}'})
+    return entries

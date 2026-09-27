@@ -44,7 +44,12 @@ class WorkbookSource:
     missing_message = 'Escolha o arquivo da planilha.'
 
     def help_text(self, definition):
-        return f'Planilha em XLSX, com as abas {listing(definition.sheets)}.'
+        text = f'Planilha em XLSX, com as abas {listing(definition.sheets)}'
+        optional = [f'"{name}"' for name in definition.optional_sheets]
+        if optional:
+            noun = 'a aba' if len(optional) == 1 else 'as abas'
+            text += f' e, se houver, {noun} {listing(optional)}'
+        return text + '.'
 
     def read(self, uploaded_file, definition):
         """Lê a planilha e devolve as linhas, uma por célula de dado das abas declaradas."""

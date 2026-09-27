@@ -8,18 +8,22 @@ listas. O arquivo real é usado nos testes que conferem o comportamento diante d
 
 import io
 from datetime import date
+from unittest.mock import patch
 
 from django.conf import settings
+from django.db import DatabaseError
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from openpyxl import Workbook
 
 from accounts import permissions
+from accounts.imports import UserImport
 from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
 from imports.forms import ImportUploadForm
 from imports.models import Import
+from outbox.models import OutboxEntry
 from schedule.imports import SpaceAllocationImport, concluded_message
 from schedule.models import (
     Allocation,
@@ -35,10 +39,12 @@ from schedule.models import (
     TeachingAssignment,
     TimeSlot,
     Weekday,
+    teacher_of,
 )
-from schedule.sheets import CATALOG_SHEET, SECONDARY_SHEET, UNDERGRADUATE_SHEET
+from schedule.sheets import CATALOG_SHEET, SECONDARY_SHEET, UNDERGRADUATE_SHEET, USER_COLUMNS, USERS_SHEET
 
 SPREADSHEET = settings.BASE_DIR / 'sources' / 'planilha_example.xlsx'
+SUGGESTED_SPREADSHEET = settings.BASE_DIR / 'sources' / 'planilha_example_sugerida.xlsx'
 CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 TEACHERS = ['Viviane', 'Elza', 'Eduardo Garrido', 'Thaís Rios', 'Gera Jr.', 'Érica']
@@ -73,7 +79,10 @@ def grid(sheet, banner, headers, days, activities):
     sheet.cell(row, 2, 'HORÁRIO')
 
 
-def workbook_file(undergraduate=None, secondary=None, teachers=None, spaces=None, name='ensalamento.xlsx'):
+def workbook_file(
+    undergraduate=None, secondary=None, teachers=None, spaces=None, name='ensalamento.xlsx',
+    users=None, users_title=USERS_SHEET, users_header=USER_COLUMNS,
+):
     book = Workbook()
     book.remove(book.active)
     grid(
@@ -103,6 +112,11 @@ def workbook_file(undergraduate=None, secondary=None, teachers=None, spaces=None
         catalog_sheet.cell(position, 1, teacher)
     for position, space in enumerate(spaces if spaces is not None else SPACES, start=2):
         catalog_sheet.cell(position, 2, space)
+    if users is not None:
+        users_sheet = book.create_sheet(users_title)
+        users_sheet.append(list(users_header))
+        for user in users:
+            users_sheet.append(list(user))
     stream = io.BytesIO()
     book.save(stream)
     return SimpleUploadedFile(name, stream.getvalue(), content_type=CONTENT_TYPE)
@@ -111,11 +125,13 @@ def workbook_file(undergraduate=None, secondary=None, teachers=None, spaces=None
 PERIOD = {'own_início': '2026-08-03', 'own_fim': '2026-12-18'}
 
 
-def space_manager(email='admin@ifnmg.edu.br'):
+def space_manager(email='admin@ifnmg.edu.br', extra_permissions=()):
     """Usuário que importa o ensalamento e pode alterar o cadastro de espaços."""
     code = email.partition('@')[0].upper()
     role = Role.objects.create_role(
-        code=code, name=code, permissions=[permissions.SPACE_ALLOCATION_IMPORT, *permissions.SPACE_PERMISSIONS],
+        code=code,
+        name=code,
+        permissions=[permissions.SPACE_ALLOCATION_IMPORT, *permissions.SPACE_PERMISSIONS, *extra_permissions],
     )
     return User.objects.register(email=email, name=code.capitalize(), role=role)
 
@@ -698,3 +714,299 @@ class AcademicLinkTests(ImportTestCase):
         after = sorted(TeachingAssignment.objects.filter(offering__semester__code='2026/1').values_list('pk', 'is_current'))
         self.assertEqual(after, before)
         self.assertEqual(offering_teachers(semester='2026/2'), {'Viviane': True})
+
+
+ELZA = ('elza@ifnmg.edu.br', 'Elza Souza', 'DOCENTE', 'Elza')
+VIVIANE = ('viviane@ifnmg.edu.br', 'Viviane Lima', 'DOCENTE', 'Viviane')
+ERICA = ('erica@ifnmg.edu.br', 'Érica Alves', 'DOCENTE', 'Érica')
+
+
+class UserSheetTests(ImportTestCase):
+    """Aba opcional `usuários - sistema` (Change importar-usuarios-com-o-ensalamento)."""
+
+    def setUp(self):
+        self.executor = space_manager(extra_permissions=[permissions.USER_CREATE])
+        self.definition = SpaceAllocationImport()
+        self.teacher_role = Role.objects.get(code='DOCENTE')
+
+    def with_users(self, *users, **options):
+        return workbook_file(users=list(users), **options)
+
+    def user_rows(self, importation):
+        return list(importation.rows.filter(values__Tipo='USUARIO').order_by('line_number'))
+
+    def imported_users(self):
+        return User.objects.exclude(pk=self.executor.pk)
+
+    def password_links(self):
+        return OutboxEntry.objects.filter(kind='LINK_SENHA').exclude(reference=str(self.executor.pk))
+
+    def user_audit(self):
+        return AuditLog.objects.filter(resource=catalog.USER, action=catalog.CREATE).exclude(
+            resource_id=str(self.executor.pk),
+        )
+
+    def error_codes(self, row):
+        return [(error['column'], error['code']) for error in row.errors]
+
+    def test_user_rows_are_recognized(self):
+        importation = self.preview(self.with_users(ELZA, VIVIANE))
+        rows = self.user_rows(importation)
+        self.assertEqual([row.line_number for row in rows], [1, 2])
+        self.assertEqual(rows[0].values['Célula'], 'usuários - sistema!A2')
+        self.assertEqual(rows[0].values['E-mail'], 'elza@ifnmg.edu.br')
+        self.assertIn('usuarios', [item.slug for item in self.definition.row_filters])
+
+    def test_valid_users_are_planned(self):
+        importation = self.preview(self.with_users(ELZA))
+        self.assertEqual(importation.status, Import.Status.VALIDATED, self.errors_of(importation))
+        row = self.user_rows(importation)[0]
+        self.assertEqual(row.action, 'create')
+        self.assertEqual(row.changes, {
+            'email': [None, 'elza@ifnmg.edu.br'],
+            'name': [None, 'Elza Souza'],
+            'role': [None, 'DOCENTE'],
+            'username': [None, 'Elza'],
+        })
+
+    def test_confirmation_creates_missing_users(self):
+        importation = self.conclude(self.with_users(ELZA))
+        user = User.objects.get(email='elza@ifnmg.edu.br')
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.is_superadmin)
+        self.assertEqual(user.role, self.teacher_role)
+        self.assertEqual(user.username, 'Elza')
+        self.assertFalse(user.has_usable_password())
+        self.assertTrue(OutboxEntry.objects.filter(kind='LINK_SENHA', reference=str(user.pk)).exists())
+        self.assertEqual(self.user_rows(importation)[0].created_object, str(user.pk))
+        record = self.user_audit().get()
+        self.assertEqual(record.origin, catalog.IMPORTED)
+        self.assertTrue(Allocation.objects.exists())
+
+    def test_role_is_applied(self):
+        Role.objects.create_role(code='SECRETARIA', name='Secretaria')
+        self.conclude(self.with_users(ELZA, ('ana@ifnmg.edu.br', 'Ana', 'secretaria', '')))
+        self.assertEqual(User.objects.get(email='elza@ifnmg.edu.br').role.code, 'DOCENTE')
+        ana = User.objects.get(email='ana@ifnmg.edu.br')
+        self.assertEqual(ana.role.code, 'SECRETARIA')
+        self.assertIsNone(ana.username)
+
+    def test_multiple_users_are_processed(self):
+        importation = self.conclude(self.with_users(ELZA, VIVIANE, ERICA))
+        self.assertEqual(self.imported_users().count(), 3)
+        self.assertEqual(self.password_links().count(), 3)
+        self.assertEqual([row.action for row in self.user_rows(importation)], ['create'] * 3)
+
+    def test_created_user_matches_teacher(self):
+        self.conclude(self.with_users(ELZA))
+        user = User.objects.get(email='elza@ifnmg.edu.br')
+        self.assertEqual(teacher_of(user), Teacher.objects.get(name='Elza'))
+
+    def test_existing_user_is_not_duplicated(self):
+        existing = User.objects.register(
+            email='elza@ifnmg.edu.br', name='Elza Souza', role=self.teacher_role, username='Elza',
+        )
+        links = self.password_links().count()
+        importation = self.conclude(self.with_users(('ELZA@ifnmg.edu.br', 'Elza Souza', 'DOCENTE', 'Elza')))
+        row = self.user_rows(importation)[0]
+        self.assertEqual((row.action, row.target, row.warnings), ('unchanged', str(existing.pk), []))
+        self.assertEqual(User.objects.filter(email__iexact='elza@ifnmg.edu.br').count(), 1)
+        self.assertEqual(self.password_links().count(), links)
+
+    def test_existing_user_with_other_data_is_not_updated(self):
+        Role.objects.create_role(code='SECRETARIA', name='Secretaria')
+        existing = User.objects.register(
+            email='elza@ifnmg.edu.br', name='Elza Souza', role=self.teacher_role, username='Elza',
+        )
+        importation = self.conclude(self.with_users(('elza@ifnmg.edu.br', 'Elza', 'SECRETARIA', 'Elza')))
+        row = self.user_rows(importation)[0]
+        self.assertEqual(row.action, 'unchanged')
+        self.assertEqual(row.warnings, ['usuario_com_outros_dados'])
+        existing.refresh_from_db()
+        self.assertEqual((existing.name, existing.role.code), ('Elza Souza', 'DOCENTE'))
+
+    def test_inactive_user_is_not_reactivated(self):
+        existing = User.objects.register(
+            email='elza@ifnmg.edu.br', name='Elza Souza', role=self.teacher_role, username='Elza',
+        )
+        User.objects.filter(pk=existing.pk).update(is_active=False)
+        importation = self.conclude(self.with_users(ELZA))
+        self.assertEqual(self.user_rows(importation)[0].warnings, ['usuario_inativo'])
+        existing.refresh_from_db()
+        self.assertFalse(existing.is_active)
+
+    def test_spreadsheet_without_users_sheet_is_valid(self):
+        importation = self.preview(workbook_file())
+        self.assertEqual(importation.status, Import.Status.VALIDATED, self.errors_of(importation))
+        self.assertEqual(self.user_rows(importation), [])
+
+    def test_users_step_is_skipped(self):
+        before = User.objects.count()
+        with patch.object(UserImport, 'create') as create, patch.object(UserImport, 'clean_values') as clean:
+            self.conclude(workbook_file())
+        create.assert_not_called()
+        clean.assert_not_called()
+        self.assertEqual(User.objects.count(), before)
+
+    def test_schedule_is_imported_normally(self):
+        importation = self.conclude(workbook_file())
+        self.assertEqual(Teacher.objects.count(), len(TEACHERS))
+        self.assertEqual(Space.objects.count(), len(SPACE_NAMES))
+        self.assertEqual(Allocation.objects.count(), 4)
+        self.assertNotIn('usuário', concluded_message(importation.summary(), importation))
+
+    def test_invalid_email(self):
+        importation = self.preview(self.with_users(('elza', 'Elza', 'DOCENTE', 'Elza')))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertIn(('E-mail', 'invalid'), self.error_codes(self.user_rows(importation)[0]))
+
+    def test_email_outside_institutional_domain(self):
+        importation = self.preview(self.with_users(('elza@gmail.com', 'Elza', 'DOCENTE', 'Elza')))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertEqual([column for column, _ in self.error_codes(self.user_rows(importation)[0])], ['E-mail'])
+
+    def test_unknown_role(self):
+        roles = Role.objects.count()
+        importation = self.preview(self.with_users(('elza@ifnmg.edu.br', 'Elza', 'COORDENADOR', 'Elza')))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertIn(('Perfil', 'unknown_role'), self.error_codes(self.user_rows(importation)[0]))
+        self.assertEqual(Role.objects.count(), roles)
+
+    def test_duplicate_email_in_sheet(self):
+        importation = self.preview(self.with_users(ELZA, ('ELZA@ifnmg.edu.br', 'Outra', 'DOCENTE', 'Outra')))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        for row in self.user_rows(importation):
+            self.assertIn(('E-mail', 'duplicate'), self.error_codes(row))
+
+    def test_duplicate_username_in_sheet(self):
+        importation = self.preview(self.with_users(ELZA, ('outra@ifnmg.edu.br', 'Outra', 'DOCENTE', 'ELZA')))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        for row in self.user_rows(importation):
+            self.assertIn(('Nome de usuário', 'duplicate'), self.error_codes(row))
+
+    def test_missing_required_cells(self):
+        importation = self.preview(self.with_users(
+            ('', 'Elza', 'DOCENTE', 'Elza'),
+            ('viviane@ifnmg.edu.br', '', 'DOCENTE', 'Viviane'),
+            ('erica@ifnmg.edu.br', 'Érica', '', 'Érica'),
+            ('ana@ifnmg.edu.br', 'Ana', 'DOCENTE', ''),
+        ))
+        rows = self.user_rows(importation)
+        self.assertEqual(self.error_codes(rows[0]), [('E-mail', 'required')])
+        self.assertEqual(self.error_codes(rows[1]), [('Nome', 'required')])
+        self.assertEqual(self.error_codes(rows[2]), [('Perfil', 'required')])
+        self.assertEqual((rows[3].errors, rows[3].action), ([], 'create'))
+
+    def test_username_taken_by_other_user(self):
+        User.objects.register(email='outra@ifnmg.edu.br', name='Outra', role=self.teacher_role, username='Elza')
+        importation = self.preview(self.with_users(ELZA))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertIn(('Nome de usuário', 'username_taken'), self.error_codes(self.user_rows(importation)[0]))
+
+    def test_without_user_create_permission(self):
+        self.executor = space_manager('semcadastro@ifnmg.edu.br')
+        importation = self.preview(self.with_users(ELZA))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertIn((None, 'permission_denied'), self.error_codes(self.user_rows(importation)[0]))
+
+    def test_database_error_during_user_creation(self):
+        with patch.object(User.objects, 'register', side_effect=DatabaseError):
+            importation = self.preview(self.with_users(ELZA))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertEqual(self.error_codes(self.user_rows(importation)[0]), [(None, 'database')])
+        self.assertFalse(self.imported_users().exists())
+
+    def test_user_error_blocks_whole_import(self):
+        importation = self.preview(self.with_users(ELZA, ('viviane', 'Viviane', 'DOCENTE', 'Viviane')))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        with self.assertRaises(Exception):
+            importation.confirm(self.definition, self.executor)
+        self.assertFalse(self.imported_users().exists())
+        self.assertFalse(Allocation.objects.exists())
+
+    def test_preview_does_not_persist_users(self):
+        importation = self.preview(self.with_users(ELZA, VIVIANE))
+        importation.refresh(self.definition, self.executor)
+        self.assertFalse(self.imported_users().exists())
+        self.assertFalse(self.password_links().exists())
+        self.assertFalse(self.user_audit().exists())
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_confirmation_persists_users(self):
+        importation = self.conclude(self.with_users(ELZA, VIVIANE))
+        self.assertEqual(importation.status, Import.Status.CONCLUDED)
+        self.assertEqual(self.imported_users().count(), 2)
+        self.assertEqual(self.user_audit().count(), 2)
+        message = concluded_message(importation.summary(), importation)
+        self.assertIn('2 usuários cadastrados', message)
+        self.assertTrue(message.endswith('O link para definir a senha será enviado aos usuários cadastrados.'))
+        record = AuditLog.objects.get(resource=catalog.SPACE_ALLOCATION_IMPORT, action=catalog.IMPORT)
+        self.assertEqual(record.metadata['usuarios_cadastrados'], 2)
+
+    def test_divergence_rolls_back_users(self):
+        importation = self.preview(self.with_users(ELZA, VIVIANE))
+        User.objects.register(email='elza@ifnmg.edu.br', name='Elza Souza', role=self.teacher_role, username='Elza')
+        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertEqual(importation.revalidation_count, 1)
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        self.assertFalse(User.objects.filter(email='viviane@ifnmg.edu.br').exists())
+        self.assertFalse(Allocation.objects.exists())
+
+    def test_unexpected_error_after_users_rolls_back_everything(self):
+        importation = self.preview(self.with_users(ELZA))
+        with patch.object(Allocation.objects, 'apply', side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                importation.confirm(self.definition, self.executor)
+        importation.refresh_from_db()
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        self.assertFalse(self.imported_users().exists())
+        self.assertFalse(self.password_links().exists())
+        self.assertFalse(Allocation.objects.exists())
+
+    def test_confirmer_without_permission(self):
+        importation = self.preview(self.with_users(ELZA))
+        confirmer = space_manager('semcadastro@ifnmg.edu.br')
+        self.assertFalse(importation.confirm(self.definition, confirmer))
+        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
+        self.assertFalse(User.objects.filter(email='elza@ifnmg.edu.br').exists())
+        self.assertFalse(Allocation.objects.exists())
+
+    def test_second_import_does_not_duplicate(self):
+        self.conclude(self.with_users(ELZA, VIVIANE))
+        second = self.conclude(self.with_users(ELZA, VIVIANE))
+        self.assertEqual([row.action for row in self.user_rows(second)], ['unchanged', 'unchanged'])
+        self.assertEqual(self.imported_users().count(), 2)
+        self.assertEqual(self.password_links().count(), 2)
+
+    def test_reimport_does_not_update_changed_user(self):
+        self.conclude(self.with_users(ELZA))
+        user = User.objects.get(email='elza@ifnmg.edu.br')
+        user.update_details(self.executor, name='Elza Maria Souza', email=user.email)
+        second = self.conclude(self.with_users(ELZA))
+        self.assertEqual(self.user_rows(second)[0].warnings, ['usuario_com_outros_dados'])
+        user.refresh_from_db()
+        self.assertEqual(user.name, 'Elza Maria Souza')
+
+    def test_sheet_title_is_recognized_without_case_and_accents(self):
+        importation = self.preview(self.with_users(ELZA, users_title='Usuarios - Sistema'))
+        self.assertEqual(len(self.user_rows(importation)), 1)
+
+
+
+class SuggestedSpreadsheetTests(ImportTestCase):
+    """Planilha sugerida, com a aba `usuários - sistema` (Change importar-usuarios-com-o-ensalamento)."""
+
+    def setUp(self):
+        self.executor = space_manager(extra_permissions=[permissions.USER_CREATE])
+        self.definition = SpaceAllocationImport()
+
+    def test_users_sheet_is_read_and_every_user_is_planned(self):
+        uploaded = SimpleUploadedFile(
+            'planilha_example_sugerida.xlsx', SUGGESTED_SPREADSHEET.read_bytes(), content_type=CONTENT_TYPE,
+        )
+        importation = self.preview(uploaded)
+        rows = list(importation.rows.filter(values__Tipo='USUARIO'))
+        self.assertEqual(len(rows), 129)
+        self.assertEqual([row.errors for row in rows if row.errors], [])
+        self.assertEqual({row.action for row in rows}, {'create'})
+        self.assertEqual(User.objects.count(), 1)

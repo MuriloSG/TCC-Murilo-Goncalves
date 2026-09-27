@@ -45,6 +45,14 @@ SEMESTER_REQUIRED_MESSAGE = 'Escolha o semestre.'
 SUBJECT_REQUIRED_MESSAGE = 'Escolha a disciplina.'
 ASSIGNMENT_REQUIRED_MESSAGE = 'Escolha a turma.'
 NOT_A_TEACHER_MESSAGE = 'O seu usuário não corresponde a um docente do ensalamento. Só docentes solicitam agendamento.'
+REQUESTER_REQUIRED_MESSAGE = 'Escolha o usuário.'
+COURSE_REQUIRED_MESSAGE = 'Escolha o curso.'
+SUBJECT_OUTSIDE_COURSE_MESSAGE = 'Esta disciplina não está entre as disciplinas do usuário no curso escolhido. Escolha outra disciplina.'
+ASSIGNMENT_OUTSIDE_SUBJECT_MESSAGE = 'Esta turma não está entre as turmas do usuário na disciplina escolhida. Escolha outra turma.'
+
+
+def not_a_teacher_message(user):
+    return f'O usuário {user.username or user.email} não corresponde a um docente do ensalamento. Escolha outro usuário.'
 
 
 class TsTzRange(Func):
@@ -118,16 +126,22 @@ def check_slot(space, day, start, end, prefix='', exclude_request=None):
         raise SlotUnavailable(conflict_message(conflict))
 
 
-def check_assignment(user, semester, assignment):
-    """Recusa a turma que não é um vínculo atual do próprio docente no semestre.
+def check_assignment(requester, semester, assignment, course=None, subject=None, on_behalf=False):
+    """Recusa a turma que não é um vínculo atual do docente do solicitante no semestre.
 
-    Quem solicita é o docente: ele é reconhecido pelo `username` (`teacher_of`), e a turma
-    escolhida precisa ser um vínculo atual dele, criado pela importação do ensalamento
-    (Change relacionar-professor-disciplina-turma). Um ID de outro docente, de outro
-    semestre ou de um vínculo histórico é recusado, venha de onde vier.
+    É a única conferência da cadeia usuário, curso, disciplina e turma, usada pelos dois fluxos
+    de criação. O solicitante é reconhecido como docente pelo `username` (`teacher_of`), e a
+    turma escolhida precisa ser um vínculo atual dele, criado pela importação do ensalamento
+    (Change relacionar-professor-disciplina-turma). Quando informados, a disciplina precisa ser
+    a da oferta do vínculo e o curso, o da turma dela: o vínculo é a fonte de verdade, e o curso
+    e a disciplina são conferidos a partir dele (D1 e D3 da Change
+    criar-agendamento-para-outro-usuario). Um ID de outro docente, de outro semestre, de outra
+    disciplina, de outro curso ou de um vínculo histórico é recusado, venha de onde vier.
     """
-    teacher = teacher_of(user)
+    teacher = teacher_of(requester)
     if teacher is None:
+        if on_behalf:
+            raise ValidationError({'requested_for': ValidationError(not_a_teacher_message(requester), code='not_a_teacher')})
         raise ValidationError(NOT_A_TEACHER_MESSAGE, code='not_a_teacher')
     missing = {}
     if semester is None:
@@ -136,15 +150,22 @@ def check_assignment(user, semester, assignment):
         missing['teaching_assignment'] = ValidationError(ASSIGNMENT_REQUIRED_MESSAGE, code='required')
     if missing:
         raise ValidationError(missing)
+    offering = assignment.offering
     if (
         assignment.teacher_id != teacher.pk
         or not assignment.is_current
-        or assignment.offering.semester_id != semester.pk
+        or offering.semester_id != semester.pk
     ):
-        raise ValidationError({'teaching_assignment': ValidationError(
-            f'Esta turma não está entre as suas turmas do ensalamento de {semester.code}. Escolha uma das suas turmas.',
-            code='not_available',
-        )})
+        text = (
+            f'Esta turma não está entre as turmas do usuário no ensalamento de {semester.code}. Escolha outra turma.'
+            if on_behalf
+            else f'Esta turma não está entre as suas turmas do ensalamento de {semester.code}. Escolha uma das suas turmas.'
+        )
+        raise ValidationError({'teaching_assignment': ValidationError(text, code='not_available')})
+    if course is not None and offering.class_group.course_id != course.pk:
+        raise ValidationError({'subject': ValidationError(SUBJECT_OUTSIDE_COURSE_MESSAGE, code='not_available')})
+    if subject is not None and offering.subject_id != subject.pk:
+        raise ValidationError({'teaching_assignment': ValidationError(ASSIGNMENT_OUTSIDE_SUBJECT_MESSAGE, code='not_available')})
 
 
 def check_period(semester, day):
@@ -162,52 +183,67 @@ def check_period(semester, day):
 
 
 class BookingRequestManager(models.Manager):
-    def prepare(self, user, space, day, start, end, description, semester=None, assignment=None):
+    def prepare(
+        self, user, space, day, start, end, description, semester=None, assignment=None,
+        requester=None, course=None, subject=None,
+    ):
         """Confere a solicitação e a devolve sem gravar.
 
-        Confere a permissão, a turma do próprio docente, o período do semestre, os campos,
-        o espaço, o horário e os conflitos, nesta ordem. É a mesma conferência do envio,
-        usada para a revisão mostrada antes da confirmação. O ID da turma vale só como
-        vínculo atual do docente que é o usuário, no semestre.
+        Confere a permissão, a cadeia do vínculo, o período do semestre, os campos, o espaço,
+        o horário e os conflitos, nesta ordem. É a mesma conferência do envio, usada para a
+        revisão mostrada antes da confirmação. O ID da turma vale só como vínculo atual do
+        docente que é o solicitante, no semestre.
+
+        O solicitante é o próprio usuário, com `AGENDA.SOLICITAR`, ou outro usuário ativo,
+        escolhido por quem tem `AGENDA.CRIAR`; nesse caso `created_by` guarda quem criou
+        (D3 e D7 da Change criar-agendamento-para-outro-usuario).
         """
-        require(user, permissions.BOOKING_REQUEST)
-        check_assignment(user, semester, assignment)
+        requester = requester or user
+        on_behalf = requester.pk != user.pk
+        require(user, permissions.BOOKING_CREATE if on_behalf else permissions.BOOKING_REQUEST)
+        check_assignment(requester, semester, assignment, course, subject, on_behalf=on_behalf)
         check_period(semester, day)
         request = self.model(
-            requested_by=user, space=space, date=day, start_time=start, end_time=end,
-            description=(description or '').strip(), status=self.model.Status.PENDING,
-            teaching_assignment=assignment,
+            requested_by=requester, created_by=user if on_behalf else None, space=space, date=day,
+            start_time=start, end_time=end, description=(description or '').strip(),
+            status=self.model.Status.PENDING, teaching_assignment=assignment,
         )
-        request.full_clean(exclude=['requested_by', 'space', 'teaching_assignment'], validate_constraints=False)
+        request.full_clean(
+            exclude=['requested_by', 'created_by', 'space', 'teaching_assignment'], validate_constraints=False,
+        )
         check_slot(space, day, start, end)
         return request
 
-    def submit(self, user, space, day, start, end, description, semester=None, assignment=None):
+    def submit(
+        self, user, space, day, start, end, description, semester=None, assignment=None,
+        requester=None, course=None, subject=None,
+    ):
         """Cria a solicitação `PENDENTE`, sem criar agendamento nem ocupar o horário.
 
         Tudo numa transação: uma recusa ou uma falha não deixa solicitação, auditoria nem
         notificação gravadas. O ensalamento não é tocado.
         """
         with transaction.atomic():
-            request = self.prepare(user, space, day, start, end, description, semester, assignment)
+            request = self.prepare(
+                user, space, day, start, end, description, semester, assignment, requester, course, subject,
+            )
             request.save()
             offering = request.teaching_assignment.offering
-            AuditLog.objects.record(
-                catalog.CREATE,
-                catalog.BOOKING_REQUEST,
-                resource_id=request.pk,
-                new_values={
-                    'situacao': request.status,
-                    'semestre': semester.code,
-                    'docente': request.teaching_assignment.teacher.name,
-                    'disciplina': offering.subject.name,
-                    'turma': str(offering.class_group),
-                    'espaco': space.name,
-                    'data': day.isoformat(),
-                    'horario': hours(start, end),
-                    'description': request.description,
-                },
-            )
+            values = {
+                'situacao': request.status,
+                'semestre': semester.code,
+                'docente': request.teaching_assignment.teacher.name,
+                'disciplina': offering.subject.name,
+                'turma': str(offering.class_group),
+                'espaco': space.name,
+                'data': day.isoformat(),
+                'horario': hours(start, end),
+                'description': request.description,
+            }
+            if request.created_by_id:
+                values['solicitante'] = request.requested_by.username
+                values['criada_por'] = user.username or user.email
+            AuditLog.objects.record(catalog.CREATE, catalog.BOOKING_REQUEST, resource_id=request.pk, new_values=values)
             announce(notifications.REQUESTED, request=request)
         return request
 
@@ -221,6 +257,10 @@ class BookingRequest(models.Model):
     `teaching_assignment` é o vínculo do docente com a disciplina e a turma no semestre, de
     onde vêm os quatro dados acadêmicos, sem cópia deles na solicitação. Fica vazio só nas
     solicitações criadas antes da Change solicitar-agendamento-com-vinculo-academico.
+
+    `requested_by` é o dono da solicitação em todas as regras. `created_by` fica preenchido só
+    quando outro usuário, com `AGENDA.CRIAR`, a criou em nome dele (Change
+    criar-agendamento-para-outro-usuario).
     """
 
     class Status(models.TextChoices):
@@ -242,6 +282,10 @@ class BookingRequest(models.Model):
         null=True,
         blank=True,
         verbose_name='docente da oferta',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', null=True, blank=True,
+        verbose_name='criada por',
     )
     space = models.ForeignKey(Space, on_delete=models.PROTECT, related_name='booking_requests', verbose_name='espaço')
     date = models.DateField('data')

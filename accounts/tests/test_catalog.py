@@ -25,6 +25,7 @@ SPACE_ALLOCATION_CHANGE_CODE = 'ENSALAMENTO.ALTERAR_RECORRENCIA'
 NEW_CODES = [SPACE_ALLOCATION_VIEW_CODE, IMPORT_DELETE_CODE, SPACE_ALLOCATION_DELETE_CODE]
 SPACE_CODES = {'ESPACO.VISUALIZAR', 'ESPACO.CRIAR', 'ESPACO.EDITAR', 'ESPACO.ALTERAR_SITUACAO', 'ESPACO.EXCLUIR'}
 BOOKING_CODES = {'AGENDA.VISUALIZAR', 'AGENDA.SOLICITAR', 'AGENDA.ANALISAR'}
+BOOKING_CREATE_CODE = 'AGENDA.CRIAR'
 ACADEMIC_CODES = {
     'DISCIPLINA.VISUALIZAR', 'DISCIPLINA.CRIAR', 'DISCIPLINA.EDITAR', 'DISCIPLINA.EXCLUIR',
     'TURMA.VISUALIZAR', 'TURMA.CRIAR', 'TURMA.EDITAR', 'TURMA.EXCLUIR',
@@ -63,13 +64,14 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.SPACE_EDIT, 'ESPACO.EDITAR')
         self.assertEqual(permissions.SPACE_CHANGE_STATUS, 'ESPACO.ALTERAR_SITUACAO')
         self.assertEqual(permissions.SPACE_DELETE, 'ESPACO.EXCLUIR')
+        self.assertEqual(permissions.BOOKING_CREATE, 'AGENDA.CRIAR')
 
-    def test_all_permissions_has_the_thirty_five_codes(self):
+    def test_all_permissions_has_the_thirty_six_codes(self):
         self.assertEqual(
             permissions.ALL_PERMISSIONS,
-            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE} | SPACE_CODES | BOOKING_CODES | ACADEMIC_CODES | ROLE_CODES,
+            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE} | SPACE_CODES | BOOKING_CODES | {BOOKING_CREATE_CODE} | ACADEMIC_CODES | ROLE_CODES,
         )
-        self.assertEqual(len(permissions.ALL_PERMISSIONS), 35)
+        self.assertEqual(len(permissions.ALL_PERMISSIONS), 36)
 
     def test_codes_follow_the_format(self):
         for code in permissions.ALL_PERMISSIONS:
@@ -102,7 +104,7 @@ class InitialCatalogTests(TestCase):
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))
-        self.assertEqual(Permission.objects.count(), 35)
+        self.assertEqual(Permission.objects.count(), 36)
 
     def test_reserved_permissions_exist_in_database(self):
         codes = set(Permission.objects.values_list('code', flat=True))
@@ -129,6 +131,7 @@ class InitialCatalogTests(TestCase):
             | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE}
             | SPACE_CODES
             | BOOKING_CODES
+            | {BOOKING_CREATE_CODE}
             | ACADEMIC_CODES,
         )
 
@@ -275,3 +278,29 @@ class BookingPermissionsMigrationTests(TestCase):
         coordination = Role.objects.create_role('COORDENACAO', 'Coordenação')
         coordination.set_permissions([Permission.objects.get(code='AGENDA.ANALISAR')])
         self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'AGENDA.ANALISAR'})
+
+
+class BookingCreatePermissionMigrationTests(TestCase):
+    def test_grants_the_create_permission_only_to_administrator_keeping_other_grants(self):
+        migration = import_module('accounts.migrations.0014_booking_create_permission')
+        administrator = Role.objects.get(code='ADMINISTRADOR')
+        teacher = Role.objects.get(code='DOCENTE')
+        coordination = Role.objects.create(code='COORDENACAO', name='Coordenação')
+        Permission.objects.filter(code=BOOKING_CREATE_CODE).delete()
+        RolePermission.objects.filter(role=administrator, permission__code='USUARIO.EDITAR').delete()
+        RolePermission.objects.create(role=coordination, permission=Permission.objects.get(code='USUARIO.VISUALIZAR'))
+
+        migration.add_permissions(apps, None)
+        migration.add_permissions(apps, None)
+
+        administrator_codes = set(administrator.permissions.values_list('code', flat=True))
+        self.assertIn(BOOKING_CREATE_CODE, administrator_codes)
+        self.assertNotIn('USUARIO.EDITAR', administrator_codes)
+        self.assertEqual(set(teacher.permissions.values_list('code', flat=True)), TEACHER_CODES)
+        self.assertEqual(set(coordination.permissions.values_list('code', flat=True)), {'USUARIO.VISUALIZAR'})
+        self.assertEqual(Permission.objects.filter(code=BOOKING_CREATE_CODE).count(), 1)
+
+    def test_create_permission_is_not_reserved(self):
+        self.assertNotIn(BOOKING_CREATE_CODE, permissions.SUPERADMIN_RESERVED_PERMISSIONS)
+        superadmin = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'Senha-forte-123')
+        self.assertTrue(superadmin.has_perm(BOOKING_CREATE_CODE))

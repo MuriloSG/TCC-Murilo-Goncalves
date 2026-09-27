@@ -11,6 +11,9 @@
       {% if show_requester %}
         <div><span class="request-icon">{% icon "user-round" %}</span><dt>Solicitante</dt><dd>{{ target.requested_by.name }}<span class="request-detail">{{ target.requested_by.email }}</span></dd></div>
       {% endif %}
+      {% if target.created_by %}
+        <div><span class="request-icon">{% icon "user-round" %}</span><dt>Criada por</dt><dd>{{ target.created_by.name }}<span class="request-detail">{{ target.created_by.email }}</span></dd></div>
+      {% endif %}
       {% with link=target.teaching_assignment %}{% if link %}
         <div><span class="request-icon">{% icon "users" %}</span><dt>Docente</dt><dd>{{ link.teacher.name }}<span class="request-detail">Semestre {{ link.offering.semester.code }}</span></dd></div>
         <div><span class="request-icon">{% icon "graduation-cap" %}</span><dt>Disciplina e turma</dt><dd>{{ link.offering.subject.name }}<span class="request-detail">{{ link.offering.class_group }}</span></dd></div>

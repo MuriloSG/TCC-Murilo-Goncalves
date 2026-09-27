@@ -222,3 +222,17 @@ class ScreenTests(AcademicTestCase):
         self.assertIn('Semestre 2026/2', content)
         self.assertIn('2º ANO A (INFORMÁTICA)', content)
         self.assertIn('Redes', content)
+
+
+class SubjectCheckTests(AcademicTestCase):
+    """O fluxo do próprio docente também confere a disciplina no model (Change
+    criar-agendamento-para-outro-usuario)."""
+
+    def test_forged_subject_is_refused_by_the_model(self):
+        with self.assertRaises(ValidationError) as caught:
+            BookingRequest.objects.submit(
+                self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0), 'Reunião.', self.semester, self.networks,
+                subject=self.databases.offering.subject,
+            )
+        self.assertIn('teaching_assignment', caught.exception.message_dict)
+        self.assertFalse(BookingRequest.objects.exists())

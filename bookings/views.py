@@ -21,7 +21,7 @@ from accounts import permissions
 from accounts.utils import add_operation_error
 from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
-from bookings.forms import OWN_AGENDA, ALL_AGENDAS, AgendaFilterForm, BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
+from bookings.forms import OWN_AGENDA, ALL_AGENDAS, AgendaFilterForm, BookingOnBehalfForm, BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
 from bookings.models import BookingRequest
 from bookings.occupancy import agenda_sources, own_occurrences
 from schedule.models import Space
@@ -154,12 +154,23 @@ class AgendaGridView(TemplateView):
             following_url=grid_link(view, week.following) if week.following else None,
             today_url=grid_link(view, fragment='#hoje' if is_month else ''),
             occupation_text=occupation_text(week, is_month),
-            can_request=self.request.user.has_perm(permissions.BOOKING_REQUEST),
+            can_request=self.request.user.has_perm(permissions.BOOKING_REQUEST) and not creates_directly(self.request.user),
+            can_create=creates_directly(self.request.user),
             shows_requester=self.request.user.has_perm(permissions.BOOKING_REVIEW),
         )
         if week.is_dated:
             with_cancel_actions(week, self.request.user, 'agenda_occurrence_cancel')
         return context
+
+
+def creates_directly(user):
+    """Diz se a faixa da Grade abre direto o modal de criar para outro usuário.
+
+    Abre para o superadmin e para quem tem `AGENDA.CRIAR` sem `AGENDA.SOLICITAR`. Quem tem as
+    duas abre "Solicitar agendamento", com o atalho para criar para outro usuário. É só a escolha
+    do modal: o acesso de cada rota continua decidido pela permissão dela.
+    """
+    return user.has_perm(permissions.BOOKING_CREATE) and (user.is_superadmin or not user.has_perm(permissions.BOOKING_REQUEST))
 
 
 def agenda_link(space, day):
@@ -171,7 +182,7 @@ def request_related(queryset):
     """Solicitações com o espaço, o espaço sugerido, as pessoas e o vínculo acadêmico, sem
     consulta por linha."""
     return queryset.select_related(
-        'space', 'suggested_space', 'requested_by', 'decided_by',
+        'space', 'suggested_space', 'requested_by', 'decided_by', 'created_by',
         'teaching_assignment__teacher', 'teaching_assignment__offering__semester',
         'teaching_assignment__offering__subject', 'teaching_assignment__offering__class_group__course',
     )
@@ -200,6 +211,8 @@ class BookingRequestCreateView(OperationFormView):
     modal_template_name = 'bookings/request_form_modal.html'
     summary_template_name = 'bookings/request_summary_modal.html'
     form_class = BookingRequestForm
+    field_names = REQUEST_FIELDS
+    refresh_route = 'agenda_request_create'
     created = None
 
     def get_initial(self):
@@ -207,11 +220,14 @@ class BookingRequestCreateView(OperationFormView):
         initial = {
             'space': query.get('espaco'), 'date': query.get('data'), 'start_time': query.get('inicio'), 'end_time': query.get('fim'),
         }
-        initial.update({name: query.get(name) for name in REQUEST_FIELDS if query.get(name)})
+        initial.update({name: query.get(name) for name in self.field_names if query.get(name)})
         return initial
 
     def get_form_kwargs(self):
-        return super().get_form_kwargs() | {'user': self.request.user, 'refresh_url': reverse('agenda_request_create')}
+        trigger = (self.request.htmx.trigger_name or '') if self.request.htmx else ''
+        return super().get_form_kwargs() | {
+            'user': self.request.user, 'refresh_url': reverse(self.refresh_route), 'trigger': trigger,
+        }
 
     def get_close_url(self):
         return reverse('agenda_grid')
@@ -223,7 +239,7 @@ class BookingRequestCreateView(OperationFormView):
         data = form.cleaned_data
         return [
             self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
-            form.semester, data['teaching_assignment'],
+            form.semester, data['teaching_assignment'], None, None, data['subject'],
         ]
 
     def form_valid(self, form):
@@ -242,13 +258,49 @@ class BookingRequestCreateView(OperationFormView):
 
     def render_summary(self, form, prepared):
         """Revisão da solicitação conferida, com os valores do envio em campos ocultos."""
-        hidden = [(name, value) for name in REQUEST_FIELDS for value in self.request.POST.getlist(name)]
+        hidden = [(name, value) for name in self.field_names for value in self.request.POST.getlist(name)]
         return self.response_class(
             request=self.request,
             template=[self.summary_template_name if self.request.htmx else self.template_name],
             context=self.get_context_data(form=form, prepared=prepared, hidden=hidden, summary=True),
             using=self.template_engine,
         )
+
+
+ON_BEHALF_FIELDS = ('requested_for', 'course', *REQUEST_FIELDS)
+
+
+class BookingOnBehalfCreateView(BookingRequestCreateView):
+    """Modal "Criar solicitação para outro usuário", com as mesmas duas etapas da solicitação.
+
+    Quem tem `AGENDA.CRIAR` escolhe o usuário, o curso, a disciplina e a turma, nesta ordem, e
+    segue com espaço, data, horário e descrição. A troca de cada campo recarrega os seguintes
+    pelo GET desta mesma rota, e o formulário limpa os que dependem dele. A operação do model
+    confere a permissão e a cadeia de novo, e a solicitação fica pendente em nome do usuário
+    escolhido, com quem a criou em `created_by` (Change criar-agendamento-para-outro-usuario).
+    """
+
+    permission_required = permissions.BOOKING_CREATE
+    template_name = 'bookings/on_behalf_form.html'
+    modal_template_name = 'bookings/on_behalf_form_modal.html'
+    form_class = BookingOnBehalfForm
+    field_names = ON_BEHALF_FIELDS
+    refresh_route = 'agenda_create'
+
+    def get_initial(self):
+        """Sem faixa da Grade, a data começa no próximo dia letivo, para que a lista de usuários
+        já venha do semestre dela e a escolha comece pelo usuário."""
+        initial = super().get_initial()
+        if not initial.get('date'):
+            initial['date'] = next_school_day(timezone.localdate()).isoformat()
+        return initial
+
+    def arguments(self, form):
+        data = form.cleaned_data
+        return [
+            self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
+            form.semester, data['teaching_assignment'], data['requested_for'], data['course'], data['subject'],
+        ]
 
 
 def status_badge(request):
@@ -274,7 +326,7 @@ def event(title, icon, tone, who, moment):
 def history_of(request):
     """Linha do tempo da solicitação montada dos campos dela, sem tabela de eventos (D3)."""
     Status = BookingRequest.Status
-    events = [event('Solicitação criada', 'calendar-plus', 'success', request.requested_by, request.created_at)]
+    events = [event('Solicitação criada', 'calendar-plus', 'success', request.created_by or request.requested_by, request.created_at)]
     if request.decided_by_id:
         who, moment = request.decided_by, request.decided_at
         if request.status == Status.REJECTED:

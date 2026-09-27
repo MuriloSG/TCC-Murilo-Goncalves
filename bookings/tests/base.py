@@ -21,6 +21,7 @@ FRIDAY = date(2026, 10, 16)
 
 REQUESTER = (permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST)
 REVIEWER = (permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST, permissions.BOOKING_REVIEW)
+CREATOR = (permissions.BOOKING_VIEW, permissions.BOOKING_CREATE)
 
 
 def user_with(email, *codes):
@@ -45,7 +46,7 @@ def semester_with_lesson(space_name='Laboratório de Informática 2'):
     return semester
 
 
-def academic(teacher='Viviane', subject='Redes', label='2º ANO A', code='2026/2'):
+def academic(teacher='Viviane', subject='Redes', label='2º ANO A', code='2026/2', course='INFORMÁTICA'):
     """Vínculo atual do docente com a disciplina e a turma no semestre, como a importação cria.
 
     O semestre recebe o período de 2026/2 quando ainda não tem, e a oferta é gravada sem
@@ -54,7 +55,7 @@ def academic(teacher='Viviane', subject='Redes', label='2º ANO A', code='2026/2
     semester, _ = Semester.objects.resolve(code)
     if not semester.has_period:
         semester.define_period(date(2026, 8, 3), date(2026, 12, 18))
-    course, _ = Course.objects.resolve('INFORMÁTICA', stage=Stage.SECONDARY)
+    course, _ = Course.objects.resolve(course, stage=Stage.SECONDARY)
     group, _ = ClassGroup.objects.resolve(course, label)
     offering, _ = ClassOffering.objects.get_or_create(
         semester=semester, subject=Subject.objects.resolve(subject)[0], class_group=group,

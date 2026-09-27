@@ -16,14 +16,17 @@ from django.utils.formats import date_format
 
 from bookings.models import (
     ASSIGNMENT_REQUIRED_MESSAGE,
+    COURSE_REQUIRED_MESSAGE,
     DESCRIPTION_MAX_LENGTH,
     DESCRIPTION_REQUIRED_MESSAGE,
     REASON_MAX_LENGTH,
     REASON_REQUIRED_MESSAGE,
+    REQUESTER_REQUIRED_MESSAGE,
     SUBJECT_REQUIRED_MESSAGE,
 )
 from schedule.forms import GridFilterForm
-from schedule.models import Semester, Space, Subject, TeachingAssignment, TimeSlot, teacher_of
+from accounts.models import User
+from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot, teacher_of, teacher_users
 
 DATE_REQUIRED_MESSAGE = 'Informe a data.'
 START_REQUIRED_MESSAGE = 'Informe o início.'
@@ -116,17 +119,12 @@ class BookingRequestForm(forms.Form):
         error_messages={'required': DESCRIPTION_REQUIRED_MESSAGE},
     )
 
-    def __init__(self, *args, user=None, refresh_url='', today=None, **kwargs):
+    DEPENDENTS = {}
+
+    def __init__(self, *args, user=None, refresh_url='', today=None, trigger='', **kwargs):
         super().__init__(*args, **kwargs)
-        self.teacher = teacher_of(user) if user is not None else None
-        self.semester = semester_of(chosen(self, 'date'), today or timezone.localdate())
-        semester = self.semester
-        assignments = (
-            list(TeachingAssignment.objects.available(semester, teacher=self.teacher))
-            if semester is not None and self.teacher is not None
-            else []
-        )
-        refresh = {
+        self.clear_after(trigger)
+        self.refresh = {
             'hx-get': refresh_url,
             'hx-trigger': 'change',
             'hx-include': '#request-fields',
@@ -134,8 +132,49 @@ class BookingRequestForm(forms.Form):
             'hx-select': '#request-fields',
             'hx-swap': 'outerHTML',
         } if refresh_url else {}
-        self.fields['date'].widget.attrs.update(refresh)
+        self.semester = semester_of(chosen(self, 'date'), today or timezone.localdate())
+        semester = self.semester
+        self.teacher = self.teacher_for(user)
+        assignments = (
+            list(TeachingAssignment.objects.available(semester, teacher=self.teacher))
+            if semester is not None and self.teacher is not None
+            else []
+        )
+        self.fields['date'].widget.attrs.update(self.refresh)
         self.fields['date'].help_text = f'Semestre {semester.code}.' if semester else 'A data define o semestre da Agenda.'
+        self.build_chain(assignments)
+        self.fields['space'].queryset = Space.objects.filter(is_active=True).order_by('name')
+        self.fields['space'].widget.attrs['class'] = 'input'
+        slots = sorted(TimeSlot.objects.filter(semester=semester), key=lambda slot: slot.start_time) if semester else []
+        self.slot_starts = sorted({f'{slot.start_time:%H:%M}' for slot in slots})
+        self.slot_ends = sorted({f'{slot.end_time:%H:%M}' for slot in slots})
+        self.fields['start_time'].widget.attrs['list'] = 'horarios-inicio'
+        self.fields['end_time'].widget.attrs['list'] = 'horarios-fim'
+        self.fields['start_time'].help_text = 'Os horários das aulas do semestre aparecem como sugestão.' if slots else ''
+
+    def clear_after(self, trigger):
+        """Descarta a escolha dos campos que dependem do campo trocado, para recarregá-los vazios.
+
+        O htmx informa o campo trocado no cabeçalho `HX-Trigger-Name`. O valor anterior poderia
+        continuar entre as opções novas e ficaria escolhido sem ter sido conferido de novo
+        (D6 da Change criar-agendamento-para-outro-usuario).
+        """
+        names = self.DEPENDENTS.get(trigger, ())
+        if not names:
+            return
+        if self.is_bound:
+            self.data = self.data.copy()
+            for name in names:
+                self.data.pop(name, None)
+        else:
+            self.initial = {key: value for key, value in self.initial.items() if key not in names}
+
+    def teacher_for(self, user):
+        """Docente de quem solicita: aqui, o próprio usuário logado."""
+        return teacher_of(user) if user is not None else None
+
+    def build_chain(self, assignments):
+        """Disciplinas dos vínculos e turmas da disciplina escolhida, só entre as opções válidas."""
         subjects = {item.offering.subject.pk: item.offering.subject for item in assignments}
         field = self.fields['subject']
         field.queryset = Subject.objects.filter(pk__in=subjects)
@@ -143,7 +182,7 @@ class BookingRequestForm(forms.Form):
             ('', field.empty_label),
             *((item.pk, item.name) for item in sorted(subjects.values(), key=lambda item: item.name.casefold())),
         ]
-        field.widget.attrs.update({'class': 'input', **refresh})
+        field.widget.attrs.update({'class': 'input', **self.refresh})
         subject_id = chosen(self, 'subject')
         of_subject = sorted(
             (item for item in assignments if str(item.offering.subject_id) == subject_id),
@@ -153,14 +192,6 @@ class BookingRequestForm(forms.Form):
         field.queryset = TeachingAssignment.objects.filter(pk__in=[item.pk for item in of_subject])
         field.widget.attrs['class'] = 'input'
         field.choices = [('', field.empty_label), *((item.pk, field.label_from_instance(item)) for item in of_subject)]
-        self.fields['space'].queryset = Space.objects.filter(is_active=True).order_by('name')
-        self.fields['space'].widget.attrs['class'] = 'input'
-        slots = sorted(TimeSlot.objects.filter(semester=semester), key=lambda slot: slot.start_time) if semester else []
-        self.slot_starts = sorted({f'{slot.start_time:%H:%M}' for slot in slots})
-        self.slot_ends = sorted({f'{slot.end_time:%H:%M}' for slot in slots})
-        self.fields['start_time'].widget.attrs['list'] = 'horarios-inicio'
-        self.fields['end_time'].widget.attrs['list'] = 'horarios-fim'
-        self.fields['start_time'].help_text = 'Os horários das aulas do semestre aparecem como sugestão.' if slots else ''
 
     def clean(self):
         cleaned = super().clean()
@@ -175,6 +206,80 @@ class BookingRequestForm(forms.Form):
 
     def add_error(self, field, error):
         super().add_error(field if field in self.fields or field is None else None, error)
+
+
+class UserChoiceField(forms.ModelChoiceField):
+    """Usuário identificado pelo nome e pelo `username`, que é o nome do docente no ensalamento."""
+
+    def label_from_instance(self, obj):
+        return f'{obj.name} ({obj.username})'
+
+
+class BookingOnBehalfForm(BookingRequestForm):
+    """Usuário, curso, disciplina, turma, espaço, data, horário e descrição, nesta ordem.
+
+    Quem cria tem `AGENDA.CRIAR` e escolhe o usuário em nome de quem a solicitação é feita. A
+    cadeia vem dos vínculos atuais do docente desse usuário no semestre da data
+    (`TeachingAssignment.objects.available`), numa consulta só: o curso lista os cursos das
+    turmas dos vínculos, a disciplina, as dos vínculos no curso escolhido, e a turma, os
+    vínculos na disciplina e no curso escolhidos. A troca de um campo limpa os seguintes
+    (`DEPENDENTS`). As opções só orientam: um ID fora delas é recusado aqui, e a operação do
+    model confere a cadeia de novo (Change criar-agendamento-para-outro-usuario).
+    """
+
+    DEPENDENTS = {
+        'requested_for': ('course', 'subject', 'teaching_assignment'),
+        'course': ('subject', 'teaching_assignment'),
+        'subject': ('teaching_assignment',),
+    }
+
+    requested_for = UserChoiceField(
+        label='Usuário',
+        queryset=User.objects.none(),
+        empty_label='Escolha o usuário',
+        error_messages={'required': REQUESTER_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha um dos usuários docentes do semestre.'},
+    )
+    course = forms.ModelChoiceField(
+        label='Curso',
+        queryset=Course.objects.none(),
+        empty_label='Escolha o curso',
+        error_messages={'required': COURSE_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha um dos cursos do usuário no semestre.'},
+    )
+
+    field_order = [
+        'requested_for', 'course', 'subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description',
+    ]
+
+    def __init__(self, *args, **kwargs):
+        self.requester = None
+        super().__init__(*args, **kwargs)
+        self.fields['subject'].error_messages['invalid_choice'] = 'Escolha uma das disciplinas do usuário no curso escolhido.'
+        self.fields['teaching_assignment'].error_messages['invalid_choice'] = (
+            'Escolha uma das turmas do usuário na disciplina escolhida.'
+        )
+
+    def teacher_for(self, user):
+        """Docente do usuário escolhido, entre os usuários docentes do semestre da data."""
+        field = self.fields['requested_for']
+        field.queryset = teacher_users(self.semester)
+        field.widget.attrs.update({'class': 'input', **self.refresh})
+        requester_id = chosen(self, 'requested_for')
+        if requester_id.isdigit():
+            self.requester = field.queryset.filter(pk=requester_id).first()
+        return teacher_of(self.requester) if self.requester is not None else None
+
+    def build_chain(self, assignments):
+        """Cursos das turmas dos vínculos, e disciplina e turma só dos vínculos do curso escolhido."""
+        courses = {item.offering.class_group.course.pk: item.offering.class_group.course for item in assignments}
+        field = self.fields['course']
+        field.queryset = Course.objects.filter(pk__in=courses)
+        field.choices = [
+            ('', field.empty_label),
+            *((item.pk, item.name) for item in sorted(courses.values(), key=lambda item: item.name.casefold())),
+        ]
+        field.widget.attrs.update({'class': 'input', **self.refresh})
+        course_id = chosen(self, 'course')
+        super().build_chain([item for item in assignments if str(item.offering.class_group.course_id) == course_id])
 
 
 class ReviewFilterForm(forms.Form):

@@ -13,4 +13,4 @@
   </div>
 {% endblock %}
 
-{% block submit %}<button class="btn-primary" type="submit">Revisar solicitação</button>{% endblock %}
+{% block submit %}{% if perms.AGENDA.CRIAR %}{% url 'agenda_create' as create_url %}<a class="icon-btn outline" href="{{ create_url }}?{{ request.GET.urlencode }}" hx-get="{{ create_url }}?{{ request.GET.urlencode }}" hx-target="#modal" aria-label="Criar para outro usuário">{% icon "user-round" %}<span class="tip" role="tooltip">Criar para outro usuário</span></a>{% endif %}<button class="btn-primary" type="submit">Revisar solicitação</button>{% endblock %}

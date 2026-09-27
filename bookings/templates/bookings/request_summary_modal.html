@@ -8,6 +8,10 @@
   {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
   <input type="hidden" name="confirmar" value="1">
   <dl class="record-pairs">
+    {% if prepared.created_by %}
+      <div><dt>Solicitante</dt><dd>{{ prepared.requested_by.name }}</dd></div>
+      <div><dt>Criada por</dt><dd>{{ prepared.created_by.name }}</dd></div>
+    {% endif %}
     <div><dt>Semestre</dt><dd>{{ prepared.teaching_assignment.offering.semester.code }}</dd></div>
     <div><dt>Docente</dt><dd>{{ prepared.teaching_assignment.teacher.name }}</dd></div>
     <div><dt>Turma</dt><dd>{{ prepared.teaching_assignment.offering.class_group }}</dd></div>

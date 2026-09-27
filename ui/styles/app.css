@@ -60,6 +60,12 @@
   --motion-base: 200ms;
 }
 
+@keyframes loading-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -3406,6 +3412,51 @@
       right: 0;
       left: auto;
       translate: 0 0;
+    }
+  }
+
+  dialog.loading {
+    display: none;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: var(--spacing-4);
+    border: 0;
+    background: transparent;
+    overflow: hidden;
+    outline: none;
+
+    &[open] {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-3);
+    }
+
+    &::backdrop {
+      background: var(--color-overlay);
+    }
+  }
+
+  .loading-message {
+    color: var(--palette-white);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+  }
+
+  .spinner {
+    width: var(--spacing-12);
+    height: var(--spacing-12);
+    border: 4px solid var(--palette-green-100);
+    border-top-color: var(--color-action);
+    border-radius: 9999px;
+    animation: loading-spin 800ms linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
     }
   }
 

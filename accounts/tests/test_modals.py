@@ -33,7 +33,7 @@ class ModalTestCase(TestCase):
         content = response.content.decode()
         self.assertIn('<html', content)
         self.assertIn('<section class="modal modal-page"', content)
-        self.assertNotIn('<dialog', content)
+        self.assertNotIn('<dialog class="modal', content)
 
     def assertClientRedirect(self, response, url):
         self.assertEqual(response.status_code, 200)

@@ -6,14 +6,14 @@ KEPT_APPS = {'accounts', 'account', 'auth', 'contenttypes', 'sessions'}
 
 
 class Command(BaseCommand):
-    """Apaga os dados de todos os apps, mantendo usuários, perfis, permissões e os e-mails do allauth.
+    """Exclui os dados de todos os apps, mantendo usuários, perfis, permissões e os e-mails do allauth.
 
     Usa `TRUNCATE ... RESTART IDENTITY CASCADE` nas tabelas dos apps fora de
     `KEPT_APPS`, o que também ignora a proteção do registro de auditoria, feita
     no model. As sessões ficam, para que ninguém perca o login.
     """
 
-    help = 'Apaga os dados do sistema e mantém apenas os usuários, perfis e permissões.'
+    help = 'Exclui os dados do sistema e mantém apenas os usuários, perfis e permissões.'
 
     def add_arguments(self, parser):
         parser.add_argument('--yes', action='store_true', help='Não pede confirmação.')
@@ -25,9 +25,9 @@ class Command(BaseCommand):
             if model._meta.app_label not in KEPT_APPS and model._meta.managed
         })
         if not options['yes']:
-            answer = input('Todos os dados, exceto os usuários, serão apagados. Digite "sim" para continuar: ')
+            answer = input('Todos os dados, exceto os usuários, serão excluídos. Digite "sim" para continuar: ')
             if answer.strip().lower() != 'sim':
-                self.stdout.write('Nada foi apagado.')
+                self.stdout.write('Nada foi excluído.')
                 return
 
         quoted = ', '.join(connection.ops.quote_name(table) for table in tables)

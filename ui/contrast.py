@@ -59,6 +59,10 @@ CONTRAST_PAIRS = [
     ('text', 'stage-secondary-bg', 4.5, 'Disciplina no card do ensino médio na Grade'),
     ('text-muted', 'stage-secondary-bg', 4.5, 'Docente no card do ensino médio na Grade'),
     ('stage-secondary-bar', 'stage-secondary-bg', 3, 'Barra da etapa no card do ensino médio'),
+    ('text', 'booking-bg', 4.5, 'Descrição no card do agendamento na Grade'),
+    ('text-muted', 'booking-bg', 4.5, 'Horário no card do agendamento na Grade'),
+    ('booking-text', 'booking-bg', 4.5, 'Rótulo do tipo no card do agendamento na Grade'),
+    ('booking-bar', 'booking-bg', 3, 'Barra e ícone do card do agendamento na Grade'),
     ('text', 'info-bg', 4.5, 'Descrição no card do agendamento na Agenda'),
     ('text-muted', 'info-bg', 4.5, 'Solicitante no card do agendamento na Agenda'),
     ('stage-undergraduate-bar', 'surface', 3, 'Marca da graduação na legenda da Grade'),
@@ -72,6 +76,7 @@ EXEMPT = {
     'warning-border': 'Borda decorativa: o estado vem do texto e do ícone.',
     'error-soft-border': 'Borda decorativa: o estado vem do texto e do ícone.',
     'info-border': 'Borda decorativa: o estado vem do texto e do ícone.',
+    'booking-border': 'Borda decorativa do card do agendamento: o tipo vem do rótulo e do ícone.',
     'overlay': 'Fundo atrás do modal. O conteúdo do modal fica sobre a superfície.',
 }
 

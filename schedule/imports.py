@@ -15,8 +15,9 @@ visualizar-ocupacao-por-semana-e-mes).
 Nada é excluído por uma importação, e nenhuma operação de domínio grava auditoria própria,
 salvo as do cadastro de espaços: o registro é o resumo da importação (D13 e D15). Os espaços
 seguem a classificação de `schedule.spaces`, aplicada ao cadastro em `lock()`, antes das
-linhas; a lista de salas não cria espaço por si só, e o nome que precisa de decisão vira
-pendência (D5 e D8 da Change manipulacao-dos-espacos).
+linhas; toda sala da lista entra na classificação, com ou sem aula, e o nome que precisa de
+decisão vira pendência (D5 e D8 da Change manipulacao-dos-espacos e Change
+importar-salas-sem-aula).
 """
 
 import contextvars
@@ -87,7 +88,6 @@ GROUP_COLUMN = 'Turma'
 COURSE_COLUMN = 'Curso'
 
 COURSE_WITHOUT_TITLE = 'curso_sem_titulo'
-SPACE_WITHOUT_LESSONS = 'sala_sem_aula'
 ASSOCIATED_TO_NEW = 'outro_nome_de_espaco_novo'
 RECURRENCE_CHANGED = 'recorrencia_alterada'
 SPACE_PENDING = 'espaco_a_decidir'
@@ -289,7 +289,6 @@ class SpaceAllocationImport(ImportDefinition):
     }
     warning_labels = {
         COURSE_WITHOUT_TITLE: 'O nome do curso veio do cabeçalho da turma, porque a planilha não traz o título.',
-        SPACE_WITHOUT_LESSONS: 'A sala está na lista da planilha e não tem aula nesta importação. Ela não será cadastrada.',
         ASSOCIATED_TO_NEW: 'O nome será guardado como outro nome de um espaço cadastrado por esta importação.',
         RECURRENCE_CHANGED: 'Esta aula teve a recorrência alterada no sistema e não foi atualizada pela planilha.',
     }
@@ -401,12 +400,15 @@ class SpaceAllocationImport(ImportDefinition):
         return self.execute_activity(values)
 
     def execute_space(self, name):
-        """Plano da linha da lista de salas, pelo que a classificação decidiu para o nome."""
+        """Plano da linha da lista de salas, pelo que a classificação decidiu para o nome.
+
+        O nome fora da classificação identifica um espaço inativo sem aula e fica sem ação.
+        """
         state = RUN.get()
         key = key_of(name)
         entry = state.resolution.found.get(key)
         if entry is None:
-            return self.unused_space_plan(name)
+            return RowPlan()
         if entry.outcome == PENDING:
             return RowPlan(pending=[{'code': SPACE_PENDING, 'key': entry.name}])
         space = state.applied.spaces[key]
@@ -424,15 +426,6 @@ class SpaceAllocationImport(ImportDefinition):
         if changes:
             return RowPlan(action='update', target=space.pk, changes=changes)
         return RowPlan(action='unchanged', target=space.pk)
-
-    def unused_space_plan(self, name):
-        """Nome da lista sem aula: reconhecido fica como está; desconhecido não é cadastrado."""
-        space = Space.objects.named(name)
-        if space is not None and space.is_active:
-            return RowPlan(action='unchanged', target=space.pk)
-        if space is not None:
-            return RowPlan()
-        return RowPlan(warnings=[SPACE_WITHOUT_LESSONS])
 
     def space_changes(self, space, applied):
         """Outros nomes e situação do espaço existente antes e depois desta execução."""

@@ -91,7 +91,7 @@ A classificação dos nomes encontrados fica num módulo próprio de `schedule`.
 - **Quem a usa:** `lock()`, na execução, e o quadro da prévia, que precisa dela sem executar as linhas. Por ser a mesma função, o quadro e a execução não divergem.
 - **Precedência:** reconhecido (ativo) > decidido (decisão válida) > novo proposto > precisa de decisão. O reconhecimento vencer a decisão é o que impede o duplicado quando o cadastro muda no meio do caminho.
 - **A lista de salas é a referência.** Um nome da lista só perde a proposta de novo por um parecido no cadastro ou em outro nome da lista. Um nome citado só nas células nunca é proposto como novo, porque é nas células que estão os erros de digitação reais (`2/41`, `HV1`, `Lab.3 - Info`), e os parecidos dele são procurados em tudo.
-- **Nomes da lista sem aula** não são nomes encontrados. Isso tira `Lab. Química` da conta e evita 24 cadastros sem uso na planilha corrigida.
+- **Nomes da lista sem aula** não são nomes encontrados. Isso tira `Lab. Química` da conta e evita 24 cadastros sem uso na planilha corrigida. Revisto pela Change `importar-salas-sem-aula`: toda sala da lista é cadastrada, para aparecer com a grade vazia nos calendários.
 - **Uso agregado:** vem das linhas de atividade que citam o nome: a quantidade de linhas, as turmas distintas e os dias distintos.
 
 **Alternativa descartada:** gravar a classificação na importação. Ela ficaria velha a cada mudança do cadastro, e recalcular é barato, porque é leitura de texto contra um conjunto de nomes, sem uma consulta por linha.

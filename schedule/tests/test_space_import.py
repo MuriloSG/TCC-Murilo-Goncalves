@@ -54,25 +54,30 @@ class SpaceImportTestCase(ImportTestCase):
 
 
 class ClassificationTests(SpaceImportTestCase):
-    def test_first_import_of_the_corrected_spreadsheet_proposes_every_space(self):
+    def test_first_import_of_the_corrected_spreadsheet_proposes_every_listed_space(self):
         importation = self.preview(real('planilha_example_corrigida.xlsx'))
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        self.assertEqual(importation.status, Import.Status.PENDING)
         resolution = classify_import(importation)
-        self.assertEqual((len(resolution.proposed), len(resolution.pending), len(resolution.unused)), (62, 0, 24))
+        self.assertEqual(len(resolution.proposed), 85)
+        self.assertEqual([entry.name for entry in resolution.pending], ['Lab. Química'])
+        self.assertEqual(resolution.found['lab. química'].usage.lessons, 0)
         self.assertFalse(Space.objects.exists())
+        self.decide(importation, 'Lab. Química', SpaceDecision.Kind.NEW)
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertTrue(importation.confirm(self.definition, self.executor))
-        self.assertEqual(Space.objects.count(), 62)
+        self.assertEqual(Space.objects.count(), 86)
         self.assertEqual(set(Space.objects.values_list('origin', 'source_import')), {('PLANILHA', importation.pk)})
         again = self.preview(real('planilha_example_corrigida.xlsx'))
         resolution = classify_import(again)
-        self.assertEqual((len(resolution.to_create), len(resolution.pending), len(resolution.recognized)), (0, 0, 62))
+        self.assertEqual((len(resolution.to_create), len(resolution.pending), len(resolution.recognized)), (0, 0, 86))
 
     def test_first_import_of_the_original_spreadsheet(self):
         importation = self.preview(real('planilha_example.xlsx'))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         resolution = classify_import(importation)
         self.assertEqual(
-            {entry.name for entry in resolution.pending}, {'HV1', 'HV3', 'HV4', 'HV5', 'Zoo I', 'EaD', '2/41'},
+            {entry.name for entry in resolution.pending},
+            {'HV1', 'HV3', 'HV4', 'HV5', 'Zoo I', 'EaD', '2/41', 'Lab. Química'},
         )
         proposed = {entry.name for entry in resolution.proposed}
         self.assertLessEqual({'HV 1', 'HV 3', 'HV 4'}, proposed)
@@ -112,6 +117,44 @@ class ClassificationTests(SpaceImportTestCase):
         entry = self.entry(importation, 'Zoo I')
         self.assertEqual((entry.outcome, entry.reason, entry.from_list), (PENDING, CELLS_ONLY, False))
         self.assertEqual(entry.usage.lessons, 1)
+
+    def test_listed_space_without_lessons_is_proposed(self):
+        importation = self.preview()
+        entry = self.entry(importation, 'Lab. de Madeira')
+        self.assertEqual((entry.outcome, entry.from_list, entry.usage.lessons), (CREATE, True, 0))
+        row = importation.rows.get(values__Nome='Lab. de Madeira')
+        self.assertEqual((row.action, row.warnings, row.pending), ('create', [], []))
+
+    def test_listed_space_without_lessons_does_not_make_used_names_ambiguous(self):
+        uploaded = workbook_file(
+            spaces=['(1/13)', '(2/6)', '(HV 3)', '(Lab. Química I)', '(Lab. Química)'],
+            secondary={SECONDARY_CELL: 'Biologia (Érica) (Lab. Química I)'},
+        )
+        importation = self.preview(uploaded)
+        self.assertEqual(self.entry(importation, 'Lab. Química I').outcome, CREATE)
+        entry = self.entry(importation, 'Lab. Química')
+        self.assertEqual((entry.outcome, entry.reason), (PENDING, SIMILAR))
+        self.assertEqual([candidate.name for candidate in entry.candidates], ['Lab. Química I'])
+        row = importation.rows.get(values__Nome='(Lab. Química)')
+        self.assertEqual(row.pending, [{'code': 'espaco_a_decidir', 'key': 'Lab. Química'}])
+
+    def test_inactive_space_without_lessons_stays_inactive(self):
+        space = Space.objects.register('Lab. de Madeira')
+        space.deactivate()
+        importation = self.preview()
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        self.assertNotIn('lab. de madeira', classify_import(importation).found)
+        row = importation.rows.get(values__Nome='Lab. de Madeira')
+        self.assertEqual((row.action, row.warnings, row.pending), (None, [], []))
+        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertFalse(Space.objects.get(pk=space.pk).is_active)
+
+    def test_active_space_without_lessons_is_recognized(self):
+        space = Space.objects.register('Lab. de Madeira')
+        importation = self.preview()
+        self.assertEqual(self.entry(importation, 'Lab. de Madeira').outcome, 'reconhecido')
+        row = importation.rows.get(values__Nome='Lab. de Madeira')
+        self.assertEqual((row.action, row.target), ('unchanged', str(space.pk)))
 
     def test_preview_records_no_space_audit(self):
         self.preview()
@@ -228,7 +271,7 @@ class DecisionTests(SpaceImportTestCase):
         self.assertTrue(first.confirm(self.definition, self.executor))
         self.assertFalse(second.confirm(self.definition, self.executor))
         self.assertTrue(second.confirm(self.definition, self.executor))
-        self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), ['1/13', '2/6', 'HV 3'])
+        self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), ['1/13', '2/6', 'HV 3', 'Lab. de Madeira'])
 
 
 class PermissionTests(SpaceImportTestCase):
@@ -240,7 +283,7 @@ class PermissionTests(SpaceImportTestCase):
         self.assertEqual((importation.status, importation.revalidation_count), (Import.Status.VALIDATED, 0))
         self.assertFalse(Space.objects.exists())
         self.assertTrue(importation.confirm(self.definition, self.creator))
-        self.assertEqual(Space.objects.count(), 3)
+        self.assertEqual(Space.objects.count(), 4)
 
     def test_importer_only_concludes_when_the_registry_does_not_change(self):
         self.conclude()

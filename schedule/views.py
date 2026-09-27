@@ -864,6 +864,8 @@ def plural(total, singular, many):
 
 def usage_text(usage):
     """Uso agregado de um nome encontrado: aulas, turmas e dias da semana."""
+    if not usage.lessons:
+        return 'Sem aula nesta planilha'
     lessons = f'{usage.lessons} {plural(usage.lessons, "aula", "aulas")}'
     groups = f'{len(usage.groups)} {plural(len(usage.groups), "turma", "turmas")}'
     days = [Weekday(code).label.lower() for code in Weekday.values if code in usage.weekdays]
@@ -920,6 +922,9 @@ def space_panel(importation, user):
     Enquanto a importação está aberta, tudo é descrito no futuro, porque nada foi gravado no
     cadastro. Na importação com erros, só os nomes que vão precisar de decisão aparecem, sem
     controles. Na concluída, aparecem os espaços que ela cadastrou.
+
+    O quadro vem aberto só quando pede atenção: nome a decidir, falta de permissão, falha na
+    atualização ou erros na planilha. No restante, vem recolhido, com o resumo no cabeçalho.
     """
     status = importation.status
     if status == Import.Status.DISCARDED:
@@ -953,11 +958,14 @@ def space_panel(importation, user):
     associated = resolution.to_associate
     blocked = is_open and any(not item['actions'] and not item['choose'] for item in pending)
     lines = summary_lines(resolution) if is_open else []
+    refresh_failed = status == Import.Status.PENDING and not resolution.pending
+    with_errors = status == Import.Status.WITH_ERRORS
     return {
         'concluded': False,
+        'expanded': bool(pending) or blocked or refresh_failed or with_errors,
         'open': is_open,
         'ready': status == Import.Status.VALIDATED,
-        'with_errors': status == Import.Status.WITH_ERRORS,
+        'with_errors': with_errors,
         'recognized': sorted((entry.name for entry in resolution.recognized), key=str.casefold),
         'proposed': [
             {'entry': entry, 'change': is_open and user.has_perm(permissions.SPACE_EDIT)}
@@ -968,10 +976,9 @@ def space_panel(importation, user):
         'reactivated': len(resolution.to_reactivate),
         'pending': pending,
         'decided': decided,
-        'unused': resolution.unused,
         'blocked': blocked,
         'permission_message': PERMISSION_MESSAGE,
-        'refresh_failed': status == Import.Status.PENDING and not resolution.pending,
+        'refresh_failed': refresh_failed,
         'summary': ready_summary(resolution),
         'lines': lines,
     }
@@ -999,12 +1006,6 @@ def summary_lines(resolution):
         lines.append((f'{total} {plural(total, "espaço será reativado", "espaços serão reativados")}.', reactivated))
     if pending:
         lines.append((f'{pending} {plural(pending, "espaço precisa", "espaços precisam")} de decisão antes de concluir.', []))
-    if resolution.unused:
-        total = len(resolution.unused)
-        lines.append((
-            f'A lista de salas da planilha tem {total} {plural(total, "sala sem aula, que não será cadastrada", "salas sem aula, que não serão cadastradas")}.',
-            sorted(resolution.unused, key=str.casefold),
-        ))
     return lines
 
 

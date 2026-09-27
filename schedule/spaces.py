@@ -8,7 +8,10 @@ linhas gravadas, do cadastro e das decisões, sem executar as linhas nem abrir o
 a mesma usada pela execução, pela verificação da confirmação e pelo quadro da prévia.
 
 A lista de salas é a referência que o campus mantém: um nome citado só nas células nunca é
-proposto como novo e não torna ambíguo um nome da lista.
+proposto como novo e não torna ambíguo um nome da lista. Um nome da lista sem aula também é
+nome encontrado, com o uso zerado, para que a sala seja cadastrada e apareça com a grade vazia
+nos calendários; só o que identifica um espaço inativo fica de fora, porque a desativação é
+decisão do cadastro (Change importar-salas-sem-aula).
 """
 
 from dataclasses import dataclass, field
@@ -127,7 +130,6 @@ class Resolution:
     """Resultado da classificação de uma importação."""
 
     found: dict = field(default_factory=dict)
-    unused: list = field(default_factory=list)
     catalog: Catalog = None
 
     def with_outcome(self, outcome):
@@ -195,7 +197,11 @@ def registry():
 
 
 def read_found(values_list, registry_names):
-    """Nomes encontrados na planilha, com a origem e o uso, e os nomes da lista sem aula."""
+    """Nomes encontrados na planilha, com a origem e o uso.
+
+    Os nomes da lista sem aula entram depois dos usados, com o uso zerado, salvo os que
+    identificam um espaço inativo, que ficam como estão.
+    """
     listed = {}
     teachers = []
     for values in values_list:
@@ -225,18 +231,27 @@ def read_found(values_list, registry_names):
         weekday = parse_weekday(values.get(DAY_COLUMN))
         if weekday:
             entry.usage.weekdays.add(weekday)
-    unused = [name for key, name in listed.items() if key not in found]
-    return found, unused, catalog
+    for key, name in listed.items():
+        known = registry_names.get(key)
+        if key not in found and (known is None or known[1].is_active):
+            found[key] = FoundName(key=key, name=name, from_list=True)
+    return found, catalog
 
 
 def candidates_of(entry, found, registry_names):
-    """Parecidos de um nome encontrado: no cadastro e, conforme a origem, nos demais nomes encontrados."""
+    """Parecidos de um nome encontrado: no cadastro e, conforme a origem, nos demais nomes encontrados.
+
+    Um nome da lista sem aula não torna ambíguo um nome usado por aula, mas os usados contam
+    como parecidos dele.
+    """
     known_spaces = {}
     for name, space in registry_names.values():
         known_spaces.setdefault(name, space)
     others = [
         other for other in found.values()
-        if other.key != entry.key and (other.from_list or not entry.from_list)
+        if other.key != entry.key
+        and (other.from_list or not entry.from_list)
+        and (other.usage.lessons or not entry.usage.lessons)
     ]
     result, seen = [], set()
     for name in similar_names(entry.name, list(known_spaces)):
@@ -299,7 +314,7 @@ def decisions_of(importation):
 def classify(values_list, importation=None):
     """Classifica os nomes de espaço das linhas de uma importação."""
     registry_names = registry()
-    found, unused, catalog = read_found(values_list, registry_names)
+    found, catalog = read_found(values_list, registry_names)
     decisions = decisions_of(importation)
     for entry in found.values():
         known = registry_names.get(entry.key)
@@ -318,8 +333,7 @@ def classify(values_list, importation=None):
             if target is None or target.outcome != CREATE:
                 entry.decision, entry.target_key = None, None
                 entry.outcome, entry.reason = default_outcome(entry)
-    unused_new = [name for name in unused if key_of(name) not in registry_names]
-    return Resolution(found=found, unused=unused_new, catalog=catalog)
+    return Resolution(found=found, catalog=catalog)
 
 
 def classify_import(importation):

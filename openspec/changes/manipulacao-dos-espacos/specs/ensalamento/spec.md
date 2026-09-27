@@ -111,7 +111,7 @@ A importação NÃO DEVE (MUST NOT) criar, alterar nem desativar usuário, e a a
 ### Requirement: Catálogo de espaços e de docentes da planilha
 Os docentes DEVEM (MUST) ser criados ou reconhecidos a partir da lista de docentes da aba de validação de dados, e NÃO DEVEM (MUST NOT) ser criados a partir do texto das células de atividade. Todos os valores da lista de docentes DEVEM (MUST) virar registro, inclusive os que nenhuma atividade referencia.
 
-A lista de salas da aba de validação de dados DEVE (MUST) ser a fonte dos nomes que a importação pode propor como espaço novo, conforme "Classificação dos espaços da importação", e NÃO DEVE (MUST NOT) criar espaço por si só: um nome da lista vira espaço somente quando é usado por uma aula, não identifica nenhum espaço e é proposto como novo ou decidido como novo, e somente na confirmação. Um nome da lista que nenhuma aula usa NÃO DEVE (MUST NOT) ser cadastrado, e a linha dele DEVE (MUST) ficar sem ação, com um aviso que diga isso, quando ele não identificar um espaço existente.
+A lista de salas da aba de validação de dados DEVE (MUST) ser a fonte dos nomes que a importação pode propor como espaço novo, conforme "Classificação dos espaços da importação". Todo nome da lista, usado ou não por uma aula, DEVE (MUST) passar pela classificação, e vira espaço quando não identifica nenhum espaço e é proposto como novo ou decidido como novo, somente na confirmação. O espaço cadastrado a partir de um nome sem aula DEVE (MUST) ficar ativo e sem alocação, para aparecer com a grade vazia nos calendários. Um nome da lista sem aula que identifica um espaço inativo NÃO DEVE (MUST NOT) ser nome encontrado: o espaço continua inativo e a linha dele fica sem ação, sem aviso e sem pendência.
 
 Cada valor das duas listas DEVE (MUST) ser uma linha própria da importação, com a célula de origem dele, e essas linhas DEVEM (MUST) vir antes das linhas de atividade. Os parênteses que envolvem o nome do espaço na lista DEVEM (MUST) ser retirados, porque a lista mistura valores com e sem parênteses. Valores equivalentes na mesma lista DEVEM (MUST) ser tratados como um só nome. Uma lista vazia DEVE (MUST) recusar o arquivo.
 
@@ -133,11 +133,16 @@ A linha de sala DEVE (MUST) ter a ação `create` quando o espaço será criado 
 - **THEN** existe um único espaço `Lab. Bromatologia`
 - **AND** a primeira linha tem a ação `create` e a segunda a ação `unchanged`
 
-#### Scenario: Sala da lista sem aula não é cadastrada
-- **GIVEN** a lista de salas com `Lab. Carnes`, que nenhuma aula usa e que não identifica nenhum espaço
+#### Scenario: Sala da lista sem aula é cadastrada
+- **GIVEN** a lista de salas com `Lab. Carnes`, que nenhuma aula usa e que não identifica nenhum espaço nem tem parecido
 - **WHEN** a importação é confirmada
-- **THEN** o espaço `Lab. Carnes` não existe
-- **AND** a linha dele não tem ação e tem o aviso de sala sem aula
+- **THEN** o espaço `Lab. Carnes` existe, ativo e sem alocação
+- **AND** a linha dele tem a ação `create`
+
+#### Scenario: Sala inativa da lista sem aula
+- **GIVEN** o espaço inativo `Lab. Carnes` e a lista de salas com `Lab. Carnes`, que nenhuma aula usa
+- **WHEN** a importação é confirmada
+- **THEN** o espaço continua inativo, e a linha dele não tem ação, aviso nem pendência
 
 #### Scenario: Espaço existente citado só nas células
 - **GIVEN** o espaço ativo `Zoo II`, criado por uma importação anterior
@@ -247,7 +252,7 @@ Os totais de registros e de linhas DEVEM (MUST) ser contados a partir das linhas
 ## ADDED Requirements
 
 ### Requirement: Classificação dos espaços da importação
-A importação de ensalamento DEVE (MUST) reunir os nomes de espaço encontrados na planilha, agrupados pela comparação sem diferenciar maiúsculas de minúsculas e com os espaços normalizados, de modo que um nome citado em várias aulas seja um único nome encontrado. Os nomes encontrados DEVEM (MUST) ser os da lista de salas usados por pelo menos uma aula e os nomes citados só nas células, conforme "Leitura da atividade de uma célula". Os nomes da lista de salas que nenhuma aula usa NÃO DEVEM (MUST NOT) ser nomes encontrados.
+A importação de ensalamento DEVE (MUST) reunir os nomes de espaço encontrados na planilha, agrupados pela comparação sem diferenciar maiúsculas de minúsculas e com os espaços normalizados, de modo que um nome citado em várias aulas seja um único nome encontrado. Os nomes encontrados DEVEM (MUST) ser os da lista de salas e os nomes citados só nas células, conforme "Leitura da atividade de uma célula". Um nome da lista que nenhuma aula usa DEVE (MUST) ser nome encontrado com o uso zerado, salvo quando identifica um espaço inativo. Ele NÃO DEVE (MUST NOT) tornar ambíguo um nome usado por aula, mas os nomes usados DEVEM (MUST) contar como parecidos dele.
 
 Cada nome encontrado DEVE (MUST) receber exatamente uma destas classificações, nesta ordem de precedência:
 
@@ -261,14 +266,15 @@ A classificação DEVE (MUST) ser calculada a partir das linhas gravadas da impo
 #### Scenario: Primeira importação da planilha corrigida
 - **GIVEN** o cadastro de espaços vazio e a planilha `planilha_example_corrigida.xlsx`
 - **WHEN** a prévia é gerada
-- **THEN** os 62 nomes da lista de salas usados por aulas são novos propostos, nenhum nome precisa de decisão e a importação fica `VALIDADA`
-- **AND** os 24 nomes da lista sem aula não são nomes encontrados
+- **THEN** 85 dos 86 nomes da lista de salas são novos propostos, inclusive os 24 sem aula
+- **AND** `Lab. Química`, sem aula e parecido com `Lab. Química I` e `Lab. Química II`, precisa de decisão, e a importação fica `PENDENTE`
+- **AND** `Lab. Química I` e `Lab. Química II`, usados por aulas, continuam novos propostos
 
 #### Scenario: Primeira importação da planilha original
 - **GIVEN** o cadastro de espaços vazio e a planilha `planilha_example.xlsx`
 - **WHEN** a prévia é gerada
 - **THEN** `HV 1`, `HV 3` e `HV 4`, da lista, são novos propostos
-- **AND** precisam de decisão `HV1`, `HV3` e `HV4`, citados só nas células e parecidos com `HV 1`, `HV 3` e `HV 4`, e `HV5`, `Zoo I`, `EaD` e `2/41`, citados só nas células e sem parecido
+- **AND** precisam de decisão `HV1`, `HV3` e `HV4`, citados só nas células e parecidos com `HV 1`, `HV 3` e `HV 4`, `HV5`, `Zoo I`, `EaD` e `2/41`, citados só nas células e sem parecido, e `Lab. Química`, da lista, sem aula e com parecidos
 - **AND** a importação fica `COM_ERROS`, porque a planilha também tem docentes fora do catálogo, e o quadro mostra esses nomes sem controles de decisão
 
 #### Scenario: Nome citado em várias aulas

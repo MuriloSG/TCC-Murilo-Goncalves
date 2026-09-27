@@ -45,8 +45,7 @@ TEACHERS = ['Viviane', 'Elza', 'Eduardo Garrido', 'Thaís Rios', 'Gera Jr.', 'É
 SPACES = ['(1/13)', '(2/6)', '(HV 3)', 'Lab. de Madeira']
 UNDERGRADUATE_SLOTS = ['07:20 - 08:10', '08:10 - 09:00', 'INTERVALO', '09:20 - 10:10']
 SECONDARY_SLOTS = ['07:20 - 08:10', 'ALMOÇO', '13:20 - 14:10']
-USED_SPACES = ['1/13', '2/6', 'HV 3']
-UNUSED_SPACES = 1
+SPACE_NAMES = ['1/13', '2/6', 'HV 3', 'Lab. de Madeira']
 
 
 def grid(sheet, banner, headers, days, activities):
@@ -159,9 +158,9 @@ class PreviewTests(ImportTestCase):
         importation = self.preview()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertEqual(importation.rows.count(), len(TEACHERS) + len(SPACES) + 4)
-        self.assertEqual(importation.summary()['create'], len(TEACHERS) + len(USED_SPACES) + 4)
+        self.assertEqual(importation.summary()['create'], len(TEACHERS) + len(SPACE_NAMES) + 4)
         unused = importation.rows.get(values__Nome='Lab. de Madeira')
-        self.assertEqual((unused.action, unused.warnings), (None, ['sala_sem_aula']))
+        self.assertEqual((unused.action, unused.warnings), ('create', []))
         for model in (Semester, Space, Teacher, Course, Subject, ClassGroup, TimeSlot, Allocation):
             self.assertFalse(model.objects.exists(), model.__name__)
 
@@ -258,7 +257,7 @@ class ConfirmationTests(ImportTestCase):
         self.conclude()
         self.assertEqual(list(Semester.objects.values_list('code', flat=True)), ['2026/1'])
         self.assertEqual(Teacher.objects.count(), len(TEACHERS))
-        self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), USED_SPACES)
+        self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), SPACE_NAMES)
         self.assertEqual(set(Space.objects.values_list('origin', flat=True)), {'PLANILHA'})
         self.assertEqual(Course.objects.count(), 2)
         self.assertEqual(Subject.objects.count(), 3)
@@ -293,9 +292,10 @@ class ConfirmationTests(ImportTestCase):
         self.assertEqual(group.course.stage, Stage.SECONDARY)
         self.assertEqual(group.allocations.count(), 1)
 
-    def test_space_without_activity_is_not_registered_but_the_teacher_is(self):
+    def test_space_and_teacher_without_activity_are_registered(self):
         self.conclude()
-        self.assertFalse(Space.objects.filter(name='Lab. de Madeira').exists())
+        space = Space.objects.get(name='Lab. de Madeira')
+        self.assertEqual((space.is_active, space.allocations.count()), (True, 0))
         self.assertTrue(Teacher.objects.filter(name='Gera Jr.').exists())
 
     def test_repeated_catalog_value_becomes_one_record(self):
@@ -323,8 +323,8 @@ class ConfirmationTests(ImportTestCase):
         importation = self.conclude()
         self.assertEqual(
             concluded_message(importation.summary(), importation),
-            f'Importação do ensalamento concluída. {len(TEACHERS) + len(USED_SPACES) + 4} registros cadastrados, '
-            '3 espaços cadastrados.',
+            f'Importação do ensalamento concluída. {len(TEACHERS) + len(SPACE_NAMES) + 4} registros cadastrados, '
+            '4 espaços cadastrados.',
         )
 
 
@@ -336,7 +336,7 @@ class ReimportTests(ImportTestCase):
         summary = importation.summary()
         self.assertEqual(summary['create'], 0)
         self.assertEqual(summary['update'], 0)
-        self.assertEqual(summary['unchanged'], importation.rows.count() - UNUSED_SPACES)
+        self.assertEqual(summary['unchanged'], importation.rows.count())
         for model, count in counts.items():
             self.assertEqual(model.objects.count(), count, model.__name__)
 
@@ -559,14 +559,14 @@ class AuditTests(ImportTestCase):
             {
                 'arquivo': 'ensalamento.xlsx',
                 'situacao': 'CONCLUIDA',
-                'cadastrados': len(TEACHERS) + len(USED_SPACES) + 4,
+                'cadastrados': len(TEACHERS) + len(SPACE_NAMES) + 4,
                 'atualizados': 0,
                 'sem_alteracao': 0,
                 'com_erro': 0,
                 'semestre': '2026/1',
                 'inicio': '2026-08-03',
                 'fim': '2026-12-18',
-                'espacos_cadastrados': 3,
+                'espacos_cadastrados': 4,
                 'outros_nomes_associados': 0,
                 'espacos_reativados': 0,
             },
@@ -595,7 +595,7 @@ class AuditTests(ImportTestCase):
         self.conclude()
         importation = self.conclude()
         record = AuditLog.objects.filter(action=catalog.IMPORT).latest('pk')
-        self.assertEqual(record.metadata['sem_alteracao'], importation.rows.count() - UNUSED_SPACES)
+        self.assertEqual(record.metadata['sem_alteracao'], importation.rows.count())
         self.assertEqual(record.metadata['cadastrados'], 0)
         self.assertEqual(record.metadata['espacos_cadastrados'], 0)
 

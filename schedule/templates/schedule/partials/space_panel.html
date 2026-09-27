@@ -1,10 +1,12 @@
 {% load ui %}{% with panel=space_panel %}{% if panel %}
-  <section class="card" id="espacos" aria-labelledby="espacos-titulo" data-busy-region>
-    <div class="card-head">
-      <div>
-        <h2 class="card-title" id="espacos-titulo">Espaços desta importação</h2>
-      </div>
-    </div>
+  <details class="card detail-card" id="espacos" data-busy-region{% if panel.expanded %} open{% endif %}>
+    <summary>
+      <span class="detail-card-heading">
+        <h2 class="card-title">Espaços desta importação</h2>
+        {% if panel.concluded %}<span class="detail-card-summary">{{ panel.created|length }} espaço{{ panel.created|length|pluralize }} cadastrado{{ panel.created|length|pluralize }} por esta importação</span>{% elif panel.ready %}<span class="detail-card-summary">{{ panel.summary }}</span>{% endif %}
+      </span>
+      {% icon "chevron-down" %}
+    </summary>
     <div class="card-body">
       {% if panel.concluded %}
         {% if panel.created %}
@@ -21,8 +23,6 @@
           <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>Não foi possível atualizar a prévia.</p>
             <form method="post" action="{% url 'space_allocation_import_refresh' importation.pk %}" data-busy>{% csrf_token %}<button class="btn-secondary" type="submit">Tentar novamente</button></form>
           </div>
-        {% elif panel.ready %}
-          <div class="alert tone-success" role="status">{% icon "circle-check" %}<p>Pronta para confirmar. {{ panel.summary }}</p></div>
         {% endif %}
         {% if panel.with_errors and panel.pending %}
           <div class="alert tone-info" role="status">{% icon "info" %}<p>Depois de corrigir a planilha, estes espaços também vão precisar de decisão.</p></div>
@@ -109,5 +109,5 @@
         {% endif %}
       {% endif %}
     </div>
-  </section>
+  </details>
 {% endif %}{% endwith %}

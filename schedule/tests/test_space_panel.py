@@ -56,9 +56,10 @@ class PanelTests(PanelTestCase):
         response = self.detail(importation)
         self.assertContains(response, 'Espaços desta importação')
         self.assertNotContains(response, 'Nenhuma alteração foi feita no cadastro de espaços.')
-        self.assertContains(response, '3 espaços novos serão cadastrados ao confirmar esta importação.')
-        self.assertContains(response, 'A lista de salas da planilha tem 1 sala sem aula, que não será cadastrada.')
-        self.assertContains(response, 'Pronta para confirmar. Ao confirmar, serão cadastrados 3 espaços.')
+        self.assertContains(response, '4 espaços novos serão cadastrados ao confirmar esta importação.')
+        self.assertContains(response, '<span class="detail-card-summary">Ao confirmar, serão cadastrados 4 espaços.</span>', html=True)
+        self.assertNotContains(response, 'Pronta para confirmar.')
+        self.assertNotContains(response, 'id="espacos" data-busy-region open')
         self.assertNotContains(response, 'foram cadastrados')
         self.assertContains(response, 'Não é um espaço novo')
 
@@ -107,8 +108,8 @@ class PanelTests(PanelTestCase):
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.client.force_login(self.manager)
         response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
-        self.assertContains(response, '3 espaços cadastrados.')
-        self.assertEqual(Space.objects.count(), 3)
+        self.assertContains(response, '4 espaços cadastrados.')
+        self.assertEqual(Space.objects.count(), 4)
 
     def test_partial_permission_shows_only_the_allowed_decisions(self):
         Space.objects.register('HV 5')
@@ -132,8 +133,8 @@ class PanelTests(PanelTestCase):
     def test_concluded_import_lists_the_spaces_it_created(self):
         importation = self.upload()
         response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
-        self.assertContains(response, '3 espaços cadastrados.')
-        self.assertContains(response, '3 espaços cadastrados por esta importação.')
+        self.assertContains(response, '4 espaços cadastrados.')
+        self.assertContains(response, '4 espaços cadastrados por esta importação.')
         self.assertNotContains(response, 'Nenhuma alteração foi feita no cadastro de espaços.')
 
     def test_import_list_shows_the_decision_status(self):
@@ -146,10 +147,11 @@ class AutomaticRefreshTests(PanelTestCase):
     def test_last_decision_refreshes_the_preview(self):
         importation = self.upload(workbook_file(secondary={SECONDARY_CELL: 'Biologia (Érica) (Zoo I)'}))
         self.assertEqual(importation.status, Import.Status.PENDING)
+        self.assertContains(self.detail(importation), 'id="espacos" data-busy-region open')
         response = self.decide(importation, 'Zoo I', SpaceDecision.Kind.NEW)
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertContains(response, 'Pronta para confirmar.')
+        self.assertContains(response, 'Ao confirmar, serão cadastrados')
         self.assertContains(response, 'Será cadastrado como espaço novo.')
         self.assertContains(response, 'Alterar decisão')
         self.assertFalse(Space.objects.filter(name='Zoo I').exists())

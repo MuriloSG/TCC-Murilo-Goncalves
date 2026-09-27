@@ -2,7 +2,7 @@ COMPOSE = docker compose
 MANAGE = $(COMPOSE) run --rm web python manage.py
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs migrate makemigrations test shell manage css npm psql reset-db clear-data
+.PHONY: help up down logs migrate makemigrations test shell manage css npm psql reset-db clear-data delete-users set-passwords
 
 help: ## Lista os comandos disponíveis
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -46,3 +46,9 @@ reset-db: ## ATENÇÃO: para os containers e apaga todos os dados do banco
 
 clear-data: ## ATENÇÃO: apaga todos os dados do banco, mantendo apenas os usuários, perfis e permissões
 	$(MANAGE) clear_data
+
+delete-users: ## ATENÇÃO: exclui os usuários que não são superadmin e os vínculos deles, mantendo perfis e superadmins
+	$(MANAGE) delete_users
+
+set-passwords: ## Define a senha padrão de desenvolvimento para todos os usuários
+	$(MANAGE) set_passwords

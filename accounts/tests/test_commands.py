@@ -108,3 +108,78 @@ class SetSuperadminTests(TestCase):
             with self.subTest(args):
                 with self.assertRaises(CommandError):
                     self.call('maria@ifnmg.edu.br', *args)
+
+
+class DeleteUsersTests(TestCase):
+    def setUp(self):
+        self.role = Role.objects.get(code='DOCENTE')
+        self.superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)
+        self.user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=self.role)
+
+    def delete_users(self, *args):
+        output = StringIO()
+        call_command('delete_users', *args, stdout=output)
+        return output.getvalue()
+
+    def test_deletes_users_and_their_links_keeping_roles_and_superadmins(self):
+        from allauth.account.models import EmailAddress
+        from audit import catalog
+        from audit.context import acting_as_user
+        from audit.models import AuditLog
+        from imports.models import Import
+
+        EmailAddress.objects.create(user=self.user, email=self.user.email)
+        importation = Import.objects.create(
+            kind='USUARIO', status=Import.Status.CONCLUDED, file_name='a.csv',
+            created_by=self.user, resolved_by=self.superadmin,
+        )
+        kept = Import.objects.create(
+            kind='USUARIO', status=Import.Status.CONCLUDED, file_name='b.csv',
+            created_by=self.superadmin, resolved_by=self.user,
+        )
+        with acting_as_user(self.user):
+            AuditLog.objects.record(catalog.UPDATE, catalog.USER, resource_id=self.user.pk)
+        roles = Role.objects.count()
+
+        self.assertIn('1 usuários excluídos', self.delete_users('--yes'))
+
+        self.assertEqual(list(User.objects.all()), [self.superadmin])
+        self.assertEqual(Role.objects.count(), roles)
+        self.assertFalse(EmailAddress.objects.filter(email='ana@ifnmg.edu.br').exists())
+        self.assertFalse(Import.objects.filter(pk=importation.pk).exists())
+        kept.refresh_from_db()
+        self.assertIsNone(kept.resolved_by)
+        self.assertFalse(AuditLog.objects.filter(user_id=self.user.pk).exists())
+        self.assertTrue(AuditLog.objects.filter(resource_id=str(self.user.pk), user=None).exists())
+        self.assertEqual(self.superadmin.roles.get().code, 'ADMINISTRADOR')
+
+    def test_refused_without_active_superadmin(self):
+        User.objects.filter(pk=self.superadmin.pk).update(is_superadmin=False)
+        with self.assertRaises(CommandError):
+            self.delete_users('--yes')
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_answer_other_than_yes_keeps_everything(self):
+        with mock.patch('builtins.input', return_value='não'):
+            self.assertIn('Nada foi excluído', self.delete_users())
+        self.assertEqual(User.objects.count(), 2)
+
+
+class SetPasswordsTests(TestCase):
+    def test_sets_the_default_password_for_every_user(self):
+        superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)
+        user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=Role.objects.get(code='DOCENTE'))
+        output = StringIO()
+        call_command('set_passwords', '--yes', stdout=output)
+        for account in (superadmin, user):
+            account.refresh_from_db()
+            self.assertTrue(account.check_password('senha123#'))
+            self.assertNotIn('senha123#', account.password)
+        self.assertIn('2 usuários', output.getvalue())
+
+    def test_answer_other_than_yes_keeps_passwords(self):
+        user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=Role.objects.get(code='DOCENTE'))
+        with mock.patch('builtins.input', return_value='não'):
+            call_command('set_passwords', stdout=StringIO())
+        user.refresh_from_db()
+        self.assertFalse(user.has_usable_password())

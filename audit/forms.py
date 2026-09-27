@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from audit import catalog
-from ui.forms import limit_choices
+from ui.forms import DateInput, limit_choices
 
 INPUT = {'class': 'input'}
 
@@ -34,7 +34,7 @@ def code_filter(label, labels, empty):
 
 
 def date_filter(label):
-    return forms.DateField(label=label, required=False, widget=forms.DateInput(attrs=INPUT | {'type': 'date'}))
+    return forms.DateField(label=label, required=False, widget=DateInput(attrs=INPUT))
 
 
 class AuditFilterForm(forms.Form):

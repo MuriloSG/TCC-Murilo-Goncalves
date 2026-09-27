@@ -91,6 +91,7 @@ from schedule.sheets import (
 from schedule.sheets import text as sheet_text
 from schedule.spaces import ASSOCIATE, CREATE, PENDING, classify, classify_import, key_of
 from schedule.spaces import apply as apply_spaces
+from ui.forms import DateInput
 
 SEMESTER_COLUMN = 'Semestre'
 START_COLUMN = 'Início'
@@ -179,7 +180,7 @@ def period_field(label, help_text):
         label=label,
         required=False,
         help_text=help_text,
-        widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        widget=DateInput(),
     )
     field.conditional = True
     return field

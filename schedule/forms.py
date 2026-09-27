@@ -5,6 +5,7 @@ from django.db.models import Q
 
 from schedule.models import Course, Space, SpaceOrigin, Teacher, Weekday, interval_choices
 from schedule.timetable import natural_key
+from ui.forms import DateInput
 
 
 class GridFilterForm(forms.Form):
@@ -202,10 +203,10 @@ class PublicCalendarFilterForm(forms.Form):
     curso = forms.ChoiceField(label='Curso', required=False, widget=forms.Select(attrs={'class': 'input'}))
     nivel = forms.ChoiceField(label='Nível', required=False, widget=forms.Select(attrs={'class': 'input'}))
     inicio = forms.DateField(
-        label='Data inicial', required=False, widget=forms.DateInput(attrs={'class': 'input', 'type': 'date'}, format='%Y-%m-%d'),
+        label='Data inicial', required=False, widget=DateInput(attrs={'class': 'input'}),
     )
     fim = forms.DateField(
-        label='Data final', required=False, widget=forms.DateInput(attrs={'class': 'input', 'type': 'date'}, format='%Y-%m-%d'),
+        label='Data final', required=False, widget=DateInput(attrs={'class': 'input'}),
     )
 
     def __init__(self, calendar, stage_choices, *args, **kwargs):
@@ -243,7 +244,7 @@ class RecurrenceChangeForm(forms.Form):
     data = forms.DateField(
         label='A partir de',
         help_text='Data da primeira aula com os dados novos.',
-        widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        widget=DateInput(),
     )
     dia = forms.ChoiceField(label='Dia da semana', choices=Weekday.choices, widget=forms.Select(attrs={'class': 'input'}))
     horario = forms.ChoiceField(label='Horário', widget=forms.Select(attrs={'class': 'input'}))

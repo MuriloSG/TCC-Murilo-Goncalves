@@ -27,6 +27,7 @@ from bookings.models import (
 from schedule.forms import GridFilterForm
 from accounts.models import User
 from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot, teacher_of, teacher_users
+from ui.forms import DateInput
 
 DATE_REQUIRED_MESSAGE = 'Informe a data.'
 START_REQUIRED_MESSAGE = 'Informe o início.'
@@ -34,10 +35,9 @@ END_REQUIRED_MESSAGE = 'Informe o fim.'
 
 
 def date_field(label):
-    attrs = {'type': 'date', 'class': 'input'}
     return forms.DateField(
         label=label,
-        widget=forms.DateInput(attrs=attrs, format='%Y-%m-%d'),
+        widget=DateInput(attrs={'class': 'input'}),
         error_messages={'required': DATE_REQUIRED_MESSAGE, 'invalid': 'Informe a data no formato dd/mm/aaaa.'},
     )
 

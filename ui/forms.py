@@ -15,6 +15,21 @@ class FormRenderer(TemplatesSetting):
     field_template_name = 'ui/forms/field.html'
 
 
+class DateInput(forms.DateInput):
+    """Campo de data com o calendário do ui/static/ui/js/datepicker.js.
+
+    O input nativo do tipo date continua sendo o campo enviado, no formato
+    aaaa-mm-dd, e sem JavaScript é ele que aparece. O calendário só preenche o
+    input e dispara os eventos input e change.
+    """
+
+    input_type = 'date'
+    template_name = 'ui/forms/date.html'
+
+    def __init__(self, attrs=None, format='%Y-%m-%d'):
+        super().__init__(attrs=attrs, format=format)
+
+
 class GroupedCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
     """Lista de seleção em grupos recolhíveis, com contagem, busca e seleção de todas.
 

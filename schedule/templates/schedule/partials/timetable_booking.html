@@ -4,5 +4,4 @@
   {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
   {% if entry.group %}{% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group %}{% endif %}
   {% if entry.teacher %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=entry.teacher %}{% endif %}
-  {% if shows_requester and entry.requester %}{% include "schedule/partials/timetable_line.html" with name="user-check" label="Solicitante" value=entry.requester muted=True %}{% endif %}
 </div>

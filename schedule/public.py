@@ -92,10 +92,10 @@ class PublicEntry:
 
 @dataclass(frozen=True)
 class PublicBooking:
-    """Agendamento aprovado no calendário público: horário, sala, nome e e-mail de quem solicitou.
+    """Agendamento aprovado no calendário público: horário, sala, disciplina, curso, turma e docente.
 
-    A descrição fica fora da página. Os campos `group_label`, `subject` e `teachers` existem
-    só para a ordenação da célula.
+    A descrição fica fora da página. Os campos `group_label` e `teachers` existem só para a
+    ordenação da célula.
     """
 
     start: object
@@ -106,6 +106,9 @@ class PublicBooking:
     group_label: str = ''
     subject: str = ''
     teachers: tuple = ()
+    course: str = ''
+    group: str = ''
+    teacher: str = ''
     is_booking = True
 
     @property
@@ -308,6 +311,8 @@ def public_bookings(dates, space=None, teacher=None):
             entry=PublicBooking(
                 start=occurrence.start, end=occurrence.end, space=occurrence.space,
                 requester=occurrence.requester, email=occurrence.email,
+                subject=occurrence.subject, course=occurrence.course,
+                group=occurrence.group, teacher=occurrence.teacher,
             ),
         )
         for source in public_sources()

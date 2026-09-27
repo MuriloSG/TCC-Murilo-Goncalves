@@ -206,7 +206,6 @@ class SpaceAllocationGridView(TemplateView):
             today_url=grid_link(view, fragment='#hoje' if is_month else ''),
             import_list_url=SPACE_ALLOCATION_IMPORT_SCREENS.url('list'),
             occupation_text=occupation_text(week, is_month),
-            shows_requester=self.request.user.has_perm(permissions.BOOKING_REVIEW),
         )
         if week.is_dated:
             with_cancel_actions(week, self.request.user)

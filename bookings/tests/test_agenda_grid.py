@@ -121,9 +121,9 @@ class OtherCalendarsTests(AgendaTestCase):
         self.assertNotContains(response, self.ana.name)
         self.assertEqual(response.context['week'].days[3].available, 0)
 
-    def test_space_allocation_grid_shows_the_requester_to_the_reviewer(self):
+    def test_space_allocation_grid_does_not_show_the_requester_line(self):
         self.book()
-        self.assertContains(self.space_allocation_grid(permissions.BOOKING_REVIEW), self.ana.name)
+        self.assertNotContains(self.space_allocation_grid(permissions.BOOKING_REVIEW), 'aria-label="Solicitante"')
 
     def test_pending_request_is_not_shown(self):
         submit(self.ana, self.lab, description='Solicitação ainda pendente.')
@@ -131,14 +131,17 @@ class OtherCalendarsTests(AgendaTestCase):
         self.client.logout()
         self.assertNotContains(self.client.get(reverse('public_calendar'), self.PUBLIC), 'Solicitação ainda pendente.')
 
-    def test_public_calendar_shows_the_requester_without_the_description(self):
+    def test_public_calendar_shows_the_class_without_the_time_or_description(self):
         self.book()
         self.client.logout()
         response = self.client.get(reverse('public_calendar'), self.PUBLIC)
         self.assertContains(response, 'Redes')
         self.assertContains(response, 'Agendamento</p>')
-        self.assertContains(response, 'Das 16:00 às 18:00')
-        self.assertContains(response, self.ana.name)
+        self.assertContains(response, 'aria-label="Curso"')
+        self.assertContains(response, 'aria-label="Turma"')
+        self.assertContains(response, 'Laboratório de Informática 2')
+        self.assertContains(response, self.ana.username)
+        self.assertNotContains(response, 'Das 16:00 às 18:00')
         self.assertNotContains(response, self.ana.email)
         self.assertNotContains(response, 'Reunião do projeto de extensão')
         self.assertNotContains(response, self.reviewer.name)
@@ -151,7 +154,7 @@ class OtherCalendarsTests(AgendaTestCase):
         self.assertContains(response, 'Redes')
         self.assertContains(response, 'Agendamento</p>')
         self.assertContains(response, 'Laboratório de Informática 2')
-        self.assertContains(response, self.ana.name)
+        self.assertContains(response, 'Viviane')
         self.assertNotContains(response, 'Reunião do projeto de extensão')
 
     def test_public_calendar_by_another_teacher_or_course_does_not_show_it(self):

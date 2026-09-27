@@ -160,7 +160,7 @@ class BookingSource:
         Filtra pela sala, por quem solicitou ou pelos dois. Quem solicitou corresponde ao
         docente quando o `username` do usuário é igual ao nome do docente, sem diferenciar a
         caixa, a mesma regra do e-mail do docente no calendário público. Devolve só a data,
-        o horário, a sala, o nome e o e-mail de quem solicitou, sem a descrição.
+        o horário, a sala, a disciplina, o curso, a turma, o docente e quem solicitou, sem a descrição.
         """
         Booking = apps.get_model('bookings', 'Booking')
         first = timezone.make_aware(datetime.combine(start_date, time.min))
@@ -170,8 +170,11 @@ class BookingSource:
             bookings = bookings.filter(space=space)
         if teacher_name is not None:
             bookings = bookings.filter(requested_by__username__iexact=teacher_name)
-        bookings = bookings.select_related('space', 'requested_by').only(
-            'starts_at', 'ends_at', 'space__name', 'requested_by__name', 'requested_by__email',
+        bookings = bookings.select_related(
+            'space', 'requested_by',
+            'request__teaching_assignment__teacher',
+            'request__teaching_assignment__offering__subject',
+            'request__teaching_assignment__offering__class_group__course',
         )
         result = []
         for booking in bookings:
@@ -183,6 +186,7 @@ class BookingSource:
                 space=booking.space.name,
                 requester=booking.requested_by.name,
                 email=booking.requested_by.email,
+                **offering_fields(booking.request.teaching_assignment),
             ))
         return result
 
@@ -197,6 +201,10 @@ class PublicOccurrence:
     space: str
     requester: str
     email: str
+    subject: str = ''
+    course: str = ''
+    group: str = ''
+    teacher: str = ''
 
 
 def own_occurrences(occurrences, user):

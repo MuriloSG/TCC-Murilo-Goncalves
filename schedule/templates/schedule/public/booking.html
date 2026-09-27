@@ -2,5 +2,5 @@
   <p class="timetable-kind">{% icon "calendar-clock" "size-4" %}Agendamento</p>
   <p class="timetable-line">{% icon "clock" "size-4" %}<span>Das {{ entry.start|time:"H:i" }} às {{ entry.end|time:"H:i" }}</span></p>
   <p class="timetable-line">{% icon "door-open" "size-4" %}<span><span class="sr-only">Sala </span>{{ entry.space }}</span></p>
-  <p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.requester }}{% if entry.email %}<a class="public-email" href="mailto:{{ entry.email }}">{{ entry.mailbox }}<wbr>@{{ entry.domain }}</a>{% endif %}</span></p>
+  <p class="timetable-line is-muted">{% icon "user-round" "size-4" %}<span>{{ entry.requester }}</span></p>
 </div>

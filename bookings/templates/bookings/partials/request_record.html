@@ -1,23 +1,24 @@
 {% load ui %}<div class="request-layout{% if target.has_suggestion or target.rejection_reason %} has-aside{% endif %}">
   <section class="card request-card" aria-labelledby="resumo-titulo">
-    <p class="eyebrow">Resumo da solicitação</p>
-    <h2 class="request-title" id="resumo-titulo">Solicitação {{ target.pk }}</h2>
-    <dl class="request-summary">
-      {% if show_requester %}
-        <div><dt>Solicitante</dt><dd>{{ target.requested_by.name }}<span class="request-detail">{{ target.requested_by.email }}</span></dd></div>
-      {% endif %}
-      {% with link=target.teaching_assignment %}{% if link %}
-        <div><dt>Docente</dt><dd>{{ link.teacher.name }}<span class="request-detail">Semestre {{ link.offering.semester.code }}</span></dd></div>
-        <div><dt>Disciplina e turma</dt><dd>{{ link.offering.subject.name }}<span class="request-detail">{{ link.offering.class_group }}</span></dd></div>
-      {% endif %}{% endwith %}
-      <div><dt>Espaço</dt><dd><span class="request-value">{% icon "door-open" "size-5" %}{{ target.space.name }}</span></dd></div>
-      <div><dt>Data e horário</dt><dd><span class="request-value">{% icon "clock" "size-5" %}{{ target.date|date:"SHORT_DATE_FORMAT" }}</span><span class="request-detail">das {{ target.start_time|time }} às {{ target.end_time|time }}</span></dd></div>
-      <div><dt>Descrição</dt><dd>{{ target.description }}</dd></div>
-    </dl>
-    <div class="request-status">
-      <p class="eyebrow">Situação atual</p>
+    <div class="request-head">
+      <div>
+        <p class="eyebrow">Resumo da solicitação</p>
+        <h2 class="request-title" id="resumo-titulo">Solicitação {{ target.pk }}</h2>
+      </div>
       {% include "ui/components/badge.html" with tone=target.badge.0 icon=target.badge.1 label=target.badge.2 %}
     </div>
+    <dl class="request-summary">
+      {% if show_requester %}
+        <div><span class="request-icon">{% icon "user-round" %}</span><dt>Solicitante</dt><dd>{{ target.requested_by.name }}<span class="request-detail">{{ target.requested_by.email }}</span></dd></div>
+      {% endif %}
+      {% with link=target.teaching_assignment %}{% if link %}
+        <div><span class="request-icon">{% icon "users" %}</span><dt>Docente</dt><dd>{{ link.teacher.name }}<span class="request-detail">Semestre {{ link.offering.semester.code }}</span></dd></div>
+        <div><span class="request-icon">{% icon "graduation-cap" %}</span><dt>Disciplina e turma</dt><dd>{{ link.offering.subject.name }}<span class="request-detail">{{ link.offering.class_group }}</span></dd></div>
+      {% endif %}{% endwith %}
+      <div><span class="request-icon">{% icon "door-open" %}</span><dt>Espaço</dt><dd>{{ target.space.name }}</dd></div>
+      <div><span class="request-icon">{% icon "clock" %}</span><dt>Data e horário</dt><dd>{{ target.date|date:"SHORT_DATE_FORMAT" }}<span class="request-detail">das {{ target.start_time|time }} às {{ target.end_time|time }}</span></dd></div>
+      <div><span class="request-icon">{% icon "scroll-text" %}</span><dt>Descrição</dt><dd>{{ target.description }}</dd></div>
+    </dl>
   </section>
 
   {% if target.has_suggestion or target.rejection_reason %}
@@ -25,10 +26,10 @@
       <p class="eyebrow">Retorno da análise</p>
       {% if target.has_suggestion %}
         <h2 class="request-title" id="retorno-titulo">Alternativa sugerida</h2>
-        <div class="record-panel">
-          <dl class="record-pairs">
-            <div><dt>Espaço</dt><dd><span class="pair-before">{{ target.space.name }}</span>{% icon "chevron-right" "size-4" %}{{ target.suggested_space.name }}</dd></div>
-            <div><dt>Data e horário</dt><dd><span class="pair-before">{{ target.schedule_text }}</span>{% icon "chevron-right" "size-4" %}{{ target.suggested_schedule_text }}</dd></div>
+        <div class="request-panel">
+          <dl class="request-changes">
+            <div><dt>{% icon "door-open" %}Espaço</dt><dd><span class="pair-before">{{ target.space.name }}</span><span class="pair-after">{% icon "arrow-right" "size-4" %}{{ target.suggested_space.name }}</span></dd></div>
+            <div><dt>{% icon "clock" %}Data e horário</dt><dd><span class="pair-before">{{ target.schedule_text }}</span><span class="pair-after">{% icon "arrow-right" "size-4" %}{{ target.suggested_schedule_text }}</span></dd></div>
           </dl>
           <div class="request-message">
             <p>Mensagem de quem analisou</p>
@@ -38,7 +39,7 @@
       {% endif %}
       {% if target.rejection_reason %}
         {% if not target.has_suggestion %}<h2 class="request-title" id="retorno-titulo">Rejeição</h2>{% endif %}
-        <div class="record-panel">
+        <div class="request-panel">
           <div class="request-message">
             <p>Motivo da rejeição</p>
             <blockquote>“{{ target.rejection_reason }}”</blockquote>

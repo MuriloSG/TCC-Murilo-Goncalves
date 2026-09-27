@@ -139,7 +139,7 @@ class OtherCalendarsTests(AgendaTestCase):
         self.assertContains(response, 'Agendamento</p>')
         self.assertContains(response, 'Das 16:00 às 18:00')
         self.assertContains(response, self.ana.name)
-        self.assertContains(response, f'mailto:{self.ana.email}')
+        self.assertNotContains(response, self.ana.email)
         self.assertNotContains(response, 'Reunião do projeto de extensão')
         self.assertNotContains(response, self.reviewer.name)
 

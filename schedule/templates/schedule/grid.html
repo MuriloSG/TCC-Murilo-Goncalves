@@ -47,7 +47,7 @@
         {{ filter_form.semana }}{{ filter_form.mes }}
         <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
         {% if week.rows %}
-          <button class="btn-secondary timetable-expand" type="button" data-expand aria-pressed="false" hidden><span class="expand-on">{% icon "maximize-2" %}Expandir grade</span><span class="expand-off">{% icon "minimize-2" %}Recolher grade</span></button>
+          <button class="btn-secondary timetable-expand" type="button" data-expand aria-pressed="false" hidden><span class="expand-on" title="Expandir grade">{% icon "maximize-2" %}<span class="sr-only">Expandir grade</span></span><span class="expand-off" title="Recolher grade">{% icon "minimize-2" %}<span class="sr-only">Recolher grade</span></span></button>
         {% endif %}
       </form>
     </div>

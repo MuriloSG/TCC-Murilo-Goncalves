@@ -2064,6 +2064,32 @@
 
   .timetable-grid.is-public .timetable-card {
     height: auto;
+
+    &:only-child {
+      flex: 1 1 auto;
+    }
+
+    & + & {
+      margin-top: 0;
+    }
+  }
+
+  .timetable-line.is-time {
+    font-weight: var(--font-weight-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .public-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    height: 100%;
+
+    & > .timetable-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-1);
+    }
   }
 
   .timetable-scroll.is-public {

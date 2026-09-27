@@ -1,7 +1,8 @@
-{% load ui %}{% for cluster in cell.clusters %}{% if cluster.is_joint %}<div class="timetable-group is-joint"><p class="timetable-group-flag">{% icon "users" "size-4" %}{{ cluster.entries|length }} turmas juntas</p>{% endif %}
+{% load ui %}<div class="public-cell">{% for cluster in cell.clusters %}{% if cluster.is_joint %}<div class="timetable-group is-joint"><p class="timetable-group-flag">{% icon "users" "size-4" %}{{ cluster.entries|length }} turmas juntas</p>{% endif %}
 {% for entry in cluster.entries %}
   <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
     <p class="timetable-subject">{{ entry.subject }}<span class="sr-only">, {{ entry.stage_label }}</span></p>
+    <p class="timetable-line is-time">{% icon "clock" "size-4" %}<span><span class="sr-only">Horário </span>{{ cell.start|time:"H:i" }} às {{ cell.end|time:"H:i" }}</span></p>
     {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
     {% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group|default:entry.group_label %}
     <p class="timetable-line">{% icon "door-open" "size-4" %}<span>{% if entry.space %}<span class="sr-only">Sala </span>{{ entry.space }}{% else %}Sem sala definida{% endif %}</span></p>
@@ -11,4 +12,4 @@
   </div>
 {% endfor %}
 {% if cluster.is_joint %}</div>{% endif %}{% endfor %}
-{% for entry in cell.bookings %}{% include "schedule/public/booking.html" %}{% endfor %}
+{% for entry in cell.bookings %}{% include "schedule/public/booking.html" %}{% endfor %}</div>

@@ -4747,4 +4747,81 @@
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
   }
+
+  .page:has(> .access-denied) {
+    min-height: calc(100dvh - var(--spacing-16) - var(--spacing-2));
+    align-content: center;
+  }
+
+  .access-denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 40rem;
+    margin-inline: auto;
+    padding: var(--spacing-10) var(--spacing-6) var(--spacing-8);
+    border: 1px solid var(--color-divider);
+    border-top: var(--spacing-2) solid var(--color-action);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    text-align: center;
+
+    @variant max-sm {
+      padding: var(--spacing-8) var(--spacing-4) var(--spacing-6);
+    }
+  }
+
+  .access-denied-icon {
+    display: grid;
+    place-items: center;
+    width: var(--spacing-16);
+    height: var(--spacing-16);
+    margin-bottom: var(--spacing-6);
+    border: 1px solid var(--color-sidebar-border);
+    border-radius: var(--radius-full);
+    background: var(--color-avatar-bg);
+    color: var(--color-action);
+    box-shadow: 0 0 0 var(--spacing-2) var(--color-avatar-bg);
+  }
+
+  .access-denied-eyebrow {
+    color: var(--color-action);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .access-denied-title {
+    margin-top: var(--spacing-2);
+    font-size: var(--text-3xl);
+    line-height: var(--text-3xl--line-height);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+
+    @variant max-sm {
+      font-size: var(--text-2xl);
+      line-height: var(--text-2xl--line-height);
+    }
+  }
+
+  .access-denied-text {
+    max-width: 32rem;
+    margin-top: var(--spacing-3);
+    color: var(--color-text-muted);
+  }
+
+  .access-denied-foot {
+    align-self: stretch;
+    margin-top: var(--spacing-8);
+    padding-top: var(--spacing-6);
+    border-top: 1px solid var(--color-divider);
+
+    & > .btn-primary {
+      width: 100%;
+    }
+  }
 }

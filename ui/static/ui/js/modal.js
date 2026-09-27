@@ -43,6 +43,11 @@
   var replacing = false;
 
   document.addEventListener("htmx:beforeSwap", function (event) {
+    if (event.detail.xhr.status === 403 && event.detail.requestConfig.verb === "get") {
+      event.detail.shouldSwap = false;
+      window.location.assign(event.detail.requestConfig.path);
+      return;
+    }
     replacing = event.detail.target.id === "modal" && !!event.detail.target.querySelector("dialog[open]");
   });
 

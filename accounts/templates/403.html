@@ -8,19 +8,6 @@
   <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Acesso restrito</span></li>
 {% endblock %}
 
-{% block page_head %}
-  <div class="page-head">
-    <div>
-      <h1 class="page-title">Acesso restrito</h1>
-      <p class="page-description">Esta página exige uma permissão que o seu perfil não concede. Para obter acesso, procure um administrador do sistema.</p>
-    </div>
-  </div>
-{% endblock %}
-
 {% block content %}
-  {% if user.is_authenticated %}
-    <p><a class="link" href="{% url 'home' %}">Voltar para o início</a></p>
-  {% else %}
-    <p><a class="link" href="{% url 'account_login' %}">Entrar</a></p>
-  {% endif %}
+  {% include "ui/components/access_denied.html" %}
 {% endblock %}

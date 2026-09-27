@@ -969,6 +969,17 @@
       padding-left: var(--spacing-12);
     }
 
+    &.is-compact {
+      @variant lg {
+        flex-wrap: nowrap;
+      }
+
+      & .select-wrap,
+      & .select {
+        width: calc(var(--spacing-16) * 2.5);
+      }
+    }
+
     @variant max-sm {
       & > * {
         width: 100%;

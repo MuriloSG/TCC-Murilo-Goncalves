@@ -201,3 +201,25 @@ class WeekendTests(AgendaTestCase):
         self.client.force_login(self.ana)
         response = self.client.get(URL, {'sala': 'Laboratório de Informática 2'})
         self.assertEqual(response.context['week'].start, date(2026, 9, 28))
+
+
+class OwnAgendaTests(AgendaTestCase):
+    def test_all_agendas_is_the_default_and_shows_the_bookings_of_everyone(self):
+        self.book()
+        response = self.grid(self.viewer)
+        self.assertContains(response, '<option value="todas" selected>Todas as agendas</option>', html=True)
+        self.assertContains(response, 'Agendamento</p>')
+
+    def test_own_agenda_shows_the_bookings_of_the_user(self):
+        self.book()
+        self.assertContains(self.grid(self.ana, agenda='minha', **WEEK), 'Agendamento</p>')
+
+    def test_own_agenda_hides_others_and_keeps_their_slots_not_bookable(self):
+        self.book()
+        other = user_with('outra@ifnmg.edu.br', *REQUESTER)
+        response = self.grid(other, agenda='minha', **WEEK)
+        self.assertContains(response, '<option value="minha" selected>Minha agenda</option>', html=True)
+        self.assertNotContains(response, 'Agendamento</p>')
+        self.assertNotContains(response, 'data=2026-10-15&amp;inicio=16')
+        self.assertContains(response, 'ocupado</span>')
+        self.assertContains(response, 'agenda=minha')

@@ -22,6 +22,7 @@ from bookings.models import (
     REASON_REQUIRED_MESSAGE,
     SUBJECT_REQUIRED_MESSAGE,
 )
+from schedule.forms import GridFilterForm
 from schedule.models import Semester, Space, Subject, TeachingAssignment, TimeSlot, teacher_of
 
 DATE_REQUIRED_MESSAGE = 'Informe a data.'
@@ -228,3 +229,15 @@ class SuggestForm(forms.Form):
         super().__init__(*args, **kwargs)
         field = self.fields['suggested_space']
         field.queryset = Space.objects.filter(is_active=True).order_by('name')
+
+
+ALL_AGENDAS = 'todas'
+OWN_AGENDA = 'minha'
+
+
+class AgendaFilterForm(GridFilterForm):
+    """Filtros da Grade da Agenda: os da Grade do ensalamento e a escolha entre todas as agendas ou só a do usuário."""
+
+    AGENDAS = [(ALL_AGENDAS, 'Todas as agendas'), (OWN_AGENDA, 'Minha agenda')]
+
+    agenda = forms.ChoiceField(label='Agenda', required=False, choices=AGENDAS, widget=forms.Select(attrs={'class': 'input'}))

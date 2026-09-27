@@ -89,6 +89,7 @@ class BookingEntry:
     course: str = ''
     group: str = ''
     teacher: str = ''
+    requester_id: int | None = None
     is_booking = True
 
     @property
@@ -146,6 +147,7 @@ class BookingSource:
                     start=starts_at.time(),
                     end=ends_at.time(),
                     requester=booking.requested_by.name,
+                    requester_id=booking.requested_by_id,
                     **offering_fields(booking.request.teaching_assignment),
                 ),
             ))
@@ -195,6 +197,17 @@ class PublicOccurrence:
     space: str
     requester: str
     email: str
+
+
+def own_occurrences(occurrences, user):
+    """Só as ocorrências do usuário: os agendamentos que ele solicitou e as aulas em que é
+    docente, pela regra de `teacher_of` (nome do docente igual ao `username`, sem caixa)."""
+    username = (user.username or '').casefold()
+    return [
+        item for item in occurrences
+        if (item.kind == BOOKING and item.entry.requester_id == user.pk)
+        or (item.kind == SPACE_ALLOCATION and username and username in {name.casefold() for name in item.entry.teachers})
+    ]
 
 
 def agenda_sources():

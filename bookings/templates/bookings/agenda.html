@@ -28,7 +28,7 @@
         <h2 class="card-title" id="grade-titulo">{% if is_month %}Mês{% else %}Semana{% endif %} da sala{% if space %} {{ space.name }}{% endif %}</h2>
         {% if week.is_dated %}<p class="timetable-range">{% if is_month %}{{ week.start|date:"F" }} de {{ week.start|date:"Y" }}{% else %}{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}{% endif %}</p>{% endif %}
       </div>
-      <form class="filters" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=semestre], change from:select[name=sala], change from:select[name=visao]">
+      <form class="filters is-compact" method="get" action="{{ grid_url }}" role="search" hx-get="{{ grid_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=semestre], change from:select[name=sala], change from:select[name=visao], change from:select[name=agenda]">
         <div>
           <label class="sr-only" id="{{ filter_form.semestre.auto_id }}_rotulo" for="{{ filter_form.semestre.id_for_label }}">Semestre</label>
           {% include "ui/components/select.html" with field=filter_form.semestre %}
@@ -45,10 +45,14 @@
             {% include "ui/components/select.html" with field=filter_form.visao %}
           </div>
         {% endif %}
+        <div>
+          <label class="sr-only" id="{{ filter_form.agenda.auto_id }}_rotulo" for="{{ filter_form.agenda.id_for_label }}">Agenda</label>
+          {% include "ui/components/select.html" with field=filter_form.agenda %}
+        </div>
         {{ filter_form.semana }}{{ filter_form.mes }}
         <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
         {% if week.rows %}
-          <button class="btn-secondary timetable-expand" type="button" data-expand aria-pressed="false" hidden><span class="expand-on">{% icon "maximize-2" %}Expandir grade</span><span class="expand-off">{% icon "minimize-2" %}Recolher grade</span></button>
+          <button class="btn-secondary timetable-expand" type="button" data-expand aria-pressed="false" hidden><span class="expand-on" title="Expandir grade">{% icon "maximize-2" %}<span class="sr-only">Expandir grade</span></span><span class="expand-off" title="Recolher grade">{% icon "minimize-2" %}<span class="sr-only">Recolher grade</span></span></button>
         {% endif %}
       </form>
     </div>
@@ -79,7 +83,7 @@
                   {% elif cell %}
                     <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" with lesson_kind_label=True %}</td>
                   {% else %}
-                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}">{% if can_request %}{% request_url space day.date row.start row.end as url %}{% else %}{% firstof "" as url %}{% endif %}{% if url %}<a class="timetable-request" href="{{ url }}" hx-get="{{ url }}" hx-target="#modal" aria-label="Solicitar agendamento: {{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}, das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível">{% icon "calendar-plus" %}<span class="timetable-request-label" aria-hidden="true">Solicitar agendamento</span></a>{% else %}<span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span>{% endif %}</td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}">{% if can_request %}{% request_url space day.date row.start row.end busy as url %}{% else %}{% firstof "" as url %}{% endif %}{% if url %}<a class="timetable-request" href="{{ url }}" hx-get="{{ url }}" hx-target="#modal" aria-label="Solicitar agendamento: {{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}, das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível">{% icon "calendar-plus" %}<span class="timetable-request-label" aria-hidden="true">Solicitar agendamento</span></a>{% else %}{% busy_slot busy day.date row.start row.end as is_busy %}<span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, {% if is_busy %}ocupado{% else %}disponível{% endif %}</span>{% endif %}</td>
                   {% endif %}
                 {% endfor %}
               </tr>
@@ -99,7 +103,7 @@
                   {% if cell and not cell.is_continued %}
                     <li><span class="timetable-time"><span>{{ cell.start|time:"H:i" }}</span><span>{{ cell.end|time:"H:i" }}</span></span><div>{% include "schedule/partials/timetable_cell.html" with lesson_kind_label=True %}</div></li>
                   {% elif not cell %}
-                    {% if can_request %}{% request_url space day.date row.start row.end as url %}{% else %}{% firstof "" as url %}{% endif %}
+                    {% if can_request %}{% request_url space day.date row.start row.end busy as url %}{% else %}{% firstof "" as url %}{% endif %}
                     {% if url %}<li><span class="timetable-time"><span>{{ row.start|time:"H:i" }}</span><span>{{ row.end|time:"H:i" }}</span></span><div><a class="btn-secondary timetable-request-row" href="{{ url }}" hx-get="{{ url }}" hx-target="#modal">{% icon "calendar-plus" %}Solicitar agendamento<span class="sr-only">: {{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}, das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}</span></a></div></li>{% endif %}
                   {% endif %}
                 {% endfor %}

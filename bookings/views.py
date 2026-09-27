@@ -21,10 +21,9 @@ from accounts import permissions
 from accounts.utils import add_operation_error
 from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
-from bookings.forms import BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
+from bookings.forms import OWN_AGENDA, ALL_AGENDAS, AgendaFilterForm, BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
 from bookings.models import BookingRequest
-from bookings.occupancy import agenda_sources
-from schedule.forms import GridFilterForm
+from bookings.occupancy import agenda_sources, own_occurrences
 from schedule.models import Space
 from schedule.occupancy import occupancy
 from schedule.views import AllocationExceptionListView, OccurrenceCancelView, with_cancel_actions
@@ -91,15 +90,26 @@ class AgendaGridView(TemplateView):
         chosen_month = parse_month(self.request.GET.get('mes'))
         dated = semester is not None and semester.has_period
         sources = agenda_sources()
+        agenda = OWN_AGENDA if self.request.GET.get('agenda') == OWN_AGENDA else ALL_AGENDAS
+        user = self.request.user
+
+        busy = []
+
+        def filtered(occurrences):
+            if agenda != OWN_AGENDA:
+                return occurrences
+            own = own_occurrences(occurrences, user)
+            busy.extend((item.date, item.start, item.end) for item in occurrences if item not in own)
+            return own
         if dated and view == MONTH_VIEW:
             first = month_start(semester, chosen_month or chosen_week, today)
             month_end = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-            occurrences = occupancy(space, first, month_end, sources=sources) if space else []
+            occurrences = filtered(occupancy(space, first, month_end, sources=sources)) if space else []
             week = dated_space_month(semester, space, first, today, occurrences, by_overlap=True)
         elif dated:
             reference = chosen_week or (month_reference(semester, chosen_month, today) if chosen_month else upcoming)
             start = week_start(semester, reference, today)
-            occurrences = occupancy(space, start, start + timedelta(days=4), sources=sources) if space else []
+            occurrences = filtered(occupancy(space, start, start + timedelta(days=4), sources=sources)) if space else []
             week = dated_space_week(semester, space, start, today, occurrences, by_overlap=True)
         else:
             view = WEEK_VIEW
@@ -109,6 +119,8 @@ class AgendaGridView(TemplateView):
 
         def grid_link(target, day=None, fragment=''):
             query = {'semestre': code, 'sala': space.name if space else ''}
+            if agenda == OWN_AGENDA:
+                query['agenda'] = OWN_AGENDA
             if target == MONTH_VIEW:
                 query['visao'] = MONTH_VIEW
                 if day is not None:
@@ -124,8 +136,9 @@ class AgendaGridView(TemplateView):
             space=space,
             semester=semester,
             period_missing=semester is not None and not semester.has_period,
-            filter_form=GridFilterForm(
+            filter_form=AgendaFilterForm(
                 {
+                    'agenda': agenda,
                     'semestre': code,
                     'sala': space.name if space else '',
                     'visao': view,
@@ -136,6 +149,7 @@ class AgendaGridView(TemplateView):
                 spaces=spaces,
             ),
             grid_url=grid_url,
+            busy=busy,
             previous_url=grid_link(view, week.previous) if week.previous else None,
             following_url=grid_link(view, week.following) if week.following else None,
             today_url=grid_link(view, fragment='#hoje' if is_month else ''),

@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %} · SaliSpace</title>
+  <title>{% block title %}{% endblock %} · IFAgenda</title>
+  <link rel="icon" href="{% static 'ui/img/favicon.ico' %}" sizes="any">
+  <link rel="icon" type="image/png" href="{% static 'ui/img/favicon-512.png' %}" sizes="512x512">
+  <link rel="apple-touch-icon" href="{% static 'ui/img/apple-touch-icon.png' %}">
   {% block head %}{% endblock %}
   <link rel="stylesheet" href="{% static 'ui/css/app.css' %}">
   <script src="{% static 'ui/js/htmx.min.js' %}" defer></script>

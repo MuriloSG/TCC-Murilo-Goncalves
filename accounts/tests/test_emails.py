@@ -35,7 +35,7 @@ class PasswordLinkTests(TestCase):
     def test_link_uses_the_site_url_and_the_recovery_templates(self):
         message = password_link(self.user.pk)
         self.assertEqual(message.to, ['maria@ifnmg.edu.br'])
-        self.assertTrue(message.subject.startswith('[Agendamento IFNMG Salinas] '))
+        self.assertTrue(message.subject.startswith('[IFAgenda] '))
         self.assertIn('https://agendamento.exemplo.edu.br/contas/senha/redefinir/', message.body)
         self.assertTrue(message.body.startswith('Foi solicitada a definição ou a redefinição da senha desta conta'))
 

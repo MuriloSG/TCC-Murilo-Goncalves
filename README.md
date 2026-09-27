@@ -1,4 +1,6 @@
-# Sistema de Agendamento de Espaços Físicos – IFNMG Campus Salinas
+# IFAgenda
+
+**Sistema de Agendamento de Espaços do IFNMG – Campus Salinas**
 
 Sistema web para agendamento de espaços físicos do IFNMG – Campus Salinas, desenvolvido com Django e PostgreSQL como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação.
 
@@ -114,7 +116,7 @@ Os registros são somente de inclusão: a aplicação recusa qualquer alteraçã
 | `POSTGRES_USER` | `agendamento` | Usuário do banco de dados |
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
-| `DJANGO_DEFAULT_FROM_EMAIL` | `Agendamento IFNMG Salinas <nao-responda@localhost>` | Remetente dos e-mails |
+| `DJANGO_DEFAULT_FROM_EMAIL` | `IFAgenda <nao-responda@localhost>` | Remetente dos e-mails |
 | `DJANGO_EMAIL_HOST` | vazio | Servidor SMTP |
 | `DJANGO_EMAIL_PORT` | `587` | Porta do servidor SMTP |
 | `DJANGO_EMAIL_HOST_USER` | vazio | Usuário do servidor SMTP |
@@ -157,7 +159,7 @@ DJANGO_EMAIL_PORT=587
 DJANGO_EMAIL_USE_TLS=1
 DJANGO_EMAIL_HOST_USER=conta@gmail.com
 DJANGO_EMAIL_HOST_PASSWORD=senha-de-app
-DJANGO_DEFAULT_FROM_EMAIL=Agendamento IFNMG Salinas <conta@gmail.com>
+DJANGO_DEFAULT_FROM_EMAIL=IFAgenda <conta@gmail.com>
 ```
 
 Depois de alterar o `.env`, recrie os containers com `make up`.

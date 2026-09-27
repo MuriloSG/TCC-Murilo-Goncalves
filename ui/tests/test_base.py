@@ -1,6 +1,7 @@
 import re
 from html.parser import HTMLParser
 
+from django.contrib.staticfiles import finders
 from django.test import TestCase
 
 from accounts import permissions
@@ -65,7 +66,7 @@ class AppLayoutTests(LayoutTestCase):
         content = response.content.decode()
         sidebar = content[content.index('<aside class="sidebar" id="menu-lateral">'):content.index('</aside>')]
         self.assertRegex(sidebar, r'<a class="brand" href="/inicio/">\s*<img src="/static/ui/img/simbolo-if.png" alt=""')
-        self.assertIn('<span class="brand-name">SaliSpace</span>', sidebar)
+        self.assertIn('<span class="brand-name">Agenda</span>', sidebar)
         self.assertNotIn('IFNMG Campus Salinas', sidebar)
         self.assertIn('<nav class="side-nav" aria-label="Principal">', sidebar)
 
@@ -225,7 +226,7 @@ class AuthLayoutTests(LayoutTestCase):
             'alt="Instituto Federal Norte de Minas Gerais, Campus Salinas" width="813" height="225">',
             html=True,
         )
-        self.assertContains(response, '<p class="auth-title">SaliSpace</p>', html=True)
+        self.assertContains(response, '<p class="auth-title">IFAgenda</p>', html=True)
         self.assertContains(response, '<h1>Entrar</h1>', html=True)
         self.assertNotContains(response, 'class="sidebar"')
         self.assertEqual(parse(response).focusable[0][1].get('href'), '#conteudo')
@@ -256,3 +257,33 @@ class ExternalResourcesTests(LayoutTestCase):
         for address in addresses:
             self.assertTrue(address.startswith('../fonts/'), address)
         self.assertNotRegex(css, r'@import\s+url|https?://')
+
+
+class BrandTests(LayoutTestCase):
+    """Nome do sistema e ícone declarados no template base, para toda página."""
+
+    ICONS = (
+        '<link rel="icon" href="/static/ui/img/favicon.ico" sizes="any">',
+        '<link rel="icon" type="image/png" href="/static/ui/img/favicon-512.png" sizes="512x512">',
+        '<link rel="apple-touch-icon" href="/static/ui/img/apple-touch-icon.png">',
+    )
+
+    def test_titulo_e_icone_na_pagina_autenticada(self):
+        self.client.force_login(self.admin)
+        response = self.client.get('/inicio/')
+        self.assertContains(response, '· IFAgenda</title>')
+        for icon in self.ICONS:
+            self.assertContains(response, icon, html=True)
+
+    def test_titulo_e_icone_na_pagina_de_login_e_no_calendario_publico(self):
+        for url in ('/contas/login/', '/calendario/'):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertContains(response, '· IFAgenda</title>')
+                for icon in self.ICONS:
+                    self.assertContains(response, icon, html=True)
+
+    def test_arquivos_do_icone_existem(self):
+        for path in ('ui/img/favicon.ico', 'ui/img/favicon-512.png', 'ui/img/apple-touch-icon.png'):
+            with self.subTest(path=path):
+                self.assertIsNotNone(finders.find(path))

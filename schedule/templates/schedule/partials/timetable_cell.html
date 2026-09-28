@@ -6,6 +6,7 @@
   <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
     {% if lesson_kind_label %}<p class="timetable-kind">{% icon "graduation-cap" "size-4" %}Ensalamento</p>{% endif %}
     <p class="timetable-subject">{{ entry.subject }}</p>
+    {% if not hide_time %}<p class="timetable-line is-time">{% icon "clock" "size-4" %}<span><span class="sr-only">Horário </span>{{ cell.start|time:"H:i" }} às {{ cell.end|time:"H:i" }}</span></p>{% endif %}
     {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
     {% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group|default:entry.group_label %}
     {% for teacher in entry.teachers %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=teacher muted=True %}{% endfor %}

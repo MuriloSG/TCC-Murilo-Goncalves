@@ -169,7 +169,7 @@
                     <span class="panel-issue-value{% if not group.count %} panel-issue-zero{% endif %}">{{ group.count }}</span>
                   </span>
                   <span class="panel-issue-label">{{ group.label }}</span>
-                  {% if forloop.last %}{% include "ui/components/hint.html" with hint_id="dica-"|add:group.key title=group.label text=group.hint align="end" %}{% else %}{% include "ui/components/hint.html" with hint_id="dica-"|add:group.key title=group.label text=group.hint %}{% endif %}
+                  {% if forloop.last %}{% include "ui/components/hint.html" with hint_id="dica-"|add:group.key title=group.label text=group.hint align="end" placement="above" %}{% else %}{% include "ui/components/hint.html" with hint_id="dica-"|add:group.key title=group.label text=group.hint placement="above" %}{% endif %}
                 </a>
               {% endfor %}
             </div>

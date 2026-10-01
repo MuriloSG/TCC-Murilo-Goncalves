@@ -72,6 +72,7 @@ Os registros são somente de inclusão: a aplicação recusa qualquer alteraçã
 |---|---|---|
 | `make` ou `make help` | — | Lista os comandos disponíveis |
 | `make up` | `docker compose up -d --build --renew-anon-volumes` | Sobe o ambiente em segundo plano, reconstruindo as imagens e reinstalando as dependências de Node.js se necessário |
+| `make dev-network` | `DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1,<IP>" DJANGO_SITE_URL="http://<IP>:8000" docker compose up -d --build --renew-anon-volumes` | Sobe o ambiente aceitando acessos de outros aparelhos da mesma rede local |
 | `make down` | `docker compose down` | Para e remove os containers; os dados do banco são mantidos |
 | `make logs` | `docker compose logs -f` | Acompanha os logs dos containers |
 | `make migrate` | `docker compose run --rm web python manage.py migrate` | Aplica as migrations pendentes |
@@ -105,12 +106,27 @@ Os registros são somente de inclusão: a aplicação recusa qualquer alteraçã
 - O `tailwind` lê o `ui/styles/app.css` e os templates de todos os apps e grava `ui/static/ui/css/app.css`, que o `web` serve como arquivo estático. Uma classe nova num template aparece no CSS sem reiniciar containers. O CSS gerado fica fora do Git.
 - O `tailwind` monta o projeto em `/app`, como o `web`, e guarda as dependências de Node.js num volume anônimo em `/app/node_modules`, para que a montagem do projeto não as esconda. O Node.js só é usado para compilar o CSS: a imagem do `web` não o tem.
 
+## Acesso pelo celular na rede local
+
+Para testar a interface no celular, use `make dev-network` em vez de `make up`:
+
+```bash
+make dev-network
+```
+
+O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando esse endereço em `DJANGO_ALLOWED_HOSTS` e mostra a URL a ser digitada no celular, como `http://192.168.0.10:8000/`. O celular precisa estar no mesmo Wi-Fi do computador. Pare o ambiente com `make down`, como de costume.
+
+- Se o IPv4 não for detectado, descubra-o com `ipconfig getifaddr en0` no macOS ou `hostname -I` no Linux e informe-o: `make dev-network LOCAL_IP=192.168.0.10`.
+- O firewall do sistema, uma VPN ativa ou redes que isolam os aparelhos entre si (Wi-Fi de visitantes) podem impedir a conexão.
+- O comando é só para desenvolvimento na rede local: ele não publica o sistema na internet e não expõe o banco de dados.
+
 ## Variáveis de ambiente
 
 | Variável | Valor padrão | Uso |
 |---|---|---|
 | `DJANGO_SECRET_KEY` | `django-insecure-somente-para-desenvolvimento-local` | Chave secreta do Django |
 | `DJANGO_DEBUG` | `1` | Modo de depuração, ativo somente com o valor `1` |
+| `DJANGO_ALLOWED_HOSTS` | vazio | Hosts aceitos pelo Django, separados por vírgula; vazio com `DJANGO_DEBUG=1` aceita apenas `localhost` e `127.0.0.1` |
 | `DJANGO_SITE_URL` | `http://localhost:8000` | Endereço do sistema usado nos links dos e-mails enviados pelo `worker` |
 | `POSTGRES_DB` | `agendamento` | Nome do banco de dados |
 | `POSTGRES_USER` | `agendamento` | Usuário do banco de dados |

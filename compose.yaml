@@ -9,6 +9,7 @@ x-app-env: &app-env
   POSTGRES_PORT: "5432"
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-somente-para-desenvolvimento-local}
   DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-}
   DJANGO_SITE_URL: ${DJANGO_SITE_URL:-http://localhost:8000}
   DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
   DJANGO_DEFAULT_FROM_EMAIL: ${DJANGO_DEFAULT_FROM_EMAIL:-IFAgenda <nao-responda@localhost>}

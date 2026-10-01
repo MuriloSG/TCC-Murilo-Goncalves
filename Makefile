@@ -2,13 +2,26 @@ COMPOSE = docker compose
 MANAGE = $(COMPOSE) run --rm web python manage.py
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs migrate makemigrations test shell manage css npm psql reset-db clear-data delete-users set-passwords
+
+LOCAL_IP = $(shell ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}')
+
+.PHONY: help up dev-network down logs migrate makemigrations test shell manage css npm psql reset-db clear-data delete-users set-passwords
 
 help: ## Lista os comandos disponíveis
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 up: ## Sobe o ambiente em segundo plano, reconstruindo as imagens e reinstalando as dependências de Node.js se necessário
 	$(COMPOSE) up -d --build --renew-anon-volumes
+
+dev-network: ## Sobe o ambiente aceitando acessos de outros aparelhos da rede local (ex.: o celular no mesmo Wi-Fi)
+	@test -n "$(LOCAL_IP)" || { echo "Não foi possível descobrir o IPv4 da rede local. Informe-o: make dev-network LOCAL_IP=192.168.0.10"; exit 1; }
+	DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1,$(LOCAL_IP)" DJANGO_SITE_URL="http://$(LOCAL_IP):8000" $(COMPOSE) up -d --build --renew-anon-volumes
+	@echo
+	@echo "Aplicação disponível na rede local na porta 8000:"
+	@echo "  neste computador: http://localhost:8000/"
+	@echo "  no celular:       http://$(LOCAL_IP):8000/"
+	@echo
+	@echo "Acompanhe os logs com make logs e pare o ambiente com make down."
 
 down: ## Para e remove os containers (os dados do banco são mantidos)
 	$(COMPOSE) down

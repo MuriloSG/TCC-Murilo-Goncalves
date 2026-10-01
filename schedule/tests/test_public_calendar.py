@@ -127,7 +127,12 @@ class AccessTests(PublicCalendarTestCase):
         self.assertNotIn('Aldo Gomes da Silva', html)
         self.assertNotIn('Gestor', html)
         self.assertNotIn(reverse('account_logout'), html)
-        self.assertIn(reverse('account_login'), html)
+        self.assertNotIn(reverse('account_login'), html)
+
+    def test_page_offers_the_display_mode_toggle(self):
+        html = self.text(self.get(sala='10'))
+        self.assertIn('data-theme-toggle', html)
+        self.assertIn('js/theme.js', html)
 
 
 class FutureSourceTests(PublicCalendarTestCase):

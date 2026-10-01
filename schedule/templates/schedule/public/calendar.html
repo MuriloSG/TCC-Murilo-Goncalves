@@ -3,7 +3,7 @@
 
 {% block title %}Horários do campus{% endblock %}
 
-{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block head %}{{ block.super }}<meta name="robots" content="noindex">{% endblock %}
 
 {% block content %}
   <h1 class="sr-only">Horários do campus</h1>

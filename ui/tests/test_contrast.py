@@ -8,7 +8,7 @@ class ContrastTests(SimpleTestCase):
         self.css = contrast.STYLES.read_text(encoding='utf-8')
 
     def test_todos_os_pares_atingem_o_minimo(self):
-        failures = contrast.contrast_failures(self.css)
+        failures = contrast.all_contrast_failures(self.css)
         self.assertEqual(failures, [], '\n'.join(failures))
 
     def test_todo_token_de_cor_tem_par_ou_esta_isento(self):
@@ -38,6 +38,20 @@ class ContrastTests(SimpleTestCase):
     def test_borda_de_campo(self):
         colors = contrast.read_colors(self.css)
         self.assertGreaterEqual(contrast.contrast_ratio(colors['control-border'], colors['surface']), 3)
+
+    def test_tema_escuro_redefine_a_pagina_e_o_texto(self):
+        light = contrast.read_colors(self.css)
+        dark = contrast.read_colors(self.css, 'dark')
+        self.assertNotEqual(dark['page'], light['page'])
+        self.assertNotEqual(dark['text'], light['text'])
+        self.assertGreater(contrast.luminance(dark['text']), contrast.luminance(dark['page']))
+
+    def test_texto_secundario_do_tema_escuro_abaixo_do_minimo_falha(self):
+        css = self.css.replace('--color-text-muted: var(--palette-dark-200);', '--color-text-muted: #595E61;')
+        self.assertNotEqual(css, self.css)
+        failures = contrast.all_contrast_failures(css)
+        self.assertEqual(contrast.contrast_failures(css), [])
+        self.assertTrue(any(failure.startswith('tema escuro:') for failure in failures), failures)
 
     def test_texto_secundario_abaixo_do_minimo_falha(self):
         css = self.css.replace('--color-text-muted: var(--palette-neutral-700);', '--color-text-muted: #7B7677;')

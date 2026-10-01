@@ -3,6 +3,10 @@
 Os valores vêm do ui/styles/app.css: as variáveis --palette-* e os tokens
 --color-*, que apontam para a paleta com var(). O símbolo do IF não é token, e o
 verde dele entra como valor literal, tirado dos arquivos oficiais (D3).
+
+Os mesmos pares valem nos dois temas. O tema claro é o bloco @theme do CSS e o
+escuro é o bloco :root[data-theme="dark"], que redefine parte dos tokens sobre
+os valores do tema claro.
 """
 
 import re
@@ -82,16 +86,32 @@ EXEMPT = {
 
 HEX = re.compile(r'#[0-9A-Fa-f]{6}')
 
+THEMES = ('light', 'dark')
 
-def read_colors(css):
-    """Devolve {token: hexadecimal} dos tokens --color-* do CSS.
+THEME_LABELS = {'light': 'tema claro', 'dark': 'tema escuro'}
+
+BLOCKS = {
+    'light': re.compile(r'@theme static \{(.*?)\n\}', re.DOTALL),
+    'dark': re.compile(r':root\[data-theme="dark"\] \{(.*?)\n\}', re.DOTALL),
+}
+
+
+def theme_block(css, theme):
+    """Devolve o trecho do CSS que declara os tokens --color-* do tema."""
+    found = BLOCKS[theme].search(css)
+    return found.group(1) if found else ''
+
+
+def read_colors(css, theme='light'):
+    """Devolve {token: hexadecimal} dos tokens --color-* do tema.
 
     Um token cujo valor não é hexadecimal nem var() da paleta, como o overlay com
-    transparência, fica com None.
+    transparência, fica com None. O tema escuro herda do claro os tokens que não
+    redefine.
     """
     palette = dict(re.findall(r'--palette-([\w-]+):\s*(#[0-9A-Fa-f]{6})\s*;', css))
-    colors = {}
-    for name, value in re.findall(r'--color-([\w-]+):\s*([^;]+);', css):
+    colors = {} if theme == 'light' else dict(read_colors(css))
+    for name, value in re.findall(r'--color-([\w-]+):\s*([^;]+);', theme_block(css, theme)):
         value = value.strip()
         reference = re.fullmatch(r'var\(--palette-([\w-]+)\)', value)
         if reference:
@@ -121,9 +141,9 @@ def format_ratio(ratio):
     return f'{ratio:.2f}'.replace('.', ',')
 
 
-def contrast_failures(css):
-    """Pares abaixo do mínimo, com o par, o contraste calculado e o mínimo."""
-    colors = read_colors(css)
+def contrast_failures(css, theme='light'):
+    """Pares abaixo do mínimo no tema, com o par, o contraste e o mínimo."""
+    colors = read_colors(css, theme)
     failures = []
     for foreground, background, minimum, description in CONTRAST_PAIRS:
         front = foreground if foreground.startswith('#') else colors[foreground]
@@ -137,7 +157,17 @@ def contrast_failures(css):
     return failures
 
 
+def all_contrast_failures(css):
+    """Pares abaixo do mínimo em qualquer um dos temas, com o tema na mensagem."""
+    return [f'{THEME_LABELS[theme]}: {failure}'
+            for theme in THEMES
+            for failure in contrast_failures(css, theme)]
+
+
 def uncovered_tokens(css):
     """Tokens de cor que não estão em nenhum par nem na lista de isentos."""
     covered = {token for pair in CONTRAST_PAIRS for token in pair[:2]} | EXEMPT.keys()
-    return sorted(set(read_colors(css)) - covered)
+    declared = set()
+    for theme in THEMES:
+        declared |= set(read_colors(css, theme))
+    return sorted(declared - covered)

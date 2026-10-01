@@ -90,6 +90,57 @@ class AllocationSource:
         return result
 
 
+@dataclass(frozen=True)
+class SpaceOccurrence:
+    """Uma ocorrência de aula com espaço numa data, sem o conteúdo do card."""
+
+    date: date
+    start: time
+    end: time
+    space_id: int
+    allocation_id: int
+
+
+def occurrences_of_all_spaces(start_date, end_date):
+    """Ocorrências das aulas com espaço de todos os espaços no intervalo, em três consultas.
+
+    A regra é a de `AllocationSource`: o período do semestre e a vigência por
+    `Allocation.occurs_on`, sem as ocorrências canceladas de
+    `AllocationException.objects.cancelled`. Serve ao painel, que agrega todos os espaços de
+    uma vez (D4 da Change exibir-painel-administrativo).
+    """
+    if start_date > end_date:
+        return []
+    semesters = {
+        semester.pk: semester
+        for semester in Semester.objects.filter(start_date__lte=end_date, end_date__gte=start_date)
+    }
+    if not semesters:
+        return []
+    by_weekday = {}
+    for allocation in Allocation.objects.filter(semester__in=semesters, space__isnull=False).select_related('time_slot'):
+        allocation.semester = semesters[allocation.semester_id]
+        by_weekday.setdefault(allocation.weekday, []).append(allocation)
+    cancelled = AllocationException.objects.cancelled(
+        [allocation.pk for items in by_weekday.values() for allocation in items], start_date, end_date,
+    )
+    result = []
+    for day in dates_between(start_date, end_date):
+        if day.weekday() >= len(WEEKDAYS):
+            continue
+        for allocation in by_weekday.get(WEEKDAYS[day.weekday()], []):
+            if not allocation.occurs_on(day) or (allocation.pk, day) in cancelled:
+                continue
+            result.append(SpaceOccurrence(
+                date=day,
+                start=allocation.time_slot.start_time,
+                end=allocation.time_slot.end_time,
+                space_id=allocation.space_id,
+                allocation_id=allocation.pk,
+            ))
+    return result
+
+
 _registered = []
 _public = []
 

@@ -8,9 +8,9 @@
 {% block content %}
   <h1 class="sr-only">Horários do campus</h1>
   <div class="card public-filters" id="filtros">
-    <form class="public-form" method="get" action="{{ calendar_url }}" role="search" hx-get="{{ calendar_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, change[target.tagName=='SELECT']" data-public-form>
+    <form class="public-form" id="filtros-form" method="get" action="{{ calendar_url }}" role="search" hx-get="{{ calendar_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, change[target.tagName=='SELECT']" data-public-form>
       {% for field in filter_form %}
-        {% if field.widget_type == "select" %}
+        {% if field.widget_type == "select" and field.name != "turma" %}
           <div class="public-field{% if field.name == "sala" or field.name == "docente" or field.name == "curso" %} is-wide{% endif %}">
             <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}</label>
             {% include "ui/components/select.html" %}
@@ -33,9 +33,16 @@
   <section class="card timetable public-calendar" id="calendario" aria-labelledby="calendario-titulo" data-public-calendar>
     <div class="card-head">
       <div>
-        <h2 class="card-title" id="calendario-titulo">Semestre {{ calendar.semester_code }}</h2>
-        {% if week.is_dated %}<p class="timetable-range">{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}</p>{% endif %}
+        <h2 class="card-title" id="calendario-titulo"><span class="sr-only">Semestre </span>{{ calendar.semester_code }}</h2>
       </div>
+      {% if calendar.course %}
+        {% with field=filter_form.turma %}
+          <div class="public-field public-group" hx-get="{{ calendar_url }}" hx-include="#filtros-form" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change">
+            <label class="sr-only" id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% include "ui/components/select.html" %}
+          </div>
+        {% endwith %}
+      {% endif %}
     </div>
     {% if calendar.date_error %}
       <div class="timetable-notice">

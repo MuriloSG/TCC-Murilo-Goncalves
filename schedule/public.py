@@ -8,9 +8,9 @@ descrição (Change agendar-uso-eventual-dos-espacos). Os
 templates recebem só `PublicEntry`, `PublicBooking` e a estrutura da Grade, sem referência a
 model e sem IDs (D5).
 
-A quantidade de consultas é fixa: no máximo dez, qualquer que seja o intervalo (D10), com a
-consulta das ocorrências canceladas, que somem da Grade datada sem expor a exceção (Change
-cancelar-ocorrencia-do-ensalamento).
+A quantidade de consultas é fixa: no máximo dez, qualquer que seja o intervalo (D10), com a das
+turmas do curso escolhido e a das ocorrências canceladas, que somem da Grade datada sem expor
+a exceção (Change cancelar-ocorrencia-do-ensalamento).
 """
 
 from dataclasses import dataclass, field
@@ -21,7 +21,7 @@ from django.db.models import Prefetch
 from django.db.models.functions import Lower
 
 from accounts.models import User
-from schedule.models import Allocation, AllocationException, Course, Space, Stage, Teacher
+from schedule.models import Allocation, AllocationException, ClassGroup, Course, Space, Stage, Teacher
 from schedule.occupancy import public_sources
 from schedule.timetable import (
     WEEKDAYS,
@@ -153,6 +153,7 @@ class Options:
     spaces: list = field(default_factory=list)
     teachers: list = field(default_factory=list)
     courses: list = field(default_factory=list)
+    groups: list = field(default_factory=list)
 
 
 def semester_options(semester):
@@ -172,6 +173,23 @@ def semester_options(semester):
         Course.objects.filter(class_groups__allocations__semester=semester).distinct().only('name', 'stage').order_by('name'),
     )
     return spaces, teachers, courses
+
+
+def course_groups(semester, course):
+    """Turmas do curso com aula no semestre, numa consulta, só quando há curso escolhido."""
+    if semester is None or course is None:
+        return []
+    groups = ClassGroup.objects.filter(course=course, allocations__semester=semester).distinct().only('label')
+    return sorted(groups, key=lambda group: natural_key(SimpleNamespace(name=group.label)))
+
+
+def chosen_group(value, groups):
+    """Turma cujo rótulo é o valor informado, sem diferenciar a caixa; o resto é descartado."""
+    value = (value or '').strip()
+    if not value or len(value) > MAX_LENGTH:
+        return None
+    key = value.casefold()
+    return next((group for group in groups if group.label.casefold() == key), None)
 
 
 def chosen(value, records):
@@ -199,7 +217,7 @@ def teacher_emails(names):
     return dict(found)
 
 
-def public_allocations(semester, space=None, teacher=None, course=None, stage=None):
+def public_allocations(semester, space=None, teacher=None, course=None, stage=None, group=None):
     """Alocações do semestre com os filtros aplicados no banco, só com as colunas do card."""
     queryset = Allocation.objects.filter(semester=semester)
     if space is not None:
@@ -210,6 +228,8 @@ def public_allocations(semester, space=None, teacher=None, course=None, stage=No
         queryset = queryset.filter(class_group__course=course)
     if stage is not None:
         queryset = queryset.filter(class_group__course__stage=stage)
+    if group is not None:
+        queryset = queryset.filter(class_group=group)
     return list(
         queryset.select_related('subject', 'time_slot', 'space', 'class_group__course')
         .only(
@@ -409,6 +429,7 @@ class PublicCalendar:
     space: object = None
     teacher: object = None
     course: object = None
+    group: object = None
     stage_key: str = ''
     start: object = None
     end: object = None
@@ -427,6 +448,8 @@ class PublicCalendar:
     def summary(self):
         """Resumo dos filtros escolhidos, usado na legenda da Grade para leitores de tela."""
         parts = [record.name for record in (self.space, self.teacher, self.course) if record is not None]
+        if self.group is not None:
+            parts.append(self.group.label)
         if self.stage_key:
             parts.append(STAGES[self.stage_key].label)
         return ', '.join(parts)
@@ -442,12 +465,15 @@ def public_calendar(params, today):
     semester = semesters.get(code)
     spaces, teachers, courses = semester_options(semester)
     stage_key = (params.get('nivel') or '').strip()
+    course = chosen(params.get('curso'), courses)
+    groups = course_groups(semester, course)
     calendar = PublicCalendar(
         semester_code=code,
-        options=Options(semesters=codes, spaces=spaces, teachers=teachers, courses=courses),
+        options=Options(semesters=codes, spaces=spaces, teachers=teachers, courses=courses, groups=groups),
         space=chosen(params.get('sala'), spaces),
         teacher=chosen(params.get('docente'), teachers),
-        course=chosen(params.get('curso'), courses),
+        course=course,
+        group=chosen_group(params.get('turma'), groups),
         stage_key=stage_key if stage_key in STAGES else '',
     )
     if semester is None:
@@ -472,7 +498,7 @@ def public_calendar(params, today):
         )
         return calendar
     allocations = public_allocations(
-        semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key),
+        semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key), calendar.group,
     )
     if semester.has_period:
         dates = weekdays_between(calendar.start, calendar.end)

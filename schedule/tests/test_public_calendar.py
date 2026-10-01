@@ -245,6 +245,32 @@ class FilterTests(PublicCalendarTestCase):
         self.assertNotIn('timetable-card', html)
 
 
+class GroupFilterTests(PublicCalendarTestCase):
+    def test_without_course_there_is_no_group_field_nor_query(self):
+        calendar = self.calendar(sala='10')
+        self.assertEqual(calendar.options.groups, [])
+        self.assertNotContains(self.get(sala='10'), 'name="turma"')
+
+    def test_options_are_the_groups_of_the_course(self):
+        labels = [group.label for group in self.calendar(curso='INFORMÁTICA').options.groups]
+        self.assertEqual(labels, ['2º ANO A', '2º ANO B'])
+        self.assertContains(self.get(curso='INFORMÁTICA'), 'name="turma"')
+
+    def test_group_limits_the_lessons(self):
+        html = self.text(self.get(curso='INFORMÁTICA', turma='2º ano b', inicio='2026-09-21', fim='2026-09-25'))
+        self.assertIn('Matemática', html)
+        self.assertNotIn('Banco de Dados', html)
+
+    def test_group_of_another_course_is_discarded(self):
+        calendar = self.calendar(curso='INFORMÁTICA', turma='2º PERÍODO')
+        self.assertIsNone(calendar.group)
+        self.assertEqual(calendar.course.name, 'INFORMÁTICA')
+
+    def test_group_without_course_is_discarded(self):
+        calendar = self.calendar(sala='10', turma='2º ANO A')
+        self.assertIsNone(calendar.group)
+
+
 class PrincipalFilterTests(PublicCalendarTestCase):
     def test_stage_alone_does_not_query_allocations(self):
         with CaptureQueriesContext(connection) as queries:
@@ -394,7 +420,7 @@ class QueryTests(PublicCalendarTestCase):
             week = self.count(**principal, inicio='2026-09-21', fim='2026-09-25')
             month = self.count(**principal, inicio='2026-09-01', fim='2026-10-01')
             self.assertEqual(week, month, principal)
-            self.assertLessEqual(week, 9 if 'curso' in principal else 10, principal)
+            self.assertLessEqual(week, 10, principal)
 
     def test_more_lessons_do_not_add_queries(self):
         before = self.count(docente='Aldo Gomes', inicio='2026-09-01', fim='2026-10-01')

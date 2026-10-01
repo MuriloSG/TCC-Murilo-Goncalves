@@ -204,6 +204,7 @@ class PublicCalendarFilterForm(forms.Form):
     docente = forms.ChoiceField(label='Docente', required=False, widget=forms.Select(attrs={'class': 'input'}))
     curso = forms.ChoiceField(label='Curso', required=False, widget=forms.Select(attrs={'class': 'input'}))
     nivel = forms.ChoiceField(label='Nível', required=False, widget=forms.Select(attrs={'class': 'input'}))
+    turma = forms.ChoiceField(label='Turma', required=False, widget=forms.Select(attrs={'class': 'input', 'form': 'filtros-form'}))
     inicio = forms.DateField(
         label='Data inicial', required=False, widget=DateInput(attrs={'class': 'input'}),
     )
@@ -219,6 +220,7 @@ class PublicCalendarFilterForm(forms.Form):
             'docente': calendar.teacher.name if calendar.teacher else '',
             'curso': calendar.course.name if calendar.course else '',
             'nivel': calendar.stage_key,
+            'turma': calendar.group.label if calendar.group else '',
             'inicio': calendar.start,
             'fim': calendar.end,
         }, **kwargs)
@@ -227,6 +229,7 @@ class PublicCalendarFilterForm(forms.Form):
         self.fields['docente'].choices = [('', 'Todos os docentes'), *[(teacher.name, teacher.name) for teacher in options.teachers]]
         self.fields['curso'].choices = [('', 'Todos os cursos'), *[(course.name, course.name) for course in options.courses]]
         self.fields['nivel'].choices = [('', 'Todos os níveis'), *stage_choices]
+        self.fields['turma'].choices = [('', 'Turma'), *[(group.label, group.label) for group in options.groups]]
         for name in ('inicio', 'fim'):
             self.fields[name].disabled = not calendar.dates_enabled
             if calendar.date_error:

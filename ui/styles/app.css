@@ -2200,6 +2200,36 @@
     padding: var(--spacing-5) var(--public-gutter) var(--spacing-10);
   }
 
+  .public-group {
+    flex: 0 1 auto;
+    width: 45%;
+    min-width: 0;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+
+    & .input,
+    & .select-trigger {
+      font-size: var(--text-sm);
+    }
+
+    @variant sm {
+      width: auto;
+      min-width: var(--container-menu);
+      font-size: var(--text-base);
+      line-height: var(--text-base--line-height);
+
+      & .input,
+      & .select-trigger {
+        font-size: var(--text-base);
+      }
+    }
+  }
+
+  .public-calendar > .card-head {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
   .public-calendar {
     &[aria-busy="true"] {
       opacity: 0.6;

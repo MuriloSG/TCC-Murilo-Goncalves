@@ -977,6 +977,77 @@ class AllocationManager(models.Manager):
             check_conflicts(plan)
             return plan
 
+    def create_recurrence(self, semester, class_group, subject, start, end, executor, start_time, slot_count, space, teachers):
+        """Cadastra uma aula recorrente, uma alocação por faixa do bloco.
+
+        Tudo numa transação: uma recusa ou uma falha não deixa alocação, oferta nem
+        registro de auditoria gravados. Devolve o plano executado, com as alocações
+        gravadas.
+        """
+        with transaction.atomic():
+            plan = self.plan_creation(
+                semester, class_group, subject, start, end, executor, start_time, slot_count, space, teachers,
+            )
+            for change in plan.changes:
+                change.execute(plan.cut)
+            created = [change.version.pk for change in plan.changes]
+            for change in plan.changes:
+                change.record(created)
+            return plan
+
+    def plan_creation(self, semester, class_group, subject, start, end, executor, start_time, slot_count, space, teachers):
+        """Confere o cadastro da aula e devolve o plano, sem gravar nada.
+
+        É a mesma conferência da execução, usada para o resumo mostrado antes da
+        confirmação. O dia da semana vem da data da primeira aula (D3).
+        """
+        if not executor.has_perm(permissions.SPACE_ALLOCATION_CREATE_RECURRENCE):
+            raise ValidationError('Só quem tem permissão cadastra aula no ensalamento.', code='not_allowed')
+        check_start(semester, start)
+        if start.weekday() >= len(WEEKDAY_ORDER):
+            raise ValidationError(
+                {'data': ValidationError('A aula acontece de segunda a sexta-feira. Escolha outra data.', code='weekend')},
+            )
+        if end is not None:
+            if end < start:
+                raise ValidationError(
+                    {'fim': ValidationError('A última aula não pode ser anterior à primeira. Escolha outra data.', code='before_start')},
+                )
+            if not semester.contains(end):
+                raise ValidationError(
+                    {'fim': ValidationError(
+                        f'A data {shown_date(end)} está fora do período do semestre {semester}.', code='outside',
+                    )},
+                )
+        slots = consecutive_slots(semester, start_time, slot_count)
+        if slots is None:
+            raise ValidationError(
+                {'horario': ValidationError('Escolha um horário do semestre.', code='invalid_slot')},
+            )
+        if space is not None and not space.is_active:
+            raise ValidationError(
+                {'espaco': ValidationError(f'O espaço {space.name} está desativado. Escolha outro espaço.', code='inactive')},
+            )
+        teachers = sorted(teachers, key=lambda teacher: teacher.name)
+        changes = [
+            RecurrenceCreation(version=Allocation(
+                semester=semester,
+                class_group=class_group,
+                subject=subject,
+                space=space,
+                weekday=WEEKDAY_ORDER[start.weekday()],
+                time_slot=slot,
+                origin=Origin.MANUAL,
+                valid_from=start,
+                valid_until=end,
+            ), teachers=teachers)
+            for slot in slots
+        ]
+        plan = RecurrencePlan(cut=start, changes=changes, executor=executor)
+        check_duplicates(plan)
+        check_conflicts(plan)
+        return plan
+
     def managed_by(self, user):
         """Alocações cujas ocorrências o usuário pode cancelar, pela mesma regra de `manages`."""
         if user.has_perm(permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE):
@@ -993,18 +1064,23 @@ def shown_date(day):
     return date_format(day, 'SHORT_DATE_FORMAT')
 
 
-def check_cut(allocations, cut):
-    """Confere a data de corte: hoje ou depois, no semestre, ocorrência da regra atual e
-    depois do início da vigência, para que a versão encerrada guarde alguma data."""
-    semester = allocations[0].semester
-    if cut < timezone.localdate():
+def check_start(semester, day):
+    """Confere a data em que uma recorrência passa a valer: hoje ou depois e no período do
+    semestre. É a parte comum à alteração e à criação da recorrência."""
+    if day < timezone.localdate():
         raise ValidationError(
             {'data': ValidationError('Escolha uma data a partir de hoje. As ocorrências passadas não mudam.', code='past')},
         )
-    if not semester.contains(cut):
+    if not semester.contains(day):
         raise ValidationError(
-            {'data': ValidationError(f'A data {shown_date(cut)} está fora do período do semestre {semester}.', code='outside')},
+            {'data': ValidationError(f'A data {shown_date(day)} está fora do período do semestre {semester}.', code='outside')},
         )
+
+
+def check_cut(allocations, cut):
+    """Confere a data de corte: a data de início da recorrência, mais a ocorrência da regra
+    atual e o início da vigência, para que a versão encerrada guarde alguma data."""
+    check_start(allocations[0].semester, cut)
     for allocation in allocations:
         if not allocation.occurs_on(cut):
             raise ValidationError(
@@ -1047,10 +1123,14 @@ def interval_choices(semester, count):
 
 
 def check_duplicates(plan):
-    """Recusa uma versão nova que repete a turma, a disciplina, o dia e a faixa de outra
-    alocação vigente no mesmo período, que a restrição de identidade não alcança."""
+    """Recusa uma alocação nova que repete a turma, a disciplina, o dia e a faixa de outra
+    alocação vigente no mesmo período, que a restrição de identidade não alcança.
+
+    Vale para a alteração e para a criação: na criação não há alocação atual, e nenhuma
+    alocação fica de fora da conferência.
+    """
     first = plan.changes[0].version
-    locked = [change.current.pk for change in plan.changes]
+    locked = plan.locked_ids
     for change in plan.changes:
         version = change.version
         taken = (
@@ -1076,7 +1156,8 @@ def check_duplicates(plan):
 def check_conflicts(plan):
     """Recusa a alteração quando o espaço está ocupado em alguma ocorrência da versão nova.
 
-    As ocupações vêm das mesmas fontes da Grade, a partir do corte até o fim da vigência:
+    Vale para a alteração e para a criação, que diferem só nas alocações deixadas de fora.
+    As ocupações vêm das mesmas fontes da Grade, a partir do início até o fim da vigência:
     o ensalamento, já sem as ocorrências canceladas e com a vigência de cada alocação, e
     os agendamentos aprovados da Agenda. Outra aula com a mesma disciplina e os mesmos
     docentes é turma junta e não conflita; o resto é choque (D6). A importação é feita
@@ -1087,7 +1168,7 @@ def check_conflicts(plan):
     first = plan.changes[0].version
     if first.space is None:
         return
-    end = plan.changes[0].ends
+    end = plan.changes[0].version.ends
     days = [
         day for day in dates_from(plan.cut, end)
         if first.occurs_on(day) and day not in plan.moved_dates
@@ -1095,7 +1176,7 @@ def check_conflicts(plan):
     if not days:
         return
     start_at, end_at = plan.changes[0].version.time_slot.start_time, plan.changes[-1].version.time_slot.end_time
-    locked = {change.current.pk for change in plan.changes}
+    locked = set(plan.locked_ids)
     wanted = set(days)
     lesson = (first.subject.name.casefold(), frozenset(teacher.name.casefold() for teacher in plan.changes[0].teachers))
     found = []
@@ -1147,10 +1228,6 @@ class RecurrenceChange:
     teachers: list
     moved: list = field(default_factory=list)
 
-    @property
-    def ends(self):
-        return self.current.ends
-
     def execute(self, cut):
         """Encerra a alocação na véspera do corte, grava a versão nova, move as exceções e
         registra a auditoria."""
@@ -1191,6 +1268,54 @@ class RecurrenceChange:
         )
 
 
+@dataclass
+class RecurrenceCreation:
+    """Uma alocação de uma aula cadastrada no sistema, sem alocação atual que ela substitua."""
+
+    version: object
+    teachers: list
+    current: object = None
+    moved: list = field(default_factory=list)
+
+    def execute(self, start):
+        """Grava a alocação, os docentes e a oferta da disciplina para a turma."""
+        version = self.version
+        version.full_clean(exclude=['space'])
+        version.save()
+        version.teachers.set(self.teachers)
+        ClassOffering.objects.record(version.semester, version.subject, version.class_group)
+
+    def record(self, created_ids):
+        """Registra a criação na auditoria, com as demais alocações do bloco nos metadados.
+
+        Só acontece depois que todas estão gravadas, para que cada registro traga os
+        identificadores das outras.
+        """
+        version = self.version
+        values = version.audit_values()
+        AuditLog.objects.record(
+            catalog.CREATE,
+            catalog.SPACE_ALLOCATION,
+            resource_id=version.pk,
+            new_values={key: values[key] for key in ('turma', 'disciplina', 'dia', 'horario', 'espaco', 'docentes')},
+            metadata={
+                'semestre': values['semestre'],
+                'origem': version.origin,
+                'vigente_desde': values['vigente_desde'],
+                'vigente_ate': values['vigente_ate'],
+                'outras_alocacoes': [pk for pk in created_ids if pk != version.pk],
+            },
+        )
+
+
+@dataclass(frozen=True)
+class LessonSummary:
+    """Disciplina e turma de uma aula, como o resumo do cadastro mostra."""
+
+    subject: str
+    group: str
+
+
 @dataclass(frozen=True)
 class RecurrenceSummary:
     """Dia, horário, espaço e docentes de uma aula, como o resumo da alteração mostra."""
@@ -1203,8 +1328,13 @@ class RecurrenceSummary:
 
     @property
     def text(self):
-        parts = [Weekday(self.weekday).label, f'das {slot_text(self.start, self.end)}', self.space or 'Sem espaço']
+        parts = [self.text_without_space, self.space or 'Sem espaço']
         return ', '.join(parts)
+
+    @property
+    def text_without_space(self):
+        """O dia e o horário, para o resumo que mostra o espaço em linha própria."""
+        return f'{Weekday(self.weekday).label}, das {slot_text(self.start, self.end)}'
 
 
 def summary_of(allocations, teachers):
@@ -1220,8 +1350,12 @@ def summary_of(allocations, teachers):
 
 @dataclass
 class RecurrencePlan:
-    """Alteração conferida da recorrência de uma aula: o corte, cada alocação com a versão
-    nova e o resumo de antes e de depois."""
+    """Recorrência conferida de uma aula: a data em que ela passa a valer, cada alocação
+    nova e o resumo de antes e de depois.
+
+    Na alteração cada mudança traz a alocação atual que a versão nova substitui; na criação
+    não há alocação atual, e o resumo de antes fica vazio.
+    """
 
     cut: object
     changes: list
@@ -1232,7 +1366,15 @@ class RecurrencePlan:
         return self.changes[0].current
 
     @property
+    def locked_ids(self):
+        """Alocações que a conferência deixa de fora por serem as da própria aula. Na
+        criação não há nenhuma."""
+        return [change.current.pk for change in self.changes if change.current is not None]
+
+    @property
     def before(self):
+        if self.lesson is None:
+            return None
         return summary_of(
             [change.current for change in self.changes], sorted(self.lesson.teachers.all(), key=lambda item: item.name),
         )
@@ -1242,6 +1384,32 @@ class RecurrencePlan:
         return summary_of([change.version for change in self.changes], self.changes[0].teachers)
 
     @property
+    def lesson_summary(self):
+        """Disciplina e turma da aula, lidas da alocação nova."""
+        version = self.changes[0].version
+        return LessonSummary(subject=version.subject.name, group=str(version.class_group))
+
+    @property
+    def period_text(self):
+        """Período em que a recorrência vale, como o resumo mostra."""
+        version = self.changes[0].version
+        if version.valid_until is None:
+            return f'De {shown_date(version.starts)} até o fim do semestre, em {shown_date(version.ends)}'
+        return f'De {shown_date(version.starts)} a {shown_date(version.valid_until)}'
+
+    @property
+    def occurrence_count(self):
+        """Quantas aulas a recorrência gera no período, sem contar as canceladas."""
+        version = self.changes[0].version
+        moved = set(self.moved_dates)
+        return sum(1 for day in dates_from(self.cut, version.ends) if version.occurs_on(day) and day not in moved)
+
+    @property
+    def occurrence_text(self):
+        count = self.occurrence_count
+        return '1 aula' if count == 1 else f'{count} aulas'
+
+    @property
     def moved_dates(self):
         return sorted({exception.date for change in self.changes for exception in change.moved})
 
@@ -1249,11 +1417,14 @@ class RecurrencePlan:
         """Separa as exceções do corte em diante, que passam para a versão nova.
 
         Uma exceção cuja data não é ocorrência da versão nova recusa a alteração, para que
-        nenhum cancelamento seja perdido em silêncio (D5).
+        nenhum cancelamento seja perdido em silêncio (D5). Um plano de criação não tem
+        alocação atual nem exceção a transferir.
         """
+        if not self.locked_ids:
+            return
         by_allocation = {}
         for exception in AllocationException.objects.filter(
-            allocation__in=[change.current.pk for change in self.changes], date__gte=self.cut,
+            allocation__in=self.locked_ids, date__gte=self.cut,
         ).order_by('date'):
             by_allocation.setdefault(exception.allocation_id, []).append(exception)
         lost = set()

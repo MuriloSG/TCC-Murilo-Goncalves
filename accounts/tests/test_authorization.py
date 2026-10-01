@@ -73,6 +73,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.SPACE_ALLOCATION_IMPORT_DELETE,
             permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE,
             permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE,
+            permissions.SPACE_ALLOCATION_CREATE_RECURRENCE,
         } | permissions.SPACE_PERMISSIONS | permissions.BOOKING_PERMISSIONS | permissions.SUBJECT_PERMISSIONS | permissions.CLASS_GROUP_PERMISSIONS
         self.assertEqual(user.effective_permissions(), granted)
         for code in granted:
@@ -137,6 +138,7 @@ class RolePermissionsTests(AuthorizationTestCase):
             permissions.SPACE_ALLOCATION_IMPORT_DELETE,
             permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE,
             permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE,
+            permissions.SPACE_ALLOCATION_CREATE_RECURRENCE,
         } | permissions.SPACE_PERMISSIONS | permissions.BOOKING_PERMISSIONS | permissions.SUBJECT_PERMISSIONS | permissions.CLASS_GROUP_PERMISSIONS
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)

@@ -379,7 +379,7 @@ class SpaceAllocationImport(ImportDefinition):
     warning_labels = {
         COURSE_WITHOUT_TITLE: 'O nome do curso veio do cabeçalho da turma, porque a planilha não traz o título.',
         ASSOCIATED_TO_NEW: 'O nome será guardado como outro nome de um espaço cadastrado por esta importação.',
-        RECURRENCE_CHANGED: 'Esta aula teve a recorrência alterada no sistema e não foi atualizada pela planilha.',
+        RECURRENCE_CHANGED: 'Esta aula foi definida no sistema e não foi atualizada pela planilha.',
         USER_WITH_OTHER_DATA: (
             'Usuário já cadastrado com outros dados. A importação do ensalamento não altera o cadastro. '
             'Use a tela de usuários ou a importação de usuários.'

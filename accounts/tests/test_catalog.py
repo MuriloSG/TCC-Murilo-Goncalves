@@ -22,6 +22,7 @@ SPACE_ALLOCATION_CODE = 'ENSALAMENTO.IMPORTAR'
 SPACE_ALLOCATION_DELETE_CODE = 'ENSALAMENTO.EXCLUIR_IMPORTACAO'
 SPACE_ALLOCATION_CANCEL_CODE = 'ENSALAMENTO.CANCELAR_OCORRENCIA'
 SPACE_ALLOCATION_CHANGE_CODE = 'ENSALAMENTO.ALTERAR_RECORRENCIA'
+SPACE_ALLOCATION_CREATE_CODE = 'ENSALAMENTO.CRIAR_RECORRENCIA'
 NEW_CODES = [SPACE_ALLOCATION_VIEW_CODE, IMPORT_DELETE_CODE, SPACE_ALLOCATION_DELETE_CODE]
 SPACE_CODES = {'ESPACO.VISUALIZAR', 'ESPACO.CRIAR', 'ESPACO.EDITAR', 'ESPACO.ALTERAR_SITUACAO', 'ESPACO.EXCLUIR'}
 BOOKING_CODES = {'AGENDA.VISUALIZAR', 'AGENDA.SOLICITAR', 'AGENDA.ANALISAR'}
@@ -66,12 +67,12 @@ class PermissionConstantsTests(SimpleTestCase):
         self.assertEqual(permissions.SPACE_DELETE, 'ESPACO.EXCLUIR')
         self.assertEqual(permissions.BOOKING_CREATE, 'AGENDA.CRIAR')
 
-    def test_all_permissions_has_the_thirty_six_codes(self):
+    def test_all_permissions_has_every_code(self):
         self.assertEqual(
             permissions.ALL_PERMISSIONS,
-            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE} | SPACE_CODES | BOOKING_CODES | {BOOKING_CREATE_CODE} | ACADEMIC_CODES | ROLE_CODES,
+            USER_CODES | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE, SPACE_ALLOCATION_CREATE_CODE} | SPACE_CODES | BOOKING_CODES | {BOOKING_CREATE_CODE} | ACADEMIC_CODES | ROLE_CODES,
         )
-        self.assertEqual(len(permissions.ALL_PERMISSIONS), 36)
+        self.assertEqual(len(permissions.ALL_PERMISSIONS), 37)
 
     def test_codes_follow_the_format(self):
         for code in permissions.ALL_PERMISSIONS:
@@ -104,7 +105,7 @@ class InitialCatalogTests(TestCase):
     def test_database_codes_match_constants(self):
         codes = set(Permission.objects.values_list('code', flat=True))
         self.assertEqual(codes, set(permissions.ALL_PERMISSIONS))
-        self.assertEqual(Permission.objects.count(), 36)
+        self.assertEqual(Permission.objects.count(), 37)
 
     def test_reserved_permissions_exist_in_database(self):
         codes = set(Permission.objects.values_list('code', flat=True))
@@ -128,7 +129,7 @@ class InitialCatalogTests(TestCase):
         self.assertEqual(
             codes,
             set(permissions.ADMINISTRATIVE_CAPABILITY)
-            | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE}
+            | {IMPORT_CODE, IMPORT_DELETE_CODE, AUDIT_CODE, NOTICE_CODE, SPACE_ALLOCATION_VIEW_CODE, SPACE_ALLOCATION_CODE, SPACE_ALLOCATION_DELETE_CODE, SPACE_ALLOCATION_CANCEL_CODE, SPACE_ALLOCATION_CHANGE_CODE, SPACE_ALLOCATION_CREATE_CODE}
             | SPACE_CODES
             | BOOKING_CODES
             | {BOOKING_CREATE_CODE}

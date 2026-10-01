@@ -16,6 +16,7 @@
     <div class="page-actions">
       <a class="btn-secondary" href="{% url 'space_allocation_exception_list' %}">{% icon "calendar-x" %}Ver exceções</a>
       {% if perms.ENSALAMENTO.IMPORTAR %}<a class="btn-secondary" href="{{ import_list_url }}">{% icon "upload" %}Ver importações</a>{% endif %}
+      {% if create_url %}<a class="btn-primary" href="{{ create_url }}" hx-get="{{ create_url }}" hx-target="#modal">{% icon "calendar-plus" %}Cadastrar aula</a>{% endif %}
     </div>
   </div>
 {% endblock %}
@@ -78,7 +79,7 @@
                   {% elif cell %}
                     <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}" rowspan="{{ cell.span }}">{% include "schedule/partials/timetable_cell.html" %}</td>
                   {% else %}
-                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span></td>
+                    <td class="timetable-slot{% if day.is_today %} is-today{% endif %}{% if day.is_week_start %} is-week-start{% endif %}"><span class="sr-only">{{ day.full_label }}, {% if day.date %}{{ day.date|date:"SHORT_DATE_FORMAT" }}, {% endif %}das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}, disponível</span>{% if day.can_create %}<a class="timetable-add" href="{{ create_url }}&amp;data={{ day.date|date:"Y-m-d" }}&amp;horario={{ row.start|time:"H:i" }}" hx-get="{{ create_url }}&amp;data={{ day.date|date:"Y-m-d" }}&amp;horario={{ row.start|time:"H:i" }}" hx-target="#modal" aria-label="Cadastrar aula, {{ day.full_label }}, {{ day.date|date:"SHORT_DATE_FORMAT" }}, das {{ row.start|time:"H:i" }} às {{ row.end|time:"H:i" }}">{% icon "calendar-plus" "size-4" %}</a>{% endif %}</td>
                   {% endif %}
                 {% endfor %}
               </tr>
@@ -104,6 +105,7 @@
             {% else %}
               <p class="timetable-free">Sala disponível o dia todo.</p>
             {% endif %}
+            {% if day.can_create %}<a class="timetable-day-add" href="{{ create_url }}&amp;data={{ day.date|date:"Y-m-d" }}" hx-get="{{ create_url }}&amp;data={{ day.date|date:"Y-m-d" }}" hx-target="#modal">{% icon "calendar-plus" "size-4" %}Cadastrar aula</a>{% endif %}
           </section>
         {% endfor %}
       </div>{% endif %}

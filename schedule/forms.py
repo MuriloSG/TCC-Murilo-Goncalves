@@ -3,7 +3,9 @@ from datetime import time
 from django import forms
 from django.db.models import Q
 
-from schedule.models import Course, Space, SpaceOrigin, Teacher, Weekday, interval_choices
+from schedule.models import (
+    ClassGroup, Course, Space, SpaceOrigin, Subject, Teacher, TimeSlot, Weekday, interval_choices,
+)
 from schedule.timetable import natural_key
 from ui.forms import DateInput
 
@@ -277,3 +279,88 @@ class RecurrenceChangeForm(forms.Form):
         value = self.cleaned_data['horario']
         hours, minutes = value.split(':')
         return time(int(hours), int(minutes))
+
+
+class RecurrenceCreateForm(forms.Form):
+    """Dados de uma aula recorrente cadastrada na Grade, dentro de um semestre.
+
+    O semestre não é campo: ele vem da Grade de onde o cadastro foi aberto. O dia da semana
+    também não é campo, porque vem da data da primeira aula (D3 da Change
+    criar-recorrencia-do-ensalamento). A conferência das regras fica no model.
+    """
+
+    turma = forms.ModelChoiceField(
+        label='Turma',
+        queryset=ClassGroup.objects.none(),
+        empty_label='Escolha a turma',
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+    disciplina = forms.ModelChoiceField(
+        label='Disciplina',
+        queryset=Subject.objects.none(),
+        empty_label='Escolha a disciplina',
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+    docentes = forms.ModelMultipleChoiceField(
+        label='Docentes',
+        queryset=Teacher.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'input'}),
+    )
+    espaco = forms.ModelChoiceField(
+        label='Espaço',
+        queryset=Space.objects.none(),
+        required=False,
+        empty_label='Sem espaço',
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+    data = forms.DateField(
+        label='Primeira aula',
+        help_text='A aula se repete toda semana neste dia.',
+        widget=DateInput(),
+    )
+    fim = forms.DateField(
+        label='Última aula',
+        required=False,
+        help_text='Sem data, a aula vale até o fim do semestre.',
+        widget=DateInput(),
+    )
+    horario = forms.ChoiceField(label='Horário de início', widget=forms.Select(attrs={'class': 'input'}))
+    duracao = forms.ChoiceField(label='Duração', widget=forms.Select(attrs={'class': 'input'}))
+
+    def __init__(self, *args, semester=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        slots = sorted(TimeSlot.objects.filter(semester=semester), key=lambda slot: slot.start_time)
+        self.fields['horario'].choices = [
+            (f'{slot.start_time:%H:%M}', f'A partir das {slot.start_time:%H:%M}') for slot in slots
+        ]
+        self.fields['duracao'].choices = [
+            (count, '1 faixa' if count == 1 else f'{count} faixas seguidas')
+            for count in range(1, longest_run(slots) + 1)
+        ]
+        self.fields['turma'].queryset = ClassGroup.objects.select_related('course').order_by('course__name', 'label')
+        self.fields['turma'].label_from_instance = str
+        self.fields['disciplina'].queryset = Subject.objects.order_by('name')
+        self.fields['disciplina'].label_from_instance = lambda subject: subject.name
+        self.fields['espaco'].queryset = Space.objects.filter(is_active=True).order_by('name')
+        self.fields['espaco'].label_from_instance = lambda space: space.name
+
+    def clean_horario(self):
+        hours, minutes = self.cleaned_data['horario'].split(':')
+        return time(int(hours), int(minutes))
+
+    def clean_duracao(self):
+        return int(self.cleaned_data['duracao'])
+
+
+def longest_run(slots):
+    """Maior quantidade de faixas seguidas do semestre, com o mínimo de uma."""
+    by_start = {slot.start_time: slot for slot in slots}
+    longest = 1
+    for slot in slots:
+        length, current = 1, slot
+        while current.end_time in by_start:
+            current = by_start[current.end_time]
+            length += 1
+        longest = max(longest, length)
+    return longest

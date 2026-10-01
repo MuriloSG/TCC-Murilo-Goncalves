@@ -571,7 +571,7 @@ class ReimportTests(RecurrenceTestCase):
         self.assertIn(RECURRENCE_CHANGED, SpaceAllocationImport.warning_labels)
         self.assertEqual(
             SpaceAllocationImport.warning_labels[RECURRENCE_CHANGED],
-            'Esta aula teve a recorrência alterada no sistema e não foi atualizada pela planilha.',
+            'Esta aula foi definida no sistema e não foi atualizada pela planilha.',
         )
 
     def test_lesson_without_versions_still_updates(self):

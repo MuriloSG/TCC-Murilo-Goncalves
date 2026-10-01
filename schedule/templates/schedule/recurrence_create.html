@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Cadastrar aula{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ section_url }}">{{ section_title }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Cadastrar aula</span></li>
+{% endblock %}
+
+{% block content %}{% if summary %}{% include "schedule/recurrence_create_summary.html" %}{% else %}{% include "schedule/recurrence_create_modal.html" %}{% endif %}{% endblock %}

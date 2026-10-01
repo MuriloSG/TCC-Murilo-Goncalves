@@ -2,7 +2,8 @@
 
 A grade, o cancelamento de ocorrência e a lista de exceções exigem `ENSALAMENTO.VISUALIZAR`;
 quem cancela é conferido por aula no model. A alteração da recorrência exige
-`ENSALAMENTO.ALTERAR_RECORRENCIA`, conferida de novo no model. As telas da importação exigem
+`ENSALAMENTO.ALTERAR_RECORRENCIA` e o cadastro de aula exige `ENSALAMENTO.CRIAR_RECORRENCIA`,
+conferidas de novo no model. As telas da importação exigem
 `ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`.
 O cadastro de espaços exige a permissão de cada operação do recurso `ESPACO` (D15 da Change
 manipulacao-dos-espacos). A autenticação vem do `login_required` no `urls.py` e a
@@ -48,6 +49,7 @@ from schedule.forms import (
     ClassGroupForm,
     GridFilterForm,
     RecurrenceChangeForm,
+    RecurrenceCreateForm,
     SpaceAssociateForm,
     SpaceFilterForm,
     SpaceForm,
@@ -60,6 +62,7 @@ from schedule.models import (
     AllocationException,
     ClassGroup,
     ClassOffering,
+    Semester,
     Space,
     SpaceDecision,
     Subject,
@@ -210,6 +213,8 @@ class SpaceAllocationGridView(TemplateView):
         if week.is_dated:
             with_cancel_actions(week, self.request.user)
             with_change_actions(week, self.request.user, today)
+            context['create_url'] = create_url(self.request.user, code, space)
+            with_create_actions(week, self.request.user, today)
         return context
 
 
@@ -260,7 +265,61 @@ def with_change_actions(week, user, today):
             ]
 
 
-class RecurrenceChangeView(OperationFormView):
+def create_url(user, code, space):
+    """Endereço do cadastro de aula já com o semestre e a sala da Grade, ou None sem a permissão.
+
+    A data e o horário da célula são acrescentados pelo template, em cada faixa disponível.
+    """
+    if not user.has_perm(permissions.SPACE_ALLOCATION_CREATE_RECURRENCE):
+        return None
+    query = {'semestre': code}
+    if space:
+        query['sala'] = space.name
+    return f"{reverse('space_allocation_recurrence_create')}?{urlencode(query)}"
+
+
+def with_create_actions(week, user, today):
+    """Marca os dias datados de hoje em diante, em que a faixa disponível oferece o cadastro.
+
+    A permissão é conferida uma vez por requisição. A view do cadastro e o model conferem
+    tudo de novo, e esconder a ação não é a proteção.
+    """
+    if not user.has_perm(permissions.SPACE_ALLOCATION_CREATE_RECURRENCE):
+        return
+    for day in week.days:
+        day.can_create = day.date is not None and day.in_period and day.date >= today
+
+
+class PlannedOperationView(OperationFormView):
+    """Operação do ensalamento conferida antes de gravar, em duas etapas no mesmo modal.
+
+    O primeiro envio confere tudo e mostra o resumo, sem gravar; o envio seguinte traz a
+    confirmação e executa, conferindo de novo. Os dados informados viajam em campos
+    ocultos entre as duas etapas.
+    """
+
+    summary_template_name = None
+
+    @property
+    def is_confirmed(self):
+        return self.request.POST.get('confirmar') == '1'
+
+    def render_summary(self, form, plan):
+        hidden = [
+            (name, value)
+            for name in form.fields
+            for value in self.request.POST.getlist(name)
+        ]
+        template = self.summary_template_name if self.request.htmx else self.template_name
+        return self.response_class(
+            request=self.request,
+            template=[template],
+            context=self.get_context_data(form=form, plan=plan, hidden=hidden, summary=True),
+            using=self.template_engine,
+        )
+
+
+class RecurrenceChangeView(PlannedOperationView):
     """Altera a recorrência de uma aula a partir de uma data, em duas etapas no mesmo modal.
 
     A aula é identificada pelas alocações do bloco da Grade e pela data em que a ação foi
@@ -350,7 +409,7 @@ class RecurrenceChangeView(OperationFormView):
     def form_valid(self, form):
         data = form.cleaned_data
         try:
-            if self.request.POST.get('confirmar') != '1':
+            if not self.is_confirmed:
                 plan = Allocation.objects.plan_recurrence(**self.arguments(data))
                 return self.render_summary(form, plan)
             self.plan = Allocation.objects.change_recurrence(**self.arguments(data))
@@ -365,19 +424,96 @@ class RecurrenceChangeView(OperationFormView):
             return HttpResponseClientRedirect(self.get_success_url())
         return self.redirect_to(self.get_success_url())
 
-    def render_summary(self, form, plan):
-        hidden = [
-            (name, value)
-            for name in form.fields
-            for value in self.request.POST.getlist(name)
-        ]
-        template = self.summary_template_name if self.request.htmx else self.template_name
-        return self.response_class(
-            request=self.request,
-            template=[template],
-            context=self.get_context_data(form=form, plan=plan, hidden=hidden, summary=True),
-            using=self.template_engine,
+class RecurrenceCreateView(PlannedOperationView):
+    """Cadastra uma aula recorrente na Grade, em duas etapas no mesmo modal.
+
+    O semestre vem da Grade de onde o cadastro foi aberto, e um semestre inexistente ou sem
+    período responde 404. A data, o horário e a sala da célula acionada chegam pela URL e
+    só preenchem o formulário. O model confere tudo de novo no envio com a confirmação.
+    """
+
+    permission_required = permissions.SPACE_ALLOCATION_CREATE_RECURRENCE
+    template_name = 'schedule/recurrence_create.html'
+    modal_template_name = 'schedule/recurrence_create_modal.html'
+    summary_template_name = 'schedule/recurrence_create_summary.html'
+    form_class = RecurrenceCreateForm
+    title = 'Cadastrar aula'
+    submit_label = 'Revisar cadastro'
+    section_title = 'Ensalamento'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.semester = Semester.objects.filter(code=request.GET.get('semestre')).first()
+        if self.semester is None or not self.semester.has_period:
+            raise Http404
+        self.day = parse_date(request.GET.get('data'))
+        self.space = Space.objects.filter(name__iexact=request.GET.get('sala') or '', is_active=True).first()
+
+    def grid_url(self, day=None):
+        query = {'semestre': self.semester.code}
+        if day is not None:
+            query['semana'] = day.isoformat()
+        if self.space:
+            query['sala'] = self.space.name
+        return f"{reverse('space_allocation_grid')}?{urlencode(query)}"
+
+    def get_success_url(self):
+        return self.grid_url(self.plan.cut)
+
+    def get_close_url(self):
+        return self.grid_url(self.day)
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'semester': self.semester}
+
+    def get_initial(self):
+        return {
+            'data': self.day,
+            'horario': self.request.GET.get('horario'),
+            'espaco': self.space.pk if self.space else None,
+            'duracao': 1,
+        }
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            semester=self.semester,
+            section_title=self.section_title,
+            section_url=self.get_close_url(),
+            **kwargs,
         )
+
+    def arguments(self, data):
+        return {
+            'semester': self.semester,
+            'class_group': data['turma'],
+            'subject': data['disciplina'],
+            'start': data['data'],
+            'end': data['fim'],
+            'executor': self.request.user,
+            'start_time': data['horario'],
+            'slot_count': data['duracao'],
+            'space': data['espaco'],
+            'teachers': list(data['docentes']),
+        }
+
+    def form_valid(self, form):
+        data = form.cleaned_data
+        try:
+            if not self.is_confirmed:
+                plan = Allocation.objects.plan_creation(**self.arguments(data))
+                return self.render_summary(form, plan)
+            self.plan = Allocation.objects.create_recurrence(**self.arguments(data))
+        except ValidationError as error:
+            add_operation_error(form, error)
+            return self.form_invalid(form)
+        messages.success(
+            self.request,
+            f'Aula de {data["disciplina"].name} cadastrada a partir de '
+            f'{date_format(self.plan.cut, "SHORT_DATE_FORMAT")}.',
+        )
+        if self.request.htmx:
+            return HttpResponseClientRedirect(self.get_success_url())
+        return self.redirect_to(self.get_success_url())
 
 
 class OccurrenceCancelView(ConfirmedActionView):

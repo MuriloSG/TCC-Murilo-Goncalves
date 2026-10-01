@@ -37,4 +37,4 @@ Esta Change parte da Change `alterar-recorrencia-do-ensalamento`, já arquivada,
 - `schedule/models.py`: `plan_creation` e `create_recurrence` no `AllocationManager`, `RecurrenceCreation` e a generalização de `check_duplicates` e `check_conflicts` para um plano sem alocação atual.
 - `schedule/forms.py`, `schedule/views.py`, `schedule/urls.py`, `schedule/templates/schedule/grid.html` e os templates do modal e do resumo.
 - `accounts/permissions.py`, `audit/catalog.py`, `ui/styles/app.css`.
-- Migration `accounts/0013_create_recurrence_permission`. Nenhuma migration em `schedule`: os campos já existem.
+- Migration `accounts/0015_create_recurrence_permission`. Nenhuma migration em `schedule`: os campos já existem.

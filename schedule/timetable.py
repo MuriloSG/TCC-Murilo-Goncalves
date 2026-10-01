@@ -156,6 +156,7 @@ class Day:
     in_period: bool = True
     available: int = 0
     is_week_start: bool = False
+    can_create: bool = False
 
     @property
     def short_label(self):

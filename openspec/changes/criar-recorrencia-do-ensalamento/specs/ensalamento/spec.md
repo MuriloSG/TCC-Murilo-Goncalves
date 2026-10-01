@@ -103,6 +103,68 @@ Esconder o controle NÃO DEVE (MUST NOT) ser a proteção: a rota DEVE (MUST) de
 
 ## MODIFIED Requirements
 
+### Requirement: Reimportação de um semestre
+A planilha DEVE (MUST) poder ser importada de novo para o mesmo semestre, e a nova importação NÃO DEVE (MUST NOT) duplicar espaço, docente, curso, disciplina, turma, faixa de horário nem alocação. A decisão de cada linha DEVE (MUST) ser `create` quando o registro não existir, `update` quando existir e algum dado diferir, e `unchanged` quando existir e nada diferir. Numa alocação, só o espaço e os docentes DEVEM (MUST) poder mudar sem criar registro novo. Quando a identidade da linha corresponde a uma alocação com vigência definida, cadastrada ou alterada no sistema, a linha DEVE (MUST) ter a ação `unchanged` e o aviso "Esta aula foi definida no sistema e não foi atualizada pela planilha.", e a importação NÃO DEVE (MUST NOT) alterar essa alocação nem criar outra com a mesma identidade.
+
+A importação DEVE (MUST) acrescentar e atualizar, e NÃO DEVE (MUST NOT) excluir nada. Uma alocação do semestre que deixou de constar na planilha DEVE (MUST) ser preservada, em qualquer origem, e a ausência de um registro na planilha NÃO DEVE (MUST NOT) ser interpretada como ordem de exclusão, porque depois da importação o sistema é a fonte dos agendamentos. Espaço, docente, curso, disciplina, turma e faixa de horário ausentes da planilha nova DEVEM (MUST) ser preservados. A importação de um semestre NÃO DEVE (MUST NOT) excluir nem alterar alocação de outro semestre. Nenhuma linha de uma importação de ensalamento DEVE (MUST) ter ação de exclusão, e o sistema NÃO DEVE (MUST NOT) oferecer, nesta versão, nenhum caminho para excluir alocação.
+
+Duas células da mesma aba que descrevam a mesma turma, o mesmo dia, a mesma faixa de horário e a mesma disciplina DEVEM (MUST) gerar erro de duplicidade, com as duas células citadas.
+
+#### Scenario: Reimportação sem mudanças
+- **GIVEN** uma importação de `2026/1` concluída
+- **WHEN** a mesma planilha é enviada de novo para `2026/1`
+- **THEN** todas as linhas têm a ação `unchanged` e nenhuma entidade é criada, alterada ou excluída
+
+#### Scenario: Alocação que mudou de espaço
+- **GIVEN** uma alocação da turma `6º PERÍODO` de engenharia florestal, na disciplina `Patologia Florestal`, na segunda-feira, na faixa `07:20 - 08:10`, no espaço `3/8`
+- **WHEN** a prévia de uma planilha que põe a mesma aula no espaço `3/9` é gerada
+- **THEN** a linha tem a ação `update`, com a mudança de espaço de `3/8` para `3/9`, e nenhuma alocação nova
+
+#### Scenario: Alocação que deixou de constar é preservada
+- **GIVEN** uma alocação `IMPORTADA` de `2026/1`
+- **WHEN** uma planilha sem essa aula é importada e confirmada para `2026/1`
+- **THEN** a alocação continua existindo, igual ao que era
+- **AND** o plano da importação não tem nenhuma linha de exclusão
+
+#### Scenario: Alocação nova acrescentada a um semestre já importado
+- **GIVEN** uma importação de `2026/1` concluída
+- **WHEN** uma planilha com uma aula a mais é importada e confirmada para `2026/1`
+- **THEN** a alocação nova é criada e as anteriores continuam
+
+#### Scenario: Alteração manual preservada
+- **GIVEN** uma aula de `2026/2` cuja recorrência foi alterada no sistema a partir de 05/10/2026, da sala `HV 1` para a `HV 2`
+- **WHEN** a planilha, que ainda traz a aula na `HV 1`, é importada de novo para `2026/2`
+- **THEN** a alocação encerrada e a versão nova continuam iguais, e a linha tem a ação `unchanged` com o aviso da aula definida no sistema
+
+#### Scenario: Regra antiga não é recriada
+- **GIVEN** uma aula de segunda-feira cuja recorrência passou para quarta-feira a partir de 05/10/2026
+- **WHEN** a planilha, que ainda traz a aula na segunda-feira, é importada de novo
+- **THEN** nenhuma alocação é criada e a aula continua sem ocorrência na segunda-feira a partir de 05/10/2026
+
+#### Scenario: Catálogo preservado
+- **GIVEN** o espaço `Zoo II`, usado por uma alocação de `2026/1`
+- **WHEN** uma planilha cuja lista de espaços não traz `Zoo II` é importada para `2026/1`
+- **THEN** o espaço continua existindo
+
+#### Scenario: Ausência de exclusão
+- **WHEN** os planos e as rotas da importação de ensalamento são inspecionados
+- **THEN** nenhuma linha tem ação de exclusão e não existe rota que exclua alocação
+
+#### Scenario: Outro semestre intocado
+- **GIVEN** os semestres `2026/1` e `2026/2`, cada um com alocações
+- **WHEN** uma planilha é importada de novo para `2026/2`
+- **THEN** nenhuma alocação de `2026/1` é criada, alterada ou excluída
+
+#### Scenario: Duplicidade dentro da planilha
+- **GIVEN** duas células da mesma turma, dia e faixa de horário com a mesma disciplina
+- **WHEN** a prévia é gerada
+- **THEN** as duas linhas recebem erro de duplicidade citando as duas células, e a importação fica `COM_ERROS`
+
+#### Scenario: Aula cadastrada no sistema preservada
+- **GIVEN** uma aula de `2026/2` cadastrada pela interface, com a vigência a partir de 06/10/2026
+- **WHEN** uma planilha com a mesma turma, disciplina, dia e faixa é importada de novo para `2026/2`
+- **THEN** a alocação continua igual, nenhuma outra é criada e a linha tem a ação `unchanged` com o aviso da aula definida no sistema
+
 ### Requirement: Alocação como agendamento recorrente do espaço
 Uma alocação DEVE (MUST) registrar, para um semestre, a ocupação de um espaço por uma turma, numa disciplina, com um ou mais docentes, num dia da semana e numa faixa de horário. O espaço e os docentes PODEM (MAY) estar ausentes, porque a planilha institucional traz atividade sem sala e atividade sem docente reconhecido, e uma alocação sem espaço NÃO DEVE (MUST NOT) ocupar espaço nenhum. Cada alocação DEVE (MUST) cobrir exatamente uma faixa de horário, e o sistema NÃO DEVE (MUST NOT) unir faixas seguidas numa alocação única. Duas alocações do mesmo semestre PODEM (MAY) ter o mesmo espaço, o mesmo dia e a mesma faixa de horário, e a importação NÃO DEVE (MUST NOT) recusar esse caso nem tratá-lo como conflito. A importação NÃO DEVE (MUST NOT) implementar detecção de conflito de espaço ou de docente, nem reproduzir a marcação de choque da planilha institucional, nem gravar essa marcação como dado. A detecção de conflito DEVE (MUST) existir só nas operações feitas no sistema: a alteração da recorrência e a criação da recorrência.
 

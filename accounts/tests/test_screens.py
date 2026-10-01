@@ -140,7 +140,7 @@ class FormScreenTests(ScreensTestCase):
         self.role.set_permissions(['USUARIO.VISUALIZAR', 'USUARIO.EDITAR'])
         content = self.client.get(f'/perfis/{self.role.pk}/permissoes/', headers={'HX-Request': 'true'}).content.decode()
         self.assertIn('<dialog class="modal modal-wide"', content)
-        self.assertRegex(content, r'<strong><span data-checklist-selected>2</span> de 31</strong> permissões selecionadas')
+        self.assertRegex(content, r'<strong><span data-checklist-selected>2</span> de 32</strong> permissões selecionadas')
         self.assertIn('<span class="count" data-checklist-group-count>2/7</span>', content)
         self.assertRegex(content, r'value="USUARIO.EDITAR"[^>]*checked')
         self.assertIn('<strong>USUARIO.EDITAR</strong> <span class="perm-description">Alterar nome e e-mail de usuário</span>', content)
@@ -150,7 +150,7 @@ class FormScreenTests(ScreensTestCase):
         content = self.client.get(f'/perfis/{self.role.pk}/permissoes/').content.decode()
         self.assertIn('<div class="checklist-tools" data-checklist-tools hidden>', content)
         self.assertIn('<p class="checklist-unsaved" data-checklist-unsaved hidden>', content)
-        self.assertRegex(content, r'<span data-checklist-selected>0</span> de 31</strong>')
+        self.assertRegex(content, r'<span data-checklist-selected>0</span> de 32</strong>')
 
     def test_campo_de_escolha_usa_o_componente(self):
         content = self.client.get('/usuarios/novo/').content.decode()

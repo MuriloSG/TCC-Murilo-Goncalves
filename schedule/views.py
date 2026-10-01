@@ -213,6 +213,7 @@ class SpaceAllocationGridView(TemplateView):
         if week.is_dated:
             with_cancel_actions(week, self.request.user)
             with_change_actions(week, self.request.user, today)
+            with_end_actions(week, self.request.user, today)
             context['create_url'] = create_url(self.request.user, code, space)
             with_create_actions(week, self.request.user, today)
         return context
@@ -239,6 +240,28 @@ def with_cancel_actions(week, user, url_name='space_allocation_occurrence_cancel
             cell.entries = [
                 replace(entry, cancel_url=cancel_url(entry, day.date, url_name))
                 if getattr(entry, 'allocation_ids', ()) and manages(user, entry.teachers) else entry
+                for entry in cell.entries
+            ]
+
+
+def with_end_actions(week, user, today):
+    """Dá a ação de encerrar a cada aula datada de hoje em diante.
+
+    A permissão é conferida uma vez por requisição. A view do encerramento e o model
+    conferem tudo de novo, e esconder a ação não é a proteção.
+    """
+    if not user.has_perm(permissions.SPACE_ALLOCATION_END_RECURRENCE):
+        return
+    url = reverse('space_allocation_recurrence_end')
+    for day in week.days:
+        if day.date is None or not day.in_period or day.date < today:
+            continue
+        for cell in day.cells:
+            if not cell or cell.is_continued or cell.is_outside:
+                continue
+            cell.entries = [
+                replace(entry, end_url=f"{url}?{urlencode({'data': day.date.isoformat(), 'alocacao': entry.allocation_ids}, doseq=True)}")
+                if getattr(entry, 'allocation_ids', ()) else entry
                 for entry in cell.entries
             ]
 
@@ -563,6 +586,73 @@ class OccurrenceCancelView(ConfirmedActionView):
     def perform(self):
         AllocationException.objects.cancel([allocation.pk for allocation in self.allocations], self.day, self.request.user)
         messages.success(self.request, f'Ocorrência de {date_format(self.day, "SHORT_DATE_FORMAT")} cancelada.')
+
+
+class RecurrenceEndView(ConfirmedActionView):
+    """Encerra uma aula a partir de uma data, dando fim à vigência das alocações do bloco.
+
+    A aula é identificada pelas alocações do bloco da Grade e pela data em que a ação foi
+    aberta; alocação inexistente ou data que não é ocorrência dela respondem 404. O GET
+    mostra a confirmação, com a quantidade de aulas que deixam de existir, calculada por
+    `plan_ending` sem gravar nada. O POST confere tudo de novo em `end_recurrence`.
+    """
+
+    permission_required = permissions.SPACE_ALLOCATION_END_RECURRENCE
+    template_name = 'schedule/recurrence_end.html'
+    modal_template_name = 'schedule/recurrence_end_modal.html'
+    success_url = reverse_lazy('space_allocation_grid')
+    section_title = 'Ensalamento'
+
+    def setup(self, request, *args, **kwargs):
+        super(ConfirmedActionView, self).setup(request, *args, **kwargs)
+        self.day = parse_date(request.GET.get('data'))
+        ids = request.GET.getlist('alocacao')
+        if self.day is None or not ids or not all(value.isdigit() for value in ids):
+            raise Http404
+        ids = {int(value) for value in ids}
+        allocations = get_list_or_404(
+            Allocation.objects.filter(pk__in=ids)
+            .select_related('semester', 'subject', 'time_slot', 'space', 'class_group__course')
+            .order_by('time_slot__start_time'),
+        )
+        if len(allocations) != len(ids) or not all(allocation.occurs_on(self.day) for allocation in allocations):
+            raise Http404
+        self.allocations = allocations
+
+    def grid_url(self, day):
+        first = self.allocations[0]
+        query = {'semestre': first.semester.code, 'semana': day.isoformat()}
+        if first.space:
+            query['sala'] = first.space.name
+        return f"{reverse('space_allocation_grid')}?{urlencode(query)}"
+
+    def get_success_url(self):
+        return self.grid_url(self.day)
+
+    def get_context_data(self, **kwargs):
+        first, last = self.allocations[0], self.allocations[-1]
+        plan = Allocation.objects.plan_ending(
+            [allocation.pk for allocation in self.allocations], self.day, self.request.user,
+        )
+        return super(ConfirmedActionView, self).get_context_data(
+            day=self.day,
+            lesson=first,
+            plan=plan,
+            start=first.time_slot.start_time,
+            end=last.time_slot.end_time,
+            section_title=self.section_title,
+            section_url=self.grid_url(self.day),
+            **kwargs,
+        )
+
+    def perform(self):
+        plan = Allocation.objects.end_recurrence(
+            [allocation.pk for allocation in self.allocations], self.day, self.request.user,
+        )
+        messages.success(
+            self.request,
+            f'Aula de {plan.lesson.subject.name} encerrada a partir de {date_format(self.day, "SHORT_DATE_FORMAT")}.',
+        )
 
 
 class AllocationExceptionListView(ListView):

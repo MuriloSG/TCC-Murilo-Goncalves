@@ -320,6 +320,7 @@ class ContinuityGuardTests(ContinuityTestCase):
                 permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE,
                 permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE,
                 permissions.SPACE_ALLOCATION_CREATE_RECURRENCE,
+                permissions.SPACE_ALLOCATION_END_RECURRENCE,
             }
             | permissions.SPACE_PERMISSIONS
             | permissions.BOOKING_PERMISSIONS

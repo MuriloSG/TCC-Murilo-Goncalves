@@ -86,6 +86,7 @@ class Entry:
     allocation_ids: tuple = field(default=(), compare=False)
     cancel_url: str = field(default='', compare=False)
     change_url: str = field(default='', compare=False)
+    end_url: str = field(default='', compare=False)
     course: str = field(default='', compare=False)
     group: str = field(default='', compare=False)
 

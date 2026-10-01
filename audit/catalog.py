@@ -159,6 +159,7 @@ FIELD_LABELS = {
     'nova_alocacao': 'Nova alocação',
     'excecoes_transferidas': 'Exceções transferidas',
     'outras_alocacoes': 'Outras alocações da aula',
+    'aulas_encerradas': 'Aulas encerradas',
     'curso': 'Curso',
     'rotulo': 'Rótulo',
 }

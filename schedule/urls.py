@@ -33,6 +33,11 @@ urlpatterns = [
         name='space_allocation_occurrence_cancel',
     ),
     path(
+        'ensalamento/recorrencias/encerrar/',
+        login_required(views.RecurrenceEndView.as_view()),
+        name='space_allocation_recurrence_end',
+    ),
+    path(
         'ensalamento/recorrencias/criar/',
         login_required(views.RecurrenceCreateView.as_view()),
         name='space_allocation_recurrence_create',

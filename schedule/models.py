@@ -1048,6 +1048,52 @@ class AllocationManager(models.Manager):
         check_conflicts(plan)
         return plan
 
+    def end_recurrence(self, allocation_ids, cut, executor):
+        """Encerra a aula a partir da data: cada alocação do bloco ganha o fim da vigência
+        na véspera, numa transação, com auditoria. Nada é excluído.
+        """
+        with transaction.atomic():
+            plan = self.plan_ending(allocation_ids, cut, executor)
+            plan.execute()
+            return plan
+
+    def plan_ending(self, allocation_ids, cut, executor):
+        """Confere o encerramento e devolve o plano, sem gravar nada.
+
+        É a mesma conferência da execução, usada para a contagem mostrada na confirmação.
+        A data não precisa ser posterior ao início da vigência: encerrar uma aula que ainda
+        não começou deixa a recorrência sem nenhuma ocorrência (D2 e D3).
+        """
+        allocation_ids = sorted(set(allocation_ids))
+        with transaction.atomic():
+            locked = list(
+                self.select_for_update(of=('self',))
+                .filter(pk__in=allocation_ids)
+                .select_related('semester', 'subject', 'time_slot', 'space', 'class_group__course')
+                .prefetch_related('teachers')
+                .order_by('time_slot__start_time', 'pk'),
+            )
+            if not allocation_ids or len(locked) != len(allocation_ids):
+                raise ValidationError('A aula informada não existe. Atualize a Grade.', code='missing')
+            if not executor.has_perm(permissions.SPACE_ALLOCATION_END_RECURRENCE):
+                raise ValidationError('Só quem tem permissão encerra esta aula.', code='not_allowed')
+            first = locked[0]
+            if any(
+                (item.semester_id, item.class_group_id, item.subject_id, item.weekday)
+                != (first.semester_id, first.class_group_id, first.subject_id, first.weekday)
+                for item in locked
+            ):
+                raise ValidationError('A aula informada não existe. Atualize a Grade.', code='missing')
+            check_start(first.semester, cut)
+            for allocation in locked:
+                if not allocation.occurs_on(cut):
+                    raise ValidationError(
+                        {'data': ValidationError(
+                            f'A aula não acontece em {shown_date(cut)}. Escolha uma data da aula.', code='not_occurrence',
+                        )},
+                    )
+            return EndingPlan(cut=cut, allocations=locked, executor=executor)
+
     def managed_by(self, user):
         """Alocações cujas ocorrências o usuário pode cancelar, pela mesma regra de `manages`."""
         if user.has_perm(permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE):
@@ -1266,6 +1312,53 @@ class RecurrenceChange:
                 'excecoes_transferidas': sorted(iso(exception.date) for exception in self.moved),
             },
         )
+
+
+@dataclass
+class EndingPlan:
+    """Encerramento conferido de uma aula: a data, as alocações do bloco e o que some."""
+
+    cut: object
+    allocations: list
+    executor: object = None
+
+    @property
+    def lesson(self):
+        return self.allocations[0]
+
+    @property
+    def removed(self):
+        """Quantas aulas deixam de existir, sem contar as ocorrências já canceladas."""
+        first = self.lesson
+        cancelled = {
+            day for _, day in AllocationException.objects.cancelled([first.pk], self.cut, first.ends)
+        }
+        return sum(1 for day in dates_from(self.cut, first.ends) if first.occurs_on(day) and day not in cancelled)
+
+    @property
+    def removed_text(self):
+        count = self.removed
+        return '1 aula' if count == 1 else f'{count} aulas'
+
+    def execute(self):
+        """Grava o fim da vigência de cada alocação do bloco e registra a auditoria."""
+        ended = self.removed
+        for allocation in self.allocations:
+            previous = allocation.audit_values()
+            allocation.valid_until = self.cut - timedelta(days=1)
+            allocation.full_clean(exclude=['space'])
+            allocation.save(update_fields=['valid_until'])
+            AuditLog.objects.record(
+                catalog.UPDATE,
+                catalog.SPACE_ALLOCATION,
+                resource_id=allocation.pk,
+                old_values={'vigente_ate': previous['vigente_ate']},
+                new_values={'vigente_ate': iso(allocation.valid_until)},
+                metadata=previous | {
+                    'a_partir_de': iso(self.cut),
+                    'aulas_encerradas': ended,
+                },
+            )
 
 
 @dataclass
@@ -1494,7 +1587,10 @@ class Allocation(models.Model):
     semestre inteiro. A alteração da recorrência encerra a alocação na véspera de uma data e
     cria outra a partir dela: as ocorrências anteriores continuam na versão antiga, e a
     versão nova só nasce sem choque com outra aula nem com agendamento (Change
-    alterar-recorrencia-do-ensalamento).
+    alterar-recorrencia-do-ensalamento). O encerramento dá o fim da vigência sem criar
+    versão nova, e um fim anterior ao início é a recorrência encerrada sem nenhuma
+    ocorrência, da aula que ainda não tinha começado (D2 da Change
+    encerrar-recorrencia-do-ensalamento).
     """
 
     semester = models.ForeignKey(
@@ -1530,15 +1626,6 @@ class Allocation(models.Model):
                 name='allocation_unique',
                 nulls_distinct=False,
                 violation_error_message='Esta turma já tem esta disciplina nesta faixa de horário deste dia.',
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(valid_from__isnull=True)
-                    | models.Q(valid_until__isnull=True)
-                    | models.Q(valid_from__lte=models.F('valid_until'))
-                ),
-                name='allocation_validity_valid',
-                violation_error_message='O fim da vigência deve ser igual ou posterior ao início.',
             ),
         ]
         indexes = [

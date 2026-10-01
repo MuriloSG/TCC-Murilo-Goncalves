@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Encerrar a aula de {{ lesson.subject.name }} a partir de {{ day|date:"SHORT_DATE_FORMAT" }}?{% endblock %}
+
+{% block consequence %}{{ plan.removed_text }} da turma {{ lesson.class_group }}, das {{ start|time:"H:i" }} às {{ end|time:"H:i" }}{% if lesson.space %} em {{ lesson.space.name }}{% endif %}, deixam de existir de {{ day|date:"SHORT_DATE_FORMAT" }} em diante, e o espaço fica disponível nessas datas. As aulas anteriores continuam na Grade.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "circle-minus" %}Encerrar recorrência</button>{% endblock %}

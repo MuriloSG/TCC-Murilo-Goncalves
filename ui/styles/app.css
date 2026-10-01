@@ -172,6 +172,7 @@
   --color-sidebar-accent: var(--palette-green-700);
   --color-tooltip: var(--palette-neutral-900);
   --color-on-tooltip: var(--palette-white);
+  --color-on-tooltip-muted: var(--palette-neutral-200);
   --color-brand-surface: var(--palette-green-800);
   --color-on-brand: var(--palette-white);
   --color-on-brand-muted: var(--palette-green-100);
@@ -279,6 +280,7 @@
   --color-sidebar-accent: var(--palette-green-400);
   --color-tooltip: var(--palette-dark-50);
   --color-on-tooltip: var(--palette-dark-950);
+  --color-on-tooltip-muted: var(--palette-dark-700);
   --color-brand-surface: var(--palette-green-900);
   --color-on-brand: var(--palette-dark-50);
   --color-on-brand-muted: var(--palette-dark-200);
@@ -4890,5 +4892,69 @@
     & > .btn-primary {
       width: 100%;
     }
+  }
+
+  .hint-anchor {
+    position: relative;
+
+    &:hover > .hint,
+    &:focus-visible > .hint,
+    &:focus-within > .hint {
+      opacity: 1;
+      translate: 0 0;
+      visibility: visible;
+    }
+  }
+
+  .hint {
+    position: absolute;
+    top: calc(100% + var(--spacing-2));
+    left: 0;
+    z-index: 30;
+    display: grid;
+    gap: var(--spacing-2);
+    width: max-content;
+    max-width: min(calc(var(--spacing-16) * 5), calc(100vw - var(--spacing-8)));
+    padding: var(--spacing-4) var(--spacing-5);
+    border-radius: var(--radius-xl);
+    background: var(--color-tooltip);
+    color: var(--color-on-tooltip);
+    text-align: left;
+    white-space: normal;
+    pointer-events: none;
+    opacity: 0;
+    translate: 0 calc(var(--spacing-1) * -1);
+    visibility: hidden;
+    box-shadow: var(--shadow-overlay);
+    transition: opacity var(--motion-fast) ease, translate var(--motion-fast) ease, visibility var(--motion-fast);
+
+    @media (prefers-reduced-motion: reduce) {
+      translate: 0 0;
+      transition: opacity var(--motion-fast) ease, visibility var(--motion-fast);
+    }
+  }
+
+  .hint-above {
+    top: auto;
+    bottom: calc(100% + var(--spacing-2));
+    translate: 0 var(--spacing-1);
+  }
+
+  .hint-end {
+    right: 0;
+    left: auto;
+  }
+
+  .hint-title {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .hint-text {
+    color: var(--color-on-tooltip-muted);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-normal);
   }
 }

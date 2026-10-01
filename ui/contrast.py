@@ -72,6 +72,11 @@ CONTRAST_PAIRS = [
     ('text-muted', 'info-bg', 4.5, 'Solicitante no card do agendamento na Agenda'),
     ('stage-undergraduate-bar', 'surface', 3, 'Marca da graduação na legenda da Grade'),
     ('stage-secondary-bar', 'surface', 3, 'Marca do ensino médio na legenda da Grade'),
+    ('error-text', 'surface', 4.5, 'Selo de pendentes vencidas no painel'),
+    ('info-text', 'hover', 3, 'Ícone neutro do painel'),
+    ('booking-bar', 'surface', 3, 'Agendamentos nas barras e na legenda do painel'),
+    ('stage-undergraduate-bar', 'hover', 3, 'Aulas sobre o trilho das barras do painel'),
+    ('booking-bar', 'hover', 3, 'Agendamentos sobre o trilho das barras do painel'),
 ]
 
 EXEMPT = {

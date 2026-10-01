@@ -1,0 +1,192 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Painel{% endblock %}
+
+{% block crumbs %}<li><span aria-current="page">Painel</span></li>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Painel</h1>
+    </div>
+    {% if any_block %}
+      <form class="filters" method="get" action="{% url 'panel' %}" hx-get="{% url 'panel' %}" hx-target="#conteudo" hx-select="#conteudo" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select">
+        {% if filters.fields.semestre.choices %}
+          <div>
+            <label class="sr-only" id="{{ filters.semestre.auto_id }}_rotulo" for="{{ filters.semestre.id_for_label }}">Semestre</label>
+            {% include "ui/components/select.html" with field=filters.semestre %}
+          </div>
+        {% endif %}
+        {% if show_grid %}
+          <div>
+            <label class="sr-only" id="{{ filters.ocupacao.auto_id }}_rotulo" for="{{ filters.ocupacao.id_for_label }}">Ocupação</label>
+            {% include "ui/components/select.html" with field=filters.ocupacao %}
+          </div>
+        {% endif %}
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  {% if not any_block %}
+    <section class="card">
+      <div class="card-head"><p>Nenhum indicador liberado para o seu perfil.</p></div>
+    </section>
+  {% else %}
+    <div class="panel">
+      <section class="panel-kpis" aria-label="Contagens">
+        {% if show_requests %}
+          <a class="panel-kpi panel-kpi-lead hint-anchor" href="{% url 'agenda_review_list' %}" aria-describedby="dica-pendentes">
+            <span class="panel-icon">{% icon "inbox" %}</span>
+            <span class="panel-kpi-text"><span class="panel-kpi-head"><span class="panel-kpi-value">{{ requests.pending }}</span>{% if requests.overdue %}<span class="panel-tag">{{ requests.overdue }} vencida{{ requests.overdue|pluralize }}</span>{% endif %}</span><span class="panel-kpi-label">Solicitações pendentes</span></span>{% include "ui/components/hint.html" with hint_id="dica-pendentes" title="Solicitações pendentes" text="Solicitações de agendamento que esperam aprovação ou rejeição. As vencidas já passaram do horário e só podem ser rejeitadas." %}
+          </a>
+          <a class="panel-kpi hint-anchor" href="{% url 'agenda_review_list' %}" aria-describedby="dica-aguardando">
+            <span class="panel-icon panel-icon-booking">{% icon "arrow-left-right" %}</span>
+            <span class="panel-kpi-text"><span class="panel-kpi-value">{{ requests.awaiting }}</span><span class="panel-kpi-label">Aguardando resposta</span></span>{% include "ui/components/hint.html" with hint_id="dica-aguardando" title="Aguardando resposta" text="Solicitações com alternativa sugerida que esperam a resposta de quem solicitou." %}
+          </a>
+        {% endif %}
+        {% if show_grid and semester %}
+          {% url 'panel_issue' 'sem-espaco' as without_space_url %}
+          <a class="panel-kpi hint-anchor" href="{{ without_space_url }}?{{ request.GET.urlencode }}" hx-get="{{ without_space_url }}?{{ request.GET.urlencode }}" hx-target="#modal" aria-describedby="dica-sem-espaco">
+            <span class="panel-icon panel-icon-warning">{% icon "map-pin" %}</span>
+            <span class="panel-kpi-text"><span class="panel-kpi-value">{{ without_space }}</span><span class="panel-kpi-label">Aulas sem espaço</span></span>{% include "ui/components/hint.html" with hint_id="dica-sem-espaco" title="Aulas sem espaço" text="Aulas vigentes do semestre que ainda não têm sala definida." %}
+          </a>
+        {% endif %}
+        {% if show_imports %}
+          <a class="panel-kpi hint-anchor" href="{% url 'space_allocation_import_list' %}" aria-describedby="dica-importacoes">
+            <span class="panel-icon panel-icon-neutral">{% icon "download" %}</span>
+            <span class="panel-kpi-text"><span class="panel-kpi-value">{{ import_count }}</span><span class="panel-kpi-label">Importações abertas</span></span>{% include "ui/components/hint.html" with hint_id="dica-importacoes" align="end" title="Importações abertas" text="Importações do ensalamento que ainda não foram confirmadas nem descartadas." %}
+          </a>
+        {% endif %}
+      </section>
+
+      {% if show_grid or show_requests %}
+        <div class="panel-row">
+          {% if show_grid %}
+            <section class="card" aria-labelledby="ocupacao">
+              <div class="card-head">
+                <h2 class="card-title" id="ocupacao">Espaços mais ocupados</h2>
+                <div class="panel-legend"><span class="panel-legend-item">Aulas</span><span class="panel-legend-item panel-legend-booking">Agendamentos</span></div>
+              </div>
+              <div class="card-body">
+                <p class="panel-notice">{% if occupancy.view == "hoje" %}Hoje, {{ occupancy.start|date:"SHORT_DATE_FORMAT" }}{% else %}Semana de {{ occupancy.start|date:"SHORT_DATE_FORMAT" }} a {{ occupancy.end|date:"SHORT_DATE_FORMAT" }}{% endif %}</p>
+                {% if occupancy.without_period %}
+                  <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>O semestre {{ occupancy.without_period.code }} não tem período definido. Defina o período na importação do ensalamento.</p></div>
+                {% elif occupancy.without_semester %}
+                  <p class="panel-notice">Nenhum semestre em andamento nesta data.</p>
+                {% endif %}
+                {% if occupancy.spaces %}
+                  <ol class="panel-bars">
+                    {% for load in occupancy.spaces %}
+                      <li class="panel-bar">
+                        <a class="panel-bar-name" href="{% url 'space_allocation_grid' %}?sala={{ load.space.name|urlencode }}&amp;semana={{ occupancy.start|date:'Y-m-d' }}">{{ load.space.name }}</a>
+                        <span class="panel-track" role="img" aria-label="{{ load.hours|floatformat:'-1' }} h: {{ load.lesson_hours|floatformat:'-1' }} h de aulas e {{ load.booking_hours|floatformat:'-1' }} h de agendamentos">{% if load.lesson_width %}<span class="panel-fill bar-w-{{ load.lesson_width }}"></span>{% endif %}{% if load.booking_width %}<span class="panel-fill panel-fill-booking bar-w-{{ load.booking_width }}"></span>{% endif %}</span>
+                        <span class="panel-bar-value">{{ load.hours|floatformat:"-1" }} h</span>
+                      </li>
+                    {% endfor %}
+                  </ol>
+                {% else %}
+                  <p>Nenhum espaço ocupado {% if occupancy.view == "hoje" %}hoje{% else %}nesta semana{% endif %}.</p>
+                {% endif %}
+              </div>
+            </section>
+          {% endif %}
+
+          {% if show_requests %}
+            <section class="card" aria-labelledby="para-decidir">
+              <div class="card-head">
+                <h2 class="card-title" id="para-decidir">Para decidir</h2>
+                <a class="btn-secondary btn-go" href="{% url 'agenda_review_list' %}">Ver todas{% icon "arrow-right" %}</a>
+              </div>
+              {% if requests.upcoming %}
+                <ul class="panel-list">
+                  {% for request in requests.upcoming %}
+                    <li>
+                      <a class="panel-request" href="{% url 'agenda_review_detail' request.pk %}">
+                        <span class="panel-date"><span class="panel-date-day">{{ request.date|date:"d" }}</span><span class="panel-date-month">{{ request.date|date:"b" }}</span></span>
+                        <span>
+                          <span class="panel-request-title">{{ request.space.name }}</span><br>
+                          <span class="panel-request-detail"><span class="sr-only">{{ request.date|date:"SHORT_DATE_FORMAT" }}, </span>{{ request.start_time|time:"H:i" }} às {{ request.end_time|time:"H:i" }} · {{ request.requested_by.name }}</span>
+                        </span>
+                        <span class="panel-request-wait">{{ request.waiting }}</span>
+                      </a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <div class="card-body"><p>Nenhuma solicitação pendente.</p></div>
+              {% endif %}
+            </section>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if show_grid %}
+        <div class="{% if occupancy.days %}panel-row{% else %}panel{% endif %}">
+          {% if occupancy.days %}
+            <section class="card" aria-labelledby="horas-por-dia">
+              <div class="card-head">
+                <h2 class="card-title" id="horas-por-dia">Horas ocupadas por dia</h2>
+                <span class="panel-notice">{{ occupancy.start|date:"d/m" }} a {{ occupancy.end|date:"d/m" }}</span>
+              </div>
+              <div class="card-body">
+                <ol class="panel-days">
+                  {% for day in occupancy.days %}
+                    <li class="panel-day">
+                      <span class="panel-day-value">{{ day.hours|floatformat:"-1" }} h</span>
+                      <span class="panel-column-area">
+                        {% if day.total %}
+                          <span class="panel-column bar-h-{{ day.height }}" role="img" aria-label="{{ day.day|date:'l' }}, {{ day.hours|floatformat:'-1' }} h">{% if day.lesson_share %}<span class="panel-fill bar-h-{{ day.lesson_share }}"></span>{% endif %}{% if day.booking_share %}<span class="panel-fill panel-fill-booking bar-h-{{ day.booking_share }}"></span>{% endif %}</span>
+                        {% else %}
+                          <span class="panel-column-empty"></span>
+                        {% endif %}
+                      </span>
+                      <span class="panel-day-label{% if day.is_today %} panel-day-today{% endif %}">{{ day.label }}</span>
+                    </li>
+                  {% endfor %}
+                </ol>
+              </div>
+            </section>
+          {% endif %}
+
+          <section class="card" aria-labelledby="pendencias">
+            <div class="card-head">
+              <h2 class="card-title" id="pendencias">Pendências da grade</h2>
+              <a class="btn-secondary btn-go" href="{% url 'space_allocation_grid' %}{% if semester %}?semestre={{ semester.code|urlencode }}{% endif %}">Abrir grade{% icon "arrow-right" %}</a>
+            </div>
+            {% if not semester %}
+              <div class="card-body"><p>Nenhum semestre importado.</p>{% if show_imports %}<div><a class="btn-secondary btn-go" href="{% url 'space_allocation_import_list' %}">Abrir importações{% icon "arrow-right" %}</a></div>{% endif %}</div>
+            {% endif %}
+            <div class="panel-issues">
+              {% for group in issues %}
+                {% url 'panel_issue' group.key as issue_url %}
+                <a class="panel-issue hint-anchor" href="{{ issue_url }}?{{ request.GET.urlencode }}" hx-get="{{ issue_url }}?{{ request.GET.urlencode }}" hx-target="#modal" aria-describedby="dica-{{ group.key }}">
+                  <span class="panel-issue-top">
+                    <span class="panel-icon panel-icon-small {% if not group.count %}panel-icon-success{% elif group.tone == 'error' %}panel-icon-error{% elif group.tone == 'neutral' %}panel-icon-neutral{% else %}panel-icon-warning{% endif %}">{% if group.count %}{% icon group.icon %}{% else %}{% icon "check" %}{% endif %}</span>
+                    <span class="panel-issue-value{% if not group.count %} panel-issue-zero{% endif %}">{{ group.count }}</span>
+                  </span>
+                  <span class="panel-issue-label">{{ group.label }}</span>
+                  {% if forloop.last %}{% include "ui/components/hint.html" with hint_id="dica-"|add:group.key title=group.label text=group.hint align="end" %}{% else %}{% include "ui/components/hint.html" with hint_id="dica-"|add:group.key title=group.label text=group.hint %}{% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          </section>
+        </div>
+      {% endif %}
+
+      {% if show_imports and imports %}
+        <section class="card" aria-labelledby="importacoes">
+          <div class="card-head"><h2 class="card-title" id="importacoes">Importações sem conclusão</h2></div>
+          <ul class="panel-list">
+            {% for item in imports %}
+              <li><a class="panel-request" href="{% url 'space_allocation_import_detail' item.pk %}"><span><span class="panel-request-title">{{ item.file_name }}</span><br><span class="panel-request-detail">{{ item.get_status_display }} · {{ item.created_at|date:"SHORT_DATE_FORMAT" }}</span></span></a></li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

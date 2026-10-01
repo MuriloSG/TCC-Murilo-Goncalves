@@ -30,6 +30,7 @@ class MenuItem:
 
 
 MENU = (
+    MenuItem('Painel', 'layout-dashboard', 'panel', (('PAINEL.VISUALIZAR', 'panel'),)),
     MenuItem('Ensalamento', 'calendar-check', 'space_allocation_', (
         ('ENSALAMENTO.VISUALIZAR', 'space_allocation_grid'),
         ('ENSALAMENTO.IMPORTAR', 'space_allocation_import_list'),

@@ -78,7 +78,7 @@ class RoleNameIndependenceTests(AccessTestCase):
 class EntryPageTests(AccessTestCase):
     def test_superadmin_opens_the_first_menu_item(self):
         response = self.client_for(self.superadmin).get('/inicio/')
-        self.assertRedirects(response, reverse('space_allocation_grid'), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse('panel'), fetch_redirect_response=False)
 
     def test_opens_the_first_item_the_role_grants(self):
         reader = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])

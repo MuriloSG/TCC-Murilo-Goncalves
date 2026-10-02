@@ -64,10 +64,10 @@ MENU = (
     MenuItem('Turmas', 'school', 'class_groups_', (('TURMA.VISUALIZAR', 'class_groups_list'),)),
     MenuItem('Usuários', 'users', 'user_', (('USUARIO.VISUALIZAR', 'user_list'),)),
     MenuItem('Perfis', 'shield-check', 'role_', (('PERFIL.VISUALIZAR', 'role_list'),)),
-    MenuItem('Notificações', 'bell', 'notice_', (('NOTIFICACAO.PUBLICAR', 'notice_list'),)),
     MenuGroup('Relatórios', 'chart-column', 'report_', (
         MenuItem('Mapa de calor', 'grid-3x3', 'report_heatmap', ((('RELATORIO.VISUALIZAR', 'ENSALAMENTO.VISUALIZAR'), 'report_heatmap'),)),
     )),
+    MenuItem('Notificações', 'bell', 'notice_', (('NOTIFICACAO.PUBLICAR', 'notice_list'),)),
     MenuItem('Auditoria', 'scroll-text', 'audit_', (('AUDITORIA.VISUALIZAR', 'audit_log_list'),)),
 )
 

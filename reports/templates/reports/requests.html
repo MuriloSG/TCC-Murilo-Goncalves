@@ -162,25 +162,33 @@
           <a class="btn-secondary btn-go" href="{% url 'agenda_review_list' %}">Analisar{% icon "arrow-right" %}</a>
         </div>
         <div class="card-body report-situation">
-          <ul class="report-statuses">
+          <ul class="report-statuses" aria-label="Solicitações por situação">
             {% for row in report.statuses %}
-              <li>
-                {% include "ui/components/badge.html" with tone=row.badge.0 icon=row.badge.1 label=row.badge.2 %}
-                <span class="report-status-count">{{ row.count }}</span>
-                <span class="report-status-percent">{{ row.percent }}%</span>
+              <li class="report-status tone-{{ row.badge.0 }}{% if not row.count %} is-empty{% endif %}">
+                <span class="report-status-icon">{% icon row.badge.1 %}</span>
+                <span class="report-status-body">
+                  <span class="report-status-head">
+                    <span class="report-status-label">{{ row.badge.2 }}</span>
+                    <span class="report-status-figures"><span class="report-status-count">{{ row.count }}</span><span class="report-status-percent">{{ row.percent }}%</span></span>
+                  </span>
+                  <span class="panel-track report-status-track" aria-hidden="true">{% if row.width %}<span class="report-status-fill bar-w-{{ row.width }}"></span>{% endif %}</span>
+                </span>
               </li>
             {% endfor %}
           </ul>
-          <div>
+          <div class="report-alternatives">
             <h3 class="report-subtitle">Alternativas sugeridas</h3>
             {% if report.suggested %}
-              <dl class="report-numbers">
-                <div><dt>Sugeridas</dt><dd>{{ report.suggested }}</dd></div>
-                <div><dt>Aceitas</dt><dd>{{ report.suggestion_accepted }}</dd></div>
-                <div><dt>Recusadas</dt><dd>{{ report.suggestion_declined }}</dd></div>
-                <div><dt>Rejeitadas depois</dt><dd>{{ report.suggestion_rejected }}</dd></div>
-                <div><dt>Resposta pendente</dt><dd>{{ report.suggestion_awaiting }}</dd></div>
-              </dl>
+              <p class="report-alternatives-total"><span class="report-alternatives-count">{{ report.suggested }}</span><span class="report-alternatives-detail">de {{ report.total }} solicitações receberam uma alternativa ({{ report.suggested_percent }}%)</span></p>
+              <ul class="report-outcomes" aria-label="Desfecho das alternativas sugeridas">
+                {% for outcome in outcomes %}
+                  <li class="report-outcome tone-{{ outcome.tone }}{% if not outcome.count %} is-empty{% endif %}">
+                    <span class="report-outcome-head">{% icon outcome.icon %}<span class="report-outcome-count">{{ outcome.count }}</span></span>
+                    <span class="report-outcome-label">{{ outcome.label }}</span>
+                    <span class="report-outcome-percent">{{ outcome.percent }}% das sugeridas</span>
+                  </li>
+                {% endfor %}
+              </ul>
             {% else %}
               <p class="panel-notice">Nenhuma alternativa sugerida no período.</p>
             {% endif %}

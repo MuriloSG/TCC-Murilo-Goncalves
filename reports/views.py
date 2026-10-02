@@ -118,7 +118,24 @@ class RequestsReportView(TemplateView):
             for item in report.spaces:
                 item.action = self.agenda_action(item.space)
             decorate(report.rejections, 'agenda_review_detail')
-        return super().get_context_data(filters=form, semester=filters.semester, report=report, **kwargs)
+        return super().get_context_data(
+            filters=form, semester=filters.semester, report=report, outcomes=self.outcomes(report), **kwargs,
+        )
+
+    def outcomes(self, report):
+        """Desfechos das alternativas sugeridas, com o tom e o ícone de cada um e o percentual
+        sobre as sugeridas."""
+        if report is None:
+            return []
+        return [
+            {'label': label, 'count': count, 'percent': requests.percent(count, report.suggested), 'tone': tone, 'icon': icon}
+            for label, count, tone, icon in (
+                ('Aceitas', report.suggestion_accepted, 'success', 'check'),
+                ('Recusadas por quem solicitou', report.suggestion_declined, 'error', 'x'),
+                ('Rejeitadas depois', report.suggestion_rejected, 'error', 'circle-x'),
+                ('Resposta pendente', report.suggestion_awaiting, 'warning', 'clock'),
+            )
+        ]
 
     def agenda_action(self, space):
         url = f"{reverse('agenda_grid')}?{urlencode({'sala': space.name})}"

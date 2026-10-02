@@ -114,9 +114,12 @@ class Week:
 
 @dataclass
 class StatusRow:
+    """Uma situação com a contagem, o percentual e a largura da barra sobre o total."""
+
     status: str
     count: int
     percent: int
+    width: int = 0
 
     @property
     def label(self):
@@ -161,6 +164,10 @@ class Report:
     @property
     def approval_percent(self):
         return percent(self.approved, self.decided)
+
+    @property
+    def suggested_percent(self):
+        return percent(self.suggested, self.total)
 
     @property
     def week_count(self):
@@ -234,7 +241,10 @@ def build(filters, today=None):
     report.pending = counts[Status.PENDING] + counts[Status.SUGGESTED]
     report.oldest_pending = waiting_text(oldest, today) if oldest else ''
     report.decision_time = duration_text(median(durations)) if durations else ''
-    report.statuses = [StatusRow(status, counts[status], percent(counts[status], report.total)) for status in STATUS_ORDER]
+    report.statuses = [
+        StatusRow(status, counts[status], percent(counts[status], report.total), step(counts[status], report.total))
+        for status in STATUS_ORDER
+    ]
     highest = max((week.total for week in weeks), default=0)
     for week in weeks:
         week.height = step(week.total, highest)

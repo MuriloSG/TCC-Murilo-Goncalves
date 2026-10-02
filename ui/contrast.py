@@ -80,6 +80,14 @@ CONTRAST_PAIRS = [
     ('chart-bar', 'surface', 3, 'Colunas do gráfico e barras dos relatórios'),
     ('chart-bar-hover', 'surface', 3, 'Coluna do gráfico no hover e no foco'),
     ('chart-bar', 'hover', 3, 'Barras dos relatórios sobre o trilho'),
+    ('success-icon', 'hover', 3, 'Barra das aprovadas sobre o trilho'),
+    ('warning-text', 'hover', 3, 'Barra das de alternativa sugerida sobre o trilho'),
+    ('error-icon', 'hover', 3, 'Barra das rejeitadas sobre o trilho'),
+    ('info-icon', 'hover', 3, 'Barra das pendentes sobre o trilho'),
+    ('success-icon', 'success-bg', 3, 'Ícone das aprovadas no relatório'),
+    ('warning-text', 'warning-bg', 3, 'Ícone das de alternativa sugerida no relatório'),
+    ('text-muted', 'hover', 3, 'Ícone da situação sem solicitação no relatório'),
+    ('text-muted', 'page', 4.5, 'Desfecho sem alternativa no relatório'),
 ]
 
 EXEMPT = {

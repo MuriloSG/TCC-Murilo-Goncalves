@@ -78,7 +78,6 @@ class PageTests(RequestsTestCase):
         response = self.client.get(URL)
         self.assertContains(response, 'Nenhuma solicitação de agendamento no período.')
         self.assertContains(response, 'Nenhuma solicitação rejeitada no período.')
-        self.assertNotContains(response, 'Mostrar tabela')
 
     def test_semester_without_period_shows_the_warning(self):
         Semester.objects.filter(pk=self.semester.pk).update(start_date=None, end_date=None)
@@ -140,7 +139,6 @@ class BuildTests(RequestsTestCase):
         self.ask(status=Status.SUGGESTED)
         week = self.build().weeks[9]
         self.assertEqual(week.detail, '3 solicitações: 1 com alternativa sugerida e 2 aprovadas.')
-        self.assertEqual(week.status_counts[2], ('Aprovada', 2))
 
     def test_approval_rate_is_over_decided_requests(self):
         self.ask(status=Status.APPROVED, decided=at(date(2026, 10, 2)))

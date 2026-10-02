@@ -113,11 +113,6 @@ class Week:
         """A dica abre no topo do gráfico, no lado oposto ao da coluna, para não cobri-la."""
         return 'end' if self.left_half else ''
 
-    @property
-    def status_counts(self):
-        """Pares (rótulo, contagem) na ordem de `STATUS_ORDER`, para a tabela do gráfico."""
-        return [(Status(status).label, self.counts.get(status, 0)) for status in STATUS_ORDER]
-
 
 @dataclass
 class StatusRow:

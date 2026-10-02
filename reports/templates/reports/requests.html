@@ -95,32 +95,6 @@
                 </div>
               </div>
             </div>
-            <details class="report-table">
-              <summary class="btn-secondary">{% icon "table" %}Mostrar tabela</summary>
-              <div class="table-scroll">
-                <table class="data-table">
-                  <caption class="sr-only">Solicitações por semana e situação em {{ semester.code }}</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Semana</th>
-                      <th scope="col">Período</th>
-                      <th scope="col">Total</th>
-                      {% for row in report.statuses %}<th scope="col">{{ row.label }}</th>{% endfor %}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for week in report.weeks %}
-                      <tr>
-                        <td class="cell-primary" data-label="Semana">Semana {{ week.number }}</td>
-                        <td class="cell-meta" data-label="Período">{{ week.start|date:"SHORT_DATE_FORMAT" }} a {{ week.end|date:"SHORT_DATE_FORMAT" }}</td>
-                        <td class="cell-meta" data-label="Total">{{ week.total }}</td>
-                        {% for label, count in week.status_counts %}<td class="cell-meta" data-label="{{ label }}">{{ count }}</td>{% endfor %}
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </details>
           {% else %}
             <p>Nenhuma solicitação de agendamento no período.</p>
           {% endif %}

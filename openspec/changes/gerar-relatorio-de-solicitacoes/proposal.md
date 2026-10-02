@@ -7,7 +7,7 @@ O mapa de calor mostra como os espaços são ocupados, mas não mostra a demanda
 - O grupo "Relatórios" do menu ganha o item "Solicitações", na rota `relatorios/solicitacoes/`, com o título "Relatório de solicitações de agendamento".
 - Filtros por semestre, etapa de ensino, curso e espaços, todos com o componente de select do projeto (`ui/components/select.html`), e o de espaços na versão múltipla com busca.
 - Quatro indicadores: solicitações no período, taxa de aprovação, tempo mediano até a decisão e solicitações pendentes.
-- O gráfico de colunas "Solicitações por semana", com uma coluna por semana do semestre, a dica com a divisão por situação no hover e no foco, e a tabela com os mesmos dados.
+- O gráfico de colunas "Solicitações por semana", com uma coluna por semana do semestre, e a dica com a divisão por situação no hover e no foco.
 - O bloco "Situação das solicitações", com a contagem e o percentual de cada situação e o resultado das alternativas sugeridas.
 - A tabela "Espaços mais solicitados", com os dez espaços de maior demanda, uma barra proporcional ao total e as contagens de aprovadas e rejeitadas.
 - A lista "Rejeições recentes", com os dez últimos motivos de rejeição e o botão para o detalhe da solicitação.

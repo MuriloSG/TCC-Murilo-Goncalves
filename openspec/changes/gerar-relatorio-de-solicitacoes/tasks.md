@@ -25,11 +25,11 @@
 ## 4. Tela
 
 - [x] 4.1 `RequestsFilterForm` com todos os campos em `ui/components/select.html`, e o de espaços múltiplo com busca, compartilhando a montagem das opções com o `HeatmapFilterForm` (D8)
-- [x] 4.2 `RequestsReportView` e o template com os filtros, os indicadores, o gráfico, a tabela em `<details>`, a situação, o ranking e as rejeições recentes
+- [x] 4.2 `RequestsReportView` e o template com os filtros, os indicadores, o gráfico, a situação, o ranking e as rejeições recentes
 - [x] 4.3 Testes da rota nas quatro situações de acesso, incluindo a falta de `AGENDA.ANALISAR`, e dos estados vazios
 
 ## 5. Conferência
 
 - [x] 5.1 Testes do app `ui` (texto, classes e contraste nos dois temas) e a suíte inteira
 - [x] 5.2 Conferência visual no banco `visual_check` em 360, 640 e 1280 px, sem JavaScript, com o foco pelo teclado nas colunas e com zoom de 200%
-- [x] 5.3 Regras do gráfico (classes em passos, série única, dica e tabela) em `openspec/conventions.md`, seção 9.9
+- [x] 5.3 Regras do gráfico (classes em passos, série única e dica) em `openspec/conventions.md`, seção 9.9

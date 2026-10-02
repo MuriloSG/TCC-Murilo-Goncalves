@@ -5458,20 +5458,6 @@
     line-height: var(--text-xs--line-height);
   }
 
-  .report-table {
-    margin-top: var(--spacing-5);
-
-    & > summary {
-      width: fit-content;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    & > .table-scroll {
-      margin-top: var(--spacing-4);
-    }
-  }
-
   .report-meter {
     display: flex;
     align-items: center;

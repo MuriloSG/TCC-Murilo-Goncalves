@@ -80,10 +80,11 @@ O autor escolheu (02/10/2026) seguir a tela do mapa de calor como referência, s
 - **Pendentes sem botão.** O botão "Analisar" foi para o cabeçalho de "Situação das solicitações", porque um botão dentro do indicador, que já é focável pela dica, criaria dois alvos no mesmo cartão.
 - **Disposição.** "Espaços mais solicitados" ocupa a largura inteira, porque as seis colunas não cabiam ao lado de outro cartão. "Situação das solicitações" divide o próprio corpo em duas colunas a partir de `lg`: as situações e as alternativas.
 - **Situação das solicitações legível de relance** (pedido do autor). Cada situação tem o ícone num quadro com o tom dela, o rótulo, a contagem em destaque, o percentual e uma barra sobre o total na cor do estado. A situação sem solicitação fica em cinza, com o peso normal. As alternativas mostram o total em destaque, com a parte das solicitações que receberam uma, e quatro blocos com o tom de cada desfecho: aceitas, recusadas por quem solicitou, rejeitadas depois e resposta pendente, cada um com o percentual sobre as sugeridas. A partir de `lg`, uma linha divide as duas colunas. O estado continua vindo do texto e do ícone, e a cor só reforça.
+- **Sem a tabela do gráfico** (pedido do autor). O `<details>` "Mostrar tabela" saiu. Os números exatos de cada semana ficam na dica, que aparece no hover e no foco e também sem JavaScript, e no `aria-label` de cada coluna.
 - **Rolagem de 9 px em 640 px.** As dicas ocultas dos indicadores passam da borda nessa largura. O mesmo acontece no mapa de calor e no painel, então o problema vem de antes desta Change e fica fora dela.
 
 ## Risks / Trade-offs
 
-- [Altura em passos de 5%] → duas semanas com totais próximos podem ter a mesma altura. O valor no topo da coluna, a dica e a tabela dão o número exato. Em larguras estreitas, o gráfico rola na horizontal dentro do próprio cartão, rotulado e focável, como a Grade.
+- [Altura em passos de 5%] → duas semanas com totais próximos podem ter a mesma altura. A dica dá o número exato. Em larguras estreitas, o gráfico rola na horizontal dentro do próprio cartão, rotulado e focável, como a Grade.
 - [Mediana em tempo corrido] → fim de semana e feriado aumentam o tempo. A ajuda do indicador diz "tempo corrido", e o cálculo em dias letivos fica para depois, se o autor pedir.
 - [Recorte pela data de uso] → uma solicitação criada no fim do semestre anterior para uma data deste semestre conta neste. É o comportamento esperado para planejar o espaço, e fica escrito na ajuda do filtro de semestre.

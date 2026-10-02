@@ -112,6 +112,7 @@
                           <span class="panel-request-detail"><span class="sr-only">{{ request.date|date:"SHORT_DATE_FORMAT" }}, </span>{{ request.start_time|time:"H:i" }} às {{ request.end_time|time:"H:i" }} · {{ request.requested_by.name }}</span>
                         </span>
                         <span class="panel-request-wait">{{ request.waiting }}</span>
+                        {% icon "chevron-right" %}
                       </a>
                     </li>
                   {% endfor %}

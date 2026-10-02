@@ -6078,9 +6078,25 @@
     padding: var(--spacing-4) 0;
     color: var(--color-text);
 
-    &:hover .panel-request-title {
+    & > svg {
+      flex: none;
+      color: var(--color-text-muted);
+      transition: translate var(--motion-fast) ease, color var(--motion-fast) ease;
+    }
+
+    &:hover > svg {
       color: var(--color-action);
-      text-decoration: underline;
+      translate: var(--spacing-1) 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      & > svg {
+        transition: none;
+      }
+
+      &:hover > svg {
+        translate: 0 0;
+      }
     }
 
     @variant sm {

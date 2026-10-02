@@ -142,6 +142,7 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 - Card dentro de card, e cabeçalho estilo landing page com ilustração genérica.
 - Ícone decorativo ao lado de títulos, emoji como ícone, e selos em excesso.
 - Link de texto sublinhado como ação ou navegação isolada, fora de uma frase ("Abrir grade", "Ver todas" no cabeçalho de um card). Vale a partir da Change `exibir-painel-administrativo`.
+- Linha de lista que leva a um registro indicada só pelo título sublinhado no hover. Vale a partir da Change `exibir-painel-administrativo`.
 - Cor primária espalhada pela tela.
 - Texto abaixo do contraste AA, inclusive cinza-claro sobre branco, e texto longo centralizado.
 - Animação sem função, skeletons e spinners enfeitados.
@@ -153,6 +154,7 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (P7).
 - Toda cor tem uma função definida: marca, ação, estado ou texto.
 - Estado nunca é indicado só pela cor. Ele sempre vem com texto e, nos selos, com ícone.
 - Ação ou navegação isolada (no cabeçalho ou no rodapé de um card, abaixo de um estado vazio, ao lado de um título) é um botão simples: `btn-secondary btn-go`, com borda, o texto seguido da seta `arrow-right` à direita, que avança um pouco no hover (e fica parada com movimento reduzido). O `link` sublinhado fica só para texto dentro de uma frase.
+- Linha de lista que abre um registro (por exemplo, as solicitações do card "Para decidir" no painel) termina com a seta `chevron-right` à direita, em cinza, que fica na cor de ação e avança um pouco no hover (e fica parada com movimento reduzido). O título da linha não fica sublinhado.
 - Ícones só da biblioteca Lucide, em SVG, nunca emoji. Ações de linha usam botão só com ícone, com `aria-label` e dica visível no hover e no foco. Abaixo de 640 px, o texto aparece junto do ícone, exceto nas listas compactas (abaixo). Botões com texto levam o ícone à esquerda.
 - Foco visível no teclado, alvo de toque de pelo menos 44x44 px e layout funcional a partir de 360 px de largura.
 - Tabelas densas e legíveis. Abaixo de 640 px, cada linha vira um bloco empilhado de rótulo e valor.

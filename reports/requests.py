@@ -170,10 +170,6 @@ class Report:
         return percent(self.approved, self.decided)
 
     @property
-    def suggested_percent(self):
-        return percent(self.suggested, self.total)
-
-    @property
     def week_count(self):
         return len(self.weeks)
 

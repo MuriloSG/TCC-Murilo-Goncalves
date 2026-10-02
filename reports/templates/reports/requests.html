@@ -159,9 +159,8 @@
             {% endfor %}
           </ul>
           <div class="report-alternatives">
-            <h3 class="report-subtitle">Alternativas sugeridas</h3>
+            <h3 class="sr-only">Alternativas sugeridas</h3>
             {% if report.suggested %}
-              <p class="report-alternatives-total"><span class="report-alternatives-count">{{ report.suggested }}</span><span class="report-alternatives-detail">de {{ report.total }} solicitações receberam uma alternativa ({{ report.suggested_percent }}%)</span></p>
               <ul class="report-outcomes" aria-label="Desfecho das alternativas sugeridas">
                 {% for outcome in outcomes %}
                   <li class="report-outcome tone-{{ outcome.tone }}{% if not outcome.count %} is-empty{% endif %}">

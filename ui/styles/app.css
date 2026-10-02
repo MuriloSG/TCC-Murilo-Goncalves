@@ -5611,38 +5611,10 @@
     }
   }
 
-  .report-subtitle {
-    font-size: var(--text-base);
-    line-height: var(--text-base--line-height);
-    font-weight: var(--font-weight-bold);
-  }
-
-  .report-alternatives-total {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--spacing-1) var(--spacing-3);
-    margin-top: var(--spacing-3);
-  }
-
-  .report-alternatives-count {
-    font-size: var(--text-3xl);
-    line-height: 1;
-    font-weight: var(--font-weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .report-alternatives-detail {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
-  }
-
   .report-outcomes {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--spacing-3);
-    margin-top: var(--spacing-5);
   }
 
   .report-outcome {

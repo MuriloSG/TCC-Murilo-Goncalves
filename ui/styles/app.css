@@ -5165,12 +5165,6 @@
       font-size: var(--text-2xl);
       white-space: nowrap;
     }
-
-    & .panel-icon {
-      @variant lg {
-        display: none;
-      }
-    }
   }
 
   .heatmap-help {

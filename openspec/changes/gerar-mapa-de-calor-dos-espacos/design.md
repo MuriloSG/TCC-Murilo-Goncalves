@@ -57,7 +57,7 @@ Seis classes (`heat-0` a `heat-5`): 0% e cinco passos de 20% sobre o intervalo d
 
 - O submenu se chama só "Mapa de calor"; o título da tela continua "Mapa de calor dos espaços".
 - Os cinco filtros ficam numa única linha a partir de `lg`, com o menu aberto ou recolhido: cada campo divide a largura por igual, e o select múltiplo de espaços tem a mesma altura dos outros.
-- Os indicadores ficam numa linha de quatro a partir de `lg`, sem o ícone, com os rótulos "Ocupação média" e "Menor ocupação". "Livre" é termo proibido pelo glossário (seção 9.4), e a tela usa "disponível".
+- Os indicadores ficam numa linha de quatro a partir de `lg`, com o ícone de cada um e com os rótulos "Ocupação média" e "Menor ocupação". "Livre" é termo proibido pelo glossário (seção 9.4), e a tela usa "disponível".
 - O grupo do menu é um `<details>`: abre e fecha sem JavaScript, e o `sidebar.js` não mudou. No menu recolhido, o cabeçalho do grupo some e os itens aparecem como ícones.
 
 ### D9. Acesso

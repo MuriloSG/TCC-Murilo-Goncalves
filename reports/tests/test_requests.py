@@ -57,7 +57,8 @@ class AccessTests(RequestsTestCase):
         response = self.client.get(URL)
         self.assertContains(response, 'Solicitações por semana')
         self.assertContains(response, 'Taxa de aprovação')
-        self.assertContains(response, 'Semana 10, de 05/10/2026 a 11/10/2026')
+        self.assertContains(response, 'Semana 10 (atual), de 05/10/2026 a 11/10/2026')
+        self.assertContains(response, 'Média por semana')
         self.assertContains(response, '1 solicitação: 1 pendente.')
 
     def test_menu_shows_the_item_only_with_both_permissions(self):
@@ -117,7 +118,16 @@ class BuildTests(RequestsTestCase):
         self.assertEqual(report.week_count, 20)
         self.assertEqual((report.weeks[0].start, report.weeks[-1].end), (date(2026, 8, 3), date(2026, 12, 20)))
         self.assertEqual([week.total for week in report.weeks[:3]], [2, 1, 0])
-        self.assertEqual([week.height for week in report.weeks[:3]], [100, 50, 0])
+        self.assertEqual(report.axis, [4, 3, 2, 1, 0])
+        self.assertEqual([week.height for week in report.weeks[:3]], [50, 25, 0])
+        self.assertEqual(report.peak, report.weeks[0])
+        self.assertTrue(report.weeks[0].is_peak)
+        self.assertEqual(report.week_average, 3 / 20)
+
+    def test_current_week(self):
+        weeks = self.build().weeks
+        self.assertEqual([week.number for week in weeks if week.is_current], [10])
+        self.assertEqual(weeks[9].title, 'Semana 10 (atual), de 05/10/2026 a 11/10/2026')
 
     def test_week_labels_alternate_above_twelve_weeks(self):
         weeks = self.build().weeks
@@ -214,6 +224,19 @@ class BuildTests(RequestsTestCase):
         newer = self.ask(status=Status.REJECTED, decided=at(date(2026, 10, 2)), rejection_reason='Recente.')
         self.ask(status=Status.APPROVED, decided=at(date(2026, 10, 3)))
         self.assertEqual(self.build().rejections, [newer, older])
+
+
+class AxisTests(RequestsTestCase):
+    def test_axis_ticks(self):
+        cases = {0: [4, 3, 2, 1, 0], 2: [4, 3, 2, 1, 0], 7: [8, 6, 4, 2, 0], 11: [15, 10, 5, 0], 140: [150, 100, 50, 0]}
+        for highest, ticks in cases.items():
+            with self.subTest(highest=highest):
+                self.assertEqual(requests.axis_ticks(highest), ticks)
+
+    def test_peak_is_the_first_highest_week(self):
+        self.ask(day=date(2026, 8, 4))
+        self.ask(day=date(2026, 8, 11))
+        self.assertEqual(self.build().peak.number, 1)
 
 
 class TextTests(RequestsTestCase):

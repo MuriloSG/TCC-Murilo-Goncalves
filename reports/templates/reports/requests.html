@@ -69,23 +69,31 @@
       <section class="card" aria-labelledby="por-semana">
         <div class="card-head">
           <h2 class="card-title" id="por-semana">Solicitações por semana</h2>
-          {% if report.total %}<p class="panel-notice">Selecione uma coluna para ver as situações.</p>{% endif %}
+          {% if report.total %}
+            <dl class="report-chart-summary">
+              <div><dt>Média por semana</dt><dd>{{ report.week_average|floatformat:1 }}</dd></div>
+              <div><dt>Semana de pico</dt><dd>{{ report.peak.label }} <span class="report-chart-summary-detail">com {{ report.peak.total }}</span></dd></div>
+            </dl>
+          {% endif %}
         </div>
         <div class="card-body">
           {% if report.total %}
-            <div class="report-chart-scroll" tabindex="0" role="region" aria-label="Solicitações por semana em {{ semester.code }}">
-              <ol class="report-chart">
-                {% for week in report.weeks %}
-                  <li class="report-week hint-anchor" tabindex="0" aria-label="{{ week.title }}" aria-describedby="{{ week.hint_id }}">
-                    <span class="report-week-value" aria-hidden="true">{% if week.total %}{{ week.total }}{% endif %}</span>
-                    <span class="panel-column-area">
-                      {% if week.total %}<span class="report-column bar-h-{{ week.height }}"></span>{% else %}<span class="panel-column-empty"></span>{% endif %}
-                    </span>
-                    <span class="report-week-label" aria-hidden="true">{% if week.show_label %}{{ week.label }}{% endif %}</span>
-                    {% include "ui/components/hint.html" with hint_id=week.hint_id align=week.hint_align title=week.title text=week.detail %}
-                  </li>
-                {% endfor %}
-              </ol>
+            <div class="report-plot">
+              <ol class="report-axis" aria-hidden="true">{% for tick in report.axis %}<li>{{ tick }}</li>{% endfor %}</ol>
+              <div class="report-chart-scroll" tabindex="0" role="region" aria-label="Solicitações por semana em {{ semester.code }}">
+                <div class="report-chart-frame">
+                  <div class="report-grid" aria-hidden="true">{% for tick in report.axis %}<span></span>{% endfor %}</div>
+                  <ol class="report-chart">
+                    {% for week in report.weeks %}
+                      <li class="report-week hint-anchor{% if week.is_peak %} is-peak{% endif %}{% if week.is_current %} is-current{% endif %}" tabindex="0" aria-label="{{ week.title }}" aria-describedby="{{ week.hint_id }}">
+                        <span class="report-week-plot">{% if week.total %}<span class="report-column bar-h-{{ week.height }}"><span class="report-week-value" aria-hidden="true">{{ week.total }}</span></span>{% endif %}</span>
+                        <span class="report-week-label" aria-hidden="true">{% if week.show_label or week.is_current %}{{ week.label }}{% endif %}</span>
+                        {% include "ui/components/hint.html" with hint_id=week.hint_id align=week.hint_align title=week.title text=week.detail %}
+                      </li>
+                    {% endfor %}
+                  </ol>
+                </div>
+              </div>
             </div>
             <details class="report-table">
               <summary class="btn-secondary">{% icon "table" %}Mostrar tabela</summary>

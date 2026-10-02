@@ -5,6 +5,7 @@ solicitação pertence ao semestre pela data de uso dentro do período dele (D1)
 traz as solicitações do recorte, e as contagens, a mediana e os rankings saem em Python (D9).
 """
 
+import math
 from dataclasses import dataclass, field
 from datetime import timedelta
 from statistics import median
@@ -20,6 +21,9 @@ STATUS_ORDER = (Status.PENDING, Status.SUGGESTED, Status.APPROVED, Status.REJECT
 RANKING_SIZE = 10
 RECENT_SIZE = 10
 SPLIT_LABEL_WEEKS = 12
+AXIS_STEPS = (1, 2, 5)
+AXIS_INTERVALS = 4
+AXIS_MIN_TOP = 4
 
 STATUS_COUNTS = {
     Status.PENDING: ('pendente', 'pendentes'),
@@ -77,6 +81,8 @@ class Week:
     height: int = 0
     show_label: bool = True
     left_half: bool = True
+    is_current: bool = False
+    is_peak: bool = False
 
     @property
     def total(self):
@@ -88,7 +94,8 @@ class Week:
 
     @property
     def title(self):
-        return f'Semana {self.number}, de {self.start:%d/%m/%Y} a {self.end:%d/%m/%Y}'
+        current = ' (atual)' if self.is_current else ''
+        return f'Semana {self.number}{current}, de {self.start:%d/%m/%Y} a {self.end:%d/%m/%Y}'
 
     @property
     def detail(self):
@@ -158,6 +165,8 @@ class Report:
     suggestion_rejected: int = 0
     suggestion_awaiting: int = 0
     weeks: list = field(default_factory=list)
+    axis: list = field(default_factory=list)
+    peak: object = None
     spaces: list = field(default_factory=list)
     rejections: list = field(default_factory=list)
 
@@ -173,8 +182,30 @@ class Report:
     def week_count(self):
         return len(self.weeks)
 
+    @property
+    def week_average(self):
+        return self.total / len(self.weeks) if self.weeks else 0
 
-def semester_weeks(semester):
+
+def axis_ticks(highest):
+    """Marcas do eixo do gráfico, do topo ao zero, em passos de 1, 2 ou 5 vezes uma potência
+    de dez, com no máximo quatro intervalos.
+
+    O topo nunca fica abaixo de 4, para que uma semana com 2 solicitações não pareça cheia
+    (D12).
+    """
+    top = max(highest, AXIS_MIN_TOP)
+    magnitude = 1
+    while True:
+        for base in AXIS_STEPS:
+            size = base * magnitude
+            intervals = math.ceil(top / size)
+            if intervals <= AXIS_INTERVALS:
+                return [size * index for index in range(intervals, -1, -1)]
+        magnitude *= 10
+
+
+def semester_weeks(semester, today):
     """Semanas de segunda a domingo que cobrem o período; a Semana 1 contém o início (D3)."""
     first = semester.start_date - timedelta(days=semester.start_date.weekday())
     weeks = []
@@ -185,6 +216,7 @@ def semester_weeks(semester):
     for week in weeks:
         week.show_label = len(weeks) <= SPLIT_LABEL_WEEKS or week.number % 2 == 1
         week.left_half = week.number <= len(weeks) / 2
+        week.is_current = week.start <= today <= week.end
     return weeks, first
 
 
@@ -210,7 +242,7 @@ def build(filters, today=None):
     today = today or timezone.localdate()
     requests = list(chosen_requests(filters))
     report = Report(semester=semester, total=len(requests))
-    weeks, first = semester_weeks(semester)
+    weeks, first = semester_weeks(semester, today)
     report.weeks = weeks
     counts = {status: 0 for status in STATUS_ORDER}
     durations = []
@@ -246,8 +278,13 @@ def build(filters, today=None):
         for status in STATUS_ORDER
     ]
     highest = max((week.total for week in weeks), default=0)
+    report.axis = axis_ticks(highest)
     for week in weeks:
-        week.height = step(week.total, highest)
+        week.height = step(week.total, report.axis[0])
+    if highest:
+        peak = next(week for week in weeks if week.total == highest)
+        peak.is_peak = True
+        report.peak = peak
     ranking = sorted(demand.values(), key=lambda item: (-item.total, item.space.name))[:RANKING_SIZE]
     for item in ranking:
         item.width = step(item.total, ranking[0].total)

@@ -5275,6 +5275,57 @@
     }
   }
 
+  .report-chart-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2) var(--spacing-6);
+
+    & > div {
+      display: grid;
+    }
+
+    & dt {
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      line-height: var(--text-xs--line-height);
+    }
+
+    & dd {
+      font-size: var(--text-lg);
+      line-height: var(--text-lg--line-height);
+      font-weight: var(--font-weight-bold);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .report-chart-summary-detail {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-normal);
+  }
+
+  .report-plot {
+    --plot-height: calc(var(--spacing-16) * 3);
+    --plot-top: var(--spacing-6);
+
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--spacing-3);
+  }
+
+  .report-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: var(--plot-height);
+    margin-top: var(--plot-top);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
   .report-chart-scroll {
     overflow-x: auto;
     padding-bottom: var(--spacing-1);
@@ -5285,42 +5336,76 @@
     }
   }
 
+  .report-chart-frame {
+    position: relative;
+    padding-top: var(--plot-top);
+  }
+
+  .report-grid {
+    position: absolute;
+    top: var(--plot-top);
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: var(--plot-height);
+    pointer-events: none;
+
+    & > span {
+      border-top: 1px dashed var(--color-divider);
+    }
+
+    & > span:last-child {
+      border-top: 1px solid var(--color-control-border);
+    }
+  }
+
   .report-chart {
     position: relative;
     display: grid;
     grid-auto-columns: minmax(var(--spacing-8), 1fr);
     grid-auto-flow: column;
-    align-items: end;
-    gap: var(--spacing-1);
     min-width: 100%;
-    height: calc(var(--spacing-16) * 4);
-    padding-inline: var(--spacing-1);
-
-    @variant sm {
-      gap: var(--spacing-2);
-    }
   }
 
   .report-week {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    height: 100%;
+    grid-template-rows: var(--plot-height) auto;
     gap: var(--spacing-2);
     border-radius: var(--radius-md);
-    text-align: center;
-
-    &:hover .report-column,
-    &:focus-visible .report-column {
-      background: var(--color-chart-bar-hover);
-    }
+    cursor: default;
+    transition: background-color var(--motion-fast) ease;
 
     &.hint-anchor {
       position: static;
     }
 
+    &:hover,
+    &:focus-visible {
+      background: color-mix(in srgb, var(--color-hover) 70%, transparent);
+
+      & .report-column {
+        background: var(--color-chart-bar-hover);
+      }
+
+      & .report-week-value {
+        opacity: 1;
+      }
+    }
+
     &:focus-visible {
       outline: 2px solid var(--color-focus);
       outline-offset: 2px;
+    }
+
+    &.is-peak .report-week-value {
+      opacity: 1;
+    }
+
+    &.is-current .report-week-label {
+      color: var(--color-action);
+      font-weight: var(--font-weight-bold);
     }
 
     & .hint,
@@ -5330,26 +5415,47 @@
     }
   }
 
+  .report-week-plot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .report-column {
+    position: relative;
+    width: 60%;
+    max-width: var(--spacing-8);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    background: var(--color-chart-bar);
+    transition: background-color var(--motion-fast) ease;
+  }
+
   .report-week-value {
-    min-height: var(--text-xs--line-height);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    padding-bottom: var(--spacing-1);
+    translate: -50% 0;
     font-size: var(--text-xs);
     line-height: var(--text-xs--line-height);
     font-weight: var(--font-weight-bold);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity var(--motion-fast) ease;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
   }
 
   .report-week-label {
     min-height: var(--text-xs--line-height);
     color: var(--color-text-muted);
+    text-align: center;
     font-size: var(--text-xs);
     line-height: var(--text-xs--line-height);
-  }
-
-  .report-column {
-    width: 100%;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    background: var(--color-chart-bar);
-    transition: background-color var(--motion-fast) ease;
   }
 
   .report-table {

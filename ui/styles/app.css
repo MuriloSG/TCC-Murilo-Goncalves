@@ -2231,6 +2231,8 @@
   }
 
   .public-calendar {
+    scroll-margin-top: var(--spacing-3);
+
     &[aria-busy="true"] {
       opacity: 0.6;
     }
@@ -2276,6 +2278,112 @@
     display: block;
     max-height: 75vh;
     overflow: auto;
+
+    @variant max-sm {
+      --timetable-hour: var(--spacing-12);
+
+      container-type: inline-size;
+      max-height: calc(100dvh - var(--spacing-16) - var(--spacing-8));
+      scroll-snap-type: x mandatory;
+      scroll-padding-left: var(--timetable-hour);
+    }
+  }
+
+  .timetable-frame {
+    position: relative;
+
+    @variant max-sm {
+      --timetable-hour: var(--spacing-12);
+
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 5;
+        width: var(--spacing-3);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      &::before {
+        left: var(--timetable-hour);
+        box-shadow: inset var(--spacing-2) 0 var(--spacing-2) calc(var(--spacing-2) * -1) var(--color-control-border);
+      }
+
+      &::after {
+        right: 0;
+        box-shadow: inset calc(var(--spacing-2) * -1) 0 var(--spacing-2) calc(var(--spacing-2) * -1) var(--color-control-border);
+      }
+
+      &.has-before::before,
+      &.has-after::after {
+        opacity: 1;
+      }
+    }
+  }
+
+  .timetable-short {
+    display: none;
+  }
+
+  .timetable-grid.is-public {
+    & .timetable-corner,
+    & .timetable-time {
+      text-align: center;
+    }
+
+    & .timetable-time {
+      vertical-align: middle;
+    }
+
+    @variant max-sm {
+      & .timetable-corner,
+      & .timetable-time {
+        width: var(--timetable-hour);
+        min-width: var(--timetable-hour);
+        padding: var(--spacing-2) var(--spacing-1);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        text-align: center;
+      }
+
+      & .timetable-corner > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      & .timetable-day {
+        width: calc((100cqi - var(--timetable-hour)) / 2);
+        min-width: calc((100cqi - var(--timetable-hour)) / 2);
+        padding: var(--spacing-2);
+        scroll-margin-left: 0;
+        scroll-snap-align: start;
+      }
+
+      & .timetable-long {
+        display: none;
+      }
+
+      & .timetable-short {
+        display: inline;
+      }
+
+      & .timetable-card {
+        padding: var(--spacing-2) var(--spacing-1) var(--spacing-2) var(--spacing-2);
+        hyphens: auto;
+        overflow-wrap: anywhere;
+      }
+
+      & .timetable-line {
+        gap: var(--spacing-1);
+      }
+    }
   }
 
   .row-filter {

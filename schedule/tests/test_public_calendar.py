@@ -382,6 +382,13 @@ class GridTests(PublicCalendarTestCase):
     def test_today_is_marked(self):
         self.assertContains(self.get(sala='10'), 'id="hoje"')
 
+    def test_day_header_has_short_label_and_full_name(self):
+        html = self.text(self.get(sala='10', inicio='2026-09-21', fim='2026-09-25'))
+        self.assertIn('aria-label="Hoje, Quarta-feira, 23/09/2026"', html)
+        self.assertIn('aria-label="Segunda-feira, 21/09/2026"', html)
+        self.assertIn('<span class="timetable-short">Qua</span>', html)
+        self.assertIn('<span class="timetable-short">23/09</span>', html)
+
 
 class EmptyStateTests(PublicCalendarTestCase):
     def assertEmptyGrid(self, **params):

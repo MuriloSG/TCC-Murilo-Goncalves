@@ -77,6 +77,9 @@ CONTRAST_PAIRS = [
     ('booking-bar', 'surface', 3, 'Agendamentos nas barras e na legenda do painel'),
     ('stage-undergraduate-bar', 'hover', 3, 'Aulas sobre o trilho das barras do painel'),
     ('booking-bar', 'hover', 3, 'Agendamentos sobre o trilho das barras do painel'),
+    ('chart-bar', 'surface', 3, 'Colunas do gráfico e barras dos relatórios'),
+    ('chart-bar-hover', 'surface', 3, 'Coluna do gráfico no hover e no foco'),
+    ('chart-bar', 'hover', 3, 'Barras dos relatórios sobre o trilho'),
 ]
 
 EXEMPT = {

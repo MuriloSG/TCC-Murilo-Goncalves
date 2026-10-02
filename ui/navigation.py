@@ -66,6 +66,7 @@ MENU = (
     MenuItem('Perfis', 'shield-check', 'role_', (('PERFIL.VISUALIZAR', 'role_list'),)),
     MenuGroup('Relatórios', 'chart-column', 'report_', (
         MenuItem('Mapa de calor', 'grid-3x3', 'report_heatmap', ((('RELATORIO.VISUALIZAR', 'ENSALAMENTO.VISUALIZAR'), 'report_heatmap'),)),
+        MenuItem('Solicitações', 'inbox', 'report_requests', ((('RELATORIO.VISUALIZAR', 'AGENDA.ANALISAR'), 'report_requests'),)),
     )),
     MenuItem('Notificações', 'bell', 'notice_', (('NOTIFICACAO.PUBLICAR', 'notice_list'),)),
     MenuItem('Auditoria', 'scroll-text', 'audit_', (('AUDITORIA.VISUALIZAR', 'audit_log_list'),)),

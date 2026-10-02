@@ -27,8 +27,7 @@ Sem specs nesta Change, como na Change `gerar-mapa-de-calor-dos-espacos`: o plan
 
 ## Impact
 
-- `reports`: novo módulo `requests.py` com o cálculo, `charts.py` com a geometria do gráfico, formulário, views, templates e testes.
+- `reports`: novo módulo `requests.py` com o cálculo, formulário, view, template e testes.
 - `ui/navigation.py`: item "Solicitações" no grupo "Relatórios".
-- `ui/styles/app.css` e `ui/contrast.py`: tokens e componentes do gráfico (`chart`, `chart-bar`, `chart-axis`, `meter`) e os pares de contraste.
-- `ui/static/ui/js/chart.js`: dica das colunas.
+- `ui/styles/app.css` e `ui/contrast.py`: tokens e componentes do gráfico (`report-chart`, `report-week`, `report-column`, `report-meter`, `report-fill`) e os pares de contraste.
 - Usa, sem alterar, `BookingRequest` e seus campos de decisão (`decided_at`, `responded_at`, `suggested_*`), `panel.indicators.chosen_semester` e a `status_badge` de `bookings/views.py`.

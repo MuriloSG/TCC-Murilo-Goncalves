@@ -66,10 +66,21 @@ As dez rejeições mais recentes do período, por `decided_at`: data de uso, esp
 
 ### D11. Tela de referência
 
-A referência da tela é pedida ao autor antes da task 4.2, e a adaptação (o que veio dela e o que foi retirado) é registrada aqui.
+O autor escolheu (02/10/2026) seguir a tela do mapa de calor como referência, sem imagem nova: o cartão de filtros, a linha de quatro indicadores com ícone e dica, e os cartões com tabela. Nada foi retirado.
+
+### D12. Ajustes na implementação (02/10/2026)
+
+- **Gráfico sem SVG e sem JavaScript novo.** O painel já tinha colunas e barras em passos de 5% (`bar-h-*`, `bar-w-*` e `panel.indicators.step`). O gráfico usa essas classes, e não um SVG com coordenadas, e a dica é o `hint.html` com o `hint.js` existente, sem o `chart.js` previsto em D3. Os componentes novos são `report-chart`, `report-week`, `report-column`, `report-meter` e `report-fill`.
+- **Dica dentro do gráfico.** A área do gráfico rola na horizontal e cortaria a dica abaixo ou acima da coluna. Por isso a dica abre no topo do gráfico, do lado oposto ao da coluna (`Week.hint_align`), e a coluna ganha o tom de hover.
+- **Valores no topo das colunas.** Como no gráfico de horas por dia do painel, cada coluna mostra o total acima dela. A divisão por situação fica na dica e na tabela.
+- **Raio do topo das colunas:** `--radius-md`, porque a escala não tem raio menor.
+- **Rótulos curtos dos indicadores:** "Aprovação" e "Até a decisão", porque "Taxa de aprovação" e "Tempo até a decisão" eram cortados na linha de quatro com o menu aberto.
+- **Pendentes sem botão.** O botão "Analisar" foi para o cabeçalho de "Situação das solicitações", porque um botão dentro do indicador, que já é focável pela dica, criaria dois alvos no mesmo cartão.
+- **Disposição.** "Espaços mais solicitados" ocupa a largura inteira, porque as seis colunas não cabiam ao lado de outro cartão. "Situação das solicitações" divide o próprio corpo em duas colunas a partir de `lg`: as situações e as alternativas.
+- **Rolagem de 9 px em 640 px.** As dicas ocultas dos indicadores passam da borda nessa largura. O mesmo acontece no mapa de calor e no painel, então o problema vem de antes desta Change e fica fora dela.
 
 ## Risks / Trade-offs
 
-- [SVG com coordenadas calculadas no servidor] → sem `style=` e sem biblioteca, mas a largura do SVG é fixa no `viewBox`. Conferir no navegador em 360 px: abaixo de 640 px o gráfico rola na horizontal dentro do próprio cartão, rotulado e focável, como a Grade, e a página nunca rola.
+- [Altura em passos de 5%] → duas semanas com totais próximos podem ter a mesma altura. O valor no topo da coluna, a dica e a tabela dão o número exato. Em larguras estreitas, o gráfico rola na horizontal dentro do próprio cartão, rotulado e focável, como a Grade.
 - [Mediana em tempo corrido] → fim de semana e feriado aumentam o tempo. A ajuda do indicador diz "tempo corrido", e o cálculo em dias letivos fica para depois, se o autor pedir.
 - [Recorte pela data de uso] → uma solicitação criada no fim do semestre anterior para uma data deste semestre conta neste. É o comportamento esperado para planejar o espaço, e fica escrito na ajuda do filtro de semestre.

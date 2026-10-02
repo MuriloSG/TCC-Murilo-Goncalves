@@ -6,9 +6,10 @@ from django.urls import reverse
 from django.views.generic import TemplateView
 
 from accounts import permissions
+from bookings.views import decorate, status_badge
 from panel.indicators import chosen_semester, now_local
-from reports import heatmap
-from reports.forms import HeatmapFilterForm
+from reports import heatmap, requests
+from reports.forms import HeatmapFilterForm, RequestsFilterForm
 from schedule.models import WEEKDAY_ORDER
 from ui.pagination import paginate
 from ui.views import ModalView
@@ -91,3 +92,34 @@ class HeatmapCellView(ModalView, TemplateView):
             cell=cell, heatmap=result,
             busy_count=len(busy), free_count=len(free), page=page, query=query.urlencode(), **kwargs,
         )
+
+
+class RequestsReportView(TemplateView):
+    """Relatório de solicitações de agendamento do semestre (Change gerar-relatorio-de-solicitacoes).
+
+    Exige `RELATORIO.VISUALIZAR` pela rota e `AGENDA.ANALISAR` pelos dados, porque mostra as
+    solicitações de todos os usuários (D10). Só lê os dados e não declara `audit_resource`.
+    """
+
+    permission_required = permissions.REPORT_VIEW
+    template_name = 'reports/requests.html'
+
+    def get_context_data(self, **kwargs):
+        if not self.request.user.has_perm(permissions.BOOKING_REVIEW):
+            raise PermissionDenied
+        today = now_local().date()
+        semesters, semester = chosen_semester(self.request.GET.get('semestre'), today)
+        form = RequestsFilterForm(self.request.GET, semesters, semester)
+        filters = form.filters()
+        report = requests.build(filters, today)
+        if report is not None:
+            for row in report.statuses:
+                row.badge = status_badge(row)
+            for item in report.spaces:
+                item.action = self.agenda_action(item.space)
+            decorate(report.rejections, 'agenda_review_detail')
+        return super().get_context_data(filters=form, semester=filters.semester, report=report, **kwargs)
+
+    def agenda_action(self, space):
+        url = f"{reverse('agenda_grid')}?{urlencode({'sala': space.name})}"
+        return {'url': url, 'icon': 'calendar-clock', 'label': 'Abrir na Agenda', 'page': True}

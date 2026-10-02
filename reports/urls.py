@@ -10,4 +10,5 @@ urlpatterns = [
         login_required(views.HeatmapCellView.as_view()),
         name='report_heatmap_cell',
     ),
+    path('relatorios/solicitacoes/', login_required(views.RequestsReportView.as_view()), name='report_requests'),
 ]

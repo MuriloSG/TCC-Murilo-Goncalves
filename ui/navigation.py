@@ -13,7 +13,8 @@ from django.urls import reverse
 class MenuItem:
     """Item do menu com as rotas possíveis, cada uma com a permissão que a libera.
 
-    A primeira rota liberada é a do link, e `prefix` marca o item como atual.
+    A primeira rota liberada é a do link, e `prefix` marca o item como atual. A permissão de
+    uma rota pode ser uma tupla, quando ela exige todas.
     """
 
     label: str
@@ -24,9 +25,31 @@ class MenuItem:
     def url_for(self, user):
         """URL da primeira rota liberada ao usuário, ou None quando nenhuma é."""
         for permission, url_name in self.routes:
-            if user.has_perm(permission):
+            if all(user.has_perm(code) for code in (permission if isinstance(permission, tuple) else (permission,))):
                 return reverse(url_name)
         return None
+
+
+@dataclass(frozen=True)
+class MenuGroup:
+    """Grupo do menu com submenu, como "Relatórios" (D8 da Change gerar-mapa-de-calor-dos-espacos).
+
+    O grupo só aparece quando algum item dele está liberado, e o link do grupo é o do primeiro
+    item liberado. `prefix` marca o grupo como atual e o abre.
+    """
+
+    label: str
+    icon: str
+    prefix: str
+    items: tuple
+
+    def entries_for(self, user):
+        """Itens liberados ao usuário, como pares (item, url)."""
+        return [(item, url) for item in self.items if (url := item.url_for(user))]
+
+    def url_for(self, user):
+        entries = self.entries_for(user)
+        return entries[0][1] if entries else None
 
 
 MENU = (
@@ -42,6 +65,9 @@ MENU = (
     MenuItem('Usuários', 'users', 'user_', (('USUARIO.VISUALIZAR', 'user_list'),)),
     MenuItem('Perfis', 'shield-check', 'role_', (('PERFIL.VISUALIZAR', 'role_list'),)),
     MenuItem('Notificações', 'bell', 'notice_', (('NOTIFICACAO.PUBLICAR', 'notice_list'),)),
+    MenuGroup('Relatórios', 'chart-column', 'report_', (
+        MenuItem('Mapa de calor', 'grid-3x3', 'report_heatmap', ((('RELATORIO.VISUALIZAR', 'ENSALAMENTO.VISUALIZAR'), 'report_heatmap'),)),
+    )),
     MenuItem('Auditoria', 'scroll-text', 'audit_', (('AUDITORIA.VISUALIZAR', 'audit_log_list'),)),
 )
 

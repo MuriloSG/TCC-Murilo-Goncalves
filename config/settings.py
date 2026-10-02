@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'schedule',
     'bookings',
     'panel',
+    'reports',
     'allauth',
     'allauth.account',
 ]

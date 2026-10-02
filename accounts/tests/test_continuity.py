@@ -315,6 +315,7 @@ class ContinuityGuardTests(ContinuityTestCase):
                 permissions.AUDIT_VIEW,
                 permissions.NOTICE_PUBLISH,
                 permissions.PANEL_VIEW,
+                permissions.REPORT_VIEW,
                 permissions.SPACE_ALLOCATION_VIEW,
                 permissions.SPACE_ALLOCATION_IMPORT,
                 permissions.SPACE_ALLOCATION_IMPORT_DELETE,

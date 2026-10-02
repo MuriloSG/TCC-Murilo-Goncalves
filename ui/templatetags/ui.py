@@ -4,7 +4,7 @@ from django import template
 from django.template.loader import get_template
 from django.urls import reverse
 
-from ui.navigation import menu_for
+from ui.navigation import MenuGroup, menu_for
 from ui.pagination import PAGE_PARAMETER
 
 register = template.Library()
@@ -22,10 +22,16 @@ def navigation(context):
     request = context.get('request')
     match = getattr(request, 'resolver_match', None)
     current_name = (match and match.url_name) or ''
-    return [
-        {'url': url, 'label': item.label, 'icon_name': item.icon, 'current': current_name.startswith(item.prefix)}
-        for item, url in menu_for(request.user)
-    ]
+    items = []
+    for item, url in menu_for(request.user):
+        entry = {'url': url, 'label': item.label, 'icon_name': item.icon, 'current': current_name.startswith(item.prefix)}
+        if isinstance(item, MenuGroup):
+            entry['children'] = [
+                {'url': child_url, 'label': child.label, 'icon_name': child.icon, 'current': current_name.startswith(child.prefix)}
+                for child, child_url in item.entries_for(request.user)
+            ]
+        items.append(entry)
+    return items
 
 
 @register.filter

@@ -4134,6 +4134,21 @@
         padding-inline: 0;
       }
 
+      & .nav-group > summary {
+        display: none;
+      }
+
+      & .nav-group::details-content {
+        content-visibility: visible;
+        display: contents;
+      }
+
+      & .nav-sub {
+        margin: 0;
+        padding: 0;
+        border: 0;
+      }
+
       & .nav-text {
         position: absolute;
         top: 50%;
@@ -4252,6 +4267,63 @@
           color: var(--color-on-fill);
         }
       }
+    }
+  }
+
+  .nav-group {
+    & > summary {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      min-height: var(--spacing-12);
+      padding-inline: var(--spacing-3);
+      border-radius: var(--radius-lg);
+      color: var(--color-on-sidebar);
+      font-weight: var(--font-weight-semibold);
+      cursor: pointer;
+      list-style: none;
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      & svg {
+        width: var(--spacing-5);
+        height: var(--spacing-5);
+        flex: none;
+        color: var(--color-sidebar-accent);
+      }
+
+      & .nav-chevron {
+        width: var(--spacing-4);
+        height: var(--spacing-4);
+        margin-left: auto;
+        transition: rotate var(--motion-fast) ease;
+      }
+
+      &:hover {
+        background: var(--color-sidebar-hover);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 2px;
+      }
+    }
+
+    &[open] > summary .nav-chevron {
+      rotate: 180deg;
+    }
+  }
+
+  .nav-sub {
+    margin-top: var(--spacing-1);
+    margin-left: var(--spacing-5);
+    padding-left: var(--spacing-3);
+    border-left: 2px solid var(--color-sidebar-border);
+
+    & a {
+      font-weight: var(--font-weight-normal);
     }
   }
 
@@ -5055,6 +5127,154 @@
   .panel {
     display: grid;
     gap: var(--spacing-6);
+  }
+
+  .heatmap-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--spacing-4);
+    align-items: end;
+    padding: var(--spacing-5);
+
+    @variant lg {
+      display: flex;
+      flex-wrap: nowrap;
+
+      & > .field {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+    }
+
+    & .select-control {
+      padding-block: 1px;
+    }
+  }
+
+  .panel-kpis.heatmap-kpis {
+    @variant lg {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--spacing-4);
+    }
+
+    & .panel-kpi {
+      padding: var(--spacing-4);
+    }
+
+    & .panel-kpi-value {
+      font-size: var(--text-2xl);
+      white-space: nowrap;
+    }
+
+    & .panel-icon {
+      @variant lg {
+        display: none;
+      }
+    }
+  }
+
+  .heatmap-help {
+    margin-top: calc(var(--spacing-2) * -1);
+  }
+
+  .heatmap-kpi-detail {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+  }
+
+  .heatmap-scroll {
+    overflow-x: auto;
+  }
+
+  .heatmap {
+    width: 100%;
+    min-width: 32rem;
+    border-collapse: separate;
+    border-spacing: var(--spacing-1);
+
+    & th {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      line-height: var(--text-sm--line-height);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    & th[scope="row"] {
+      width: 1%;
+      padding-right: var(--spacing-2);
+      text-align: right;
+      white-space: nowrap;
+    }
+  }
+
+  .heatmap-cell {
+    display: grid;
+    place-items: center;
+    min-height: var(--spacing-11);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+
+    &:hover {
+      outline: 2px solid var(--color-text);
+      outline-offset: -2px;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  .heat-0 {
+    background: var(--color-page);
+    color: var(--color-text-muted);
+  }
+
+  .heat-1 {
+    background: color-mix(in srgb, var(--color-action) 12%, var(--color-surface));
+    color: var(--color-text);
+  }
+
+  .heat-2 {
+    background: color-mix(in srgb, var(--color-action) 28%, var(--color-surface));
+    color: var(--color-text);
+  }
+
+  .heat-3 {
+    background: color-mix(in srgb, var(--color-action) 45%, var(--color-surface));
+    color: var(--color-text);
+  }
+
+  .heat-4 {
+    background: var(--color-action);
+    color: var(--color-on-fill);
+  }
+
+  .heat-5 {
+    background: var(--color-action-hover);
+    color: var(--color-on-fill);
+  }
+
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-1);
+    margin-top: var(--spacing-3);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+
+    & span {
+      width: var(--spacing-6);
+      height: var(--spacing-3);
+      border-radius: var(--radius-md);
+    }
   }
 
   .panel-kpis {

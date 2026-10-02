@@ -53,6 +53,13 @@ Seis classes (`heat-0` a `heat-5`): 0% e cinco passos de 20% sobre o intervalo d
 
 `MenuGroup(label, icon, prefix, items)` entra no `MENU` ao lado de `MenuItem`. O grupo só aparece com algum item liberado, abre sozinho quando o item atual está dentro dele e alterna com um botão `aria-expanded`. No menu recolhido, o grupo mostra os itens num painel flutuante. O `sidebar.js` cuida da alternância, e sem JavaScript o grupo fica aberto.
 
+### D10. Ajustes do autor na implementação (02/10/2026)
+
+- O submenu se chama só "Mapa de calor"; o título da tela continua "Mapa de calor dos espaços".
+- Os cinco filtros ficam numa única linha a partir de `lg`, com o menu aberto ou recolhido: cada campo divide a largura por igual, e o select múltiplo de espaços tem a mesma altura dos outros.
+- Os indicadores ficam numa linha de quatro a partir de `lg`, sem o ícone, com os rótulos "Ocupação média" e "Menor ocupação". "Livre" é termo proibido pelo glossário (seção 9.4), e a tela usa "disponível".
+- O grupo do menu é um `<details>`: abre e fecha sem JavaScript, e o `sidebar.js` não mudou. No menu recolhido, o cabeçalho do grupo some e os itens aparecem como ícones.
+
 ### D9. Acesso
 
 `REPORT_VIEW = 'RELATORIO.VISUALIZAR'` é criada por migration de dados e concedida ao ADMINISTRADOR. As views declaram `permission_required = REPORT_VIEW`, e o mapa e o modal exigem também `ENSALAMENTO.VISUALIZAR`. O submenu do mapa usa as duas permissões. O relatório só lê dados e não declara `audit_resource`.

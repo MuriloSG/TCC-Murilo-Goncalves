@@ -1,0 +1,43 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+{% block title %}{{ cell.weekday.label }}, {{ cell.slot_obj.label }}{% endblock %}
+{% block form_attributes %}{% endblock %}
+{% block body %}
+  <div id="celula-itens">
+    <p class="help">{{ cell.average }} de {{ heatmap.space_count }} espaços ocupados em média ({{ cell.percent }}%), em {{ cell.weeks }} semana{{ cell.weeks|pluralize }}. {{ busy_count }} espaço{{ busy_count|pluralize }} com alguma ocupação e {{ free_count }} disponíve{{ free_count|pluralize:'l,is' }} em todas as semanas.</p>
+    {% if page.object_list %}
+      <div class="panel-table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Espaço</th>
+            <th scope="col">Ocupação</th>
+            <th scope="col" class="cell-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page.object_list %}
+            <tr>
+              <td class="cell-primary" data-label="Espaço">{{ row.space.name }}</td>
+              <td data-label="Ocupação">{% if row.usage %}{% include "ui/components/badge.html" with tone=row.usage.tone icon=row.usage.icon label=row.usage.kind %} em {{ row.usage.weeks }} de {{ cell.weeks }} semana{{ cell.weeks|pluralize }}{% else %}Disponível{% endif %}</td>
+              <td class="cell-actions" data-label="Ações">{% include "ui/components/icon_action.html" with action=row.action %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <p>Nenhum espaço no filtro.</p>
+    {% endif %}
+    {% if page.paginator.num_pages > 1 %}
+      <nav class="pagination panel-modal-pages" aria-label="Paginação">
+        <p>Exibindo <strong>{{ page.start_index }}</strong> a <strong>{{ page.end_index }}</strong> de <strong>{{ page.paginator.count }}</strong></p>
+        <div class="pagination-controls">
+          {% if page.has_previous %}<a class="btn-secondary" href="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.previous_page_number }}" hx-get="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.previous_page_number }}" hx-target="#celula-itens" hx-select="#celula-itens" hx-swap="outerHTML" rel="prev">Anterior</a>{% else %}<span class="btn-secondary" aria-disabled="true">Anterior</span>{% endif %}
+          <span aria-current="page">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+          {% if page.has_next %}<a class="btn-secondary" href="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.next_page_number }}" hx-get="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.next_page_number }}" hx-target="#celula-itens" hx-select="#celula-itens" hx-swap="outerHTML" rel="next">Próxima</a>{% else %}<span class="btn-secondary" aria-disabled="true">Próxima</span>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  </div>
+{% endblock %}

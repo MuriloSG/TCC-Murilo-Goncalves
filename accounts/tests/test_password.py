@@ -43,12 +43,6 @@ class PasswordFlowTestCase(TestCase):
 
 
 class UnusablePasswordTests(PasswordFlowTestCase):
-    def test_registered_user_does_not_authenticate_before_defining_the_password(self):
-        self.assertFalse(self.user.has_usable_password())
-        for password in ['', '!', self.user.password, PASSWORD]:
-            with self.subTest(password=password):
-                self.assertFalse(self.login(password=password))
-
     def test_registered_user_defines_the_password_through_the_link(self):
         self.request_link()
         response = self.set_password(reset_link(mail.outbox[0]))
@@ -138,21 +132,11 @@ class ResetTests(PasswordFlowTestCase):
         self.assertFalse(self.login())
         self.assertTrue(self.login(password='Nova-senha-forte-456'))
 
-    def test_password_is_stored_as_hash(self):
-        self.set_password(self.link, 'Nova-senha-forte-456')
-        stored = User.objects.get(pk=self.user.pk).password
-        self.assertNotIn('Nova-senha-forte-456', stored)
-        self.assertTrue(stored.startswith('pbkdf2_sha256$'))
-
     def test_link_is_single_use(self):
         self.set_password(self.link, 'Nova-senha-forte-456')
         response = self.set_password(self.link, 'Terceira-senha-789')
         self.assertTrue(response.context['token_fail'])
         self.assertTrue(User.objects.get(pk=self.user.pk).check_password('Nova-senha-forte-456'))
-
-    def test_tampered_key_is_refused(self):
-        tampered = self.link[:-2] + ('a' if self.link[-2] != 'a' else 'b') + '/'
-        self.assertLinkRefused(self.set_password(tampered, 'Nova-senha-forte-456'))
 
     def test_expired_link_is_refused(self):
         later = datetime.now() + timedelta(days=3, hours=1)

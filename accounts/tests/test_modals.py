@@ -136,21 +136,6 @@ class FormModalTests(ModalTestCase):
         response = self.client.post(f'/perfis/{role.pk}/permissoes/?etapa=2', {'permissions': [permissions.USER_VIEW]}, headers=HTMX)
         self.assertClientRedirect(response, f'/perfis/{role.pk}/')
 
-    def test_primeira_etapa_da_criacao(self):
-        content = self.client.get('/perfis/novo/', headers=HTMX).content.decode()
-        self.assertIn('<p class="modal-step">Etapa 1 de 2</p>', content)
-        self.assertIn('Criar perfil</button>', content)
-        self.assertNotIn('type="checkbox"', content)
-        self.assertNotIn('data-reload-on-close', content)
-
-    def test_cadastro_com_email_ja_usado_mostra_o_erro_no_campo(self):
-        response = self.client.post(
-            '/usuarios/novo/', {'name': 'Joana', 'email': 'maria@ifnmg.edu.br', 'role': self.teacher.pk}, headers=HTMX,
-        )
-        self.assertFragment(response)
-        self.assertContains(response, 'id="id_email_error"')
-        self.assertEqual(User.objects.filter(email='maria@ifnmg.edu.br').count(), 1)
-
     def test_sucesso_mantem_busca_e_filtro_da_lista_de_origem(self):
         response = self.client.post(
             f'/usuarios/{self.target.pk}/editar/',

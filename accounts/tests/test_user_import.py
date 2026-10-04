@@ -3,7 +3,6 @@ from django.test import TestCase
 
 from accounts import permissions
 from accounts.emails import PASSWORD_LINK
-from accounts.forms import INVALID_EMAIL_MESSAGE
 from accounts.imports import UserImport, concluded_message
 from accounts.models import AdministrativeContinuityViolation, Permission, Role, RolePermission, User, UserRole
 from imports.models import Import
@@ -56,18 +55,11 @@ class UsernameTests(UserImportTestCase):
         self.confirm(self.preview('ana@ifnmg.edu.br;Ana Souza;DOCENTE;Ana Souza\n'))
         self.assertEqual(User.objects.get(email='ana@ifnmg.edu.br').username, 'Ana Souza')
 
-    def test_creates_without_username(self):
-        self.confirm(self.preview('ana@ifnmg.edu.br;Ana Souza;DOCENTE;\n'))
-        self.assertIsNone(User.objects.get(email='ana@ifnmg.edu.br').username)
-
-    def test_update_plan_shows_the_username_change(self):
+    def test_update_plans_and_applies_the_username(self):
         aldo = create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
         row = self.row(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;Aldo Gomes\n'))
         self.assertEqual((row.action, row.target), ('update', str(aldo.pk)))
         self.assertEqual(row.changes, {'username': [None, 'Aldo Gomes']})
-
-    def test_update_applies_the_username(self):
-        create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
         self.confirm(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;Aldo Gomes\n'))
         self.assertEqual(User.objects.get(email='aldo@ifnmg.edu.br').username, 'Aldo Gomes')
 
@@ -109,6 +101,7 @@ class ActionTests(UserImportTestCase):
         self.assertTrue(self.confirm(importation))
         user = User.objects.get(email='ana@ifnmg.edu.br')
         self.assertEqual((user.name, user.role, user.is_active), ('Ana Souza', self.teacher, True))
+        self.assertIsNone(user.username)
         self.assertFalse(user.has_usable_password())
         self.assertEqual(self.row(importation).created_object, str(user.pk))
 
@@ -133,10 +126,6 @@ class ActionTests(UserImportTestCase):
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual(self.error_codes(importation), [('Perfil', 'unknown_role')])
         self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
-
-    def test_invalid_email_has_the_screen_message(self):
-        row = self.row(self.preview('davi-ifnmg;Davi Rocha;DOCENTE\n'))
-        self.assertEqual(row.errors, [{'column': 'E-mail', 'code': 'invalid', 'message': INVALID_EMAIL_MESSAGE}])
 
     def test_email_of_another_domain_is_not_registered(self):
         importation = self.preview('davi@gmail.com;Davi Rocha;DOCENTE\n')

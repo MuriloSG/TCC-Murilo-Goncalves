@@ -1,5 +1,3 @@
-import re
-
 from django.test import TestCase
 
 from accounts import permissions
@@ -25,21 +23,14 @@ class EditFormsShowCurrentValuesTests(TestCase):
     def setUp(self):
         self.client.force_login(self.admin)
 
-    def test_edicao_de_usuario(self):
-        content = self.client.get(f'/usuarios/{self.target.pk}/editar/').content.decode()
-        self.assertRegex(content, r'<input[^>]*name="name"[^>]*value="Maria Sousa"')
-        self.assertRegex(content, r'<input[^>]*name="email"[^>]*value="maria@ifnmg.edu.br"')
+    def form(self, url):
+        return self.client.get(url).context['form']
 
-    def test_troca_de_perfil(self):
-        content = self.client.get(f'/usuarios/{self.target.pk}/perfil/').content.decode()
-        self.assertRegex(content, rf'<option value="{self.role.pk}" selected>Coordenação</option>')
+    def test_edicao_e_troca_de_perfil_do_usuario(self):
+        form = self.form(f'/usuarios/{self.target.pk}/editar/')
+        self.assertEqual((form['name'].value(), form['email'].value()), ('Maria Sousa', 'maria@ifnmg.edu.br'))
+        self.assertEqual(self.form(f'/usuarios/{self.target.pk}/perfil/')['role'].value(), self.role.pk)
 
     def test_edicao_de_perfil(self):
-        content = self.client.get(f'/perfis/{self.role.pk}/editar/').content.decode()
-        self.assertRegex(content, r'<input[^>]*name="name"[^>]*value="Coordenação"')
-        self.assertIn('>\nCoordenadores de curso</textarea>', content)
-
-    def test_permissoes_do_perfil(self):
-        content = self.client.get(f'/perfis/{self.role.pk}/permissoes/').content.decode()
-        checked = re.findall(r'<input[^>]*value="([A-Z_.]+)"[^>]*checked', content)
-        self.assertEqual(sorted(checked), sorted([permissions.USER_VIEW, permissions.USER_EDIT]))
+        form = self.form(f'/perfis/{self.role.pk}/editar/')
+        self.assertEqual((form['name'].value(), form['description'].value()), ('Coordenação', 'Coordenadores de curso'))

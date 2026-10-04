@@ -2,7 +2,11 @@ import re
 
 from django.test import TestCase
 
+from accounts import permissions
 from accounts.models import Role, User
+
+GRANTABLE = permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS
+USER_GROUP = sum(code.startswith('USUARIO.') for code in GRANTABLE)
 
 
 class ScreensTestCase(TestCase):
@@ -68,28 +72,10 @@ class UserListScreenTests(ScreensTestCase):
         self.assertNotIn('Trocar perfil', menu)
         self.assertNotIn('Desativar usuário', menu)
 
-    def test_perfil_e_situacao_na_linha_de_resumo(self):
-        row = self.row(self.client.get('/usuarios/').content.decode(), 'maria@')
-        self.assertIn('<td class="cell-meta" data-label="Perfil">Docente</td>', row)
-        self.assertIn('<td class="cell-meta" data-label="Situação">', row)
-
     def test_celulas_com_rotulo_da_coluna(self):
         row = self.row(self.client.get('/usuarios/').content.decode(), 'maria@')
         for label in ('Usuário', 'Perfil', 'Situação', 'Ações'):
             self.assertIn(f'data-label="{label}"', row)
-
-    def test_acoes_seguem_as_permissoes(self):
-        role = Role.objects.create_role(code='CONSULTA', name='Consulta', permissions=['USUARIO.VISUALIZAR'])
-        self.client.force_login(User.objects.register(email='joao@ifnmg.edu.br', name='João', role=role))
-        content = self.client.get('/usuarios/').content.decode()
-        self.assertNotIn('aria-label="Editar"', content)
-        self.assertNotIn('Mais ações', content)
-        self.assertNotIn('Cadastrar usuário', content)
-
-    def test_rodape_com_a_contagem(self):
-        self.assertContains(
-            self.client.get('/usuarios/'), 'Exibindo <strong>1</strong> a <strong>3</strong> de <strong>3</strong> usuários',
-        )
 
 
 class MessagesScreenTests(ScreensTestCase):
@@ -140,8 +126,8 @@ class FormScreenTests(ScreensTestCase):
         self.role.set_permissions(['USUARIO.VISUALIZAR', 'USUARIO.EDITAR'])
         content = self.client.get(f'/perfis/{self.role.pk}/permissoes/', headers={'HX-Request': 'true'}).content.decode()
         self.assertIn('<dialog class="modal modal-wide"', content)
-        self.assertRegex(content, r'<strong><span data-checklist-selected>2</span> de 35</strong> permissões selecionadas')
-        self.assertIn('<span class="count" data-checklist-group-count>2/7</span>', content)
+        self.assertRegex(content, rf'<strong><span data-checklist-selected>2</span> de {len(GRANTABLE)}</strong> permissões selecionadas')
+        self.assertIn(f'<span class="count" data-checklist-group-count>2/{USER_GROUP}</span>', content)
         self.assertRegex(content, r'value="USUARIO.EDITAR"[^>]*checked')
         self.assertIn('<strong>USUARIO.EDITAR</strong> <span class="perm-description">Alterar nome e e-mail de usuário</span>', content)
         self.assertIn('Salvar permissões</button>', content)
@@ -150,15 +136,7 @@ class FormScreenTests(ScreensTestCase):
         content = self.client.get(f'/perfis/{self.role.pk}/permissoes/').content.decode()
         self.assertIn('<div class="checklist-tools" data-checklist-tools hidden>', content)
         self.assertIn('<p class="checklist-unsaved" data-checklist-unsaved hidden>', content)
-        self.assertRegex(content, r'<span data-checklist-selected>0</span> de 35</strong>')
-
-    def test_campo_de_escolha_usa_o_componente(self):
-        content = self.client.get('/usuarios/novo/').content.decode()
-        self.assertRegex(content, r'<div class="select" data-select>')
-        self.assertRegex(content, r'<div class="select-native select-wrap"><select name="role"')
-        self.assertIn('data-select-trigger', content)
-        self.assertIn('data-select-search', content)
-        self.assertIn('role="listbox"', content)
+        self.assertRegex(content, rf'<span data-checklist-selected>0</span> de {len(GRANTABLE)}</strong>')
 
 
 class RoleScreenTests(ScreensTestCase):

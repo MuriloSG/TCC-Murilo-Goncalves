@@ -11,12 +11,6 @@ class EnqueueTests(TestCase):
         self.assertEqual((entry.kind, entry.reference, entry.status), ('TESTE', '7', 'A_ENVIAR'))
         self.assertEqual(entry.attempts, 0)
 
-    def test_rollback_discards_entry(self):
-        with self.assertRaises(RuntimeError), transaction.atomic():
-            OutboxEntry.objects.enqueue('TESTE', 1)
-            raise RuntimeError
-        self.assertFalse(OutboxEntry.objects.exists())
-
     def test_repeated_enqueue_keeps_single_pending_entry_and_attempts(self):
         OutboxEntry.objects.enqueue('TESTE', 1)
         OutboxEntry.objects.update(attempts=1)

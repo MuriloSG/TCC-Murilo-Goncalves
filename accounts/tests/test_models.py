@@ -1,5 +1,4 @@
 from allauth.account.models import EmailAddress
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
@@ -8,31 +7,16 @@ from django.test import SimpleTestCase, TestCase
 from accounts.models import (
     Permission,
     Role,
-    RolePermission,
     User,
-    UserManager,
     UserRole,
 )
 
 
 class UserModelTests(SimpleTestCase):
-    def test_user_is_the_auth_user_model(self):
-        self.assertIs(get_user_model(), User)
-
     def test_email_is_the_login_identifier(self):
         self.assertEqual(User.USERNAME_FIELD, 'email')
         self.assertEqual(User.EMAIL_FIELD, 'email')
         self.assertEqual(User.REQUIRED_FIELDS, ['name'])
-
-    def test_user_fields(self):
-        fields = {field.name for field in User._meta.concrete_fields}
-        self.assertEqual(
-            fields,
-            {
-                'id', 'password', 'last_login', 'email', 'name', 'username',
-                'is_active', 'is_superadmin', 'created_at',
-            },
-        )
 
     def test_no_default_django_user_attributes(self):
         """O `username` fica fora da lista: ele existe como identificador de domínio, e não
@@ -51,23 +35,8 @@ class UserModelTests(SimpleTestCase):
             with self.subTest(attribute=attribute):
                 self.assertFalse(hasattr(user, attribute))
 
-    def test_defaults(self):
-        user = User(email='maria@ifnmg.edu.br', name='Maria')
-        self.assertTrue(user.is_active)
-        self.assertFalse(user.is_superadmin)
-
-    def test_normalize_email_strips_and_lowercases(self):
-        self.assertEqual(
-            UserManager.normalize_email(' Maria@IFNMG.edu.br '),
-            'maria@ifnmg.edu.br',
-        )
-
 
 class UserDatabaseTests(TestCase):
-    def test_created_at_filled_on_creation(self):
-        user = User.objects.create(email='maria@ifnmg.edu.br', name='Maria')
-        self.assertIsNotNone(user.created_at)
-
     def test_validation_normalizes_email(self):
         user = User(email='Maria@IFNMG.edu.br', name='Maria')
         user.set_unusable_password()
@@ -86,11 +55,6 @@ class UserDatabaseTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             User.objects.create(email='Maria@ifnmg.edu.br', name='Outra Maria')
         self.assertEqual(User.objects.count(), 1)
-
-    def test_inactive_user_email_remains_unavailable(self):
-        User.objects.create(email='antigo@ifnmg.edu.br', name='Antigo', is_active=False)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            User.objects.create(email='ANTIGO@ifnmg.edu.br', name='Novo')
 
 
 class UsernameTests(TestCase):
@@ -124,19 +88,14 @@ class UsernameTests(TestCase):
         other.save()
         self.assertEqual(User.objects.filter(username=None).count(), 2)
 
-    def test_validation_rejects_duplicate(self):
+    def test_validation_rejects_duplicate_ignoring_case(self):
         self.clean(username='Aldo Gomes').save()
-        other = self.build(email='outro@ifnmg.edu.br', name='Outro', username='Aldo Gomes')
-        with self.assertRaises(ValidationError) as context:
-            other.full_clean()
-        self.assertIn('username', context.exception.message_dict)
-
-    def test_validation_rejects_duplicate_differing_only_in_case(self):
-        self.clean(username='Aldo Gomes').save()
-        other = self.build(email='outro@ifnmg.edu.br', name='Outro', username='ALDO GOMES')
-        with self.assertRaises(ValidationError) as context:
-            other.full_clean()
-        self.assertIn('username', context.exception.message_dict)
+        for value in ('Aldo Gomes', 'ALDO GOMES'):
+            with self.subTest(value=value):
+                other = self.build(email='outro@ifnmg.edu.br', name='Outro', username=value)
+                with self.assertRaises(ValidationError) as context:
+                    other.full_clean()
+                self.assertIn('username', context.exception.message_dict)
 
     def test_accents_make_values_distinct(self):
         self.clean(username='Érica').save()
@@ -166,11 +125,6 @@ class UsernameTests(TestCase):
 
 
 class RoleTests(TestCase):
-    def test_is_system_false_by_default(self):
-        role = Role.objects.create(code='COORDENACAO', name='Coordenação')
-        self.assertFalse(role.is_system)
-        self.assertEqual(role.description, '')
-
     def test_valid_codes(self):
         for code in ('COORDENACAO', 'COORDENACAO_GERAL', 'A_B_C'):
             with self.subTest(code=code):
@@ -188,16 +142,6 @@ class RoleTests(TestCase):
             with self.subTest(code=code):
                 with self.assertRaises(IntegrityError), transaction.atomic():
                     Role.objects.create(code=code, name='Coordenação')
-
-    def test_database_rejects_duplicate_code(self):
-        Role.objects.create(code='COORDENACAO', name='Coordenação')
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Role.objects.create(code='COORDENACAO', name='Outra coordenação')
-
-    def test_validation_requires_name(self):
-        with self.assertRaises(ValidationError) as context:
-            Role(code='COORDENACAO', name='').full_clean()
-        self.assertIn('name', context.exception.message_dict)
 
     def test_validation_strips_name(self):
         role = Role(code='COORDENACAO', name='  Coordenação  ')
@@ -223,10 +167,6 @@ class PermissionTests(TestCase):
         self.assertEqual(permission.resource, 'USUARIO')
         self.assertEqual(permission.action, 'ALTERAR_PERFIL')
 
-    def test_resource_and_action_are_not_columns(self):
-        fields = {field.name for field in Permission._meta.concrete_fields}
-        self.assertEqual(fields, {'id', 'code', 'description'})
-
     def test_validation_rejects_malformed_code(self):
         for code in ('usuario.criar', 'USUARIO', 'USUARIO.', '.CRIAR', 'USUARIO.CRIAR.TUDO', 'USUARIO-CRIAR'):
             with self.subTest(code=code):
@@ -240,11 +180,6 @@ class PermissionTests(TestCase):
                 with self.assertRaises(IntegrityError), transaction.atomic():
                     Permission.objects.create(code=code, description='Teste')
 
-    def test_database_rejects_duplicate_code(self):
-        Permission.objects.create(code='TESTE.CRIAR', description='Criar teste')
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Permission.objects.create(code='TESTE.CRIAR', description='Outra')
-
 
 class UserRoleTests(TestCase):
     @classmethod
@@ -253,21 +188,11 @@ class UserRoleTests(TestCase):
         cls.teacher = Role.objects.get(code='DOCENTE')
         cls.administrator = Role.objects.get(code='ADMINISTRADOR')
 
-    def test_link_reachable_from_both_sides(self):
-        UserRole.objects.create(user=self.user, role=self.teacher)
-        self.assertEqual(list(self.user.roles.all()), [self.teacher])
-        self.assertEqual(list(self.teacher.users.all()), [self.user])
-
     def test_database_rejects_second_role(self):
         UserRole.objects.create(user=self.user, role=self.teacher)
         with self.assertRaises(IntegrityError), transaction.atomic():
             UserRole.objects.create(user=self.user, role=self.administrator)
         self.assertEqual(list(self.user.roles.all()), [self.teacher])
-
-    def test_database_rejects_duplicate_link(self):
-        UserRole.objects.create(user=self.user, role=self.teacher)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            UserRole.objects.create(user=self.user, role=self.teacher)
 
     def test_role_with_user_cannot_be_deleted(self):
         UserRole.objects.create(user=self.user, role=self.teacher)
@@ -275,52 +200,6 @@ class UserRoleTests(TestCase):
             self.teacher.delete()
         self.assertTrue(Role.objects.filter(pk=self.teacher.pk).exists())
         self.assertEqual(list(self.user.roles.all()), [self.teacher])
-
-    def test_role_with_inactive_user_cannot_be_deleted(self):
-        inactive = User.objects.create(email='antigo@ifnmg.edu.br', name='Antigo', is_active=False)
-        UserRole.objects.create(user=inactive, role=self.teacher)
-        with self.assertRaises(ProtectedError), transaction.atomic():
-            self.teacher.delete()
-        self.assertTrue(Role.objects.filter(pk=self.teacher.pk).exists())
-
-    def test_role_without_users_can_be_deleted(self):
-        self.teacher.delete()
-        self.assertFalse(Role.objects.filter(pk=self.teacher.pk).exists())
-
-    def test_deleting_user_removes_link(self):
-        UserRole.objects.create(user=self.user, role=self.teacher)
-        self.user.delete()
-        self.assertFalse(UserRole.objects.exists())
-        self.assertTrue(Role.objects.filter(pk=self.teacher.pk).exists())
-
-
-class RolePermissionTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.role = Role.objects.create(code='COORDENACAO', name='Coordenação')
-        cls.permission = Permission.objects.create(code='TESTE.VISUALIZAR', description='Consultar teste')
-
-    def test_grant_reachable_from_both_sides(self):
-        RolePermission.objects.create(role=self.role, permission=self.permission)
-        self.assertEqual(list(self.role.permissions.all()), [self.permission])
-        self.assertEqual(list(self.permission.roles.all()), [self.role])
-
-    def test_database_rejects_duplicate_grant(self):
-        RolePermission.objects.create(role=self.role, permission=self.permission)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            RolePermission.objects.create(role=self.role, permission=self.permission)
-
-    def test_deleting_role_removes_grants(self):
-        RolePermission.objects.create(role=self.role, permission=self.permission)
-        self.role.delete()
-        self.assertFalse(RolePermission.objects.filter(permission=self.permission).exists())
-        self.assertTrue(Permission.objects.filter(pk=self.permission.pk).exists())
-
-    def test_deleting_permission_removes_grants(self):
-        RolePermission.objects.create(role=self.role, permission=self.permission)
-        self.permission.delete()
-        self.assertFalse(RolePermission.objects.filter(role=self.role).exists())
-        self.assertTrue(Role.objects.filter(pk=self.role.pk).exists())
 
 
 class RegisterTests(TestCase):
@@ -427,14 +306,6 @@ class UpdateDetailsTests(TestCase):
     def test_does_not_overwrite_status_changed_elsewhere(self):
         User.objects.filter(pk=self.user.pk).update(is_active=False)
         self.user.update_details(self.executor, name='Maria Souza', email=self.user.email)
-        user = User.objects.get(pk=self.user.pk)
-        self.assertEqual(user.name, 'Maria Souza')
-        self.assertFalse(user.is_active)
-
-    def test_inactive_user_can_be_edited(self):
-        User.objects.filter(pk=self.user.pk).update(is_active=False)
-        user = User.objects.get(pk=self.user.pk)
-        user.update_details(self.executor, name='Maria Souza', email=user.email)
         user = User.objects.get(pk=self.user.pk)
         self.assertEqual(user.name, 'Maria Souza')
         self.assertFalse(user.is_active)

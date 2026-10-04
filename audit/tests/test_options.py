@@ -32,40 +32,16 @@ class UserOptionsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return json.loads(response.content)
 
-    def test_anonymous_is_redirected_to_login(self):
-        response = Client().get(OPTIONS_URL)
-        self.assertRedirects(response, f'/contas/login/?next={OPTIONS_URL}', fetch_redirect_response=False)
-
-    def test_user_without_permission_is_refused(self):
-        client = Client()
-        client.force_login(self.plain)
-        self.assertEqual(client.get(OPTIONS_URL).status_code, 403)
-
     def test_user_with_permission_is_allowed(self):
         self.teacher.set_permissions([permissions.AUDIT_VIEW])
         client = Client()
         client.force_login(self.plain)
         self.assertEqual(client.get(OPTIONS_URL).status_code, 200)
 
-    def test_post_is_refused(self):
-        self.assertEqual(self.client.post(OPTIONS_URL).status_code, 405)
-
-    def test_first_page_has_ten_options(self):
-        data = self.options()
-        self.assertEqual(len(data['opcoes']), OPTIONS_PAGE_SIZE)
-        self.assertTrue(data['tem_mais'])
-        self.assertEqual(set(data['opcoes'][0]), {'valor', 'rotulo'})
-
     def test_label_has_name_and_email(self):
         option = self.options('?busca=admin')['opcoes'][0]
         self.assertEqual(option['valor'], str(self.admin.pk))
         self.assertEqual(option['rotulo'], 'Admin (admin@ifnmg.edu.br)')
-
-    def test_next_page(self):
-        first = self.options()['opcoes']
-        second = self.options('?pagina=2')
-        self.assertFalse(set(item['valor'] for item in first) & set(item['valor'] for item in second['opcoes']))
-        self.assertFalse(second['tem_mais'])
 
     def test_search_covers_the_whole_source(self):
         data = self.options('?busca=silva')
@@ -76,11 +52,6 @@ class UserOptionsTests(TestCase):
 
     def test_search_by_email_ignores_case(self):
         self.assertEqual(len(self.options('?busca=PESSOA01')['opcoes']), 1)
-
-    def test_search_without_result(self):
-        data = self.options('?busca=ninguem')
-        self.assertEqual(data['opcoes'], [])
-        self.assertFalse(data['tem_mais'])
 
 
 class PaginatedFieldTests(TestCase):

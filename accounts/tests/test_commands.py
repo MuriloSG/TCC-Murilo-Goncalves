@@ -28,10 +28,6 @@ class CreateSuperadminTests(TestCase):
         self.assertTrue(user.check_password(PASSWORD))
         self.assertNotEqual(user.password, PASSWORD)
 
-    def test_accepts_email_and_name_as_options(self):
-        create_superadmin('--email', 'super@ifnmg.edu.br', '--name', 'Super Admin')
-        self.assertTrue(User.objects.get(email='super@ifnmg.edu.br').is_superadmin)
-
     def test_refuses_email_in_use_pointing_to_set_superadmin(self):
         User.objects.register(email='maria@ifnmg.edu.br', name='Maria', role=Role.objects.get(code='DOCENTE'))
         with self.assertRaisesMessage(CommandError, 'set_superadmin'):

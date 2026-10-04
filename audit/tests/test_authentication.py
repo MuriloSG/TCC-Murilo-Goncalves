@@ -43,10 +43,20 @@ class AuthenticationRecordTests(TestCase):
         self.assertEqual(entry.ip_address, '127.0.0.1')
 
     def test_refused_login_is_recorded_without_the_user(self):
-        self.login(password='outra-senha-qualquer')
-        entry = self.entries(catalog.LOGIN_REFUSED).get()
-        self.assertIsNone(entry.user)
-        self.assertEqual(entry.metadata, {'email': 'maria@ifnmg.edu.br'})
+        cases = {
+            'wrong password': ('maria@ifnmg.edu.br', 'outra-senha-qualquer'),
+            'unknown email': ('ninguem@ifnmg.edu.br', PASSWORD),
+            'inactive user': ('maria@ifnmg.edu.br', PASSWORD),
+        }
+        for case, (email, password) in cases.items():
+            with self.subTest(case):
+                if case == 'inactive user':
+                    User.objects.filter(pk=self.user.pk).update(is_active=False)
+                self.login(email, password)
+                entry = self.entries(catalog.LOGIN_REFUSED).latest('pk')
+                self.assertIsNone(entry.user)
+                self.assertEqual(entry.metadata, {'email': email})
+        self.assertEqual(self.entries(catalog.LOGIN_REFUSED).count(), 3)
         self.assertFalse(self.entries(catalog.LOGIN).exists())
 
     def test_refused_login_never_records_the_password(self):
@@ -54,17 +64,6 @@ class AuthenticationRecordTests(TestCase):
         entry = self.entries(catalog.LOGIN_REFUSED).get()
         gravado = f'{entry.metadata}{entry.old_values}{entry.new_values}{entry.user_agent}'
         self.assertNotIn('outra-senha-qualquer', gravado)
-
-    def test_refused_login_of_inactive_user(self):
-        User.objects.filter(pk=self.user.pk).update(is_active=False)
-        self.login()
-        entry = self.entries(catalog.LOGIN_REFUSED).get()
-        self.assertIsNone(entry.user)
-        self.assertEqual(entry.metadata, {'email': 'maria@ifnmg.edu.br'})
-
-    def test_refused_login_of_unknown_email(self):
-        self.login(email='ninguem@ifnmg.edu.br')
-        self.assertEqual(self.entries(catalog.LOGIN_REFUSED).get().metadata, {'email': 'ninguem@ifnmg.edu.br'})
 
     def test_logout_is_recorded(self):
         self.login()
@@ -77,17 +76,14 @@ class AuthenticationRecordTests(TestCase):
         self.client.get('/contas/logout/')
         self.assertFalse(self.entries(catalog.LOGOUT).exists())
 
-    def test_password_recovery_request_is_recorded(self):
-        self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
-        entry = self.entries(catalog.PASSWORD_REQUESTED).get()
-        self.assertEqual(entry.metadata, {'email': 'maria@ifnmg.edu.br'})
-        self.assertIsNone(entry.user)
-
-    def test_request_for_unknown_email_is_recorded_alike(self):
-        self.client.post('/contas/senha/recuperar/', {'email': 'ninguem@ifnmg.edu.br'})
-        entry = self.entries(catalog.PASSWORD_REQUESTED).get()
-        self.assertEqual(entry.metadata, {'email': 'ninguem@ifnmg.edu.br'})
-        self.assertEqual(mail.outbox, [])
+    def test_password_recovery_request_is_recorded_for_any_email(self):
+        for email in ('maria@ifnmg.edu.br', 'ninguem@ifnmg.edu.br'):
+            with self.subTest(email):
+                self.client.post('/contas/senha/recuperar/', {'email': email})
+                entry = self.entries(catalog.PASSWORD_REQUESTED).latest('pk')
+                self.assertEqual(entry.metadata, {'email': email})
+                self.assertIsNone(entry.user)
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_password_reset_is_recorded(self):
         self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})

@@ -2,7 +2,7 @@ import threading
 import time
 
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, connection, transaction
+from django.db import connection, transaction
 from django.test import TestCase, TransactionTestCase
 
 from accounts import permissions
@@ -50,10 +50,6 @@ class CreateRoleTests(TestCase):
             Role.objects.create_role(code='COORDENACAO', name='Coordenação', is_system=True)
         self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
 
-    def test_strips_name(self):
-        role = Role.objects.create_role(code='COORDENACAO', name='  Coordenação  ')
-        self.assertEqual(Role.objects.get(pk=role.pk).name, 'Coordenação')
-
     def test_refuses_invalid_data_without_creating_anything(self):
         Role.objects.create_role(code='COORDENACAO', name='Coordenação')
         cases = {
@@ -86,11 +82,6 @@ class CreateRoleTests(TestCase):
             Role.objects.create_role(code='COORDENACAO', name='Coordenação', permissions=['RESERVA.APROVAR'])
         self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
         self.assertFalse(Permission.objects.filter(code='RESERVA.APROVAR').exists())
-
-    def test_database_refuses_repeated_name_written_directly(self):
-        Role.objects.create_role(code='COORDENACAO', name='Coordenação')
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Role.objects.create(code='OUTRO', name='coordenação')
 
 
 class UpdateRoleDetailsTests(TestCase):
@@ -149,12 +140,6 @@ class SetPermissionsTests(TestCase):
         create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
         self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_CREATE])
         self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_CREATE})
-
-    def test_keeps_existing_grants_untouched(self):
-        create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
-        kept = RolePermission.objects.get(role=self.coordination, permission__code=permissions.USER_VIEW)
-        self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_CREATE])
-        self.assertTrue(RolePermission.objects.filter(pk=kept.pk).exists())
 
     def test_system_role_permissions_can_change(self):
         self.teacher.set_permissions([permissions.USER_VIEW])

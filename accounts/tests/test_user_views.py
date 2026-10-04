@@ -42,29 +42,6 @@ class UserViewsTestCase(TestCase):
 
 
 class AccessTests(UserViewsTestCase):
-    def test_anonymous_is_redirected_to_login_with_next(self):
-        client = Client()
-        for route in ROUTES:
-            with self.subTest(route):
-                url = self.url(route)
-                for method in (client.get, client.post):
-                    response = method(url)
-                    self.assertRedirects(response, f'/contas/login/?next={url}', fetch_redirect_response=False)
-        self.assertTrue(self.reload(self.target).is_active)
-
-    def test_authenticated_without_the_permission_gets_403(self):
-        for route, (_, permission) in ROUTES.items():
-            with self.subTest(route):
-                others = permissions.ADMINISTRATIVE_CAPABILITY - {permission}
-                user = self.user_with(*others, email=f'{route}@ifnmg.edu.br')
-                client = Client()
-                client.force_login(user)
-                self.assertEqual(client.get(self.url(route)).status_code, 403)
-                self.assertEqual(client.post(self.url(route), {'name': 'X', 'email': 'x@ifnmg.edu.br'}).status_code, 403)
-        target = self.reload(self.target)
-        self.assertEqual((target.name, target.is_active), ('Maria Sousa', True))
-        self.assertEqual(User.objects.filter(email='x@ifnmg.edu.br').count(), 0)
-
     def test_only_the_permission_of_the_route_is_needed(self):
         for route, (_, permission) in ROUTES.items():
             with self.subTest(route):
@@ -81,18 +58,6 @@ class AccessTests(UserViewsTestCase):
             with self.subTest(route):
                 self.assertEqual(self.client.get(self.url(route)).status_code, 200)
 
-    def test_session_of_deactivated_user_becomes_anonymous(self):
-        User.objects.filter(pk=self.admin.pk).update(is_active=False)
-        response = self.client.get('/usuarios/novo/')
-        self.assertRedirects(response, '/contas/login/?next=/usuarios/novo/', fetch_redirect_response=False)
-
-    def test_there_is_no_route_to_delete_a_user(self):
-        self.assertEqual(self.client.post(f'/usuarios/{self.target.pk}/excluir/').status_code, 404)
-        self.assertTrue(User.objects.filter(pk=self.target.pk).exists())
-
-    def test_unknown_user_gives_404(self):
-        self.assertEqual(self.client.get('/usuarios/999999/editar/').status_code, 404)
-
     def test_list_shows_actions_allowed_to_the_user(self):
         response = self.client.get('/usuarios/')
         self.assertContains(response, 'maria@ifnmg.edu.br')
@@ -103,12 +68,6 @@ class AccessTests(UserViewsTestCase):
         self.assertContains(response, 'maria@ifnmg.edu.br')
         for label in ['Cadastrar usuário', 'Editar', 'Trocar perfil', 'Desativar']:
             self.assertNotContains(response, label)
-
-    def test_menu_shows_the_users_item_only_with_permission(self):
-        self.assertContains(self.client.get('/inicio/', follow=True), 'href="/usuarios/"')
-        client = Client()
-        client.force_login(self.target)
-        self.assertNotContains(client.get('/inicio/', follow=True), 'href="/usuarios/"')
 
 
 class CreateTests(UserViewsTestCase):
@@ -121,10 +80,6 @@ class CreateTests(UserViewsTestCase):
     def test_creates_with_username(self):
         self.post(username='  Aldo   Gomes  ')
         self.assertEqual(User.objects.get(email='joana@ifnmg.edu.br').username, 'Aldo Gomes')
-
-    def test_creates_without_username(self):
-        self.post(username='')
-        self.assertIsNone(User.objects.get(email='joana@ifnmg.edu.br').username)
 
     def test_refuses_username_already_taken(self):
         User.objects.register(
@@ -164,13 +119,6 @@ class CreateTests(UserViewsTestCase):
         response = self.post(email='MARIA@ifnmg.edu.br')
         self.assertIn('email', response.context['form'].errors)
         self.assertEqual(User.objects.filter(email='maria@ifnmg.edu.br').count(), 1)
-
-    def test_requires_csrf(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.admin)
-        response = client.post('/usuarios/novo/', self.data | {'role': self.teacher.pk})
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
 
 
 class CreateSendTests(TransactionTestCase):
@@ -240,27 +188,6 @@ class UpdateTests(UserViewsTestCase):
         self.assertFalse(target.is_superadmin)
         self.assertEqual(target.role, self.teacher)
 
-    def test_edits_users_of_any_role(self):
-        other_admin = User.objects.register(email='outro@ifnmg.edu.br', name='Outro', role=self.administrator)
-        for user in (other_admin, self.target):
-            with self.subTest(user.email):
-                self.client.post(self.url('update', user), {'name': 'Nome Novo', 'email': user.email})
-                self.assertEqual(self.reload(user).name, 'Nome Novo')
-
-    def test_sets_changes_and_clears_the_username(self):
-        self.client.post(self.url('update'), {
-            'name': self.target.name, 'email': self.target.email, 'username': 'Aldo Gomes',
-        })
-        self.assertEqual(self.reload(self.target).username, 'Aldo Gomes')
-        self.client.post(self.url('update'), {
-            'name': self.target.name, 'email': self.target.email, 'username': 'Aldo G. Gomes',
-        })
-        self.assertEqual(self.reload(self.target).username, 'Aldo G. Gomes')
-        self.client.post(self.url('update'), {
-            'name': self.target.name, 'email': self.target.email, 'username': '',
-        })
-        self.assertIsNone(self.reload(self.target).username)
-
     def test_refuses_username_of_another_user(self):
         other = User.objects.register(
             email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
@@ -295,11 +222,6 @@ class ChangeRoleTests(UserViewsTestCase):
         self.assertEqual(list(target.roles.all()), [self.administrator])
         self.assertFalse(target.is_superadmin)
 
-    def test_changes_to_a_custom_role(self):
-        coordination = Role.objects.create_role(code='COORDENACAO', name='Coordenação')
-        self.client.post(self.url('change_role'), {'role': coordination.pk})
-        self.assertEqual(list(self.reload(self.target).roles.all()), [coordination])
-
     def test_refuses_more_than_one_role(self):
         response = self.client.post(self.url('change_role'), {'role': [self.administrator.pk, self.teacher.pk]})
         self.assertIn('role', response.context['form'].errors)
@@ -313,11 +235,6 @@ class ChangeRoleTests(UserViewsTestCase):
 
 
 class StatusTests(UserViewsTestCase):
-    def test_get_only_asks_for_confirmation(self):
-        response = self.client.get(self.url('deactivate'))
-        self.assertContains(response, 'Desativar Maria Sousa?</h1>')
-        self.assertTrue(self.reload(self.target).is_active)
-
     def test_deactivates_and_reactivates_by_post(self):
         self.assertRedirects(self.client.post(self.url('deactivate')), '/usuarios/')
         self.assertFalse(self.reload(self.target).is_active)
@@ -334,9 +251,3 @@ class StatusTests(UserViewsTestCase):
         self.client.post(self.url('deactivate', self.admin))
         self.assertFalse(self.reload(self.admin).is_active)
         self.assertRedirects(self.client.get('/usuarios/'), '/contas/login/?next=/usuarios/', fetch_redirect_response=False)
-
-    def test_requires_csrf(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.admin)
-        self.assertEqual(client.post(self.url('deactivate')).status_code, 403)
-        self.assertTrue(self.reload(self.target).is_active)

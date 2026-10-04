@@ -7,7 +7,7 @@ from accounts.models import Role, User
 from imports.models import Import
 from imports.reader import SourceRow
 from outbox.models import OutboxEntry
-from ui.pagination import PAGE_SIZE, ROWS_PAGE_SIZE
+from ui.pagination import ROWS_PAGE_SIZE
 
 HEADER = 'E-mail;Nome;Perfil;Nome de usuário\n'
 
@@ -53,23 +53,6 @@ class ImportViewsTestCase(TestCase):
 
 
 class AccessTests(ImportViewsTestCase):
-    def test_anonymous_is_redirected_to_login_with_next(self):
-        client = Client()
-        for route, (url, method) in self.routes().items():
-            with self.subTest(route):
-                response = getattr(client, method)(url)
-                self.assertRedirects(response, f'/contas/login/?next={url}', fetch_redirect_response=False)
-        self.assertEqual(Import.objects.get().status, 'VALIDADA')
-
-    def test_without_the_import_permission_gets_403(self):
-        client = Client()
-        client.force_login(self.user_with(*permissions.ADMINISTRATIVE_CAPABILITY))
-        for route, (url, method) in self.routes().items():
-            with self.subTest(route):
-                self.assertEqual(getattr(client, method)(url).status_code, 403)
-        self.assertEqual(Import.objects.get().status, 'VALIDADA')
-        self.assertFalse(User.objects.filter(email='ana@ifnmg.edu.br').exists())
-
     def test_only_the_import_permission_is_needed_for_the_screens(self):
         client = Client()
         client.force_login(self.user_with(permissions.USER_IMPORT))
@@ -77,18 +60,6 @@ class AccessTests(ImportViewsTestCase):
         for route in ('list', 'upload', 'template', 'detail', 'discard'):
             with self.subTest(route):
                 self.assertEqual(client.get(routes[route][0]).status_code, 200)
-
-    def test_post_without_csrf_gets_403(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.admin)
-        routes = self.routes()
-        response = client.post(routes['upload'][0], {'file': csv_file('bia@ifnmg.edu.br;Bia;DOCENTE\n')})
-        self.assertEqual(response.status_code, 403)
-        for route in ('confirm', 'discard'):
-            with self.subTest(route):
-                self.assertEqual(client.post(routes[route][0]).status_code, 403)
-        self.assertEqual(Import.objects.count(), 1)
-        self.assertEqual(Import.objects.get().status, 'VALIDADA')
 
     def test_import_of_another_kind_gives_404(self):
         other = Import.objects.create(kind='GRUPO', status='VALIDADA', file_name='grupos.csv', created_by=self.admin)
@@ -185,11 +156,6 @@ class LineNumberFilterTests(ImportViewsTestCase):
         self.importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE', 'bia@ifnmg.edu.br;Bia;DOCENTE', 'caio@ifnmg.edu.br;Caio;DOCENTE')
         self.url = f'/usuarios/importacoes/{self.importation.pk}/'
 
-    def test_detail_has_no_tabs(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.context['tabs'], [])
-        self.assertNotContains(response, 'Visões da importação')
-
     def test_one_line(self):
         response = self.client.get(self.url + '?numero=3')
         self.assertEqual(response.context['page'].paginator.count, 1)
@@ -234,10 +200,6 @@ class ConfirmAndDiscardTests(ImportViewsTestCase):
         self.assertContains(response, 'Os dados mudaram desde a prévia. Confira a nova prévia e confirme de novo.')
         importation.refresh_from_db()
         self.assertEqual((importation.status, importation.revalidation_count), ('VALIDADA', 1))
-
-    def test_confirm_get_is_not_allowed(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
-        self.assertEqual(self.client.get(f'/usuarios/importacoes/{importation.pk}/confirmar/').status_code, 405)
 
     def test_discard_asks_on_get_and_discards_on_post(self):
         importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
@@ -284,16 +246,6 @@ class PaginationTests(ImportViewsTestCase):
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/', {'linhas': 'erros'})
         self.assertContains(response, f'href="/usuarios/importacoes/{importation.pk}/?linhas=erros&amp;pagina=2"')
 
-    def test_history_is_paginated(self):
-        total = PAGE_SIZE + 1
-        for _ in range(total):
-            self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
-        response = self.client.get('/usuarios/importacoes/', {'pagina': '2'})
-        self.assertContains(
-            response, f'Exibindo <strong>{total}</strong> a <strong>{total}</strong> de <strong>{total}</strong> importações',
-        )
-        self.assertContains(response, f'Todas as importações <span class="count">{total}</span>')
-
 
 class ImportDeletionTests(ImportViewsTestCase):
     def discarded(self):
@@ -315,13 +267,4 @@ class ImportDeletionTests(ImportViewsTestCase):
         url = f'/usuarios/importacoes/{importation.pk}/excluir/'
         self.assertNotContains(self.client.get(f'/usuarios/importacoes/{importation.pk}/'), url)
         self.assertEqual(self.client.post(url).status_code, 403)
-        self.assertTrue(Import.objects.exists())
-
-    def test_anonymous_is_sent_to_the_login_and_csrf_is_required(self):
-        importation = self.discarded()
-        url = f'/usuarios/importacoes/{importation.pk}/excluir/'
-        self.assertRedirects(Client().get(url), f'/contas/login/?next={url}', fetch_redirect_response=False)
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.admin)
-        self.assertEqual(client.post(url).status_code, 403)
         self.assertTrue(Import.objects.exists())

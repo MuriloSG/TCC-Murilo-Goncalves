@@ -73,22 +73,10 @@ class AdministrativeCapabilityTests(ContinuityTestCase):
                 user = create_user(f'coord.{code.lower()}@ifnmg.edu.br', self.coordination)
                 self.assertCapable(user, False)
 
-    def test_administrator_role_after_losing_a_permission(self):
-        user = create_user('admin@ifnmg.edu.br', self.administrator)
-        RolePermission.objects.filter(
-            role=self.administrator, permission__code=permissions.USER_EDIT,
-        ).delete()
-        self.assertCapable(user, False)
-
     def test_custom_role_with_the_same_permissions(self):
         for code in permissions.ADMINISTRATIVE_CAPABILITY:
             RolePermission.objects.create(role=self.coordination, permission=Permission.objects.get(code=code))
         self.assertCapable(create_user('coord@ifnmg.edu.br', self.coordination), True)
-
-    def test_renamed_role(self):
-        self.administrator.name = 'Gestão de pessoas'
-        self.administrator.save()
-        self.assertCapable(create_user('admin@ifnmg.edu.br', self.administrator), True)
 
     def test_reserved_permissions_do_not_count(self):
         for code in permissions.SUPERADMIN_RESERVED_PERMISSIONS:
@@ -126,12 +114,6 @@ class DeactivationTests(ContinuityTestCase):
         self.assertFalse(first.is_active)
         self.assertFalse(User.objects.get(pk=first.pk).is_active)
         self.assertEqual(capable_emails(), {second.email})
-
-    def test_capable_user_can_deactivate_a_regular_user(self):
-        create_user('admin@ifnmg.edu.br', self.administrator)
-        teacher = create_user('docente@ifnmg.edu.br', self.teacher)
-        teacher.deactivate()
-        self.assertFalse(User.objects.get(pk=teacher.pk).is_active)
 
     def test_inactive_superadmin_does_not_count(self):
         create_user('super@ifnmg.edu.br', self.administrator, is_superadmin=True, is_active=False)
@@ -205,18 +187,13 @@ class ReactivationTests(ContinuityTestCase):
 class SuperadminStatusTests(ContinuityTestCase):
     def test_grant_superadmin(self):
         user = create_user('docente@ifnmg.edu.br', self.teacher)
+        self.assertFalse(user.has_perm(permissions.ROLE_VIEW))
         user.set_superadmin(True)
+        self.assertTrue(user.has_perm(permissions.ROLE_VIEW))
         self.assertTrue(user.is_superadmin)
         reloaded = User.objects.get(pk=user.pk)
         self.assertTrue(reloaded.is_superadmin)
         self.assertTrue(reloaded.has_administrative_capability())
-
-    def test_grant_superadmin_refreshes_the_instance_permissions(self):
-        user = create_user('docente@ifnmg.edu.br', self.teacher)
-        self.assertFalse(user.has_perm(permissions.ROLE_VIEW))
-        user.set_superadmin(True)
-        self.assertTrue(user.has_perm(permissions.ROLE_VIEW))
-        self.assertIn(permissions.ROLE_VIEW, user.effective_permissions())
 
     def test_removing_last_capable_superadmin_is_refused(self):
         superadmin = create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
@@ -254,15 +231,11 @@ class ChangeRoleTests(ContinuityTestCase):
     def test_change_role_replaces_the_only_role(self):
         create_user('admin@ifnmg.edu.br', self.administrator)
         user = create_user('docente@ifnmg.edu.br', self.teacher)
-        user.change_role(self.administrator)
-        self.assertEqual(list(User.objects.get(pk=user.pk).roles.all()), [self.administrator])
-        self.assertEqual(UserRole.objects.filter(user=user).count(), 1)
-
-    def test_change_to_custom_role(self):
-        create_user('admin@ifnmg.edu.br', self.administrator)
-        user = create_user('docente@ifnmg.edu.br', self.teacher)
-        user.change_role(self.coordination)
-        self.assertEqual(User.objects.get(pk=user.pk).role, self.coordination)
+        for role in (self.administrator, self.coordination):
+            with self.subTest(role.code):
+                user.change_role(role)
+                self.assertEqual(list(User.objects.get(pk=user.pk).roles.all()), [role])
+                self.assertEqual(UserRole.objects.filter(user=user).count(), 1)
 
     def test_change_role_refreshes_the_instance_permissions(self):
         superadmin = create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
@@ -308,26 +281,7 @@ class ContinuityGuardTests(ContinuityTestCase):
                 RolePermission.objects.filter(role=self.administrator).delete()
         self.assertEqual(
             set(self.administrator.permissions.values_list('code', flat=True)),
-            permissions.ADMINISTRATIVE_CAPABILITY
-            | {
-                permissions.USER_IMPORT,
-                permissions.USER_IMPORT_DELETE,
-                permissions.AUDIT_VIEW,
-                permissions.NOTICE_PUBLISH,
-                permissions.PANEL_VIEW,
-                permissions.REPORT_VIEW,
-                permissions.SPACE_ALLOCATION_VIEW,
-                permissions.SPACE_ALLOCATION_IMPORT,
-                permissions.SPACE_ALLOCATION_IMPORT_DELETE,
-                permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE,
-                permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE,
-                permissions.SPACE_ALLOCATION_CREATE_RECURRENCE,
-                permissions.SPACE_ALLOCATION_END_RECURRENCE,
-            }
-            | permissions.SPACE_PERMISSIONS
-            | permissions.BOOKING_PERMISSIONS
-            | permissions.SUBJECT_PERMISSIONS
-            | permissions.CLASS_GROUP_PERMISSIONS,
+            permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS,
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 

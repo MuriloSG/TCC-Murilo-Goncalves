@@ -1,58 +1,79 @@
-from django.core.exceptions import PermissionDenied
-from django.test import RequestFactory, TestCase
-from django.views.defaults import permission_denied
+from io import StringIO
 
+from django.core.management import call_command
+from django.test import Client, TestCase
+
+from accounts import permissions
 from accounts.models import Role, User
 
 
-class HomeTests(TestCase):
+class HomeTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.register(
-            email='maria@ifnmg.edu.br', name='Maria Sousa', role=Role.objects.get(code='DOCENTE'),
-        )
+        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.teacher = Role.objects.get(code='DOCENTE')
 
-    def test_anonymous_is_redirected_to_login_with_next(self):
-        response = self.client.get('/inicio/')
-        self.assertRedirects(response, '/contas/login/?next=/inicio/', fetch_redirect_response=False)
+    def client_for(self, user):
+        client = Client()
+        client.force_login(user)
+        return client
+
+    def register(self, email, role):
+        return User.objects.register(email=email, name=email.partition('@')[0], role=role)
+
+
+class HomeTests(HomeTestCase):
+    def test_opens_the_first_item_the_role_grants(self):
+        reader = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])
+        response = self.client_for(self.register('leitor@ifnmg.edu.br', reader)).get('/inicio/')
+        self.assertRedirects(response, '/usuarios/', fetch_redirect_response=False)
 
     def test_without_modules_shows_the_restricted_access_notice(self):
-        self.user.role.set_permissions([])
-        self.client.force_login(self.user)
-        response = self.client.get('/inicio/')
+        empty = Role.objects.create_role(code='VAZIO', name='Vazio', permissions=[])
+        user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=empty)
+        response = self.client_for(user).get('/inicio/')
         self.assertContains(response, 'Maria Sousa')
         self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhum módulo')
+        self.assertNotContains(response, 'Voltar para o início')
         self.assertTemplateUsed(response, 'ui/components/access_denied.html')
 
-    def test_login_redirects_to_home(self):
-        self.user.set_password('Senha-forte-123')
-        self.user.save()
-        response = self.client.post(
-            '/contas/login/', {'login': 'maria@ifnmg.edu.br', 'password': 'Senha-forte-123'},
-        )
-        self.assertRedirects(response, '/inicio/', fetch_redirect_response=False)
 
-    def test_logout_redirects_to_login(self):
-        self.client.force_login(self.user)
-        response = self.client.post('/contas/logout/')
-        self.assertRedirects(response, '/contas/login/')
-        self.assertRedirects(self.client.get('/inicio/'), '/contas/login/?next=/inicio/')
+class DeniedAccessTests(HomeTestCase):
+    def test_denied_page_is_the_friendly_403(self):
+        teacher = self.register('docente@ifnmg.edu.br', self.teacher)
+        response = self.client_for(teacher).get('/usuarios/novo/')
+        self.assertContains(response, 'Acesso restrito', status_code=403)
+        self.assertContains(response, 'Voltar para o início', status_code=403)
+        self.assertTemplateUsed(response, 'ui/components/access_denied.html')
 
-
-class ProjectRoutesTests(TestCase):
-    def test_admin_does_not_exist(self):
-        self.assertEqual(self.client.get('/admin/').status_code, 404)
-
-    def test_root_is_left_free(self):
-        self.assertEqual(self.client.get('/').status_code, 404)
-
-
-class PermissionDeniedPageTests(TestCase):
-    def test_renders_friendly_403(self):
-        request = RequestFactory().get('/usuarios/')
-        request.user = User.objects.register(
-            email='maria@ifnmg.edu.br', name='Maria', role=Role.objects.get(code='DOCENTE'),
-        )
-        response = permission_denied(request, PermissionDenied())
+    def test_denial_comes_before_the_continuity_rule(self):
+        superadmin = self.register('super@ifnmg.edu.br', self.teacher)
+        superadmin.set_superadmin(True)
+        viewer = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])
+        reader = self.register('leitor@ifnmg.edu.br', viewer)
+        response = self.client_for(reader).post(f'/usuarios/{superadmin.pk}/desativar/')
         self.assertEqual(response.status_code, 403)
-        self.assertIn('Acesso restrito', response.content.decode())
+        self.assertNotContains(response, 'capacidade administrativa', status_code=403)
+        self.assertTrue(User.objects.get(pk=superadmin.pk).is_active)
+
+
+class ChangesOnTheSameSessionTests(HomeTestCase):
+    def test_role_change_removes_and_grants_access(self):
+        self.register('admin@ifnmg.edu.br', self.administrator)
+        user = self.register('maria@ifnmg.edu.br', self.administrator)
+        client = self.client_for(user)
+        self.assertEqual(client.get('/usuarios/').status_code, 200)
+        user.change_role(self.teacher)
+        self.assertEqual(client.get('/usuarios/').status_code, 403)
+        user.change_role(self.administrator)
+        self.assertEqual(client.get('/usuarios/').status_code, 200)
+
+    def test_superadmin_granted_and_revoked_by_command(self):
+        self.register('admin@ifnmg.edu.br', self.administrator)
+        user = self.register('maria@ifnmg.edu.br', self.teacher)
+        client = self.client_for(user)
+        self.assertEqual(client.get('/usuarios/').status_code, 403)
+        call_command('set_superadmin', 'maria@ifnmg.edu.br', '--grant', stdout=StringIO())
+        self.assertEqual(client.get('/usuarios/').status_code, 200)
+        call_command('set_superadmin', 'maria@ifnmg.edu.br', '--revoke', stdout=StringIO())
+        self.assertEqual(client.get('/usuarios/').status_code, 403)

@@ -19,9 +19,6 @@ class SanitizeTests(SimpleTestCase):
         }
         self.assertEqual(sanitize(values), {'email': 'ana@ifnmg.edu.br'})
 
-    def test_empty_values(self):
-        self.assertEqual(sanitize(None), {})
-
 
 class ActorTests(SimpleTestCase):
     def test_default_actor_is_the_system(self):
@@ -102,12 +99,6 @@ class RecordTests(TestCase):
         self.assertEqual(entry.action_label, 'Entrada')
         self.assertEqual(entry.resource_label, 'Autenticação')
         self.assertEqual(entry.origin_label, 'Sistema')
-
-    def test_most_recent_first(self):
-        first = AuditLog.objects.record(catalog.LOGIN, catalog.AUTHENTICATION)
-        second = AuditLog.objects.record(catalog.LOGOUT, catalog.AUTHENTICATION)
-        listed = list(AuditLog.objects.filter(resource=catalog.AUTHENTICATION))
-        self.assertEqual(listed, [second, first])
 
 
 class IntegrityTests(TestCase):

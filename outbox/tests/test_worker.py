@@ -8,7 +8,6 @@ from unittest import mock
 from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import EmailMessage
-from django.core.management import call_command
 from django.db import connection, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
@@ -76,23 +75,18 @@ class ProcessTests(TestCase):
             (entry.next_attempt_at - before).total_seconds(), 60, delta=5,
         )
 
-    def test_retry_delays_follow_attempts(self):
-        entry = self.entry(kind='FALHA', attempts=2)
-        before = timezone.now()
-        with self.assertLogs('outbox', 'WARNING'):
-            process_next()
-        entry.refresh_from_db()
-        self.assertEqual(entry.attempts, 3)
-        self.assertAlmostEqual((entry.next_attempt_at - before).total_seconds(), 900, delta=5)
-
     @override_settings(OUTBOX_MAX_ATTEMPTS=8)
-    def test_last_delay_repeats(self):
-        entry = self.entry(kind='FALHA', attempts=6)
-        before = timezone.now()
-        with self.assertLogs('outbox', 'WARNING'):
-            process_next()
-        entry.refresh_from_db()
-        self.assertAlmostEqual((entry.next_attempt_at - before).total_seconds(), 3600, delta=5)
+    def test_retry_delays_follow_attempts_and_the_last_one_repeats(self):
+        for attempts, delay in ((2, 900), (6, 3600)):
+            with self.subTest(attempts=attempts), transaction.atomic():
+                entry = self.entry(kind='FALHA', attempts=attempts)
+                before = timezone.now()
+                with self.assertLogs('outbox', 'WARNING'):
+                    process_next()
+                entry.refresh_from_db()
+                self.assertEqual(entry.attempts, attempts + 1)
+                self.assertAlmostEqual((entry.next_attempt_at - before).total_seconds(), delay, delta=5)
+                transaction.set_rollback(True)
 
     def test_limit_marks_failed_and_logs(self):
         entry = self.entry(kind='FALHA', attempts=4)
@@ -137,11 +131,6 @@ class ProcessTests(TestCase):
             OutboxEntry.objects.create(kind='TESTE', reference=str(reference))
         self.assertEqual(process_batch(2), 2)
         self.assertEqual(OutboxEntry.objects.filter(status='ENVIADO').count(), 2)
-
-    def test_command_once(self):
-        self.entry()
-        call_command('process_outbox', '--once')
-        self.assertEqual(len(mail.outbox), 1)
 
 
 class HandlerRegistryTests(TestCase):

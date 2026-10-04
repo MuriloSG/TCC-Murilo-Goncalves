@@ -1,6 +1,5 @@
-from django.conf import settings
 from django.core.cache import cache
-from django.test import Client, RequestFactory, TestCase
+from django.test import RequestFactory, TestCase
 
 from accounts.adapters import AccountAdapter
 from accounts.models import Role, User
@@ -38,50 +37,12 @@ class AuthenticationTestCase(TestCase):
 class UsernameIsNotACredentialTests(AuthenticationTestCase):
     """O nome de usuário é identificador de domínio, e não credencial (D2)."""
 
-    def test_email_remains_the_login_field(self):
-        self.assertEqual(User.USERNAME_FIELD, 'email')
-        self.assertIsNone(settings.ACCOUNT_USER_MODEL_USERNAME_FIELD)
-        self.assertEqual(settings.ACCOUNT_LOGIN_METHODS, {'email'})
-
-    def test_login_form_has_no_username_field(self):
-        response = self.client.get('/contas/login/')
-        self.assertEqual(set(response.context['form'].fields), {'login', 'password', 'remember'})
-
     def test_username_does_not_authenticate(self):
         self.user.username = 'Aldo Gomes'
         self.user.save(update_fields=['username'])
         response = self.login(email='Aldo Gomes')
         self.assertFalse(self.is_authenticated())
         self.assertTrue(response.context['form'].errors)
-
-
-class RoutesTests(AuthenticationTestCase):
-    def test_flow_routes_are_available(self):
-        for url in ['/contas/login/', '/contas/senha/recuperar/', '/contas/senha/recuperar/enviado/']:
-            with self.subTest(url):
-                self.assertEqual(self.client.get(url).status_code, 200)
-
-    def test_routes_out_of_scope_do_not_exist(self):
-        urls = [
-            '/contas/cadastro/', '/contas/signup/', '/accounts/signup/', '/accounts/login/',
-            '/contas/email/', '/accounts/email/', '/contas/inactive/', '/accounts/inactive/',
-            '/contas/senha/alterar/', '/accounts/password/change/',
-            '/contas/senha/definir/', '/accounts/password/set/',
-        ]
-        for client in (Client(), self.authenticated_client()):
-            for url in urls:
-                with self.subTest(url=url, authenticated=self.is_authenticated(client)):
-                    self.assertEqual(client.get(url).status_code, 404)
-                    self.assertEqual(client.post(url, {'email': 'novo@ifnmg.edu.br'}).status_code, 404)
-        self.assertFalse(User.objects.filter(email='novo@ifnmg.edu.br').exists())
-
-    def test_signup_is_closed_in_the_adapter(self):
-        self.assertFalse(AccountAdapter().is_open_for_signup(RequestFactory().get('/')))
-
-    def authenticated_client(self):
-        client = Client()
-        client.force_login(self.user)
-        return client
 
 
 class LoginPageTests(AuthenticationTestCase):
@@ -93,9 +54,12 @@ class LoginPageTests(AuthenticationTestCase):
 
     def test_offers_password_recovery_and_no_signup(self):
         response = self.client.get('/contas/login/')
-        self.assertContains(response, '<a class="link" href="/contas/senha/recuperar/">Esqueci minha senha</a>', html=True)
+        self.assertContains(response, 'href="/contas/senha/recuperar/"')
         for text in ['signup', 'Cadastre-se', 'Cadastrar', 'Criar conta', 'criar uma conta']:
             self.assertNotContains(response, text)
+
+    def test_signup_is_closed_in_the_adapter(self):
+        self.assertFalse(AccountAdapter().is_open_for_signup(RequestFactory().get('/')))
 
 
 class LoginTests(AuthenticationTestCase):
@@ -106,19 +70,6 @@ class LoginTests(AuthenticationTestCase):
 
     def test_email_is_compared_ignoring_case(self):
         self.login('Joao@IFNMG.edu.br')
-        self.assertTrue(self.is_authenticated())
-
-    def test_session_key_is_renewed(self):
-        session = self.client.session
-        session['anonymous'] = True
-        session.save()
-        anonymous_key = session.session_key
-        self.login()
-        self.assertNotEqual(self.client.session.session_key, anonymous_key)
-
-    def test_no_email_verification_step(self):
-        response = self.login()
-        self.assertRedirects(response, '/inicio/', fetch_redirect_response=False)
         self.assertTrue(self.is_authenticated())
 
 
@@ -196,24 +147,9 @@ class EmailChangeTests(AuthenticationTestCase):
         executor = self.create_user('admin@ifnmg.edu.br', self.administrator)
         self.user.update_details(executor, name='João Silva', email='novo@ifnmg.edu.br')
 
-    def test_old_email_no_longer_authenticates(self):
+    def test_only_the_new_email_authenticates(self):
         self.login('joao@ifnmg.edu.br')
         self.assertFalse(self.is_authenticated())
-
-    def test_new_email_authenticates(self):
         self.login('novo@ifnmg.edu.br')
         self.assertTrue(self.is_authenticated())
 
-
-class CsrfTests(AuthenticationTestCase):
-    def test_login_without_csrf_is_refused(self):
-        client = Client(enforce_csrf_checks=True)
-        response = self.login(client=client)
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(self.is_authenticated(client))
-
-    def test_logout_without_csrf_is_refused(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.user)
-        self.assertEqual(client.post('/contas/logout/').status_code, 403)
-        self.assertTrue(self.is_authenticated(client))

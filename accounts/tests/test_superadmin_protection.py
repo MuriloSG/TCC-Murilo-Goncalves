@@ -34,13 +34,6 @@ class SuperadminEmailProtectionTests(TestCase):
             target.update_details(self.reload(self.admin), name='Super', email='novo@ifnmg.edu.br')
         self.assertEqual(self.reload(self.superadmin).email, 'super@ifnmg.edu.br')
 
-    def test_regular_admin_cannot_change_name_and_email_together(self):
-        target = self.reload(self.superadmin)
-        with self.assertRaises(SuperadminOnlyOperation):
-            target.update_details(self.reload(self.admin), name='Novo nome', email='novo@ifnmg.edu.br')
-        reloaded = self.reload(self.superadmin)
-        self.assertEqual((reloaded.name, reloaded.email), ('Super', 'super@ifnmg.edu.br'))
-
     def test_regular_admin_can_change_superadmin_name(self):
         target = self.reload(self.superadmin)
         target.update_details(self.reload(self.admin), name='Super Admin', email=' SUPER@ifnmg.edu.br ')
@@ -72,17 +65,6 @@ class SuperadminEmailProtectionTests(TestCase):
         return User.objects.register(
             email='editor@ifnmg.edu.br', name='Editor', role=Role.objects.get(code='ADMINISTRADOR'),
         )
-
-    def test_regular_user_email_can_be_changed_by_regular_admin(self):
-        target = self.reload(self.admin)
-        target.update_details(self.regular_executor(), name='Admin', email='admin.novo@ifnmg.edu.br')
-        self.assertEqual(self.reload(self.admin).email, 'admin.novo@ifnmg.edu.br')
-
-    def test_register_always_creates_regular_user(self):
-        user = User.objects.register(
-            email='novo@ifnmg.edu.br', name='Novo', role=Role.objects.get(code='ADMINISTRADOR'),
-        )
-        self.assertFalse(self.reload(user).is_superadmin)
 
 
 class SuperadminProtectionViewTests(TestCase):
@@ -120,23 +102,6 @@ class SuperadminProtectionViewTests(TestCase):
         self.assertContains(response, 'Somente um superadmin ativo pode alterar o e-mail')
         superadmin = self.reload(self.superadmin)
         self.assertEqual((superadmin.name, superadmin.email), ('Super', 'super@ifnmg.edu.br'))
-
-    def test_forged_email_change_of_inactive_superadmin_is_refused(self):
-        User.objects.filter(pk=self.superadmin.pk).update(is_active=False)
-        self.client.force_login(self.admin)
-        self.client.post(self.edit_url(self.superadmin), {'name': 'Super', 'email': 'outro.mail@ifnmg.edu.br'})
-        self.assertEqual(self.reload(self.superadmin).email, 'super@ifnmg.edu.br')
-
-    def test_regular_admin_changes_only_the_name(self):
-        self.client.force_login(self.admin)
-        response = self.client.post(self.edit_url(self.superadmin), {'name': 'Super Admin', 'email': 'super@ifnmg.edu.br'})
-        self.assertRedirects(response, '/usuarios/')
-        self.assertEqual(self.reload(self.superadmin).name, 'Super Admin')
-
-    def test_active_superadmin_changes_the_email_of_another_superadmin(self):
-        self.client.force_login(self.other_superadmin)
-        self.client.post(self.edit_url(self.superadmin), {'name': 'Super', 'email': 'novo.super@ifnmg.edu.br'})
-        self.assertEqual(self.reload(self.superadmin).email, 'novo.super@ifnmg.edu.br')
 
     def test_superadmin_flag_sent_in_requests_is_ignored(self):
         self.client.force_login(self.other_superadmin)

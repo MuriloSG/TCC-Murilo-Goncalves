@@ -24,12 +24,15 @@ def navigation(context):
     current_name = (match and match.url_name) or ''
     items = []
     for item, url in menu_for(request.user):
-        entry = {'url': url, 'label': item.label, 'icon_name': item.icon, 'current': current_name.startswith(item.prefix)}
+        entry = {'url': url, 'label': item.label, 'icon_name': item.icon}
         if isinstance(item, MenuGroup):
             entry['children'] = [
                 {'url': child_url, 'label': child.label, 'icon_name': child.icon, 'current': current_name.startswith(child.prefix)}
                 for child, child_url in item.entries_for(request.user)
             ]
+            entry['current'] = any(child['current'] for child in entry['children'])
+        else:
+            entry['current'] = current_name.startswith(item.prefix)
         items.append(entry)
     return items
 

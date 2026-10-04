@@ -63,3 +63,16 @@ A página "Servidor de e-mail" DEVE (MUST) exigir autenticação e a permissão 
 - **GIVEN** um usuário autenticado sem `CONFIGURACAO.EDITAR`
 - **WHEN** ele abre a página ou envia o formulário
 - **THEN** a resposta é 403 e nada é exibido nem alterado
+
+### Requirement: Exclusão da configuração SMTP
+Um usuário com `CONFIGURACAO.EDITAR` DEVE (MUST) poder excluir a configuração SMTP, com confirmação em modal (GET mostra a confirmação, POST exclui). A exclusão DEVE (MUST) ser auditada com a ação `EXCLUIR` no módulo `CONFIGURACAO`, sem a senha, e os envios pendentes DEVEM (MUST) ficar retidos até um novo cadastro.
+
+#### Scenario: Exclusão confirmada
+- **GIVEN** uma configuração `smtp` gravada
+- **WHEN** o usuário confirma a exclusão
+- **THEN** a configuração deixa de existir, a mensagem "Configuração do servidor de e-mail excluída." aparece e a auditoria registra `EXCLUIR` sem a senha
+
+#### Scenario: Exclusão sem configuração
+- **GIVEN** que não existe configuração `smtp`
+- **WHEN** a confirmação de exclusão é aberta
+- **THEN** a resposta é 404

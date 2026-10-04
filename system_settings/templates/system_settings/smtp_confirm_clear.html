@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Excluir a configuração do servidor de e-mail?{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'settings_email' %}">E-mail</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Excluir configuração</span></li>
+{% endblock %}
+
+{% block content %}{% include "system_settings/smtp_clear_modal.html" %}{% endblock %}

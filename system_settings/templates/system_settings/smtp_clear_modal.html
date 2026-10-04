@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Excluir a configuração do servidor de e-mail?{% endblock %}
+
+{% block consequence %}Os dados do servidor e a senha gravada são excluídos. Nenhum e-mail é enviado até um novo cadastro, e os e-mails pendentes ficam retidos, sem perder tentativas.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "trash-2" %}Excluir configuração</button>{% endblock %}

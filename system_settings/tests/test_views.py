@@ -69,3 +69,13 @@ class SmtpViewTests(TestCase):
         self.assertContains(response, 'Configuração inválida')
         self.assertEqual(response.context['pending'], OutboxEntry.objects.filter(status='A_ENVIAR').count())
         self.assertIn('TESTE', OutboxEntry.objects.values_list('kind', flat=True))
+
+    def test_clears_through_the_confirmation(self):
+        configure_smtp()
+        response = self.client.post(reverse('settings_email_clear'))
+        self.assertRedirects(response, reverse('settings_email'), fetch_redirect_response=False)
+        self.assertFalse(SystemSetting.objects.exists())
+        self.assertContains(self.client.get(reverse('settings_email')), 'Configuração do servidor de e-mail excluída.')
+
+    def test_clear_without_setting_is_404(self):
+        self.assertEqual(self.client.get(reverse('settings_email_clear')).status_code, 404)

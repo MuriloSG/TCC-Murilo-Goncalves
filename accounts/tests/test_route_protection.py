@@ -88,6 +88,7 @@ PROTECTED_ROUTES = {
     'report_requests': permissions.REPORT_VIEW,
     'settings_email': permissions.SETTINGS_EDIT,
     'settings_email_update': permissions.SETTINGS_EDIT,
+    'settings_email_clear': permissions.SETTINGS_EDIT,
 }
 
 PUBLIC_ROUTES = {

@@ -20,4 +20,9 @@ urlpatterns = [
         login_required(views.SmtpUpdateView.as_view()),
         name='settings_email_update',
     ),
+    path(
+        'configuracoes/email/excluir/',
+        login_required(views.SmtpClearView.as_view()),
+        name='settings_email_clear',
+    ),
 ]

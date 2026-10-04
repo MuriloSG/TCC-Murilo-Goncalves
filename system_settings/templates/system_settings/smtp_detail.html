@@ -15,6 +15,7 @@
       <h1 class="page-title">Servidor de e-mail</h1>
     </div>
     <div class="page-actions">
+      {% if setting %}<a class="btn-danger" href="{% url 'settings_email_clear' %}" hx-get="{% url 'settings_email_clear' %}" hx-target="#modal">{% icon "trash-2" %}Excluir configuração</a>{% endif %}
       <a class="btn-primary" href="{% url 'settings_email_update' %}" hx-get="{% url 'settings_email_update' %}" hx-target="#modal">{% icon "pencil" %}{% if setting %}Editar servidor de e-mail{% else %}Cadastrar servidor de e-mail{% endif %}</a>
     </div>
   </div>

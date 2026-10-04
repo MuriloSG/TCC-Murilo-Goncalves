@@ -6,11 +6,12 @@ no contexto: a tela só sabe se ela existe.
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 
 from accounts import permissions
-from accounts.views import OperationFormView
+from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
 from outbox.models import OutboxEntry
 from system_settings.forms import SmtpForm
@@ -72,3 +73,21 @@ class SmtpUpdateView(OperationFormView):
     def perform(self, data):
         SystemSetting.objects.save_smtp(**data)
         messages.success(self.request, 'Servidor de e-mail salvo.')
+
+
+class SmtpClearView(ConfirmedActionView):
+    """Exclui a configuração SMTP. A rota não tem `pk`: o alvo é a única configuração do tipo."""
+
+    permission_required = permissions.SETTINGS_EDIT
+    audit_resource = catalog.SETTINGS
+    template_name = 'system_settings/smtp_confirm_clear.html'
+    modal_template_name = 'system_settings/smtp_clear_modal.html'
+    success_url = reverse_lazy('settings_email')
+
+    def setup(self, request, *args, **kwargs):
+        super(ConfirmedActionView, self).setup(request, *args, **kwargs)
+        self.target = get_object_or_404(SystemSetting, kind=SystemSetting.Kind.SMTP)
+
+    def perform(self):
+        SystemSetting.objects.clear_smtp()
+        messages.success(self.request, 'Configuração do servidor de e-mail excluída.')

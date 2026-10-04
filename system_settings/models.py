@@ -182,6 +182,24 @@ class SystemSettingQuerySet(models.QuerySet):
             )
         return setting
 
+    def clear_smtp(self):
+        """Exclui a configuração SMTP, com auditoria. Os envios pendentes ficam retidos (D5)."""
+        with transaction.atomic(using=self.db):
+            setting = self.select_for_update().get(kind=SystemSetting.Kind.SMTP)
+            AuditLog.objects.record(
+                catalog.DELETE,
+                catalog.SETTINGS,
+                resource_id=setting.kind,
+                old_values={
+                    'servidor': setting.value.get('host'),
+                    'porta': setting.value.get('port'),
+                    'seguranca': setting.value.get('security'),
+                    'usuario': setting.value.get('username'),
+                    'remetente': setting.value.get('from_email'),
+                },
+            )
+            setting.delete()
+
 
 class SystemSetting(models.Model):
     """Uma configuração do sistema, única por tipo, com o valor no esquema do tipo (D1)."""

@@ -99,3 +99,13 @@ class SchemaTests(TestCase):
 
     def test_missing_setting_is_none(self):
         self.assertIsNone(SystemSetting.objects.smtp())
+
+
+class ClearSmtpTests(TestCase):
+    def test_clears_and_audits_without_password(self):
+        configure_smtp()
+        SystemSetting.objects.clear_smtp()
+        self.assertIsNone(SystemSetting.objects.smtp())
+        log = AuditLog.objects.get(resource='CONFIGURACAO', action='EXCLUIR')
+        self.assertEqual(log.old_values['servidor'], 'smtp.ifnmg.edu.br')
+        self.assertNotIn(SMTP_PASSWORD, str(log.old_values))

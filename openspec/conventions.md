@@ -57,7 +57,12 @@ A referência de implementação é o app `accounts`.
 ## 7. Testes
 
 - Os testes ficam em `<app>/tests/test_*.py` e rodam com `make test` no PostgreSQL. A suíte inteira deve passar antes de cada commit.
-- Cada rota protegida é testada em quatro situações: anônimo redirecionado ao login com `next`, autenticado sem a permissão com 403, com a permissão executando e POST sem CSRF com 403.
+- A proteção das rotas é testada num só lugar, em `accounts/tests/test_route_protection.py`. Para todas as rotas, ele confere três situações: anônimo redirecionado ao login com `next`, autenticado sem a permissão com 403 e POST sem CSRF com 403. Toda rota nova entra na tabela `PROTECTED_ROUTES`, com a permissão que exige, ou em `PUBLIC_ROUTES`. Uma rota fora da tabela faz o teste falhar.
+- O teste do app cobre só a rota executando com a permissão, além das checagens que a view faz por conta própria, como uma segunda permissão ou o vínculo do docente.
+- Cada regra é testada na camada mais baixa que a implementa, o modelo ou o serviço. Na tela basta conferir uma vez, por formulário, que o erro aparece.
+- Não se testa comportamento do Django: `max_length`, `unique`, CASCADE, `Meta.ordering`, valores padrão, o 405 de `require_POST` e o `transaction.atomic`.
+- Os testes conferem textos e valores, pelo `context` quando possível, e não a marcação exata do HTML. A marcação é verificada pelas varreduras do app `ui`.
+- Variações de um mesmo caso viram um teste com `subTest`. Números que vêm do catálogo, como o total de permissões, são calculados a partir de `accounts/permissions.py`.
 - Use `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `transaction.on_commit` ou de concorrência.
 - Limpe o cache (`cache.clear()`) no `setUp` de testes que passam pelos limites de tentativas do allauth.
 - Os testes de permissão usam usuários que não são superadmin, para que o acesso irrestrito não mascare falhas.

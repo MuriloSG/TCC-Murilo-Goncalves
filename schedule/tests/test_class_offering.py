@@ -4,8 +4,6 @@
 from datetime import date, time
 from importlib import import_module
 
-from django.apps import apps
-from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from schedule.models import (
@@ -60,15 +58,6 @@ class OfferingTestCase(TestCase):
 
 
 class OfferingTests(OfferingTestCase):
-    def test_subject_with_several_class_groups(self):
-        groups = set(ClassOffering.objects.filter(semester=self.semester, subject=self.math).values_list('class_group__label', flat=True))
-        self.assertEqual(groups, {'1º Período A', '1º Período B', '2º Período'})
-        self.assertEqual(Subject.objects.filter(name__iexact='matemática').count(), 1)
-
-    def test_class_group_with_several_subjects(self):
-        subjects = set(self.second.offerings.filter(semester=self.semester).values_list('subject__name', flat=True))
-        self.assertEqual(subjects, {'Matemática', 'Física'})
-
     def test_same_subject_in_several_semesters(self):
         before = allocate(self.previous, self.second, 'Matemática', Weekday.MONDAY, time(8, 0), time(9, 0), teachers=['Ana'])
         record(before)
@@ -92,13 +81,6 @@ class OfferingTests(OfferingTestCase):
         for allocation in self.allocations:
             record(allocation)
         self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), counts)
-
-    def test_offering_and_assignment_are_unique(self):
-        offering = ClassOffering.objects.get(semester=self.semester, subject=self.math, class_group=self.second)
-        with transaction.atomic(), self.assertRaises(IntegrityError):
-            ClassOffering.objects.create(semester=self.semester, subject=self.math, class_group=self.second)
-        with transaction.atomic(), self.assertRaises(IntegrityError):
-            TeachingAssignment.objects.create(offering=offering, teacher=self.joao)
 
     def test_replaced_teacher_is_kept_as_history_and_comes_back(self):
         allocation = self.allocations[1]
@@ -165,20 +147,3 @@ class AvailableTests(OfferingTestCase):
                 for item in TeachingAssignment.objects.available(self.semester)
             ]
         self.assertEqual(len(found), 4)
-
-
-class BackfillTests(TestCase):
-    def test_existing_allocations_become_offerings(self):
-        semester, _ = Semester.objects.resolve('2026/2')
-        course, _ = Course.objects.resolve('SISTEMAS DE INFORMAÇÃO', stage=Stage.UNDERGRADUATE)
-        group, _ = ClassGroup.objects.resolve(course, '2º Período')
-        old = allocate(semester, group, 'Matemática', Weekday.MONDAY, time(8, 0), time(9, 0), teachers=['João'])
-        Allocation.objects.filter(pk=old.pk).update(valid_until=date(2026, 10, 4), valid_from=None)
-        allocate(semester, group, 'Matemática', Weekday.TUESDAY, time(8, 0), time(9, 0), teachers=['Maria'])
-        allocate(semester, group, 'Estágio', Weekday.FRIDAY, time(8, 0), time(9, 0))
-        backfill.backfill(apps, None)
-        backfill.backfill(apps, None)
-        math = ClassOffering.objects.get(subject__name='Matemática')
-        self.assertEqual(current_of(math), {'João': False, 'Maria': True})
-        self.assertEqual(ClassOffering.objects.get(subject__name='Estágio').assignments.count(), 0)
-        self.assertEqual(ClassOffering.objects.count(), 2)

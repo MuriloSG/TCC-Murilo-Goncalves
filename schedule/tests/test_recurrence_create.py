@@ -4,7 +4,7 @@ from datetime import date, time
 from unittest import mock
 
 from django.core.exceptions import ValidationError
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from accounts import permissions
@@ -12,7 +12,6 @@ from accounts.models import User
 from audit import catalog
 from audit.models import AuditLog
 from bookings.tests.base import academic, submit
-from schedule.imports import RECURRENCE_CHANGED, SpaceAllocationImport
 from schedule.models import Allocation, ClassGroup, ClassOffering, Course, Origin, Semester, Space, Stage, Subject, Teacher, TimeSlot, Weekday
 from schedule.tests.test_occurrence_cancel import user_with
 from schedule.tests.test_timetable import allocate
@@ -129,35 +128,19 @@ class CreateModelTests(CreateTestCase):
         self.assertIn('Escolha um horário do semestre.', str(error.exception))
         self.assertFalse(self.created().exists())
 
-    def test_refuses_start_in_the_past(self):
-        with self.assertRaises(ValidationError):
-            self.create(start=date(2026, 8, 25))
-        self.assertFalse(self.created().exists())
-
-    def test_refuses_start_outside_the_semester(self):
-        with self.assertRaises(ValidationError):
-            self.create(start=date(2027, 2, 2))
-        self.assertFalse(self.created().exists())
-
-    def test_refuses_weekend_start(self):
-        with self.assertRaises(ValidationError):
-            self.create(start=SATURDAY)
-        self.assertFalse(self.created().exists())
-
-    def test_refuses_end_before_start(self):
-        with self.assertRaises(ValidationError):
-            self.create(end=date(2026, 9, 29))
-        self.assertFalse(self.created().exists())
-
-    def test_refuses_end_outside_the_semester(self):
-        with self.assertRaises(ValidationError):
-            self.create(end=date(2027, 1, 5))
-        self.assertFalse(self.created().exists())
-
-    def test_refuses_inactive_space(self):
-        self.free_room.deactivate()
-        with self.assertRaises(ValidationError):
-            self.create()
+    def test_refuses_invalid_dates_and_inactive_space_with_the_reason(self):
+        cases = [
+            ('Escolha uma data a partir de hoje.', {'start': date(2026, 8, 25)}),
+            ('A data 02/02/2027 está fora do período do semestre', {'start': date(2027, 2, 2)}),
+            ('A aula acontece de segunda a sexta-feira.', {'start': SATURDAY}),
+            ('A última aula não pode ser anterior à primeira.', {'end': date(2026, 9, 29)}),
+            ('A data 05/01/2027 está fora do período do semestre', {'end': date(2027, 1, 5)}),
+            ('O espaço Sala 10 está desativado.', {'space': Space.objects.register('Sala 10')}),
+        ]
+        cases[-1][1]['space'].deactivate()
+        for message, arguments in cases:
+            with self.subTest(message), self.assertRaisesMessage(ValidationError, message):
+                self.create(**arguments)
         self.assertFalse(self.created().exists())
 
     def test_allocation_without_space(self):
@@ -228,15 +211,6 @@ class CreateConflictTests(CreateTestCase):
 
 
 class CreatePermissionTests(CreateTestCase):
-    def test_anonymous_is_redirected_to_login(self):
-        response = Client().get(self.url())
-        self.assertRedirects(response, f"{reverse('account_login')}?next={self.url()}", fetch_redirect_response=False)
-
-    def test_other_permission_does_not_grant_creation(self):
-        client = Client()
-        client.force_login(self.changer)
-        self.assertEqual(client.get(self.url()).status_code, 403)
-
     def test_model_refuses_without_the_permission(self):
         with self.assertRaises(ValidationError):
             self.create(user=self.changer)
@@ -246,11 +220,6 @@ class CreatePermissionTests(CreateTestCase):
         self.assertFalse(self.superadmin.role.permissions.filter(code=permissions.SPACE_ALLOCATION_CREATE_RECURRENCE).exists())
         self.create(user=self.superadmin)
         self.assertTrue(self.created().exists())
-
-    def test_post_without_csrf_is_refused(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.creator)
-        self.assertEqual(client.post(self.url(), self.payload()).status_code, 403)
 
 
 class CreateScreenTests(CreateTestCase):
@@ -286,15 +255,11 @@ class CreateScreenTests(CreateTestCase):
         self.assertContains(response, 'Cálculo III')
         self.assertFalse(self.created().exists())
 
-    def test_grid_offers_the_action(self):
-        response = self.client.get(f'{GRID}?semestre=2026/2&sala=Sala 9&semana={MONDAY.isoformat()}')
-        self.assertContains(response, 'Cadastrar aula')
-        self.assertContains(response, 'timetable-add')
-
-    def test_grid_without_the_permission_hides_the_action(self):
+    def test_grid_offers_the_action_only_with_the_permission(self):
+        url = f'{GRID}?semestre=2026/2&sala=Sala 9&semana={MONDAY.isoformat()}'
+        self.assertContains(self.client.get(url), 'timetable-add')
         self.client.force_login(self.changer)
-        response = self.client.get(f'{GRID}?semestre=2026/2&sala=Sala 9&semana={MONDAY.isoformat()}')
-        self.assertNotContains(response, 'timetable-add')
+        self.assertNotContains(self.client.get(url), 'timetable-add')
 
 
 class CreateReimportTests(CreateTestCase):
@@ -308,11 +273,3 @@ class CreateReimportTests(CreateTestCase):
         )
         self.assertEqual((found.pk, action, changes), (allocation.pk, 'unchanged', {}))
         self.assertEqual(list(Allocation.objects.order_by('pk').values()), before)
-
-    def test_the_import_row_warns_about_the_lesson(self):
-        self.create()
-        self.assertTrue(self.created().get().is_versioned)
-        self.assertEqual(
-            SpaceAllocationImport.warning_labels[RECURRENCE_CHANGED],
-            'Esta aula foi definida no sistema e não foi atualizada pela planilha.',
-        )

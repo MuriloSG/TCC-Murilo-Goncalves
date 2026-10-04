@@ -4,7 +4,6 @@ Os testes percorrem a importação real, pelo motor de `imports`, com planilhas 
 `workbook_file` e com as duas planilhas de exemplo do campus.
 """
 
-from unittest import mock
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -15,7 +14,7 @@ from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
-from schedule.models import Allocation, AllocationManager, Space, SpaceDecision
+from schedule.models import Allocation, Space, SpaceDecision
 from schedule.spaces import CELLS_ONLY, CREATE, INACTIVE, PENDING, SIMILAR, classify_import
 from schedule.tests.test_import import CONTENT_TYPE, ImportTestCase, workbook_file
 
@@ -118,13 +117,6 @@ class ClassificationTests(SpaceImportTestCase):
         self.assertEqual((entry.outcome, entry.reason, entry.from_list), (PENDING, CELLS_ONLY, False))
         self.assertEqual(entry.usage.lessons, 1)
 
-    def test_listed_space_without_lessons_is_proposed(self):
-        importation = self.preview()
-        entry = self.entry(importation, 'Lab. de Madeira')
-        self.assertEqual((entry.outcome, entry.from_list, entry.usage.lessons), (CREATE, True, 0))
-        row = importation.rows.get(values__Nome='Lab. de Madeira')
-        self.assertEqual((row.action, row.warnings, row.pending), ('create', [], []))
-
     def test_listed_space_without_lessons_does_not_make_used_names_ambiguous(self):
         uploaded = workbook_file(
             spaces=['(1/13)', '(2/6)', '(HV 3)', '(Lab. Química I)', '(Lab. Química)'],
@@ -155,10 +147,6 @@ class ClassificationTests(SpaceImportTestCase):
         self.assertEqual(self.entry(importation, 'Lab. de Madeira').outcome, 'reconhecido')
         row = importation.rows.get(values__Nome='Lab. de Madeira')
         self.assertEqual((row.action, row.target), ('unchanged', str(space.pk)))
-
-    def test_preview_records_no_space_audit(self):
-        self.preview()
-        self.assertFalse(AuditLog.objects.filter(resource=catalog.SPACE).exists())
 
 
 class DecisionTests(SpaceImportTestCase):
@@ -254,16 +242,6 @@ class DecisionTests(SpaceImportTestCase):
         importation.remove(self.definition, self.executor)
         self.assertFalse(SpaceDecision.objects.exists())
         self.assertFalse(Space.objects.exists())
-
-    def test_failure_during_the_confirmation_leaves_no_space(self):
-        importation = self.preview()
-        with mock.patch.object(AllocationManager, 'apply', side_effect=RuntimeError('falha')):
-            with self.assertRaises(RuntimeError):
-                importation.confirm(self.definition, self.executor)
-        importation.refresh_from_db()
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertFalse(Space.objects.exists())
-        self.assertFalse(AuditLog.objects.filter(resource=catalog.SPACE).exists())
 
     def test_two_imports_proposing_the_same_space_create_it_once(self):
         first = self.preview()

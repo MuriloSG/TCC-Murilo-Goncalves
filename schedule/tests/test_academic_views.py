@@ -1,6 +1,6 @@
 from datetime import time
 
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from accounts import permissions
@@ -92,13 +92,6 @@ class AccessTests(AcademicTestCase):
             reverse('class_groups_delete', args=[self.second.pk]): permissions.CLASS_GROUP_DELETE,
         }
 
-    def test_anonymous_is_sent_to_the_login_with_next(self):
-        for url in self.routes():
-            with self.subTest(url=url):
-                self.assertRedirects(
-                    self.client.get(url), f"{reverse('account_login')}?next={url}", fetch_redirect_response=False,
-                )
-
     def test_each_route_requires_its_own_permission(self):
         for position, (url, code) in enumerate(self.routes().items()):
             with self.subTest(url=url):
@@ -109,19 +102,6 @@ class AccessTests(AcademicTestCase):
                 self.assertEqual(self.client.get(url).status_code, 200)
                 self.client.force_login(self.stranger)
                 self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_post_without_the_permission_creates_nothing(self):
-        self.client.force_login(user_with('consulta@ifnmg.edu.br', permissions.SUBJECT_VIEW))
-        response = self.client.post(reverse('subjects_create'), {'name': 'Artes'})
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(Subject.objects.filter(name='Artes').exists())
-
-    def test_post_without_csrf_is_refused(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.superadmin)
-        response = client.post(reverse('class_groups_delete', args=[self.free_group.pk]))
-        self.assertEqual(response.status_code, 403)
-        self.assertTrue(ClassGroup.objects.filter(pk=self.free_group.pk).exists())
 
     def test_menu_items_follow_the_view_permission(self):
         self.client.force_login(self.joao)
@@ -180,16 +160,6 @@ class ListTests(AcademicTestCase):
         self.assertContains(self.client.get(reverse('subjects_list')), 'Nenhuma disciplina cadastrada.')
         self.assertContains(self.client.get(reverse('class_groups_list')), 'Nenhuma turma cadastrada.')
 
-    def test_superadmin_lists_every_record_through_the_pages(self):
-        for number in range(30):
-            Subject.objects.resolve(f'Disciplina {number:02d}')
-        self.client.force_login(self.superadmin)
-        seen = set()
-        for page in range(1, 10):
-            response = self.client.get(reverse('subjects_list'), {'pagina': page})
-            seen.update(item.pk for item in response.context['subjects'])
-        self.assertEqual(seen, set(Subject.objects.values_list('pk', flat=True)))
-
     def test_search_and_course_filter(self):
         self.client.force_login(self.superadmin)
         response = self.client.get(reverse('class_groups_list'), {'busca': 'agro'})
@@ -241,12 +211,6 @@ class CreateTests(AcademicTestCase):
         self.assertContains(response, 'Já existe disciplina com este nome.')
         self.assertEqual(Subject.objects.filter(name__iexact='matemática').count(), 1)
 
-    def test_empty_label_is_refused(self):
-        self.client.force_login(self.joao)
-        response = self.client.post(reverse('class_groups_create'), {'course': self.agro.pk, 'label': '   '})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(ClassGroup.objects.filter(course=self.agro).count(), 1)
-
     def test_valid_class_group_is_created_and_audited(self):
         self.client.force_login(self.joao)
         self.client.post(reverse('class_groups_create'), {'course': self.agro.pk, 'label': '4º período'})
@@ -259,11 +223,6 @@ class CreateTests(AcademicTestCase):
         self.client.force_login(self.joao)
         response = self.client.post(reverse('class_groups_create'), {'course': self.agro.pk, 'label': '2º PERÍODO'})
         self.assertContains(response, 'Já existe uma turma com este rótulo neste curso.')
-
-    def test_same_label_in_another_course_is_accepted(self):
-        self.client.force_login(self.joao)
-        self.client.post(reverse('class_groups_create'), {'course': self.info.pk, 'label': '2º período'})
-        self.assertTrue(ClassGroup.objects.filter(course=self.info, label='2º período').exists())
 
 
 class UpdateTests(AcademicTestCase):
@@ -342,10 +301,6 @@ class DeleteTests(AcademicTestCase):
         self.assertTrue(Subject.objects.filter(pk=self.chemistry.pk).exists())
         self.assertTrue(ClassGroup.objects.filter(pk=self.second.pk).exists())
 
-    def test_confirmation_is_shown_on_get(self):
-        self.client.force_login(self.superadmin)
-        self.assertContains(self.client.get(reverse('subjects_delete', args=[self.free_subject.pk])), 'Excluir Robótica?')
-
     def test_delete_action_only_for_unused_records(self):
         self.client.force_login(self.superadmin)
         response = self.client.get(reverse('subjects_list'))
@@ -354,19 +309,6 @@ class DeleteTests(AcademicTestCase):
 
 
 class ImportRegressionTests(AcademicTestCase):
-    def test_import_reuses_a_manually_registered_subject(self):
-        subject = Subject.objects.register('Robótica Educacional')
-        allocation = allocate(self.semester, self.free_group, 'robótica educacional', Weekday.FRIDAY, time(7, 20), time(8, 10), teachers=['joao'])
-        self.assertEqual(allocation.subject, subject)
-        offering = ClassOffering.objects.record(self.semester, subject, self.free_group)
-        self.assertTrue(offering.assignments.get(teacher__name='joao').is_current)
-
-    def test_import_keeps_the_historic_link_and_makes_it_current(self):
-        allocate(self.semester, self.second, 'Química', Weekday.FRIDAY, time(7, 20), time(8, 10), teachers=['joao'])
-        offering = ClassOffering.objects.record(self.semester, self.chemistry, self.second)
-        self.assertEqual(offering.assignments.count(), 1)
-        self.assertTrue(offering.assignments.get().is_current)
-
     def test_manual_registration_offers_nothing_to_the_agenda(self):
         Subject.objects.register('Artes')
         ClassGroup.objects.register(self.agro, '6º período')

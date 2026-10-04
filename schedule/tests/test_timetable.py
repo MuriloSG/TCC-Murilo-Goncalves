@@ -49,10 +49,8 @@ def allocate(semester, group, subject, weekday, start, end, space=None, teachers
 
 
 class CurrentSemesterTests(TestCase):
-    def test_first_half_is_the_first_semester(self):
+    def test_each_half_of_the_year_is_a_semester(self):
         self.assertEqual(current_semester_code(date(2026, 6, 30)), '2026/1')
-
-    def test_second_half_is_the_second_semester(self):
         self.assertEqual(current_semester_code(date(2026, 7, 1)), '2026/2')
 
 

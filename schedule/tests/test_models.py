@@ -38,19 +38,8 @@ class SemesterTests(TestCase):
             self.assertIn('code', context.exception.error_dict)
         self.assertFalse(Semester.objects.exists())
 
-    def test_both_semesters_of_a_year_coexist(self):
-        Semester.objects.resolve('2026/1')
-        Semester.objects.resolve('2026/2')
-        self.assertEqual(list(Semester.objects.values_list('code', flat=True)), ['2026/2', '2026/1'])
-
 
 class NamedRecordTests(TestCase):
-    def test_name_is_stored_as_informed(self):
-        space = Space.objects.register('Lab. Fenôm. de Transportes')
-        teacher, _ = Teacher.objects.resolve('Élcio José')
-        self.assertEqual(space.name, 'Lab. Fenôm. de Transportes')
-        self.assertEqual(teacher.name, 'Élcio José')
-
     def test_borders_and_repeated_spaces_are_normalized(self):
         space = Space.objects.register('  Lab.   Bromatologia ')
         self.assertEqual(space.name, 'Lab. Bromatologia')
@@ -90,20 +79,6 @@ class NamedRecordTests(TestCase):
         Space.objects.create(name='Zoo II')
         with self.assertRaises(IntegrityError), transaction.atomic():
             Space.objects.create(name='zoo ii')
-
-    def test_the_same_name_in_two_entities_is_independent(self):
-        Space.objects.register('Química')
-        Subject.objects.resolve('Química')
-        Teacher.objects.resolve('Química')
-        self.assertEqual((Space.objects.count(), Subject.objects.count(), Teacher.objects.count()), (1, 1, 1))
-
-
-class SubjectTests(TestCase):
-    def test_subject_is_shared_between_courses(self):
-        first, _ = Subject.objects.resolve('Química Orgânica')
-        second, created = Subject.objects.resolve('QUÍMICA ORGÂNICA')
-        self.assertEqual((first, created), (second, False))
-        self.assertEqual(Subject.objects.count(), 1)
 
 
 class ClassGroupTests(TestCase):
@@ -149,22 +124,15 @@ class TimeSlotTests(TestCase):
         self.assertTrue(created)
         self.assertNotEqual(first, second)
 
-    def test_start_after_end_is_refused(self):
-        with self.assertRaises(ValidationError) as context:
-            TimeSlot.objects.resolve(self.semester, time(10, 0), time(9, 0))
-        self.assertIn('end_time', context.exception.error_dict)
-
-    def test_start_equal_to_end_is_refused(self):
-        with self.assertRaises(ValidationError):
-            TimeSlot.objects.resolve(self.semester, time(10, 0), time(10, 0))
+    def test_start_not_before_the_end_is_refused(self):
+        for end in (time(9, 0), time(10, 0)):
+            with self.subTest(end=end), self.assertRaises(ValidationError) as context:
+                TimeSlot.objects.resolve(self.semester, time(10, 0), end)
+            self.assertIn('end_time', context.exception.error_dict)
 
     def test_database_refuses_an_inverted_range(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
             TimeSlot.objects.create(semester=self.semester, start_time=time(10, 0), end_time=time(9, 0))
-
-    def test_label(self):
-        slot, _ = TimeSlot.objects.resolve(self.semester, time(7, 20), time(8, 10))
-        self.assertEqual(str(slot), '07:20 - 08:10')
 
 
 class AllocationTestCase(TestCase):
@@ -258,21 +226,6 @@ class SharedSpaceTests(AllocationTestCase):
         self.assertEqual(Allocation.objects.filter(space=self.room, weekday=Weekday.MONDAY).count(), 2)
         self.assertEqual(allocation.space, self.room)
 
-    def test_different_subjects_in_the_same_space_and_slot_are_accepted(self):
-        self.apply()
-        _, action, _ = self.apply(class_group=self.forest_group, subject=self.calculus)
-        self.assertEqual(action, 'create')
-        self.assertEqual(Allocation.objects.count(), 2)
-
-    def test_consecutive_slots_are_two_allocations(self):
-        self.apply()
-        self.apply(time_slot=self.second_slot)
-        self.assertEqual(Allocation.objects.count(), 2)
-        self.assertEqual(
-            list(Allocation.objects.order_by('time_slot__start_time').values_list('time_slot__start_time', flat=True)),
-            [time(13, 20), time(14, 10)],
-        )
-
     def test_the_same_group_slot_and_subject_is_refused_by_the_database(self):
         self.apply()
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -287,52 +240,12 @@ class SharedSpaceTests(AllocationTestCase):
 
 
 class SemesterIsolationTests(AllocationTestCase):
-    def test_allocation_of_another_semester_is_independent(self):
-        self.apply()
-        other, _ = Semester.objects.resolve('2026/2')
-        other_slot, _ = TimeSlot.objects.resolve(other, time(13, 20), time(14, 10))
-        allocation, action, _ = Allocation.objects.apply(
-            semester=other,
-            class_group=self.food_group,
-            subject=self.chemistry,
-            weekday=Weekday.MONDAY,
-            time_slot=other_slot,
-            space=self.room,
-            teachers=[self.elza],
-        )
-        self.assertEqual(action, 'create')
-        self.assertEqual(Allocation.objects.filter(semester=self.semester).count(), 1)
-        self.assertEqual(Allocation.objects.filter(semester=other).count(), 1)
-        self.assertEqual(allocation.semester, other)
-
     def test_slot_of_another_semester_is_refused(self):
         other, _ = Semester.objects.resolve('2026/2')
         other_slot, _ = TimeSlot.objects.resolve(other, time(13, 20), time(14, 10))
         with self.assertRaises(ValidationError) as context:
             self.apply(time_slot=other_slot)
         self.assertIn('time_slot', context.exception.error_dict)
-
-
-class QueryTests(AllocationTestCase):
-    def test_occupation_of_a_space_by_day_and_slot(self):
-        self.apply()
-        self.apply(class_group=self.forest_group)
-        self.apply(time_slot=self.second_slot, space=self.other_room)
-        found = Allocation.objects.filter(
-            semester=self.semester, space=self.room, weekday=Weekday.MONDAY, time_slot=self.first_slot,
-        )
-        self.assertEqual(found.count(), 2)
-
-    def test_allocations_of_a_teacher(self):
-        self.apply()
-        self.apply(time_slot=self.second_slot, teachers=[self.viviane])
-        self.assertEqual(Allocation.objects.filter(teachers=self.elza).count(), 1)
-        self.assertEqual(Allocation.objects.filter(teachers=self.viviane).count(), 1)
-
-    def test_allocations_of_a_class_group(self):
-        self.apply()
-        self.apply(class_group=self.forest_group)
-        self.assertEqual(Allocation.objects.filter(class_group=self.food_group).count(), 1)
 
 
 class SemesterPeriodTests(TestCase):

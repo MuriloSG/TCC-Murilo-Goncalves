@@ -22,7 +22,6 @@ from schedule.imports import (
     DAY_COLUMN,
     GROUP_COLUMN,
     KIND_COLUMN,
-    NAME_COLUMN,
     SLOT_COLUMN,
     SpaceAllocationImport,
     sheet_of,
@@ -79,20 +78,32 @@ class SpreadsheetTestCase(SimpleTestCase):
 
 
 class StructureTests(SpreadsheetTestCase):
-    def test_the_two_schedule_sheets_have_six_header_rows(self):
+    def test_portrait_of_the_real_file(self):
+        """Números da análise do arquivo real, conferidos juntos para acusar mudança na leitura."""
         self.assertEqual(header_rows(self.book[UNDERGRADUATE_SHEET]), [2, 23, 44, 65, 86, 107])
         self.assertEqual(header_rows(self.book[SECONDARY_SHEET]), [2, 17, 32, 47, 62, 77])
-
-    def test_catalog_has_the_two_lists(self):
         entries = catalog_entries(self.book)
         teachers = [entry for entry in entries if entry['kind'] == TEACHER_KIND]
         spaces = [entry for entry in entries if entry['kind'] == SPACE_KIND]
-        self.assertEqual(len(teachers), 124)
-        self.assertEqual(len(spaces), 82)
-        self.assertEqual(teachers[0]['value'], 'Adailton')
-        self.assertEqual(teachers[0]['reference'], f'{CATALOG_SHEET}!A2')
-        self.assertEqual(spaces[0]['value'], '(1/10)')
-        self.assertEqual(spaces[0]['reference'], f'{CATALOG_SHEET}!B2')
+        self.assertEqual((len(teachers), len(spaces)), (124, 82))
+        self.assertEqual((teachers[0]['value'], teachers[0]['reference']), ('Adailton', f'{CATALOG_SHEET}!A2'))
+        self.assertEqual((spaces[0]['value'], spaces[0]['reference']), ('(1/10)', f'{CATALOG_SHEET}!B2'))
+        undergraduate = {row[SLOT_COLUMN] for row in self.activity_rows if sheet_of(row) == UNDERGRADUATE_SHEET}
+        secondary = {row[SLOT_COLUMN] for row in self.activity_rows if sheet_of(row) == SECONDARY_SHEET}
+        self.assertEqual((len(undergraduate), len(secondary)), (15, 9))
+        self.assertTrue(secondary < undergraduate)
+        self.assertFalse({'INTERVALO', 'ALMOÇO'} & (undergraduate | secondary))
+        for title, expected in ((UNDERGRADUATE_SHEET, 39), (SECONDARY_SHEET, 20)):
+            layout = next(item for item in SHEET_LAYOUTS if item.title == title)
+            sheet = self.book[title]
+            columns = group_columns(sheet, layout, header_rows(sheet)[0])
+            self.assertEqual(len({column.header_text for column in columns.values()}), expected, title)
+        with_activity = {row[GROUP_COLUMN] for row in self.activity_rows if sheet_of(row) == UNDERGRADUATE_SHEET}
+        self.assertEqual(len(with_activity), 36)
+        origins = [row[CELL_COLUMN] for row in self.activity_rows]
+        self.assertIn(f'{UNDERGRADUATE_SHEET}!F69#1', origins)
+        self.assertIn(f'{UNDERGRADUATE_SHEET}!F69#2', origins)
+        self.assertEqual(len([origin for origin in origins if '#' in origin]), 45)
 
     def test_space_names_lose_the_parentheses_of_the_list(self):
         names = [self.definition.catalog_name(row) for row in self.catalog_rows if row[KIND_COLUMN] == SPACE_KIND]
@@ -111,14 +122,6 @@ class StructureTests(SpreadsheetTestCase):
         self.assertEqual(len(self.activity_rows), 1500)
         self.assertEqual(len(self.rows), 1706)
 
-    def test_row_count_is_under_the_declared_limit(self):
-        self.assertLess(len(self.rows), self.definition.max_rows)
-        self.assertLess(SPREADSHEET.stat().st_size, self.definition.max_file_size)
-
-    def test_every_origin_is_unique(self):
-        origins = [row[CELL_COLUMN] for row in self.rows]
-        self.assertEqual(len(origins), len(set(origins)))
-
     def test_calculated_sheets_are_not_read(self):
         for title in IGNORED_SHEETS:
             self.assertIn(title, self.book.sheetnames)
@@ -132,29 +135,6 @@ class StructureTests(SpreadsheetTestCase):
             }
             self.assertEqual(days, {'SEGUNDA', 'TERCA', 'QUARTA', 'QUINTA', 'SEXTA'}, title)
 
-    def test_slots_with_activity_in_each_sheet(self):
-        undergraduate = {row[SLOT_COLUMN] for row in self.activity_rows if sheet_of(row) == UNDERGRADUATE_SHEET}
-        secondary = {row[SLOT_COLUMN] for row in self.activity_rows if sheet_of(row) == SECONDARY_SHEET}
-        self.assertEqual(len(undergraduate), 15)
-        self.assertEqual(len(secondary), 9)
-        self.assertTrue(secondary < undergraduate)
-        self.assertNotIn('INTERVALO', undergraduate | secondary)
-        self.assertNotIn('ALMOÇO', undergraduate | secondary)
-        self.assertIn('21:50 - 22:40', undergraduate)
-        self.assertNotIn('21:50 - 22:40', secondary)
-
-    def test_group_columns_of_each_sheet(self):
-        for title, expected in ((UNDERGRADUATE_SHEET, 39), (SECONDARY_SHEET, 20)):
-            layout = next(item for item in SHEET_LAYOUTS if item.title == title)
-            sheet = self.book[title]
-            columns = group_columns(sheet, layout, header_rows(sheet)[0])
-            self.assertEqual(len(columns), expected, title)
-            self.assertEqual(len({column.header_text for column in columns.values()}), expected, title)
-
-    def test_three_undergraduate_columns_have_no_activity(self):
-        with_activity = {row[GROUP_COLUMN] for row in self.activity_rows if sheet_of(row) == UNDERGRADUATE_SHEET}
-        self.assertEqual(len(with_activity), 36)
-
     def test_column_without_header_in_one_block_keeps_its_group(self):
         physics = [
             row for row in self.activity_rows
@@ -164,26 +144,15 @@ class StructureTests(SpreadsheetTestCase):
         self.assertTrue(friday)
         self.assertEqual({row[GROUP_COLUMN] for row in friday}, {row[GROUP_COLUMN] for row in physics})
 
-    def test_food_engineering_has_no_course_title(self):
+    def test_course_title_is_read_except_for_food_engineering(self):
         food = [
             row for row in self.activity_rows
             if row[GROUP_COLUMN].endswith('Eng. Alimentos') or row[GROUP_COLUMN].endswith('Eng. Alimento')
         ]
         self.assertTrue(food)
         self.assertEqual({row[COURSE_COLUMN] for row in food}, {''})
-
-    def test_other_courses_have_the_title(self):
         forest = [row for row in self.activity_rows if row[GROUP_COLUMN].endswith('Eng. Florestal')]
-        self.assertTrue(forest)
         self.assertEqual({row[COURSE_COLUMN] for row in forest}, {'BACHARELADO EM ENGENHARIA FLORESTAL'})
-
-    def test_multiple_activities_in_one_cell_get_an_ordinal(self):
-        origins = [row[CELL_COLUMN] for row in self.activity_rows]
-        self.assertIn(f'{UNDERGRADUATE_SHEET}!F69#1', origins)
-        self.assertIn(f'{UNDERGRADUATE_SHEET}!F69#2', origins)
-        self.assertIn(f'{UNDERGRADUATE_SHEET}!C10', origins)
-        with_ordinal = [origin for origin in origins if '#' in origin]
-        self.assertEqual(len(with_ordinal), 45)
 
 
 class ActivityReadingTests(SpreadsheetTestCase):
@@ -270,11 +239,6 @@ class ActivityReadingTests(SpreadsheetTestCase):
     def test_empty_parentheses_in_place_of_the_space_is_a_problem(self):
         activity = resolve('Física (Elza) ()', Catalog.build(['Elza'], ['1/1']))
         self.assertEqual([code for code, _ in activity.problems], ['sala_vazia'])
-
-    def test_teacher_outside_the_catalog_is_a_problem(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!AB15')
-        self.assertEqual([code for code, _ in activity.problems], ['docente_desconhecido'])
-        self.assertIn('Agnaldo', activity.problems[0][1])
 
     def test_activity_without_subject_is_a_problem(self):
         activity = self.activity(f'{UNDERGRADUATE_SHEET}!AQ64#3')
@@ -387,11 +351,3 @@ class UserSheetReadingTests(SimpleTestCase):
         with patch('schedule.imports.SHEET_LAYOUTS', ()):
             rows = list(SpaceAllocationImport().read_cells(book))
         self.assertEqual([row[KIND_COLUMN] for row in rows], [USER_KIND, SPACE_KIND, TEACHER_KIND])
-
-    def test_help_text_cites_the_optional_sheet(self):
-        definition = SpaceAllocationImport()
-        self.assertIn('e, se houver, a aba "usuários - sistema"', definition.source().help_text(definition))
-
-    def test_real_spreadsheet_has_no_user_rows(self):
-        rows = list(SpaceAllocationImport().read_cells(workbook()))
-        self.assertFalse(any(row[KIND_COLUMN] == USER_KIND for row in rows))

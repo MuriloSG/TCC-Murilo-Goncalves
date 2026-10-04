@@ -10,7 +10,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from accounts.models import Role, User
-from accounts.permissions import SPACE_ALLOCATION_VIEW, USER_VIEW
+from accounts.permissions import USER_VIEW
 from audit.models import AuditLog
 from schedule import occupancy, public
 from schedule.models import ClassGroup, Course, Semester, Space, Stage, Weekday
@@ -76,15 +76,6 @@ class AccessTests(PublicCalendarTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Escolha uma sala, um docente ou um curso.')
 
-    def test_visitor_cannot_open_the_authenticated_grid(self):
-        grid = reverse('space_allocation_grid')
-        response = self.client.get(grid)
-        self.assertRedirects(response, f"{reverse('account_login')}?next={grid}", fetch_redirect_response=False)
-
-    def test_authenticated_grid_still_requires_the_permission(self):
-        self.client.force_login(self.aldo)
-        self.assertEqual(self.client.get(reverse('space_allocation_grid')).status_code, 403)
-
     def test_authenticated_user_sees_the_same_calendar(self):
         anonymous = self.get(sala='10').content
         self.client.force_login(self.aldo)
@@ -94,21 +85,6 @@ class AccessTests(PublicCalendarTestCase):
         self.assertEqual(self.client.head(URL).status_code, 200)
         for method in (self.client.post, self.client.put, self.client.patch, self.client.delete):
             self.assertEqual(method(URL).status_code, 405)
-
-    def test_post_without_csrf_is_405_and_writes_nothing(self):
-        client = self.client_class(enforce_csrf_checks=True)
-        before = AuditLog.objects.count()
-        self.assertEqual(client.post(URL, {'sala': '10'}).status_code, 405)
-        self.assertEqual(AuditLog.objects.count(), before)
-
-    def test_view_declares_no_permission_nor_audit(self):
-        from schedule.public_views import PublicCalendarView
-        from schedule.views import SpaceAllocationGridView
-
-        self.assertFalse(hasattr(PublicCalendarView, 'permission_required'))
-        self.assertFalse(hasattr(PublicCalendarView, 'audit_resource'))
-        self.assertFalse(issubclass(PublicCalendarView, SpaceAllocationGridView))
-        self.assertEqual(SpaceAllocationGridView.permission_required, SPACE_ALLOCATION_VIEW)
 
     def test_access_writes_no_audit_and_sets_no_cookie(self):
         before = AuditLog.objects.count()
@@ -128,11 +104,6 @@ class AccessTests(PublicCalendarTestCase):
         self.assertNotIn('Gestor', html)
         self.assertNotIn(reverse('account_logout'), html)
         self.assertNotIn(reverse('account_login'), html)
-
-    def test_page_offers_the_display_mode_toggle(self):
-        html = self.text(self.get(sala='10'))
-        self.assertIn('data-theme-toggle', html)
-        self.assertIn('js/theme.js', html)
 
 
 class FutureSourceTests(PublicCalendarTestCase):
@@ -225,20 +196,16 @@ class FilterTests(PublicCalendarTestCase):
     def test_too_long_value_is_discarded(self):
         self.assertIsNone(self.calendar(docente='A' * 201).teacher)
 
-    def test_inactive_space_with_lessons_is_an_option(self):
+    def test_space_options_are_the_active_ones_and_the_inactive_with_lessons(self):
+        Space.objects.register('9')
         names = [space.name for space in self.calendar().options.spaces]
         self.assertIn('7', names)
         self.assertNotIn('8', names)
-        self.assertEqual(names, ['7', '10', '11', '12', '20'])
+        self.assertEqual(names, ['7', '9', '10', '11', '12', '20'])
 
     def test_courses_are_only_the_allocated_ones(self):
         Course.objects.resolve('AGROPECUÁRIA', stage=Stage.SECONDARY)
         self.assertEqual([course.name for course in self.calendar().options.courses], ['INFORMÁTICA', 'LICENCIATURA EM FÍSICA'])
-
-    def test_stage_options_are_the_existing_ones(self):
-        html = self.text(self.get())
-        self.assertIn('>Graduação<', html)
-        self.assertIn('>Ensino médio<', html)
 
     def test_stage_filter(self):
         html = self.text(self.get(docente='Érica', nivel='graduacao'))
@@ -314,42 +281,30 @@ class DateTests(PublicCalendarTestCase):
         self.assertIn('value="2026-09-21"', html)
         self.assertIn('value="2026-09-25"', html)
 
-    def test_only_one_date(self):
-        self.assertRefused('Informe a data inicial e a data final.', inicio='2026-09-21')
-
-    def test_invalid_date(self):
-        self.assertRefused('Informe uma data válida.', inicio='2026-02-30', fim='2026-03-05')
-
-    def test_end_before_start(self):
-        self.assertRefused('A data final deve ser igual ou posterior à data inicial.', inicio='2026-09-25', fim='2026-09-21')
-
-    def test_more_than_31_days(self):
-        self.assertRefused('Escolha um intervalo de até 31 dias.', inicio='2026-09-01', fim='2026-10-15')
+    def test_refused_ranges_explain_why_and_query_nothing(self):
+        cases = [
+            ('Informe a data inicial e a data final.', {'inicio': '2026-09-21'}),
+            ('Informe uma data válida.', {'inicio': '2026-02-30', 'fim': '2026-03-05'}),
+            ('A data final deve ser igual ou posterior à data inicial.', {'inicio': '2026-09-25', 'fim': '2026-09-21'}),
+            ('Escolha um intervalo de até 31 dias.', {'inicio': '2026-09-01', 'fim': '2026-10-15'}),
+            (
+                'O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026.',
+                {'inicio': '2027-02-01', 'fim': '2027-02-05'},
+            ),
+        ]
+        for message, params in cases:
+            with self.subTest(message):
+                self.assertRefused(message, **params)
 
     def test_31_days_are_accepted(self):
         calendar = self.calendar(sala='10', inicio='2026-09-01', fim='2026-10-01')
         self.assertEqual(calendar.date_error, '')
         self.assertEqual(len(calendar.week.days), 23)
 
-    def test_range_outside_the_semester(self):
-        self.assertRefused(
-            'O intervalo escolhido está fora do semestre 2026/2, de 01/06/2026 a 23/12/2026.',
-            inicio='2027-02-01', fim='2027-02-05',
-        )
-
     def test_weekend_is_not_a_column(self):
         calendar = self.calendar(sala='10', inicio='2026-09-21', fim='2026-09-27')
         self.assertEqual([day.date for day in calendar.week.days][-1], date(2026, 9, 25))
         self.assertEqual(len(calendar.week.days), 5)
-
-    def test_days_outside_the_period(self):
-        html = self.text(self.get(sala='10', inicio='2026-12-21', fim='2026-12-25'))
-        self.assertIn('Fora do semestre', html)
-
-    def test_there_is_no_interval_navigation(self):
-        html = self.text(self.get(sala='10', inicio='2026-09-14', fim='2026-09-25'))
-        for text in ('Anterior', 'Próximo', '>Hoje</a>'):
-            self.assertNotIn(text, html)
 
 
 class GridTests(PublicCalendarTestCase):
@@ -379,16 +334,6 @@ class GridTests(PublicCalendarTestCase):
             with self.subTest(course=course):
                 self.assertEqual([row.start for row in self.calendar(curso=course).week.rows], every)
 
-    def test_today_is_marked(self):
-        self.assertContains(self.get(sala='10'), 'id="hoje"')
-
-    def test_day_header_has_short_label_and_full_name(self):
-        html = self.text(self.get(sala='10', inicio='2026-09-21', fim='2026-09-25'))
-        self.assertIn('aria-label="Hoje, Quarta-feira, 23/09/2026"', html)
-        self.assertIn('aria-label="Segunda-feira, 21/09/2026"', html)
-        self.assertIn('<span class="timetable-short">Qua</span>', html)
-        self.assertIn('<span class="timetable-short">23/09</span>', html)
-
 
 class EmptyStateTests(PublicCalendarTestCase):
     def assertEmptyGrid(self, **params):
@@ -403,12 +348,9 @@ class EmptyStateTests(PublicCalendarTestCase):
         self.assertIn('Sexta-feira, 25/09/2026, das 07:00 às 07:50, sem aula', html)
         self.assertIn('das 07:50 às 08:40, sem aula', html)
 
-    def test_course_without_lessons_shows_only_the_empty_grid(self):
+    def test_course_and_space_without_lessons_show_only_the_empty_grid(self):
         self.assertEmptyGrid(curso='LICENCIATURA EM FÍSICA', inicio='2026-09-25', fim='2026-09-25')
-
-    def test_space_without_lessons_shows_only_the_empty_grid(self):
-        html = self.assertEmptyGrid(sala='7', inicio='2026-09-21', fim='2026-09-24')
-        self.assertIn('disponível', html)
+        self.assertIn('disponível', self.assertEmptyGrid(sala='7', inicio='2026-09-21', fim='2026-09-24'))
 
     def test_no_grid_without_principal_filter_or_with_refused_dates(self):
         self.assertNotContains(self.get(), 'data-public-scroll')

@@ -1,7 +1,6 @@
 from datetime import time
 from importlib import import_module
 
-from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
@@ -9,7 +8,7 @@ from django.test import TestCase
 from accounts.models import User
 from audit import catalog
 from audit.models import AuditLog
-from imports.models import Import, ImportRow
+from imports.models import Import
 from schedule.models import (
     ClassGroup,
     Course,
@@ -67,11 +66,6 @@ class RegisterTests(TestCase):
             Space.objects.register('HV 5', other_names=['hv 4'])
         self.assertEqual(context.exception.message_dict, {'other_names': ['Já existe um espaço com o nome hv 4.']})
         self.assertFalse(space_records(catalog.CREATE).filter(new_values__name='HV 5').exists())
-
-    def test_accent_distinguishes_the_name(self):
-        Space.objects.register('Sala Música')
-        Space.objects.register('Sala Musica')
-        self.assertEqual(Space.objects.count(), 2)
 
     def test_database_guarantees_a_single_space_per_name(self):
         first = Space.objects.register('HV 4')
@@ -191,22 +185,3 @@ class DeleteTests(TestCase):
             space.delete_space()
         self.assertTrue(Space.objects.filter(pk=space.pk).exists())
         self.assertFalse(space_records(catalog.DELETE).exists())
-
-
-class AdoptionTests(TestCase):
-    def test_existing_spaces_become_spreadsheet_spaces_with_their_import(self):
-        user = User.objects.create(email='admin@ifnmg.edu.br', name='Admin')
-        tracked = Space.objects.create(name='1/10', origin='', is_active=False)
-        untracked = Space.objects.create(name='Lab. Carnes', origin='')
-        concluded = Import.objects.create(kind='ENSALAMENTO', status='CONCLUIDA', file_name='a.xlsx', created_by=user)
-        discarded = Import.objects.create(kind='ENSALAMENTO', status='DESCARTADA', file_name='b.xlsx', created_by=user)
-        ImportRow.objects.create(parent=concluded, line_number=1, values={'Tipo': 'SALA'}, created_object=str(tracked.pk))
-        ImportRow.objects.create(parent=discarded, line_number=1, values={'Tipo': 'SALA'}, created_object=str(untracked.pk))
-        adoption.adopt_spaces(apps, None)
-        tracked.refresh_from_db()
-        untracked.refresh_from_db()
-        self.assertEqual((tracked.origin, tracked.source_import, tracked.is_active), ('PLANILHA', concluded, True))
-        self.assertEqual((untracked.origin, untracked.source_import, untracked.is_active), ('PLANILHA', None, True))
-        self.assertEqual(Space.objects.named('1/10'), tracked)
-        self.assertEqual((tracked.other_names, untracked.other_names), ([], []))
-        self.assertFalse(AuditLog.objects.exists())

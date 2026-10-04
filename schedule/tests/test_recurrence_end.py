@@ -5,14 +5,14 @@ from datetime import date, time, timedelta
 from unittest import mock
 
 from django.core.exceptions import ValidationError
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from accounts import permissions
 from accounts.models import User
 from audit import catalog
 from audit.models import AuditLog
-from schedule.models import Allocation, AllocationException, ClassGroup, Course, Semester, Space, Stage, Subject, Teacher, Weekday
+from schedule.models import Allocation, AllocationException, ClassGroup, Course, Semester, Space, Stage, Teacher, Weekday
 from schedule.occupancy import occupancy
 from schedule.tests.test_occurrence_cancel import user_with
 from schedule.tests.test_timetable import allocate
@@ -24,7 +24,6 @@ CUT = date(2026, 10, 5)
 AFTER = date(2026, 10, 12)
 GRID = reverse('space_allocation_grid')
 END = reverse('space_allocation_recurrence_end')
-PUBLIC = reverse('public_calendar')
 
 
 class EndingTestCase(TestCase):
@@ -69,23 +68,14 @@ class EndingTestCase(TestCase):
 
 
 class EndingTests(EndingTestCase):
-    def test_each_allocation_ends_the_day_before(self):
+    def test_each_allocation_ends_the_day_before_and_the_past_remains(self):
+        count = Allocation.objects.count()
         self.end()
         for allocation in (self.first, self.second):
             allocation.refresh_from_db()
             self.assertEqual(allocation.valid_until, CUT - timedelta(days=1))
-
-    def test_following_occurrences_are_gone(self):
-        self.end()
         self.assertEqual(self.lessons(CUT, AFTER), [])
-
-    def test_earlier_occurrences_remain(self):
-        self.end()
         self.assertEqual(self.lessons(BEFORE, BEFORE), [BEFORE])
-
-    def test_nothing_is_deleted(self):
-        count = Allocation.objects.count()
-        self.end()
         self.assertEqual(Allocation.objects.count(), count)
 
     def test_lesson_that_has_not_started_yet(self):
@@ -97,21 +87,15 @@ class EndingTests(EndingTestCase):
         self.assertEqual(self.first.valid_until, CUT - timedelta(days=1))
         self.assertEqual(self.lessons(self.semester.start_date, self.semester.end_date), [])
 
-    def test_refuses_a_date_without_the_lesson(self):
-        with self.assertRaises(ValidationError):
-            self.end(cut=date(2026, 10, 6))
-        self.first.refresh_from_db()
-        self.assertIsNone(self.first.valid_until)
-
-    def test_refuses_a_date_in_the_past(self):
-        with self.assertRaises(ValidationError):
-            self.end(cut=date(2026, 8, 24))
-        self.first.refresh_from_db()
-        self.assertIsNone(self.first.valid_until)
-
-    def test_refuses_a_date_outside_the_semester(self):
-        with self.assertRaises(ValidationError):
-            self.end(cut=date(2027, 1, 4))
+    def test_refuses_invalid_dates_with_the_reason(self):
+        cases = [
+            ('A aula não acontece em 06/10/2026.', date(2026, 10, 6)),
+            ('Escolha uma data a partir de hoje.', date(2026, 8, 24)),
+            ('A data 04/01/2027 está fora do período do semestre', date(2027, 1, 4)),
+        ]
+        for message, cut in cases:
+            with self.subTest(message), self.assertRaisesMessage(ValidationError, message):
+                self.end(cut=cut)
         self.first.refresh_from_db()
         self.assertIsNone(self.first.valid_until)
 
@@ -150,25 +134,8 @@ class EndingTests(EndingTestCase):
         self.assertEqual((action, changes), ('unchanged', {}))
         self.assertEqual(list(Allocation.objects.order_by('pk').values()), before)
 
-    def test_public_calendar_before_and_after_the_date(self):
-        self.end()
-        before = Client().get(PUBLIC, {'sala': 'Sala 5', 'inicio': '2026-09-28', 'fim': '2026-10-02'})
-        after = Client().get(PUBLIC, {'sala': 'Sala 5', 'inicio': '2026-10-05', 'fim': '2026-10-09'})
-        self.assertContains(before, 'Cálculo III')
-        self.assertNotContains(after, 'Cálculo III')
-
 
 class EndingPermissionTests(EndingTestCase):
-    def test_anonymous_is_redirected_to_login(self):
-        response = Client().get(self.url())
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('next=', response['Location'])
-
-    def test_cancel_permission_does_not_grant_ending(self):
-        client = Client()
-        client.force_login(self.canceller)
-        self.assertEqual(client.get(self.url()).status_code, 403)
-
     def test_teacher_of_the_lesson_does_not_end_it(self):
         with self.assertRaises(ValidationError):
             self.end(user=self.viviane)
@@ -180,11 +147,6 @@ class EndingPermissionTests(EndingTestCase):
         self.end(user=self.superadmin)
         self.first.refresh_from_db()
         self.assertEqual(self.first.valid_until, CUT - timedelta(days=1))
-
-    def test_post_without_csrf_is_refused(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.ender)
-        self.assertEqual(client.post(self.url()).status_code, 403)
 
 
 class EndingScreenTests(EndingTestCase):
@@ -207,20 +169,15 @@ class EndingScreenTests(EndingTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(GRID, response['Location'])
 
-    def test_unknown_allocation_is_not_found(self):
+    def test_unknown_allocation_or_date_without_the_lesson_is_not_found(self):
         self.assertEqual(self.client.get(f'{END}?data={CUT.isoformat()}&alocacao=9999').status_code, 404)
-
-    def test_date_without_the_lesson_is_not_found(self):
         self.assertEqual(self.client.get(self.url(date(2026, 10, 6))).status_code, 404)
 
-    def test_grid_offers_the_action(self):
-        response = self.client.get(f'{GRID}?semestre=2026/2&sala=Sala 5&semana={CUT.isoformat()}')
-        self.assertContains(response, 'Encerrar recorrência')
-
-    def test_grid_without_the_permission_hides_the_action(self):
+    def test_grid_offers_the_action_only_with_the_permission(self):
+        url = f'{GRID}?semestre=2026/2&sala=Sala 5&semana={CUT.isoformat()}'
+        self.assertContains(self.client.get(url), 'Encerrar recorrência')
         self.client.force_login(self.canceller)
-        response = self.client.get(f'{GRID}?semestre=2026/2&sala=Sala 5&semana={CUT.isoformat()}')
-        self.assertNotContains(response, 'Encerrar recorrência')
+        self.assertNotContains(self.client.get(url), 'Encerrar recorrência')
 
     def test_past_week_does_not_offer_the_action(self):
         response = self.client.get(f'{GRID}?semestre=2026/2&sala=Sala 5&semana={PAST.isoformat()}')

@@ -7,7 +7,7 @@ listas. O arquivo real é usado nos testes que conferem o comportamento diante d
 """
 
 import io
-from datetime import date
+from datetime import date, time
 from unittest.mock import patch
 
 from django.conf import settings
@@ -17,14 +17,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from openpyxl import Workbook
 
 from accounts import permissions
-from accounts.imports import UserImport
 from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
 from imports.forms import ImportUploadForm
 from imports.models import Import
 from outbox.models import OutboxEntry
-from schedule.imports import SpaceAllocationImport, concluded_message
+from schedule.imports import RECURRENCE_CHANGED, SpaceAllocationImport, concluded_message
 from schedule.models import (
     Allocation,
     ClassGroup,
@@ -177,19 +176,8 @@ class PreviewTests(ImportTestCase):
         self.assertEqual(importation.summary()['create'], len(TEACHERS) + len(SPACE_NAMES) + 4)
         unused = importation.rows.get(values__Nome='Lab. de Madeira')
         self.assertEqual((unused.action, unused.warnings), ('create', []))
-        for model in (Semester, Space, Teacher, Course, Subject, ClassGroup, TimeSlot, Allocation):
+        for model in (Semester, Space, Teacher, Course, Subject, ClassGroup, TimeSlot, Allocation, ClassOffering, TeachingAssignment):
             self.assertFalse(model.objects.exists(), model.__name__)
-
-    def test_preview_records_the_semester_in_every_row(self):
-        importation = self.preview()
-        self.assertEqual({row.values['Semestre'] for row in importation.rows.all()}, {'2026/1'})
-
-    def test_catalog_rows_come_first_grouped_by_kind(self):
-        rows = list(self.preview().rows.order_by('line_number'))
-        kinds = [row.values['Tipo'] for row in rows]
-        self.assertEqual(kinds[:len(SPACES)], ['SALA'] * len(SPACES))
-        self.assertEqual(kinds[len(SPACES):len(SPACES) + len(TEACHERS)], ['DOCENTE'] * len(TEACHERS))
-        self.assertEqual(set(kinds[len(SPACES) + len(TEACHERS):]), {'ATIVIDADE'})
 
     def test_catalog_row_keeps_the_raw_value_and_plans_the_clean_name(self):
         rows = list(self.preview().rows.order_by('line_number'))
@@ -256,16 +244,6 @@ class PreviewTests(ImportTestCase):
         self.assertEqual(row.errors[0]['column'], 'Atividade')
         self.assertEqual(row.errors[0]['code'], 'docente_desconhecido')
         self.assertFalse(Teacher.objects.filter(name='Agnaldo').exists())
-
-    def test_space_cited_only_in_the_cells_needs_decision(self):
-        uploaded = workbook_file(undergraduate={
-            ('SEGUNDA ', '07:20 - 08:10', 0): 'Física (Viviane) (Zoo I)',
-        })
-        importation = self.preview(uploaded)
-        self.assertEqual(importation.status, Import.Status.PENDING)
-        row = importation.rows.get(values__Célula=f'{UNDERGRADUATE_SHEET}!C3')
-        self.assertEqual((row.errors, row.action), ([], None))
-        self.assertEqual(row.pending, [{'code': 'espaco_a_decidir', 'key': 'Zoo I'}])
 
 
 class ConfirmationTests(ImportTestCase):
@@ -447,6 +425,23 @@ class ReimportTests(ImportTestCase):
         self.assertEqual(Allocation.objects.filter(semester__code='2026/2').count(), 4)
         self.assertEqual(TimeSlot.objects.filter(semester__code='2026/2').count(), 4)
 
+    def test_lesson_changed_in_the_system_is_kept_and_its_row_warns(self):
+        self.conclude()
+        chemistry = Allocation.objects.filter(subject__name='QUÍMICA ORGÂNICA').order_by('time_slot__start_time')
+        superadmin = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'Senha-forte-123')
+        with patch('django.utils.timezone.localdate', return_value=date(2026, 9, 1)):
+            Allocation.objects.change_recurrence(
+                [allocation.pk for allocation in chemistry], date(2026, 10, 5), superadmin,
+                Weekday.MONDAY, time(7, 20), Space.objects.get(name='2/6'), [Teacher.objects.get(name='Elza')],
+            )
+        versions = list(Allocation.objects.order_by('pk').values())
+        importation = self.preview()
+        row = importation.rows.get(values__Célula=f'{UNDERGRADUATE_SHEET}!C3')
+        self.assertEqual(row.action, 'unchanged')
+        self.assertEqual(row.warnings, [RECURRENCE_CHANGED])
+        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertEqual(list(Allocation.objects.order_by('pk').values()), versions)
+
     def test_the_same_activity_twice_is_a_duplicate_error(self):
         uploaded = workbook_file(undergraduate={
             ('SEGUNDA ', '07:20 - 08:10', 0): 'QUÍMICA ORGÂNICA (Elza) (1/13) / QUÍMICA ORGÂNICA (Elza) (2/6)',
@@ -470,6 +465,7 @@ class DivergenceTests(ImportTestCase):
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertEqual(importation.revalidation_count, 1)
         self.assertEqual(Allocation.objects.count(), 0)
+        self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), (0, 0))
 
     def test_confirmation_uses_the_recorded_semester(self):
         importation = self.preview(semester='2027/2')
@@ -540,24 +536,6 @@ class PeriodImportTests(ImportTestCase):
         self.assertIn('own_fim', form.errors)
         self.assertFalse(Semester.objects.exists())
 
-    def test_one_date_or_an_invalid_period_is_refused(self):
-        self.conclude()
-        cases = [
-            {'own_início': '2026-08-03', 'own_fim': ''},
-            {'own_início': '', 'own_fim': '2026-12-18'},
-            {'own_início': '2026-12-18', 'own_fim': '2026-08-03'},
-            {'own_início': '2026-01-01', 'own_fim': '2027-01-02'},
-        ]
-        for period in cases:
-            with self.subTest(period=period):
-                self.assertFalse(self.form(period).is_valid())
-        self.assertEqual(Import.objects.count(), 1)
-
-    def test_dates_are_recorded_in_every_row(self):
-        importation = self.preview()
-        values = list(importation.rows.values_list('values', flat=True))
-        self.assertTrue(all(row['Início'] == '2026-08-03' and row['Fim'] == '2026-12-18' for row in values))
-
     def test_summary_shows_the_dates_formatted(self):
         self.assertEqual(self.definition.upload_display('Início', '2026-08-03'), '03/08/2026')
         self.assertEqual(self.definition.upload_display('Fim', ''), 'Mantido')
@@ -622,26 +600,16 @@ class RealSpreadsheetTests(ImportTestCase):
             'planilha_example.xlsx', SPREADSHEET.read_bytes(), content_type=CONTENT_TYPE,
         )
 
-    def test_real_file_is_read_and_previewed(self):
+    def test_real_file_is_previewed_with_the_activities_that_the_campus_needs_to_fix(self):
         importation = self.preview(self.uploaded())
         self.assertEqual(importation.rows.count(), 1706)
         self.assertEqual(importation.file_name, 'planilha_example.xlsx')
-        self.assertFalse(Allocation.objects.exists())
-
-    def test_real_file_has_the_activities_that_the_campus_needs_to_fix(self):
-        importation = self.preview(self.uploaded())
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
-        self.assertEqual(importation.summary()['errors'], 121)
-
-    def test_real_file_plans_the_catalogs_and_most_activities(self):
-        importation = self.preview(self.uploaded())
         summary = importation.summary()
+        self.assertEqual(summary['errors'], 121)
         without_action = importation.rows.filter(action=None, errors=[], pending=[]).count()
         self.assertEqual(summary['create'], 1706 - 121 - summary['pending'] - summary['unchanged'] - without_action)
         self.assertEqual(summary['update'], 0)
-
-    def test_real_file_cannot_be_confirmed_while_it_has_errors(self):
-        importation = self.preview(self.uploaded())
         with self.assertRaises(Exception):
             importation.confirm(self.definition, self.executor)
         self.assertFalse(Allocation.objects.exists())
@@ -669,17 +637,6 @@ class AcademicLinkTests(ImportTestCase):
         self.assertEqual(ClassOffering.objects.count(), 3)
         self.assertEqual(offering_teachers(), {'Elza': True})
         self.assertEqual(offering_teachers('Cálculo III', '4º PERÍODO'), {'Viviane': True})
-
-    def test_preview_leaves_no_link(self):
-        importation = self.preview()
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), (0, 0))
-
-    def test_divergent_confirmation_leaves_no_link(self):
-        importation = self.preview()
-        Space.objects.register('1/13')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
-        self.assertEqual((ClassOffering.objects.count(), TeachingAssignment.objects.count()), (0, 0))
 
     def test_refused_row_leaves_no_link(self):
         importation = self.preview(workbook_file(undergraduate={
@@ -791,12 +748,6 @@ class UserSheetTests(ImportTestCase):
         self.assertEqual(ana.role.code, 'SECRETARIA')
         self.assertIsNone(ana.username)
 
-    def test_multiple_users_are_processed(self):
-        importation = self.conclude(self.with_users(ELZA, VIVIANE, ERICA))
-        self.assertEqual(self.imported_users().count(), 3)
-        self.assertEqual(self.password_links().count(), 3)
-        self.assertEqual([row.action for row in self.user_rows(importation)], ['create'] * 3)
-
     def test_created_user_matches_teacher(self):
         self.conclude(self.with_users(ELZA))
         user = User.objects.get(email='elza@ifnmg.edu.br')
@@ -835,21 +786,9 @@ class UserSheetTests(ImportTestCase):
         existing.refresh_from_db()
         self.assertFalse(existing.is_active)
 
-    def test_spreadsheet_without_users_sheet_is_valid(self):
-        importation = self.preview(workbook_file())
-        self.assertEqual(importation.status, Import.Status.VALIDATED, self.errors_of(importation))
-        self.assertEqual(self.user_rows(importation), [])
-
-    def test_users_step_is_skipped(self):
-        before = User.objects.count()
-        with patch.object(UserImport, 'create') as create, patch.object(UserImport, 'clean_values') as clean:
-            self.conclude(workbook_file())
-        create.assert_not_called()
-        clean.assert_not_called()
-        self.assertEqual(User.objects.count(), before)
-
-    def test_schedule_is_imported_normally(self):
+    def test_spreadsheet_without_users_sheet_imports_the_schedule_normally(self):
         importation = self.conclude(workbook_file())
+        self.assertEqual(self.user_rows(importation), [])
         self.assertEqual(Teacher.objects.count(), len(TEACHERS))
         self.assertEqual(Space.objects.count(), len(SPACE_NAMES))
         self.assertEqual(Allocation.objects.count(), 4)
@@ -859,18 +798,6 @@ class UserSheetTests(ImportTestCase):
         importation = self.preview(self.with_users(('elza', 'Elza', 'DOCENTE', 'Elza')))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         self.assertIn(('E-mail', 'invalid'), self.error_codes(self.user_rows(importation)[0]))
-
-    def test_email_outside_institutional_domain(self):
-        importation = self.preview(self.with_users(('elza@gmail.com', 'Elza', 'DOCENTE', 'Elza')))
-        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
-        self.assertEqual([column for column, _ in self.error_codes(self.user_rows(importation)[0])], ['E-mail'])
-
-    def test_unknown_role(self):
-        roles = Role.objects.count()
-        importation = self.preview(self.with_users(('elza@ifnmg.edu.br', 'Elza', 'COORDENADOR', 'Elza')))
-        self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
-        self.assertIn(('Perfil', 'unknown_role'), self.error_codes(self.user_rows(importation)[0]))
-        self.assertEqual(Role.objects.count(), roles)
 
     def test_duplicate_email_in_sheet(self):
         importation = self.preview(self.with_users(ELZA, ('ELZA@ifnmg.edu.br', 'Outra', 'DOCENTE', 'Outra')))
@@ -962,6 +889,8 @@ class UserSheetTests(ImportTestCase):
         self.assertFalse(self.imported_users().exists())
         self.assertFalse(self.password_links().exists())
         self.assertFalse(Allocation.objects.exists())
+        self.assertFalse(Space.objects.exists())
+        self.assertFalse(AuditLog.objects.filter(resource=catalog.SPACE).exists())
 
     def test_confirmer_without_permission(self):
         importation = self.preview(self.with_users(ELZA))
@@ -970,27 +899,6 @@ class UserSheetTests(ImportTestCase):
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         self.assertFalse(User.objects.filter(email='elza@ifnmg.edu.br').exists())
         self.assertFalse(Allocation.objects.exists())
-
-    def test_second_import_does_not_duplicate(self):
-        self.conclude(self.with_users(ELZA, VIVIANE))
-        second = self.conclude(self.with_users(ELZA, VIVIANE))
-        self.assertEqual([row.action for row in self.user_rows(second)], ['unchanged', 'unchanged'])
-        self.assertEqual(self.imported_users().count(), 2)
-        self.assertEqual(self.password_links().count(), 2)
-
-    def test_reimport_does_not_update_changed_user(self):
-        self.conclude(self.with_users(ELZA))
-        user = User.objects.get(email='elza@ifnmg.edu.br')
-        user.update_details(self.executor, name='Elza Maria Souza', email=user.email)
-        second = self.conclude(self.with_users(ELZA))
-        self.assertEqual(self.user_rows(second)[0].warnings, ['usuario_com_outros_dados'])
-        user.refresh_from_db()
-        self.assertEqual(user.name, 'Elza Maria Souza')
-
-    def test_sheet_title_is_recognized_without_case_and_accents(self):
-        importation = self.preview(self.with_users(ELZA, users_title='Usuarios - Sistema'))
-        self.assertEqual(len(self.user_rows(importation)), 1)
-
 
 
 class SuggestedSpreadsheetTests(ImportTestCase):

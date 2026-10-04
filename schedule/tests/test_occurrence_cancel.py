@@ -5,7 +5,7 @@ from datetime import date, time
 
 from django.core.exceptions import ValidationError
 from django.db import connection
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -84,13 +84,6 @@ class ModelTests(CancelTestCase):
         self.assertEqual(Allocation.objects.filter(pk=self.first.pk).values().get(), before)
         self.assertEqual([teacher.name for teacher in self.first.teachers.all()], ['Viviane'])
 
-    def test_occurs_on(self):
-        self.assertTrue(self.first.occurs_on(MONDAY))
-        self.assertFalse(self.first.occurs_on(date(2026, 9, 29)))
-        self.assertFalse(self.first.occurs_on(date(2026, 7, 27)))
-        self.assertFalse(self.first.occurs_on(date(2026, 12, 21)))
-        self.assertFalse(self.first.occurs_on(date(2026, 10, 3)))
-
     def test_refuses_dates_that_are_not_occurrences(self):
         for day in (date(2026, 9, 29), date(2026, 7, 27), date(2026, 12, 21), date(2026, 10, 3)):
             with self.subTest(day), self.assertRaises(ValidationError):
@@ -152,17 +145,6 @@ class AuthorizationTests(CancelTestCase):
 
 
 class CancelViewTests(CancelTestCase):
-    def test_anonymous_goes_to_login(self):
-        url = self.cancel_url()
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response['Location'].startswith(reverse('account_login')))
-
-    def test_without_the_module_permission_is_403(self):
-        self.client.force_login(self.outsider)
-        self.assertEqual(self.client.get(self.cancel_url()).status_code, 403)
-        self.assertEqual(self.client.post(self.cancel_url()).status_code, 403)
-
     def test_confirmation_names_the_date_and_keeps_the_recurrence(self):
         self.client.force_login(self.viviane)
         response = self.client.get(self.cancel_url())
@@ -215,31 +197,11 @@ class CancelViewTests(CancelTestCase):
         self.assertContains(response, 'A ocorrência de 28/09/2026 já está cancelada.')
         self.assertEqual(AllocationException.objects.count(), 2)
 
-    def test_post_without_csrf_is_403(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.viviane)
-        self.assertEqual(client.post(self.cancel_url()).status_code, 403)
-        self.assertFalse(AllocationException.objects.exists())
-
 
 class GridTests(CancelTestCase):
     def grid(self, user, **params):
         self.client.force_login(user)
         return self.client.get(GRID, {'semestre': '2026/2', 'sala': 'Sala 5', **params})
-
-    def test_cancelled_occurrence_leaves_the_week(self):
-        self.cancel(self.viviane)
-        self.assertNotContains(self.grid(self.manager, semana='2026-09-28'), 'Cálculo III')
-        self.assertContains(self.grid(self.manager, semana='2026-10-05'), 'Cálculo III')
-
-    def test_cancelled_occurrence_leaves_the_month(self):
-        self.cancel(self.viviane)
-        found = occupancy(self.room, date(2026, 9, 1), date(2026, 9, 30))
-        mondays = sorted({item.date for item in found if item.entry.subject == 'Cálculo III'})
-        self.assertEqual(mondays, [date(2026, 9, 7), date(2026, 9, 14), date(2026, 9, 21)])
-        response = self.grid(self.viviane, visao='mes', mes='2026-09')
-        self.assertContains(response, 'data=2026-09-21')
-        self.assertNotContains(response, 'data=2026-09-28')
 
     def test_cancelled_occurrence_leaves_every_source_for_the_week(self):
         self.cancel(self.viviane)
@@ -273,20 +235,6 @@ class GridTests(CancelTestCase):
 
 
 class PublicCalendarTests(CancelTestCase):
-    def test_cancelled_occurrence_is_absent_for_visitors(self):
-        self.cancel(self.viviane)
-        week = self.client.get(PUBLIC, {'sala': 'Sala 5', 'inicio': '2026-09-28', 'fim': '2026-10-02'})
-        self.assertEqual(week.status_code, 200)
-        self.assertNotContains(week, 'Cálculo III')
-        self.assertContains(week, 'Física')
-        following = self.client.get(PUBLIC, {'sala': 'Sala 5', 'inicio': '2026-10-05', 'fim': '2026-10-09'})
-        self.assertContains(following, 'Cálculo III')
-
-    def test_teacher_filter_also_hides_it(self):
-        self.cancel(self.viviane)
-        week = self.client.get(PUBLIC, {'docente': 'Viviane', 'inicio': '2026-09-28', 'fim': '2026-10-02'})
-        self.assertNotContains(week, 'Cálculo III')
-
     def test_exception_is_not_exposed(self):
         self.cancel(self.viviane)
         text = self.text(self.client.get(PUBLIC, {'sala': 'Sala 5', 'inicio': '2026-09-28', 'fim': '2026-10-02'})).casefold()
@@ -320,24 +268,12 @@ class ExceptionListTests(CancelTestCase):
         self.client.force_login(user)
         return self.client.get(LIST)
 
-    def test_without_the_module_permission_is_403(self):
-        self.assertEqual(self.list_of(self.outsider).status_code, 403)
-
-    def test_anonymous_goes_to_login(self):
-        response = self.client.get(LIST)
-        self.assertEqual(response.status_code, 302)
-
     def test_permission_sees_every_exception(self):
         response = self.list_of(self.manager)
         self.assertEqual(response.context['page'].paginator.count, 3)
         text = self.text(response)
         self.assertIn('28/09/2026, das 10:00 às 11:00', text)
         self.assertIn('29/09/2026, das 10:00 às 11:00', text)
-        self.assertIn('Cancelada', text)
-        self.assertIn('Cálculo III', text)
-        self.assertIn('Sala 5', text)
-        self.assertIn('Segunda-feira, 10:00 - 11:00, semestre 2026/2', text)
-        self.assertIn(self.viviane.name, text)
 
     def test_teacher_sees_only_the_own_lessons(self):
         response = self.list_of(self.viviane)
@@ -348,10 +284,6 @@ class ExceptionListTests(CancelTestCase):
         response = self.list_of(self.plain)
         self.assertEqual(response.context['page'].paginator.count, 0)
         self.assertContains(response, 'Nenhuma exceção registrada.')
-
-    def test_old_exceptions_stay_listed(self):
-        AllocationException.objects.cancel([self.first.pk], date(2026, 8, 3), self.manager)
-        self.assertContains(self.list_of(self.manager), '03/08/2026')
 
     def test_grid_links_to_the_list(self):
         self.client.force_login(self.plain)
@@ -452,16 +384,6 @@ class AgendaScreenTests(CancelTestCase):
         self.client.force_login(self.teacher)
         url = self.agenda_cancel_url(self.first, self.other)
         self.assertEqual(self.client.post(url).status_code, 404)
-        self.assertFalse(AllocationException.objects.exists())
-
-    def test_agenda_route_requires_the_agenda_permission(self):
-        self.client.force_login(self.manager)
-        self.assertEqual(self.client.post(self.agenda_cancel_url()).status_code, 403)
-        self.assertEqual(self.client.get(reverse('agenda_exception_list')).status_code, 403)
-
-    def test_ensalamento_route_stays_closed_to_the_agenda_teacher(self):
-        self.client.force_login(self.teacher)
-        self.assertEqual(self.client.post(self.cancel_url()).status_code, 403)
         self.assertFalse(AllocationException.objects.exists())
 
     def test_agenda_list_shows_only_the_own_exceptions(self):

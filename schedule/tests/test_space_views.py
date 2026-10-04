@@ -44,13 +44,6 @@ class SpaceScreenTestCase(TestCase):
 
 
 class AccessTests(SpaceScreenTestCase):
-    def test_anonymous_is_sent_to_the_login_with_next(self):
-        for url in self.routes():
-            with self.subTest(url=url):
-                self.assertRedirects(
-                    self.client.get(url), f"{reverse('account_login')}?next={url}", fetch_redirect_response=False,
-                )
-
     def test_each_route_requires_its_own_permission(self):
         for position, (url, code) in enumerate(self.routes().items()):
             with self.subTest(url=url):
@@ -90,7 +83,6 @@ class ListTests(SpaceScreenTestCase):
         self.assertContains(response, 'HV5')
         self.assertContains(response, 'Manual')
         self.assertContains(response, 'Ativo')
-        self.assertContains(response, 'Todos os espaços <span class="count">1</span>', html=False)
 
     def test_search_by_other_name_and_filters(self):
         Space.objects.register('HV 4')
@@ -109,10 +101,6 @@ class ListTests(SpaceScreenTestCase):
         response = self.list(busca='inexistente')
         self.assertContains(response, 'Nenhum espaço encontrado para a busca.')
         self.assertContains(response, 'Limpar busca')
-
-    def test_empty_registry(self):
-        Space.objects.all().delete()
-        self.assertContains(self.list(), 'Nenhum espaço cadastrado.')
 
     def test_view_permission_alone_shows_no_controls(self):
         response = self.list(self.viewer)

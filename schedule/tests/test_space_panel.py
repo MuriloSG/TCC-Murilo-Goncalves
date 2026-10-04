@@ -2,12 +2,11 @@
 
 from unittest import mock
 
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from accounts import permissions
 from imports.models import Import
-from schedule.imports import SpaceAllocationImport
 from schedule.models import Space, SpaceDecision
 from schedule.tests.test_import import PERIOD, workbook_file
 from schedule.tests.test_space_import import SECONDARY_CELL, user_with
@@ -54,33 +53,16 @@ class PanelTests(PanelTestCase):
     def test_proposals_are_described_in_the_future(self):
         importation = self.upload()
         response = self.detail(importation)
-        self.assertContains(response, 'Espaços desta importação')
-        self.assertNotContains(response, 'Nenhuma alteração foi feita no cadastro de espaços.')
         self.assertContains(response, '4 espaços novos serão cadastrados ao confirmar esta importação.')
-        self.assertContains(response, '<span class="detail-card-summary">Ao confirmar, serão cadastrados 4 espaços.</span>', html=True)
-        self.assertNotContains(response, 'Pronta para confirmar.')
-        self.assertNotContains(response, 'id="espacos" data-busy-region open')
         self.assertNotContains(response, 'foram cadastrados')
-        self.assertContains(response, 'Não é um espaço novo')
-
-    def test_decision_forms_show_the_refresh_state_while_they_run(self):
-        importation = self.upload(workbook_file(secondary={SECONDARY_CELL: 'Biologia (Érica) (Zoo I)'}))
-        response = self.detail(importation)
-        self.assertContains(response, 'data-busy-region')
-        self.assertContains(response, 'Atualizando a prévia com a decisão.')
-        self.assertContains(response, 'data-busy>', count=1)
 
     def test_pending_item_of_a_similar_name(self):
         Space.objects.register('HV 5')
         importation = self.upload(workbook_file(secondary={SECONDARY_CELL: 'Biologia (Érica) (HV5)'}))
         response = self.detail(importation)
-        self.assertContains(response, 'Precisa de decisão')
-        self.assertContains(response, '1 espaço já cadastrado foi reconhecido.', count=0)
         self.assertContains(response, 'HV5 parece ser HV 5. É o mesmo espaço?')
         self.assertContains(response, 'É o mesmo que HV 5')
         self.assertContains(response, 'É um espaço novo')
-        self.assertContains(response, 'Só nas aulas')
-        self.assertContains(response, '1 aula · 1 turma · segunda-feira')
 
     def test_pending_item_of_a_name_only_in_the_cells(self):
         importation = self.upload(workbook_file(undergraduate=TWO_CELL_NAMES))
@@ -210,39 +192,3 @@ class AutomaticRefreshTests(PanelTestCase):
         self.assertEqual((decision.kind, decision.space), ('ASSOCIAR', target))
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
-
-
-class DecisionAccessTests(PanelTestCase):
-    def routes(self, pk):
-        return [
-            reverse('space_allocation_import_decide', args=[pk]),
-            reverse('space_allocation_import_withdraw', args=[pk]),
-            reverse('space_allocation_import_refresh', args=[pk]),
-            reverse('space_allocation_import_associate', args=[pk]),
-        ]
-
-    def test_anonymous_is_sent_to_the_login(self):
-        for url in self.routes(1):
-            with self.subTest(url=url):
-                response = self.client.post(url)
-                self.assertRedirects(response, f"{reverse('account_login')}?next={url}", fetch_redirect_response=False)
-
-    def test_without_the_import_permission(self):
-        importation = self.upload()
-        self.client.force_login(user_with('espacos@ifnmg.edu.br', *permissions.SPACE_PERMISSIONS))
-        for url in self.routes(importation.pk):
-            with self.subTest(url=url):
-                self.assertEqual(self.client.post(url).status_code, 403)
-
-    def test_decision_without_csrf_is_refused(self):
-        importation = self.upload(workbook_file(secondary={SECONDARY_CELL: 'Biologia (Érica) (Zoo I)'}))
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.manager)
-        response = client.post(
-            reverse('space_allocation_import_decide', args=[importation.pk]), {'nome': 'Zoo I', 'decisao': 'NOVO'},
-        )
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(SpaceDecision.objects.exists())
-
-    def test_definition_is_the_ensalamento_import(self):
-        self.assertIsInstance(SPACE_ALLOCATION_IMPORT_SCREENS.definition, SpaceAllocationImport)

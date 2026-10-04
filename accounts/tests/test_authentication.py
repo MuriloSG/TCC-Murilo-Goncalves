@@ -3,6 +3,7 @@ from django.test import RequestFactory, TestCase
 
 from accounts.adapters import AccountAdapter
 from accounts.models import Role, User
+from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
 
@@ -143,6 +144,7 @@ class LogoutTests(AuthenticationTestCase):
 class EmailChangeTests(AuthenticationTestCase):
     def setUp(self):
         super().setUp()
+        configure_smtp()
         self.client.post('/contas/senha/recuperar/', {'email': 'joao@ifnmg.edu.br'})
         executor = self.create_user('admin@ifnmg.edu.br', self.administrator)
         self.user.update_details(executor, name='João Silva', email='novo@ifnmg.edu.br')

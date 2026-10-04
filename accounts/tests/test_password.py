@@ -8,6 +8,8 @@ from django.core.cache import cache
 from django.test import Client, TestCase
 
 from accounts.models import Role, User
+from system_settings.models import SystemSetting
+from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
 
@@ -22,6 +24,7 @@ class PasswordFlowTestCase(TestCase):
         cls.teacher = Role.objects.get(code='DOCENTE')
 
     def setUp(self):
+        configure_smtp()
         cache.clear()
         self.user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=self.teacher)
 
@@ -108,6 +111,14 @@ class RecoveryRequestTests(PasswordFlowTestCase):
         self.request_link()
         self.set_password(reset_link(mail.outbox[0]), 'Nova-senha-forte-456')
         self.assertTrue(self.login(password='Nova-senha-forte-456'))
+
+
+class RecoveryWithoutSmtpTests(PasswordFlowTestCase):
+    def test_request_is_answered_without_email(self):
+        SystemSetting.objects.all().delete()
+        with self.assertLogs('accounts', 'WARNING'):
+            self.request_link()
+        self.assertEqual(mail.outbox, [])
 
 
 class ResetTests(PasswordFlowTestCase):

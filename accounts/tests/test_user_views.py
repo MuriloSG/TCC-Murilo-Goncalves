@@ -7,6 +7,7 @@ from accounts import permissions
 from accounts.emails import PASSWORD_LINK
 from accounts.models import Role, User
 from outbox.models import OutboxEntry
+from system_settings.tests.base import configure_smtp
 
 ROUTES = {
     'list': ('/usuarios/', permissions.USER_VIEW),
@@ -129,6 +130,7 @@ class CreateSendTests(TransactionTestCase):
     data = CreateTests.data
 
     def setUp(self):
+        configure_smtp()
         cache.clear()
         self.teacher = Role.objects.get(code='DOCENTE')
         self.admin = User.objects.register(

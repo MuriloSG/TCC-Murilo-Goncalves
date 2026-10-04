@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from accounts.models import Role, User
+from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
 INVALID_EMAIL = 'Informe um e-mail válido.'
@@ -50,6 +51,7 @@ class PasswordResetTextTests(TestCase):
         )
 
     def setUp(self):
+        configure_smtp()
         cache.clear()
         response = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'}, follow=True)
         self.done_page = response

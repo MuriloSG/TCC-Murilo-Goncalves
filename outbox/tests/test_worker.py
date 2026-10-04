@@ -2,12 +2,13 @@ import ast
 import threading
 from datetime import timedelta
 from pathlib import Path
-from smtplib import SMTPException
+from smtplib import SMTPAuthenticationError, SMTPException
 from unittest import mock
 
 from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, get_connection
+from django.core.management import call_command
 from django.db import connection, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
@@ -15,7 +16,8 @@ from django.utils import timezone
 import outbox
 from outbox import handlers
 from outbox.models import OutboxEntry
-from outbox.worker import process_batch, process_next
+from outbox.worker import SmtpUnavailable, process_batch, process_next
+from system_settings.tests.base import SMTP_PASSWORD, configure_smtp
 
 
 def message_for(reference):
@@ -33,6 +35,7 @@ def failing(reference):
 @override_settings(OUTBOX_MAX_ATTEMPTS=5, OUTBOX_RETRY_DELAYS=[60, 300, 900, 3600])
 class ProcessTests(TestCase):
     def setUp(self):
+        configure_smtp()
         patcher = mock.patch.dict(
             handlers._handlers,
             {'TESTE': message_for, 'DESCARTE': discard, 'FALHA': failing},
@@ -160,6 +163,9 @@ class IsolationTests(TestCase):
 
 
 class ConcurrencyTests(TransactionTestCase):
+    def setUp(self):
+        configure_smtp()
+
     def test_locked_entry_is_skipped(self):
         entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
         locked = threading.Event()
@@ -185,3 +191,72 @@ class ConcurrencyTests(TransactionTestCase):
             thread.join()
         entry.refresh_from_db()
         self.assertEqual(entry.status, 'A_ENVIAR')
+
+
+class SmtpSettingsTests(TestCase):
+    def setUp(self):
+        patcher = mock.patch.dict(handlers._handlers, {'TESTE': message_for, 'FALHA': failing}, clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_registration_does_not_depend_on_the_setting(self):
+        OutboxEntry.objects.enqueue('TESTE', 1)
+        self.assertTrue(OutboxEntry.objects.filter(kind='TESTE', status='A_ENVIAR').exists())
+
+    def test_without_setting_entries_are_kept(self):
+        entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
+        before = entry.next_attempt_at
+        for _ in range(3):
+            with self.assertRaises(SmtpUnavailable):
+                process_batch(10)
+        entry.refresh_from_db()
+        self.assertEqual((entry.status, entry.attempts, entry.next_attempt_at), ('A_ENVIAR', 0, before))
+        self.assertEqual(mail.outbox, [])
+
+    def test_invalid_setting_entries_are_kept(self):
+        configure_smtp()
+        entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
+        with override_settings(CREDENTIALS_KEY='outra-chave'), self.assertRaises(SmtpUnavailable):
+            process_batch(10)
+        entry.refresh_from_db()
+        self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 0))
+        self.assertEqual(mail.outbox, [])
+
+    def test_kept_entries_are_sent_once_configured(self):
+        for reference in range(2):
+            OutboxEntry.objects.create(kind='TESTE', reference=str(reference))
+        with self.assertRaises(SmtpUnavailable):
+            process_batch(10)
+        configure_smtp()
+        self.assertEqual(process_batch(10), 2)
+        self.assertEqual(OutboxEntry.objects.filter(status='ENVIADO').count(), 2)
+
+    def test_uses_the_stored_credentials_and_sender(self):
+        configure_smtp(host='a.ifnmg.edu.br')
+        OutboxEntry.objects.create(kind='TESTE', reference='1')
+        with mock.patch('system_settings.models.get_connection', wraps=get_connection) as connect:
+            process_batch(10)
+            configure_smtp(host='b.ifnmg.edu.br')
+            OutboxEntry.objects.create(kind='TESTE', reference='2')
+            process_batch(10)
+        hosts = [call.kwargs['host'] for call in connect.call_args_list if 'host' in call.kwargs]
+        self.assertEqual(hosts, ['a.ifnmg.edu.br', 'b.ifnmg.edu.br'])
+        self.assertEqual(connect.call_args_list[0].kwargs['password'], SMTP_PASSWORD)
+        self.assertEqual({message.from_email for message in mail.outbox}, {'IFAgenda <agenda@ifnmg.edu.br>'})
+
+    def test_smtp_failure_follows_retry_policy_without_password(self):
+        configure_smtp()
+        entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
+        error = SMTPAuthenticationError(535, b'credenciais recusadas')
+        with mock.patch.object(EmailMessage, 'send', side_effect=error), self.assertLogs('outbox', 'WARNING'):
+            process_batch(10)
+        entry.refresh_from_db()
+        self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
+        self.assertNotIn(SMTP_PASSWORD, entry.last_error)
+
+    def test_command_logs_the_reason_once(self):
+        OutboxEntry.objects.create(kind='TESTE', reference='1')
+        with self.assertLogs('outbox', 'WARNING') as logs:
+            call_command('process_outbox', once=True)
+        self.assertEqual(logs.output, ['WARNING:outbox:Envios retidos: O servidor de e-mail não está configurado.'])
+        self.assertEqual(OutboxEntry.objects.get().attempts, 0)

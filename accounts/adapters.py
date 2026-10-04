@@ -1,7 +1,13 @@
+import logging
+
 from allauth.account.adapter import DefaultAccountAdapter
+from django.core.exceptions import ValidationError
 
 from audit import catalog
 from audit.models import AuditLog
+from system_settings.models import SystemSetting
+
+logger = logging.getLogger('accounts')
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -37,3 +43,21 @@ class AccountAdapter(DefaultAccountAdapter):
             )
         return user
 
+    def send_mail(self, template_prefix, email, context):
+        """Envia pela configuração SMTP gravada (D8 da Change configurar-servidor-de-email).
+
+        Sem configuração válida, o e-mail não sai e o motivo vai ao log. A página
+        responde como sempre, sem revelar o estado do servidor a quem não entrou.
+        """
+        try:
+            smtp = SystemSetting.objects.smtp()
+        except ValidationError:
+            smtp = None
+            reason = 'a configuração do servidor de e-mail é inválida'
+        else:
+            reason = 'o servidor de e-mail não está configurado'
+        if smtp is None:
+            logger.warning('E-mail %s não enviado: %s.', template_prefix, reason)
+            return
+        message = self.render_mail(template_prefix, email, context)
+        smtp.prepare(message, smtp.connection()).send()

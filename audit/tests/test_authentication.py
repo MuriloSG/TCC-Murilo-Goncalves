@@ -7,6 +7,7 @@ from django.test import Client, TestCase
 from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
+from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
 
@@ -21,6 +22,7 @@ class AuthenticationRecordTests(TestCase):
         cls.teacher = Role.objects.get(code='DOCENTE')
 
     def setUp(self):
+        configure_smtp()
         cache.clear()
         self.user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=self.teacher)
         self.user.set_password(PASSWORD)

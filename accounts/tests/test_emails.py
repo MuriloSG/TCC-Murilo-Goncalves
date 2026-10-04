@@ -9,12 +9,14 @@ from django.test import Client, TestCase, override_settings
 from accounts.emails import PASSWORD_LINK, password_link
 from accounts.models import Role, User
 from outbox.models import OutboxEntry
+from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
 
 
 class PasswordLinkTests(TestCase):
     def setUp(self):
+        configure_smtp()
         cache.clear()
         self.user = User.objects.register(
             email='maria@ifnmg.edu.br', name='Maria Sousa', role=Role.objects.get(code='DOCENTE'),

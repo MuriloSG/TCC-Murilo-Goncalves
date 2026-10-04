@@ -16,6 +16,7 @@ from imports.reader import SourceRow
 from outbox import handlers
 from outbox.models import OutboxEntry
 from outbox.worker import process_next
+from system_settings.tests.base import configure_smtp
 
 
 class ChangeRecordTestCase(TestCase):
@@ -201,6 +202,7 @@ class ImportChangeTests(ChangeRecordTestCase):
 @override_settings(OUTBOX_MAX_ATTEMPTS=1)
 class SystemActionTests(ChangeRecordTestCase):
     def setUp(self):
+        configure_smtp()
         patcher = mock.patch.dict(handlers._handlers, {'FALHA': self.failing})
         patcher.start()
         self.addCleanup(patcher.stop)

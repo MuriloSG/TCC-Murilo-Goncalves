@@ -74,6 +74,7 @@ SPACE_ALLOCATION_EXCEPTION = 'EXCECAO_ENSALAMENTO'
 SPACE_ALLOCATION = 'ENSALAMENTO'
 SUBJECT = 'DISCIPLINA'
 CLASS_GROUP = 'TURMA'
+SETTINGS = 'CONFIGURACAO'
 
 RESOURCE_LABELS = {
     AUTHENTICATION: 'Autenticação',
@@ -91,6 +92,7 @@ RESOURCE_LABELS = {
     SPACE_ALLOCATION: 'Ensalamento',
     SUBJECT: 'Disciplinas',
     CLASS_GROUP: 'Turmas',
+    SETTINGS: 'Configurações',
 }
 
 INTERFACE = 'INTERFACE'
@@ -162,6 +164,12 @@ FIELD_LABELS = {
     'aulas_encerradas': 'Aulas encerradas',
     'curso': 'Curso',
     'rotulo': 'Rótulo',
+    'servidor': 'Servidor',
+    'porta': 'Porta',
+    'seguranca': 'Segurança',
+    'usuario': 'Usuário',
+    'remetente': 'Remetente',
+    'credencial': 'Senha do servidor',
 }
 
 

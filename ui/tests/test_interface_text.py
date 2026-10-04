@@ -10,6 +10,7 @@ from django.test import Client, SimpleTestCase, TestCase
 from accounts.models import Role, User
 from ui.tests.files import python_files, template_files
 from ui.text_rules import find_violations, html_fragments, python_fragments, template_fragments
+from system_settings.tests.base import configure_smtp
 
 
 def describe(label, fragments):
@@ -136,6 +137,7 @@ class RenderedPagesTextTests(TestCase):
         cls.role = Role.objects.create_role(code='COORDENACAO', name='Coordenação', permissions=[])
 
     def setUp(self):
+        configure_smtp()
         cache.clear()
 
     def assertPageFollowsRules(self, response):

@@ -1,0 +1,57 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Servidor de e-mail{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span>Configurações</span></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">E-mail</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Servidor de e-mail</h1>
+    </div>
+    <div class="page-actions">
+      <a class="btn-primary" href="{% url 'settings_email_update' %}" hx-get="{% url 'settings_email_update' %}" hx-target="#modal">{% icon "pencil" %}{% if setting %}Editar servidor de e-mail{% else %}Cadastrar servidor de e-mail{% endif %}</a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="situacao-servidor">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="situacao-servidor">Situação</h2>
+      </div>
+      {% if not setting %}
+        {% include "ui/components/badge.html" with tone="warning" icon="triangle-alert" label="Não configurado" %}
+      {% elif problem %}
+        {% include "ui/components/badge.html" with tone="error" icon="circle-x" label="Configuração inválida" %}
+      {% else %}
+        {% include "ui/components/badge.html" with tone="success" icon="check" label="Configurado" %}
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if not setting %}
+        <p>Nenhum servidor de e-mail cadastrado. Os e-mails ficam pendentes até o cadastro.</p>
+      {% elif problem %}
+        <p>{{ problem }} Os e-mails ficam pendentes até a correção.</p>
+      {% endif %}
+      <dl class="detail-grid">
+        {% if setting %}
+          <div><dt>Servidor</dt><dd>{{ smtp.host }}</dd></div>
+          <div><dt>Porta</dt><dd>{{ smtp.port }}</dd></div>
+          <div><dt>Segurança</dt><dd>{{ security_label }}</dd></div>
+          <div><dt>Usuário</dt><dd>{{ smtp.username|default:"Sem autenticação" }}</dd></div>
+          <div><dt>Senha</dt><dd>{{ has_password|yesno:"Definida,Não definida" }}</dd></div>
+          <div><dt>Remetente</dt><dd>{{ smtp.from_email }}</dd></div>
+          <div><dt>Alterado em</dt><dd>{{ setting.updated_at|date:"SHORT_DATETIME_FORMAT" }}</dd></div>
+        {% endif %}
+        <div><dt>E-mails pendentes</dt><dd>{{ pending }}</dd></div>
+      </dl>
+    </div>
+  </section>
+{% endblock %}

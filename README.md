@@ -132,12 +132,7 @@ O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando
 | `POSTGRES_USER` | `agendamento` | Usuário do banco de dados |
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
-| `DJANGO_DEFAULT_FROM_EMAIL` | `IFAgenda <nao-responda@localhost>` | Remetente dos e-mails |
-| `DJANGO_EMAIL_HOST` | vazio | Servidor SMTP |
-| `DJANGO_EMAIL_PORT` | `587` | Porta do servidor SMTP |
-| `DJANGO_EMAIL_HOST_USER` | vazio | Usuário do servidor SMTP |
-| `DJANGO_EMAIL_HOST_PASSWORD` | vazio | Senha do servidor SMTP |
-| `DJANGO_EMAIL_USE_TLS` | `1` | Uso de TLS no SMTP, ativo somente com o valor `1` |
+| `DJANGO_CREDENTIALS_KEY` | `chave-de-credenciais-somente-para-desenvolvimento-local` | Chave que cifra as senhas guardadas no banco, como a do servidor de e-mail. Trocá-la exige informar essas senhas de novo |
 | `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail do outbox antes de desistir |
 | `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |
 | `DJANGO_OUTBOX_POLL_INTERVAL` | `5` | Segundos que o `worker` espera quando não há e-mail para enviar |
@@ -166,16 +161,12 @@ No desenvolvimento, nenhum e-mail sai de fato: o backend padrão é o de console
 make logs
 ```
 
-Para enviar e-mails de verdade, por exemplo pelo Gmail, defina no `.env` o backend SMTP e as credenciais. No Gmail, use uma senha de app, e não a senha da conta:
+O servidor de e-mail é cadastrado no próprio sistema, em **Configurações > E-mail**, por quem tem a permissão `CONFIGURACAO.EDITAR` (concedida ao perfil `ADMINISTRADOR`): servidor, porta, segurança, usuário, senha e remetente. A senha é guardada cifrada com a `DJANGO_CREDENTIALS_KEY` e nunca é exibida. Enquanto o servidor não estiver cadastrado, nenhum e-mail sai, nem no console: os envios do outbox ficam aguardando, sem gastar tentativas, e saem no primeiro ciclo do `worker` depois do cadastro. As alterações valem a partir do ciclo seguinte, sem reiniciar os containers.
+
+No desenvolvimento, cadastre qualquer servidor (por exemplo `localhost`, porta `25`, segurança "Nenhuma", sem usuário) para ver os e-mails nos logs. Para enviar de verdade, por exemplo pelo Gmail, defina no `.env` o backend SMTP e cadastre na tela o servidor `smtp.gmail.com`, a porta `587`, a segurança STARTTLS, a conta e uma senha de app, e não a senha da conta:
 
 ```dotenv
 DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-DJANGO_EMAIL_HOST=smtp.gmail.com
-DJANGO_EMAIL_PORT=587
-DJANGO_EMAIL_USE_TLS=1
-DJANGO_EMAIL_HOST_USER=conta@gmail.com
-DJANGO_EMAIL_HOST_PASSWORD=senha-de-app
-DJANGO_DEFAULT_FROM_EMAIL=IFAgenda <conta@gmail.com>
 ```
 
 Depois de alterar o `.env`, recrie os containers com `make up`.

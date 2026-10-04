@@ -70,6 +70,9 @@ MENU = (
     )),
     MenuItem('Notificações', 'bell', 'notice_', (('NOTIFICACAO.PUBLICAR', 'notice_list'),)),
     MenuItem('Auditoria', 'scroll-text', 'audit_', (('AUDITORIA.VISUALIZAR', 'audit_log_list'),)),
+    MenuGroup('Configurações', 'wrench', 'settings_', (
+        MenuItem('E-mail', 'mail', 'settings_email', (('CONFIGURACAO.EDITAR', 'settings_email'),)),
+    )),
 )
 
 

@@ -39,6 +39,7 @@ PERMISSION_MIGRATIONS = [
     ('0010_booking_permissions', 'add_permissions', {'AGENDA.VISUALIZAR', 'AGENDA.SOLICITAR', 'AGENDA.ANALISAR'}),
     ('0014_booking_create_permission', 'add_permissions', {'AGENDA.CRIAR'}),
     ('0017_panel_permission', 'add_permission', {'PAINEL.VISUALIZAR'}),
+    ('0019_settings_permission', 'add_permission', {'CONFIGURACAO.EDITAR'}),
 ]
 
 

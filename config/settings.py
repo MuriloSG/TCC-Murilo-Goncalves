@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'bookings',
     'panel',
     'reports',
+    'system_settings',
     'allauth',
     'allauth.account',
 ]
@@ -190,12 +191,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', 'localhost')
-EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', '25'))
-EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS') == '1'
-DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', 'webmaster@localhost')
+EMAIL_TIMEOUT = 30
+CREDENTIALS_KEY = os.environ['DJANGO_CREDENTIALS_KEY']
 
 
 SITE_URL = os.environ.get('DJANGO_SITE_URL', 'http://localhost:8000')

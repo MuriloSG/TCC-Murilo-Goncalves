@@ -86,6 +86,8 @@ PROTECTED_ROUTES = {
     'report_heatmap': permissions.REPORT_VIEW,
     'report_heatmap_cell': permissions.REPORT_VIEW,
     'report_requests': permissions.REPORT_VIEW,
+    'settings_email': permissions.SETTINGS_EDIT,
+    'settings_email_update': permissions.SETTINGS_EDIT,
 }
 
 PUBLIC_ROUTES = {

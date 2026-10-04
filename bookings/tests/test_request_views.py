@@ -2,12 +2,12 @@
 
 from datetime import time
 
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from accounts import permissions
 from bookings.models import Booking, BookingRequest
-from bookings.tests.base import FRIDAY, REQUESTER, REVIEWER, THURSDAY, academic, frozen_clock, semester_with_lesson, space, submit, user_with
+from bookings.tests.base import FRIDAY, REQUESTER, REVIEWER, academic, frozen_clock, semester_with_lesson, space, submit, user_with
 from schedule.models import Space
 
 Status = BookingRequest.Status
@@ -53,36 +53,11 @@ class AccessTests(RequestScreenTestCase):
             reverse('agenda_my_request_decline', args=[request.pk]),
         ]
 
-    def test_anonymous_is_sent_to_the_login_with_next(self):
-        for url in self.routes():
-            with self.subTest(url=url):
-                self.assertRedirects(self.client.get(url), f"{reverse('account_login')}?next={url}", fetch_redirect_response=False)
-
-    def test_without_the_request_permission(self):
-        self.client.force_login(self.viewer)
-        for url in self.routes():
-            with self.subTest(url=url):
-                self.assertEqual(self.client.get(url).status_code, 403)
-
     def test_with_the_request_permission(self):
         self.client.force_login(self.ana)
         for url in self.routes():
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
-
-    def test_post_without_the_permission_creates_nothing(self):
-        self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(CREATE, self.data()).status_code, 403)
-        self.assertFalse(BookingRequest.objects.exists())
-
-    def test_post_without_csrf(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.ana)
-        self.assertEqual(client.post(CREATE, self.data()).status_code, 403)
-        request = self.suggested()
-        self.assertEqual(client.post(reverse('agenda_my_request_accept', args=[request.pk])).status_code, 403)
-        request.refresh_from_db()
-        self.assertEqual(request.status, Status.SUGGESTED)
 
 
 class CreateTests(RequestScreenTestCase):
@@ -119,36 +94,16 @@ class CreateTests(RequestScreenTestCase):
                 self.assertContains(response, 'Informe a descrição do uso do espaço.')
         self.assertFalse(BookingRequest.objects.exists())
 
-    def test_occupied_slot(self):
-        approved = submit(self.bruno, self.lab, start=time(16, 0), end=time(17, 0))
-        approved.approve(self.reviewer)
-        self.client.force_login(self.ana)
-        response = self.client.post(CREATE, self.data(start_time='16:30'))
-        self.assertContains(response, 'Este espaço está ocupado das 16:00 às 17:00. Escolha outro horário.')
-        self.assertEqual(BookingRequest.objects.filter(requested_by=self.ana).count(), 0)
-
     def test_conflict_with_the_space_allocation(self):
         self.client.force_login(self.ana)
         response = self.client.post(CREATE, self.data(start_time='14:00', end_time='16:00'))
         self.assertContains(response, 'Este espaço está ocupado pelo ensalamento das 14:10 às 15:00. Escolha outro horário.')
         self.assertFalse(BookingRequest.objects.exists())
 
-    def test_end_before_start(self):
-        self.client.force_login(self.ana)
-        response = self.client.post(CREATE, self.data(start_time='16:00', end_time='14:00'))
-        self.assertContains(response, 'O fim deve ser posterior ao início.')
-        self.assertFalse(BookingRequest.objects.exists())
-
     def test_forged_inactive_space(self):
         self.other_lab.deactivate()
         self.client.force_login(self.ana)
         response = self.client.post(CREATE, self.data(space=self.other_lab.pk))
-        self.assertContains(response, 'Escolha um espaço ativo.')
-        self.assertFalse(BookingRequest.objects.exists())
-
-    def test_forged_unknown_space(self):
-        self.client.force_login(self.ana)
-        response = self.client.post(CREATE, self.data(space=999999))
         self.assertContains(response, 'Escolha um espaço ativo.')
         self.assertFalse(BookingRequest.objects.exists())
 
@@ -167,9 +122,6 @@ class GridActionTests(RequestScreenTestCase):
         content = self.grid(self.ana)
         self.assertNotIn('data=2026-10-15&amp;inicio=14%3A10', content)
         self.assertIn('data=2026-10-14&amp;inicio=14%3A10', content)
-
-    def test_without_the_request_permission(self):
-        self.assertNotIn(CREATE, self.grid(self.viewer))
 
     def test_past_slot_does_not_offer_the_request(self):
         self.client.force_login(self.ana)

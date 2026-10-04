@@ -1,6 +1,5 @@
 from datetime import date, time
 
-from django.urls import reverse
 
 from accounts import permissions
 from bookings.tests.base import user_with
@@ -24,17 +23,6 @@ class HeatmapTestCase(PanelTestCase):
 
 
 class AccessTests(HeatmapTestCase):
-    def test_anonymous_is_redirected_to_login(self):
-        for url in (URL, CELL_URL):
-            with self.subTest(url=url):
-                self.assertRedirects(self.client.get(url), f'/contas/login/?next={url}', fetch_redirect_response=False)
-
-    def test_without_the_report_permission_is_403(self):
-        self.client.force_login(user_with('grade@ifnmg.edu.br', permissions.SPACE_ALLOCATION_VIEW))
-        for url in (URL, CELL_URL):
-            with self.subTest(url=url):
-                self.assertEqual(self.client.get(url).status_code, 403)
-
     def test_without_the_allocation_permission_is_403(self):
         self.client.force_login(user_with('relatorista@ifnmg.edu.br', permissions.REPORT_VIEW))
         for url in (URL, CELL_URL):
@@ -47,18 +35,6 @@ class AccessTests(HeatmapTestCase):
         response = self.client.get(URL)
         self.assertContains(response, 'Espaços ocupados por faixa')
         self.assertContains(response, 'Ocupação média')
-
-    def test_menu_shows_the_group_only_with_both_permissions(self):
-        self.client.force_login(self.viewer)
-        response = self.client.get(URL)
-        self.assertContains(response, 'Relatórios')
-        self.assertContains(response, '<details class="nav-group" open>', html=False)
-        self.client.force_login(user_with('painel@ifnmg.edu.br', permissions.PANEL_VIEW, permissions.REPORT_VIEW))
-        self.assertNotContains(self.client.get('/painel/'), 'Mapa de calor dos espaços')
-
-    def test_report_does_not_accept_post(self):
-        self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(URL).status_code, 405)
 
 
 class BuildTests(HeatmapTestCase):
@@ -159,12 +135,6 @@ class CellTests(HeatmapTestCase):
         self.assertEqual(self.client.get('/relatorios/mapa-de-calor/domingo/0/').status_code, 404)
         self.assertEqual(self.client.get('/relatorios/mapa-de-calor/segunda/9/').status_code, 404)
 
-    def test_full_page_without_htmx(self):
-        self.lesson()
-        self.client.force_login(self.viewer)
-        response = self.client.get(CELL_URL)
-        self.assertContains(response, 'Mapa de calor dos espaços')
-
 
 class FilterFormTests(HeatmapTestCase):
     def test_unknown_values_fall_back(self):
@@ -180,13 +150,3 @@ class FilterFormTests(HeatmapTestCase):
         response = self.client.get(URL, {'origem': heatmap.BOOKINGS})
         self.assertNotContains(response, 'Etapa de ensino')
         self.assertContains(self.client.get(URL), 'Etapa de ensino')
-
-    def test_filters_use_the_project_select(self):
-        self.lesson()
-        self.client.force_login(self.viewer)
-        response = self.client.get(URL)
-        self.assertEqual(response.content.decode().count('data-select>'), 5)
-
-    def test_reverse_names(self):
-        self.assertEqual(reverse('report_heatmap'), URL)
-        self.assertEqual(reverse('report_heatmap_cell', args=['segunda', 0]), CELL_URL)

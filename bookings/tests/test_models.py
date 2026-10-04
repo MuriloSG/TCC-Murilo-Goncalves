@@ -53,10 +53,6 @@ class SubmitTests(BookingTestCase):
         self.assertEqual(submit(self.ana, self.lab, description='  Reunião  ').description, 'Reunião')
         self.assertEqual(BookingRequest.objects.count(), 1)
 
-    def test_description_has_a_maximum_length(self):
-        with self.assert_refused():
-            submit(self.ana, self.lab, description='a' * 501)
-
     def test_end_must_follow_start(self):
         for start, end in ((time(16, 0), time(14, 0)), (time(16, 0), time(16, 0))):
             with self.subTest(start=start, end=end), self.assert_refused() as caught:

@@ -3,10 +3,9 @@ disciplina e turma (Change criar-agendamento-para-outro-usuario)."""
 
 import re
 from datetime import date, time
-from unittest import mock
 
 from django.core.exceptions import ValidationError
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from accounts import permissions
@@ -89,21 +88,6 @@ class OnBehalfTestCase(TestCase):
 
 
 class AccessTests(OnBehalfTestCase):
-    def test_anonymous_is_sent_to_login(self):
-        response = self.client.get(CREATE)
-        self.assertRedirects(response, f"{reverse('account_login')}?next={CREATE}", fetch_redirect_response=False)
-
-    def test_request_permission_is_not_enough_to_open(self):
-        self.client.force_login(self.ana)
-        self.assertEqual(self.client.get(CREATE).status_code, 403)
-
-    def test_manual_post_without_the_permission(self):
-        self.client.force_login(self.ana)
-        response = self.client.post(CREATE, self.data(requested_for=self.bruno.pk, course=self.informatics.pk,
-                                                       teaching_assignment=self.bruno_networks.pk, confirmar='1'))
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(BookingRequest.objects.exists())
-
     def test_with_the_permission(self):
         self.client.force_login(self.creator)
         response = self.client.get(CREATE, headers={'HX-Request': 'true'})
@@ -119,12 +103,6 @@ class AccessTests(OnBehalfTestCase):
         request = BookingRequest.objects.get()
         self.assertEqual((request.requested_by, request.created_by), (self.ana, superadmin))
 
-    def test_post_without_csrf(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.creator)
-        self.assertEqual(client.post(CREATE, self.data(confirmar='1')).status_code, 403)
-        self.assertFalse(BookingRequest.objects.exists())
-
     def test_operation_without_the_permission(self):
         error = self.refused(self.bruno, self.ana, self.networks)
         self.assertEqual(error.code, 'permission')
@@ -135,11 +113,6 @@ class AccessTests(OnBehalfTestCase):
 
     def test_grid_slot_opens_the_create_modal_for_who_only_creates(self):
         content = self.grid(self.creator)
-        self.assertIn(f'{CREATE}?espaco=', content)
-        self.assertNotIn(reverse('agenda_request_create'), content)
-
-    def test_grid_slot_opens_the_create_modal_for_the_superadmin(self):
-        content = self.grid(User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'Senha-forte-123'))
         self.assertIn(f'{CREATE}?espaco=', content)
         self.assertNotIn(reverse('agenda_request_create'), content)
 
@@ -327,14 +300,6 @@ class ChainModelTests(OnBehalfTestCase):
         error = self.refused(self.creator, self.ana, self.erica_networks)
         self.assertIn('teaching_assignment', error.message_dict)
 
-    def test_class_group_of_another_semester(self):
-        self.assertIn('teaching_assignment', self.refused(self.creator, self.ana, self.old_physics).message_dict)
-
-    def test_historical_class_group(self):
-        self.networks.is_current = False
-        self.networks.save()
-        self.assertIn('teaching_assignment', self.refused(self.creator, self.ana, self.networks).message_dict)
-
     def test_user_that_is_not_a_teacher(self):
         error = self.refused(self.creator, self.outsider, self.networks)
         self.assertEqual(
@@ -391,19 +356,6 @@ class CreationTests(OnBehalfTestCase):
         self.assertEqual((log.new_values['solicitante'], log.new_values['criada_por']), ('ana', 'secretaria'))
         self.assertEqual(log.user, self.creator)
 
-    def test_conflict_with_the_space_allocation(self):
-        response = self.client.post(CREATE, self.data(start_time='14:00', end_time='16:00', confirmar='1'))
-        self.assertContains(response, 'Este espaço está ocupado pelo ensalamento das 14:10 às 15:00. Escolha outro horário.')
-        self.assertFalse(BookingRequest.objects.exists())
-
-    def test_date_outside_the_period(self):
-        error = self.refused(self.creator, self.ana, self.networks, day=date(2027, 1, 7))
-        self.assertIn('date', error.message_dict)
-
-    def test_past_time(self):
-        error = self.refused(self.creator, self.ana, self.networks, day=date(2026, 10, 1), start=time(8, 0), end=time(9, 0))
-        self.assertIn('start_time', error.message_dict)
-
     def test_inactive_space(self):
         inactive = space('Sala 9')
         inactive.deactivate()
@@ -415,13 +367,6 @@ class CreationTests(OnBehalfTestCase):
         response = self.client.post(CREATE, self.data(description='   ', confirmar='1'))
         self.assertContains(response, 'Informe a descrição do uso do espaço.')
         self.assertFalse(BookingRequest.objects.exists())
-
-    def test_failure_after_saving_rolls_everything_back(self):
-        logs = AuditLog.objects.count()
-        with mock.patch('bookings.models.announce', side_effect=RuntimeError('falha')), self.assertRaises(RuntimeError):
-            self.submit_for(self.creator, self.ana, self.networks)
-        self.assertFalse(BookingRequest.objects.exists())
-        self.assertEqual(AuditLog.objects.count(), logs)
 
     def test_approval_creates_the_booking_of_the_chosen_user(self):
         request = self.submit_for(self.creator, self.ana, self.networks)

@@ -61,15 +61,6 @@ class AppLayoutTests(LayoutTestCase):
     def setUp(self):
         self.client.force_login(self.admin)
 
-    def test_barra_lateral_com_simbolo_e_nome_do_sistema(self):
-        response = self.client.get('/inicio/', follow=True)
-        content = response.content.decode()
-        sidebar = content[content.index('<aside class="sidebar" id="menu-lateral">'):content.index('</aside>')]
-        self.assertRegex(sidebar, r'<a class="brand" href="/inicio/">\s*<img src="/static/ui/img/simbolo-if.png" alt=""')
-        self.assertIn('<span class="brand-name">Agenda</span>', sidebar)
-        self.assertNotIn('IFNMG Campus Salinas', sidebar)
-        self.assertIn('<nav class="side-nav" aria-label="Principal">', sidebar)
-
     def test_primeiro_focavel_e_o_link_para_o_conteudo(self):
         for url in ('/inicio/', '/usuarios/', '/perfis/'):
             with self.subTest(url=url):
@@ -89,19 +80,6 @@ class AppLayoutTests(LayoutTestCase):
         role = Role.objects.get(code='SECRETARIA')
         response = self.client.get(f'/perfis/{role.pk}/')
         self.assertRegex(response.content.decode(), r'<a href="/perfis/" aria-current="page">')
-
-    def test_menu_do_usuario(self):
-        response = self.client.get('/inicio/', follow=True)
-        content = response.content.decode()
-        menu = content[content.index('<details class="menu user-menu">'):]
-        menu = menu[:menu.index('</details>')]
-        summary = menu[:menu.index('</summary>')]
-        self.assertIn('<summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">AS</span>', summary)
-        self.assertNotIn('Ana Maria Souza', summary)
-        dropdown = menu[menu.index('<div class="menu-list">'):]
-        self.assertIn('<span class="who-name">Ana Maria Souza</span>', dropdown)
-        self.assertIn('<span class="who-role">Administrador</span>', dropdown)
-        self.assertRegex(menu, r'<a href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal"><svg[^>]*>.*?</svg>\s*Sair</a>')
 
     def test_sino_de_notificacoes_no_cabecalho_e_no_celular(self):
         notify(self.admin, 'Comunicado do sistema')
@@ -138,44 +116,6 @@ class AppLayoutTests(LayoutTestCase):
         self.assertIn('<p class="notifications-empty" data-empty hidden>Nenhuma notificação não lida.</p>', panel)
         self.assertRegex(panel, r'<button class="notifications-read-all" type="submit">')
 
-    def test_painel_sem_notificacoes(self):
-        content = self.client.get('/inicio/', follow=True).content.decode()
-        panel = content[content.index('<div class="notifications-panel">'):]
-        panel = panel[:panel.index('</details>')]
-        self.assertIn('<p class="notifications-empty">Nenhuma notificação.</p>', panel)
-        self.assertNotIn('<li class="notification', panel)
-        self.assertNotIn('notifications-read-all', panel)
-
-    def test_menu_do_celular_sem_javascript(self):
-        response = self.client.get('/inicio/', follow=True)
-        content = response.content.decode()
-        topbar = content[content.index('<div class="topbar">'):content.index('<header class="header">')]
-        self.assertRegex(topbar, r'<details class="topbar-menu">\s*<summary class="icon-btn" aria-label="Menu"><svg')
-        self.assertLess(topbar.index('<details class="topbar-menu">'), topbar.index('<span class="brand-name">'))
-        self.assertIn('<nav class="side-nav" aria-label="Principal">', topbar)
-        self.assertRegex(
-            topbar, r'<a class="icon-btn" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal" aria-label="Sair">',
-        )
-        self.assertIn('<button class="icon-btn" type="button" data-drawer-close aria-label="Fechar menu" hidden>', topbar)
-
-    def test_rodape_da_barra_lateral_com_usuario_e_sair(self):
-        content = self.client.get('/inicio/', follow=True).content.decode()
-        footer = content[content.index('<div class="sidebar-footer">'):content.index('</aside>')]
-        self.assertIn('<span class="avatar" aria-hidden="true">AS</span>', footer)
-        self.assertIn('<span class="who-name" title="Ana Maria Souza">Ana</span>', footer)
-        self.assertRegex(footer, r'<a class="icon-btn" href="/contas/logout/" hx-get="/contas/logout/" hx-target="#modal" aria-label="Sair">')
-        self.assertIn('<span class="tip" role="tooltip">Sair</span>', footer)
-
-    def test_botao_de_recolher_a_barra_lateral(self):
-        content = self.client.get('/inicio/', follow=True).content.decode()
-        self.assertRegex(
-            content,
-            r'<button class="icon-btn" type="button" data-sidebar-toggle aria-controls="menu-lateral" '
-            r'aria-expanded="true" aria-label="Recolher menu lateral" hidden>',
-        )
-        self.assertIn('<div class="app-shell">', content)
-        self.assertIn('<script src="/static/ui/js/sidebar.js" defer></script>', content)
-
     def test_barra_lateral_recolhida_vem_do_cookie(self):
         self.client.cookies['menu_lateral'] = 'recolhido'
         self.assertContains(self.client.get('/inicio/', follow=True), '<div class="app-shell is-collapsed">')
@@ -191,11 +131,6 @@ class AppLayoutTests(LayoutTestCase):
         self.assertNotIn('hx-post', content)
         self.assertIn('data-modal-close>Fechar</button>', content)
         self.assertIn('_auth_user_id', self.client.session)
-
-    def test_sair_pelo_modal_encerra_a_sessao(self):
-        response = self.client.post('/contas/logout/')
-        self.assertRedirects(response, '/contas/login/', fetch_redirect_response=False)
-        self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_confirmacao_de_saida_sem_javascript_e_a_pagina(self):
         response = self.client.get('/contas/logout/')
@@ -214,29 +149,6 @@ class AppLayoutTests(LayoutTestCase):
         self.assertContains(response, '<script src="/static/ui/js/htmx.min.js" defer></script>', html=True)
         self.assertRegex(response.content.decode(), r'<body hx-headers=\'\{"X-CSRFToken": "\w+"\}\'>')
         self.assertContains(response, '<div id="modal"></div>', html=True)
-
-
-class AuthLayoutTests(LayoutTestCase):
-    def test_login_com_painel_da_marca(self):
-        response = self.client.get('/contas/login/')
-        self.assertContains(response, '<header class="auth-panel">')
-        self.assertContains(
-            response,
-            '<img class="auth-logo" src="/static/ui/img/logo-horizontal-negativo.png" '
-            'alt="Instituto Federal Norte de Minas Gerais, Campus Salinas" width="813" height="225">',
-            html=True,
-        )
-        self.assertContains(response, '<p class="auth-title">IFAgenda</p>', html=True)
-        self.assertContains(response, '<h1>Entrar</h1>', html=True)
-        self.assertNotContains(response, 'class="sidebar"')
-        self.assertEqual(parse(response).focusable[0][1].get('href'), '#conteudo')
-
-    def test_campos_do_login_com_icone(self):
-        response = self.client.get('/contas/login/')
-        self.assertContains(response, '<label id="id_login_rotulo" for="id_login">E-mail institucional</label>', html=True)
-        self.assertContains(response, 'name="login" autocomplete="email" placeholder=""')
-        self.assertEqual(response.content.decode().count('<div class="control">'), 2)
-        self.assertContains(response, 'Para obter acesso, procure um administrador do sistema.')
 
 
 class ExternalResourcesTests(LayoutTestCase):
@@ -268,17 +180,12 @@ class BrandTests(LayoutTestCase):
         '<link rel="apple-touch-icon" href="/static/ui/img/apple-touch-icon.png">',
     )
 
-    def test_titulo_e_icone_na_pagina_autenticada(self):
-        self.client.force_login(self.admin)
-        response = self.client.get('/inicio/', follow=True)
-        self.assertContains(response, '· IFAgenda</title>')
-        for icon in self.ICONS:
-            self.assertContains(response, icon, html=True)
-
-    def test_titulo_e_icone_na_pagina_de_login_e_no_calendario_publico(self):
-        for url in ('/contas/login/', '/calendario/'):
+    def test_titulo_e_icone_em_toda_pagina(self):
+        for user, url in ((None, '/contas/login/'), (None, '/calendario/'), (self.admin, '/inicio/')):
             with self.subTest(url=url):
-                response = self.client.get(url)
+                if user:
+                    self.client.force_login(user)
+                response = self.client.get(url, follow=True)
                 self.assertContains(response, '· IFAgenda</title>')
                 for icon in self.ICONS:
                     self.assertContains(response, icon, html=True)

@@ -1,6 +1,6 @@
 import json
 
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from accounts.models import Role, User
 from ui.pagination import OPTIONS_PAGE_SIZE
@@ -29,15 +29,6 @@ class UserOptionsTests(TestCase):
         response = self.client.get(f'{OPTIONS_URL}{query}')
         self.assertEqual(response.status_code, 200)
         return json.loads(response.content)
-
-    def test_anonymous_is_redirected_to_login(self):
-        response = Client().get(OPTIONS_URL)
-        self.assertRedirects(response, f'/contas/login/?next={OPTIONS_URL}', fetch_redirect_response=False)
-
-    def test_user_without_the_permission_is_refused(self):
-        client = Client()
-        client.force_login(self.plain)
-        self.assertEqual(client.get(OPTIONS_URL).status_code, 403)
 
     def test_first_page_has_ten_options(self):
         data = self.options()

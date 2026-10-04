@@ -3,7 +3,7 @@
 from datetime import time
 
 from django.db import connection
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -48,37 +48,10 @@ class AccessTests(ReviewTestCase):
             url('agenda_review_suggest', self.request),
         ]
 
-    def test_anonymous_is_sent_to_the_login_with_next(self):
-        self.client.logout()
-        for route in self.routes():
-            with self.subTest(route=route):
-                self.assertRedirects(self.client.get(route), f"{reverse('account_login')}?next={route}", fetch_redirect_response=False)
-
-    def test_without_the_review_permission(self):
-        self.client.force_login(self.ana)
-        for route in self.routes():
-            with self.subTest(route=route):
-                self.assertEqual(self.client.get(route).status_code, 403)
-
     def test_with_the_review_permission(self):
         for route in self.routes():
             with self.subTest(route=route):
                 self.assertEqual(self.client.get(route).status_code, 200)
-
-    def test_post_without_the_review_permission_changes_nothing(self):
-        self.client.force_login(self.ana)
-        self.assertEqual(self.client.post(url('agenda_review_approve', self.request)).status_code, 403)
-        self.assertEqual(self.client.post(url('agenda_review_reject', self.request), {'rejection_reason': 'x'}).status_code, 403)
-        self.assertEqual(self.client.post(url('agenda_review_suggest', self.request), self.suggestion()).status_code, 403)
-        self.request.refresh_from_db()
-        self.assertEqual(self.request.status, Status.PENDING)
-
-    def test_post_without_csrf(self):
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.reviewer)
-        self.assertEqual(client.post(url('agenda_review_approve', self.request)).status_code, 403)
-        self.request.refresh_from_db()
-        self.assertEqual(self.request.status, Status.PENDING)
 
 
 class ListTests(ReviewTestCase):

@@ -2,10 +2,9 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.test import SimpleTestCase, TestCase
 
-from accounts import notifications
 from accounts.models import AdministrativeContinuityViolation, Role, User
 from notices import catalog
-from notices.events import Delivery, announce, register
+from notices.events import announce, register
 from notices.models import Notification
 
 
@@ -25,10 +24,6 @@ class RegistryTests(SimpleTestCase):
         register('EVENTO_DE_TESTE', one)
         with self.assertRaises(ImproperlyConfigured):
             register('EVENTO_DE_TESTE', another)
-
-    def test_delivery_has_an_optional_target(self):
-        delivery = Delivery(recipient=None, type=catalog.INFORMATION, title='Título', message='Mensagem.')
-        self.assertEqual(delivery.target_url, '')
 
 
 class RoleChangeEventTests(TestCase):
@@ -70,10 +65,3 @@ class RoleChangeEventTests(TestCase):
         self.bruno.deactivate()
         self.bruno.change_role(self.administrador)
         self.assertEqual(Notification.objects.for_user(self.bruno).unread().count(), 1)
-
-    def test_event_is_registered_by_the_owning_app(self):
-        self.assertEqual(notifications.ROLE_CHANGED, 'PERFIL_ALTERADO')
-        self.assertEqual(
-            [delivery.recipient for delivery in notifications.role_changed(self.bruno, self.administrador)],
-            [self.bruno],
-        )

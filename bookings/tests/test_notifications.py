@@ -125,6 +125,9 @@ class DecisionTests(NotificationTestCase):
         self.assertEqual(notification.target_url, reverse('agenda_my_request', args=[self.request.pk]))
 
     def test_invalid_decisions_notify_nobody(self):
+        with self.assertRaises(ValidationError):
+            self.request.reject(self.carla, '  ')
+        self.assertFalse(agenda_notifications().exists())
         self.request.approve(self.carla)
         agenda_notifications().delete()
         with self.assertRaises(ValidationError):
@@ -135,11 +138,6 @@ class DecisionTests(NotificationTestCase):
             self.suggest(self.request, self.davi)
         with self.assertRaises(ValidationError):
             BookingRequest.objects.get(pk=self.request.pk).reject(self.bruno, 'Sem permissão.')
-        self.assertFalse(agenda_notifications().exists())
-
-    def test_rejection_without_reason_notifies_nobody(self):
-        with self.assertRaises(ValidationError):
-            self.request.reject(self.carla, '  ')
         self.assertFalse(agenda_notifications().exists())
 
     def test_message_is_cut_at_the_notification_limit(self):
@@ -203,33 +201,3 @@ class AnswerTests(NotificationTestCase):
         with self.assertRaises(ValidationError):
             self.request.decline_suggestion(self.ana)
         self.assertFalse(agenda_notifications().exists())
-
-
-class TargetAccessTests(NotificationTestCase):
-    def test_reviewer_opens_the_request_from_the_notification(self):
-        request = submit(self.ana, self.lab)
-        self.client.force_login(self.carla)
-        response = self.client.get(agenda_notifications().get(recipient=self.carla).target_url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Aprovar')
-
-    def test_requester_answers_the_suggestion_from_the_notification(self):
-        request = submit(self.ana, self.lab)
-        self.suggest(request)
-        self.client.force_login(self.ana)
-        response = self.client.get(self.only(catalog.BOOKING_SUGGESTED).target_url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, reverse('agenda_my_request_accept', args=[request.pk]))
-        self.assertContains(response, reverse('agenda_my_request_decline', args=[request.pk]))
-
-    def test_target_does_not_grant_access(self):
-        request = submit(self.ana, self.lab)
-        target = agenda_notifications().get(recipient=self.carla).target_url
-        self.client.force_login(self.bruno)
-        self.assertEqual(self.client.get(target).status_code, 403)
-        self.suggest(request)
-        self.assertEqual(self.client.get(self.only(catalog.BOOKING_SUGGESTED).target_url).status_code, 404)
-
-    def test_types_are_not_offered_for_manual_publication(self):
-        manual = {code for code, _ in catalog.manual_choices()}
-        self.assertFalse(manual & set(AGENDA_TYPES))

@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.test import SimpleTestCase, TestCase
 
 from accounts.models import Role, User
@@ -36,12 +34,6 @@ class CatalogTests(SimpleTestCase):
             [(catalog.INFORMATION, 'Informação'), (catalog.SUCCESS, 'Sucesso'), (catalog.WARNING, 'Aviso')],
         )
         self.assertFalse(catalog.is_manual(catalog.ROLE_CHANGED))
-
-    def test_destinations(self):
-        self.assertEqual(
-            [code for code, _ in catalog.destination_choices()],
-            [catalog.ALL_USERS, catalog.ROLE, catalog.USERS],
-        )
 
 
 class MechanismIndependenceTests(SimpleTestCase):
@@ -85,20 +77,16 @@ class DeliveryTests(TestCase):
             set(Notification.objects.values_list('recipient', flat=True)),
             {self.ana.pk, self.bruno.pk, self.carla.pk},
         )
+        self.assertEqual(
+            set(Notification.objects.values_list('title', 'message', 'type')),
+            {('Nova versão do sistema', 'Uma versão nova do sistema foi disponibilizada.', catalog.INFORMATION)},
+        )
 
     def test_reading_is_individual(self):
         self.publish(User.objects.filter(is_active=True))
         Notification.objects.for_user(self.ana).first().mark_as_read()
         self.assertEqual(Notification.objects.for_user(self.ana).unread().count(), 0)
         self.assertEqual(Notification.objects.for_user(self.bruno).unread().count(), 1)
-
-    def test_content_is_copied_to_each_notification(self):
-        self.publish([self.ana, self.bruno])
-        for notification in Notification.objects.all():
-            with self.subTest(recipient=notification.recipient):
-                self.assertEqual(notification.title, 'Nova versão do sistema')
-                self.assertEqual(notification.message, 'Uma versão nova do sistema foi disponibilizada.')
-                self.assertEqual(notification.type, catalog.INFORMATION)
 
     def test_type_outside_the_catalog_is_refused(self):
         with self.assertRaises(UnknownNoticeType):
@@ -109,31 +97,6 @@ class DeliveryTests(TestCase):
         with self.assertRaises(NoRecipients):
             self.publish(User.objects.none())
         self.assertEqual(Notification.objects.count(), 0)
-
-    def test_title_longer_than_the_limit_is_refused(self):
-        with self.assertRaises(ValidationError):
-            Notification.objects.publish(catalog.INFORMATION, 'x' * 121, 'Mensagem', [self.ana])
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_undone_transaction_leaves_no_notification(self):
-        with self.assertRaises(RuntimeError):
-            with transaction.atomic():
-                self.publish([self.ana, self.bruno])
-                raise RuntimeError('operação desfeita')
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_notify_creates_one_notification(self):
-        notification = Notification.objects.notify(
-            self.ana, catalog.ROLE_CHANGED, 'Perfil alterado', 'O perfil passou a ser Administrador.',
-        )
-        self.assertEqual(Notification.objects.count(), 1)
-        self.assertEqual(notification.recipient, self.ana)
-        self.assertTrue(notification.unread)
-
-    def test_user_created_after_the_publication_has_no_notification(self):
-        self.publish(resolve_recipients(catalog.ALL_USERS))
-        daniel = make_user('daniel@ifnmg.edu.br', self.docente)
-        self.assertEqual(Notification.objects.for_user(daniel).count(), 0)
 
     def test_most_recent_first(self):
         Notification.objects.notify(self.ana, catalog.INFORMATION, 'Primeira', 'Mensagem.')

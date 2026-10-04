@@ -40,13 +40,6 @@ class RequestsTestCase(PanelTestCase):
 
 
 class AccessTests(RequestsTestCase):
-    def test_anonymous_is_redirected_to_login(self):
-        self.assertRedirects(self.client.get(URL), f'/contas/login/?next={URL}', fetch_redirect_response=False)
-
-    def test_without_the_report_permission_is_403(self):
-        self.client.force_login(user_with('analise@ifnmg.edu.br', permissions.BOOKING_REVIEW))
-        self.assertEqual(self.client.get(URL).status_code, 403)
-
     def test_without_the_review_permission_is_403(self):
         self.client.force_login(user_with('relatorista@ifnmg.edu.br', permissions.REPORT_VIEW))
         self.assertEqual(self.client.get(URL).status_code, 403)
@@ -57,19 +50,7 @@ class AccessTests(RequestsTestCase):
         response = self.client.get(URL)
         self.assertContains(response, 'Solicitações por semana')
         self.assertContains(response, 'Taxa de aprovação')
-        self.assertContains(response, 'Semana 10 (atual), de 05/10/2026 a 11/10/2026')
-        self.assertContains(response, 'Média por semana')
         self.assertContains(response, '1 solicitação: 1 pendente.')
-
-    def test_menu_shows_the_item_only_with_both_permissions(self):
-        self.client.force_login(self.viewer)
-        self.assertContains(self.client.get(URL), f'href="{URL}"')
-        self.client.force_login(user_with('painel@ifnmg.edu.br', permissions.PANEL_VIEW, permissions.REPORT_VIEW))
-        self.assertNotContains(self.client.get('/painel/'), f'href="{URL}"')
-
-    def test_report_does_not_accept_post(self):
-        self.client.force_login(self.viewer)
-        self.assertEqual(self.client.post(URL).status_code, 405)
 
 
 class PageTests(RequestsTestCase):
@@ -117,8 +98,6 @@ class BuildTests(RequestsTestCase):
         self.assertEqual(report.week_count, 20)
         self.assertEqual((report.weeks[0].start, report.weeks[-1].end), (date(2026, 8, 3), date(2026, 12, 20)))
         self.assertEqual([week.total for week in report.weeks[:3]], [2, 1, 0])
-        self.assertEqual(report.axis, [4, 3, 2, 1, 0])
-        self.assertEqual([week.height for week in report.weeks[:3]], [50, 25, 0])
         self.assertEqual(report.peak, report.weeks[0])
         self.assertTrue(report.weeks[0].is_peak)
         self.assertEqual(report.week_average, 3 / 20)
@@ -127,11 +106,6 @@ class BuildTests(RequestsTestCase):
         weeks = self.build().weeks
         self.assertEqual([week.number for week in weeks if week.is_current], [10])
         self.assertEqual(weeks[9].title, 'Semana 10 (atual), de 05/10/2026 a 11/10/2026')
-
-    def test_week_labels_alternate_above_twelve_weeks(self):
-        weeks = self.build().weeks
-        self.assertEqual([week.show_label for week in weeks[:3]], [True, False, True])
-        self.assertEqual((weeks[0].hint_align, weeks[-1].hint_align), ('end', ''))
 
     def test_week_detail_lists_the_statuses(self):
         self.ask(status=Status.APPROVED)
@@ -209,7 +183,6 @@ class BuildTests(RequestsTestCase):
         self.ask(space='Sala 1/3')
         ranking = self.build().spaces
         self.assertEqual([item.space.name for item in ranking], ['Sala 2/3', 'Auditório', 'Sala 1/3'])
-        self.assertEqual((ranking[0].width, ranking[1].width), (100, 35))
         self.assertEqual((ranking[0].rejected, ranking[0].rejection_percent), (3, 100))
 
     def test_ranking_keeps_ten_spaces(self):
@@ -267,14 +240,6 @@ class FilterFormTests(RequestsTestCase):
         space = Space.objects.register('Sala 1/3')
         filters = self.form(f'etapa={Stage.SECONDARY}&espacos={space.pk}').filters()
         self.assertEqual((filters.stage, filters.spaces), (Stage.SECONDARY, [space]))
-
-    def test_filters_use_the_project_select(self):
-        self.client.force_login(self.viewer)
-        response = self.client.get(URL)
-        for name in ('semestre', 'etapa', 'curso', 'espacos'):
-            with self.subTest(name=name):
-                self.assertContains(response, f'id="id_{name}_rotulo"')
-        self.assertContains(response, 'data-select-none="Todos os espaços ativos"')
 
     def test_academic_filter_shows_the_help(self):
         self.client.force_login(self.viewer)

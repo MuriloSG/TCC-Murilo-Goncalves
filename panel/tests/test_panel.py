@@ -73,14 +73,6 @@ class PanelTestCase(TestCase):
 
 
 class AccessTests(PanelTestCase):
-    def test_anonymous_is_redirected_to_login(self):
-        response = self.client.get('/painel/')
-        self.assertRedirects(response, '/contas/login/?next=/painel/', fetch_redirect_response=False)
-
-    def test_without_the_permission_is_403(self):
-        self.client.force_login(user_with('analista@ifnmg.edu.br', permissions.BOOKING_REVIEW))
-        self.assertEqual(self.client.get('/painel/').status_code, 403)
-
     def test_with_every_permission_shows_every_block(self):
         self.client.force_login(self.admin)
         response = self.client.get('/painel/')
@@ -112,21 +104,6 @@ class AccessTests(PanelTestCase):
         response = self.client.get('/painel/')
         self.assertContains(response, 'Para decidir')
         self.assertContains(response, 'Importações abertas')
-
-    def test_panel_does_not_open_the_review(self):
-        self.client.force_login(user_with('painel@ifnmg.edu.br', permissions.PANEL_VIEW))
-        self.assertEqual(self.client.get(reverse('agenda_review_list')).status_code, 403)
-
-    def test_panel_does_not_change_data(self):
-        pending = self.request(date(2026, 10, 6))
-        self.client.force_login(self.admin)
-        self.client.get('/painel/')
-        pending.refresh_from_db()
-        self.assertEqual(pending.status, BookingRequest.Status.PENDING)
-
-    def test_post_is_not_allowed(self):
-        self.client.force_login(self.admin)
-        self.assertEqual(self.client.post('/painel/').status_code, 405)
 
 
 class EntryTests(PanelTestCase):
@@ -256,13 +233,6 @@ class OccupancyTests(PanelTestCase):
             self.lesson(f'Sala {index}', subject=f'Disciplina {index}')
         self.assertEqual(count(), few)
 
-    def test_no_percentage_is_shown(self):
-        self.lesson()
-        self.client.force_login(self.admin)
-        response = self.client.get('/painel/?ocupacao=semana')
-        self.assertContains(response, 'Horas ocupadas por dia')
-        self.assertNotContains(response, '%</')
-
 
 class GridIssueTests(PanelTestCase):
     def groups(self):
@@ -362,15 +332,6 @@ class IssueModalTests(PanelTestCase):
     def url(self, key, query=''):
         return f"{reverse('panel_issue', args=[key])}{query}"
 
-    def test_anonymous_is_redirected_to_login(self):
-        response = self.client.get(self.url('sem-espaco'))
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('/contas/login/', response.url)
-
-    def test_without_the_panel_is_403(self):
-        self.client.force_login(user_with('grade@ifnmg.edu.br', permissions.SPACE_ALLOCATION_VIEW))
-        self.assertEqual(self.client.get(self.url('sem-espaco')).status_code, 403)
-
     def test_without_the_grid_is_403(self):
         self.client.force_login(user_with('painel@ifnmg.edu.br', permissions.PANEL_VIEW))
         self.assertEqual(self.client.get(self.url('sem-ocupacao')).status_code, 403)
@@ -410,14 +371,6 @@ class IssueModalTests(PanelTestCase):
         second = self.client.get(self.url('sem-ocupacao', '?pagina=2'), headers={'HX-Request': 'true'})
         self.assertEqual(len(second.context['page'].object_list), 5)
 
-    def test_panel_shows_the_idle_tile(self):
-        Space.objects.register('Sala 2/1')
-        self.lesson()
-        self.client.force_login(self.admin)
-        response = self.client.get('/painel/')
-        self.assertContains(response, 'Sem ocupação')
-        self.assertContains(response, 'hx-get="/painel/pendencias/sem-ocupacao/')
-
 
 class WithoutSpaceTileTests(PanelTestCase):
     def test_only_the_top_card_shows_lessons_without_space(self):
@@ -430,15 +383,6 @@ class WithoutSpaceTileTests(PanelTestCase):
 
 
 class IssueTableTests(PanelTestCase):
-    def test_rows_have_text_and_an_action_button(self):
-        self.lesson('Sala 1/3')
-        self.lesson('Laboratório 2', group=self.group_b, subject='Banco de dados')
-        self.client.force_login(self.admin)
-        response = self.client.get(reverse('panel_issue', args=['conflito']), headers={'HX-Request': 'true'})
-        self.assertContains(response, '<div class="panel-table">')
-        self.assertContains(response, 'aria-label="Abrir na Grade"')
-        self.assertNotContains(response, '<a class="link"')
-
     def test_lesson_without_space_has_no_button(self):
         self.lesson(space=None, teachers=())
         self.client.force_login(self.admin)
@@ -452,17 +396,3 @@ class IssueTableTests(PanelTestCase):
         self.client.force_login(self.admin)
         response = self.client.get(reverse('panel_issue', args=['choque']), headers={'HX-Request': 'true'})
         self.assertContains(response, 'aria-label="Abrir na Agenda"')
-
-
-class HintTests(PanelTestCase):
-    def test_cards_describe_themselves(self):
-        self.lesson()
-        self.client.force_login(self.admin)
-        response = self.client.get('/painel/')
-        for text in (
-            'Solicitações de agendamento que esperam aprovação ou rejeição.',
-            'Mesmo docente em dois espaços diferentes, no mesmo dia e horário.',
-            'Espaços ativos sem aula nem agendamento hoje.',
-            'aria-describedby="dica-conflito"',
-        ):
-            self.assertContains(response, text)

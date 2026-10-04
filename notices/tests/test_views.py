@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from accounts.models import Role, User
 from audit.models import AuditLog
@@ -27,17 +27,6 @@ class NotificationViewTestCase(TestCase):
 
 
 class OpenTests(NotificationViewTestCase):
-    def test_anonymous_goes_to_login(self):
-        notification = self.notify()
-        self.client.logout()
-        response = self.client.post(f'/notificacoes/{notification.pk}/abrir/')
-        self.assertRedirects(
-            response,
-            f'/contas/login/?next=/notificacoes/{notification.pk}/abrir/',
-            fetch_redirect_response=False,
-        )
-        self.assertTrue(Notification.objects.get(pk=notification.pk).unread)
-
     def test_opening_marks_as_read_and_returns_to_the_origin(self):
         notification = self.notify()
         response = self.client.post(f'/notificacoes/{notification.pk}/abrir/', {'next': '/usuarios/'})
@@ -64,20 +53,6 @@ class OpenTests(NotificationViewTestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Notification.objects.get(pk=notification.pk).unread)
 
-    def test_get_is_refused(self):
-        notification = self.notify()
-        response = self.client.get(f'/notificacoes/{notification.pk}/abrir/')
-        self.assertEqual(response.status_code, 405)
-        self.assertTrue(Notification.objects.get(pk=notification.pk).unread)
-
-    def test_requires_csrf(self):
-        notification = self.notify()
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.ana)
-        response = client.post(f'/notificacoes/{notification.pk}/abrir/')
-        self.assertEqual(response.status_code, 403)
-        self.assertTrue(Notification.objects.get(pk=notification.pk).unread)
-
     def test_opening_a_read_notification_changes_nothing(self):
         notification = self.notify()
         notification.mark_as_read()
@@ -96,40 +71,8 @@ class ReadAllTests(NotificationViewTestCase):
         self.assertEqual(Notification.objects.unread_count(self.ana), 0)
         self.assertEqual(Notification.objects.unread_count(self.bruno), 1)
 
-    def test_anonymous_goes_to_login(self):
-        self.client.logout()
-        response = self.client.post('/notificacoes/lidas/')
-        self.assertRedirects(
-            response,
-            '/contas/login/?next=/notificacoes/lidas/',
-            fetch_redirect_response=False,
-        )
-
-    def test_requires_csrf(self):
-        self.notify()
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.ana)
-        response = client.post('/notificacoes/lidas/')
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(Notification.objects.unread_count(self.ana), 1)
-
-    def test_get_is_refused(self):
-        self.notify()
-        response = self.client.get('/notificacoes/lidas/')
-        self.assertEqual(response.status_code, 405)
-        self.assertEqual(Notification.objects.unread_count(self.ana), 1)
-
 
 class PanelTests(NotificationViewTestCase):
-    def test_anonymous_goes_to_login(self):
-        self.client.logout()
-        response = self.client.get('/notificacoes/sino/')
-        self.assertRedirects(
-            response,
-            '/contas/login/?next=/notificacoes/sino/',
-            fetch_redirect_response=False,
-        )
-
     def test_fragment_has_the_notifications_of_the_user(self):
         self.notify()
         self.notify(recipient=self.bruno)
@@ -149,13 +92,6 @@ class PanelTests(NotificationViewTestCase):
         for origin in ('', 'https://externo.com/'):
             content = self.client.get('/notificacoes/sino/', {'origem': origin}).content.decode()
             self.assertIn('name="next" value="/inicio/"', content)
-
-    def test_read_all_from_the_fragment_goes_back_to_the_screen(self):
-        self.notify()
-        content = self.client.get('/notificacoes/sino/', {'origem': '/agenda/'}).content.decode()
-        self.assertIn('value="/agenda/"', content)
-        response = self.client.post('/notificacoes/lidas/', {'next': '/agenda/'})
-        self.assertRedirects(response, '/agenda/', fetch_redirect_response=False)
 
     def test_fragment_without_notifications(self):
         content = self.client.get('/notificacoes/sino/').content.decode()

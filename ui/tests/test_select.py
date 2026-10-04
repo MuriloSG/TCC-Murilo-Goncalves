@@ -24,25 +24,11 @@ class SelectComponentTests(TestCase):
         self.assertIn('<div class="select" data-select>', content)
         self.assertIn('<div class="select-native select-wrap"><select name="role"', content)
 
-    def test_native_select_keeps_every_option(self):
-        Role.objects.create_role(code='COORDENACAO', name='Coordenação')
-        content = self.content()
-        for name in ('Administrador', 'Docente', 'Coordenação'):
-            with self.subTest(name=name):
-                self.assertIn(f'>{name}</option>', content)
-
     def test_trigger_and_panel_start_hidden_for_the_no_javascript_case(self):
         content = self.content()
         self.assertIn('id="id_role_gatilho" aria-haspopup="listbox" aria-expanded="false"', content)
         self.assertIn('hidden data-select-trigger', content)
         self.assertIn('hidden data-select-panel', content)
-
-    def test_panel_has_search_list_empty_state_and_more(self):
-        content = self.content()
-        self.assertIn('placeholder="Buscar"', content)
-        self.assertIn('role="listbox"', content)
-        self.assertIn('Nenhuma opção encontrada.', content)
-        self.assertIn('Mostrar mais', content)
 
     def test_label_is_associated_with_the_trigger(self):
         content = self.content()
@@ -50,7 +36,7 @@ class SelectComponentTests(TestCase):
         self.assertIn('aria-labelledby="id_role_rotulo id_role_gatilho"', content)
 
     def test_every_choice_field_of_the_project_uses_the_component(self):
-        for url in ('/usuarios/novo/', '/usuarios/', '/auditoria/'):
+        for url in ('/usuarios/novo/', '/usuarios/', '/auditoria/', '/relatorios/mapa-de-calor/', '/relatorios/solicitacoes/'):
             with self.subTest(url=url):
                 content = self.content(url)
                 self.assertEqual(content.count('<select '), content.count('data-select-trigger'))

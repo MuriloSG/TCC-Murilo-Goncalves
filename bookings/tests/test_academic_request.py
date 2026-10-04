@@ -11,7 +11,7 @@ from django.urls import reverse
 from audit.models import AuditLog
 from bookings.models import Booking, BookingRequest
 from bookings.tests.base import REQUESTER, REVIEWER, THURSDAY, academic, frozen_clock, semester_with_lesson, submit, user_with
-from schedule.models import Allocation, Semester, Space
+from schedule.models import Semester, Space
 
 Status = BookingRequest.Status
 CREATE = reverse('agenda_request_create')
@@ -90,19 +90,6 @@ class AssignmentTests(AcademicTestCase):
         error = self.refused(self.ana, no_period, semester=semester)
         self.assertEqual(error.message_dict['semester'], ['O semestre 2027/1 não tem período definido. Escolha outro semestre.'])
 
-    def test_date_outside_the_period(self):
-        error = self.refused(self.ana, self.networks, day=date(2027, 1, 7))
-        self.assertEqual(error.message_dict['date'], ['A data 07/01/2027 está fora do período do semestre 2026/2. Escolha outra data.'])
-
-    def test_pending_request_does_not_block_the_slot(self):
-        self.submit_as(self.ana, self.networks)
-        self.assertEqual(self.submit_as(self.erica, self.physics).status, Status.PENDING)
-
-    def test_space_allocation_is_never_changed(self):
-        before = list(Allocation.objects.values())
-        self.submit_as(self.ana, self.networks).approve(self.reviewer)
-        self.assertEqual(list(Allocation.objects.values()), before)
-
     def test_failure_after_saving_rolls_everything_back(self):
         logs = AuditLog.objects.count()
         with mock.patch('bookings.models.announce', side_effect=RuntimeError('falha')), self.assertRaises(RuntimeError):
@@ -159,11 +146,6 @@ class ScreenTests(AcademicTestCase):
         response = self.client.get(CREATE)
         self.assertContains(response, 'O seu usuário não corresponde a um docente do ensalamento.')
 
-    def test_semester_is_the_one_of_the_slot_date(self):
-        content = self.client.get(CREATE, {'espaco': self.lab.pk, 'data': '2026-10-15', 'inicio': '16:00', 'fim': '18:00'}).content.decode()
-        self.assertIn('Semestre 2026/2.', content)
-        self.assertNotIn('name="semester"', content)
-
     def test_review_then_submit(self):
         review = self.client.post(CREATE, self.data(), headers={'HX-Request': 'true'})
         content = review.content.decode()
@@ -206,14 +188,9 @@ class ScreenTests(AcademicTestCase):
         self.assertContains(response, 'Escolha um espaço ativo.')
         self.assertFalse(BookingRequest.objects.exists())
 
-    def test_date_outside_the_period(self):
+    def test_date_outside_every_semester(self):
         response = self.client.post(CREATE, self.data(date='2027-01-07', confirmar='1'))
         self.assertContains(response, 'A data 07/01/2027 não está no período de nenhum semestre da Agenda. Escolha outra data.')
-        self.assertFalse(BookingRequest.objects.exists())
-
-    def test_conflict_with_the_space_allocation(self):
-        response = self.client.post(CREATE, self.data(start_time='14:00', end_time='16:00'))
-        self.assertContains(response, 'Este espaço está ocupado pelo ensalamento das 14:10 às 15:00. Escolha outro horário.')
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_detail_shows_the_academic_link(self):

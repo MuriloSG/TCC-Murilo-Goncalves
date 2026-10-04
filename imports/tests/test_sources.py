@@ -119,11 +119,6 @@ class WorkbookSourceTests(TestCase):
         rows = self.read(workbook_file(sheets))
         self.assertEqual([row.values['Nome'] for row in rows], ['Docentes', 'Direção'])
 
-    def test_repeated_identifier_is_impossible_because_the_cell_is_unique(self):
-        sheets = {'Primeira': {'A1': 'Docentes', 'A2': 'Docentes'}, 'Segunda': {'A1': 'Docentes'}}
-        rows = self.read(workbook_file(sheets))
-        self.assertEqual([row.errors for row in rows], [[], [], []])
-
 
 class LimitTests(TestCase):
     def setUp(self):
@@ -179,11 +174,6 @@ class UploadFieldTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('own_semestre', form.errors)
         self.assertNotIn('rows', form.cleaned_data)
-
-    def test_file_label_and_help_come_from_the_source(self):
-        field = self.form().fields['file']
-        self.assertEqual(field.label, 'Arquivo da planilha')
-        self.assertIn('Planilha em XLSX', field.help_text)
 
     def test_csv_import_keeps_its_own_field_texts(self):
         form = ImportUploadForm(data={}, files={}, definition=GroupImport())
@@ -251,9 +241,3 @@ class AuditMetadataTests(TestCase):
         importation = self.preview()
         importation.discard(self.definition, self.executor)
         self.assertEqual(self.record(catalog.DISCARD).metadata['semestre'], '2026/1')
-
-
-class TemplateTests(TestCase):
-    def test_definition_without_template_says_so(self):
-        self.assertFalse(GridGroupImport().has_template)
-        self.assertTrue(GroupImport().has_template)

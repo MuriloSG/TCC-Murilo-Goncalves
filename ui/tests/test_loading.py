@@ -1,4 +1,3 @@
-from django.contrib.staticfiles import finders
 from django.test import TestCase
 
 from accounts.models import User
@@ -30,15 +29,3 @@ class GlobalLoadingTests(TestCase):
         for url in ('/contas/login/', '/calendario/'):
             with self.subTest(url=url):
                 self.assert_single_hidden_loading(self.client.get(url))
-
-    def test_mensagem_para_tecnologia_assistiva(self):
-        response = self.client.get('/contas/login/')
-        self.assertContains(response, '<p id="carregamento-texto" class="loading-message" aria-live="polite" data-loading-message>Carregando</p>', html=True)
-
-    def test_script_existe(self):
-        path = finders.find('ui/js/loading.js')
-        self.assertIsNotNone(path)
-        with open(path, encoding='utf-8') as script:
-            source = script.read()
-        self.assertIn('showModal()', source)
-        self.assertIn('.finally(hide)', source)

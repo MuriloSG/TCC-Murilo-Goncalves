@@ -2,7 +2,6 @@
 (Change relacionar-professor-disciplina-turma)."""
 
 from datetime import date, time
-from importlib import import_module
 
 from django.test import TestCase
 
@@ -19,9 +18,6 @@ from schedule.models import (
     Weekday,
 )
 from schedule.tests.test_timetable import allocate
-
-backfill = import_module('schedule.migrations.0008_backfill_class_offering')
-
 
 def record(allocation):
     return ClassOffering.objects.record(allocation.semester, allocation.subject, allocation.class_group)

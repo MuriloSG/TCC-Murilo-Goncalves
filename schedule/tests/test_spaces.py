@@ -1,5 +1,4 @@
 from datetime import time
-from importlib import import_module
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -21,9 +20,6 @@ from schedule.models import (
     Weekday,
 )
 from schedule.tests.test_timetable import allocate
-
-adoption = import_module('schedule.migrations.0004_adopt_existing_spaces')
-
 
 def space_records(action):
     return AuditLog.objects.filter(resource=catalog.SPACE, action=action)

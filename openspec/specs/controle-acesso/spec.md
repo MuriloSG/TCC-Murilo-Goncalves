@@ -128,7 +128,7 @@ Cada funcionalidade protegida por permissão DEVE (MUST) exigir exatamente a per
 - **AND** o acesso à lista de usuários continua recusado com 403
 
 ### Requirement: Autenticação exigida para funcionalidades protegidas
-Toda funcionalidade protegida DEVE (MUST) exigir um usuário autenticado. Um visitante não autenticado NÃO DEVE (MUST NOT) acessar funcionalidade protegida, inclusive quando conhecer ou digitar diretamente a URL, e NÃO DEVE (MUST NOT) ter nenhuma permissão. Ao tentar acessar uma funcionalidade protegida, o visitante DEVE (MUST) ser redirecionado para a página de login, com a indicação da página solicitada, conforme o comportamento definido no design. Estar autenticado NÃO DEVE (MUST NOT) implicar a posse de qualquer permissão: a autenticação identifica o usuário, e a autorização decide, em seguida, se ele pode executar a funcionalidade. Os fluxos de login, logout e recuperação de senha seguem a spec `autenticacao`. As rotas públicas desse fluxo, isto é, o login e as etapas da recuperação de senha definidas no design, NÃO DEVEM (MUST NOT) ser tratadas como funcionalidades protegidas por permissão. O calendário público do ensalamento, na rota `calendario/`, também é rota pública: NÃO DEVE (MUST NOT) exigir autenticação nem permissão, e segue a spec `calendario-publico`. Nenhuma outra rota DEVE (MUST) deixar de ser protegida por causa dele.
+Toda funcionalidade protegida DEVE (MUST) exigir um usuário autenticado. Um visitante não autenticado NÃO DEVE (MUST NOT) acessar funcionalidade protegida, inclusive quando conhecer ou digitar diretamente a URL, e NÃO DEVE (MUST NOT) ter nenhuma permissão. Ao tentar acessar uma funcionalidade protegida, o visitante DEVE (MUST) ser redirecionado para a página de login, com a indicação da página solicitada, conforme o comportamento definido no design. Estar autenticado NÃO DEVE (MUST NOT) implicar a posse de qualquer permissão: a autenticação identifica o usuário, e a autorização decide, em seguida, se ele pode executar a funcionalidade. Os fluxos de login, logout e recuperação de senha seguem a spec `autenticacao`. As rotas públicas desse fluxo, isto é, o login e as etapas da recuperação de senha definidas no design, NÃO DEVEM (MUST NOT) ser tratadas como funcionalidades protegidas por permissão. O calendário público do ensalamento, na raiz da aplicação (`/`), também é rota pública: NÃO DEVE (MUST NOT) exigir autenticação nem permissão, e segue a spec `calendario-publico`. Nenhuma outra rota DEVE (MUST) deixar de ser protegida por causa dele.
 
 #### Scenario: Visitante acessa URL protegida diretamente
 - **GIVEN** um visitante não autenticado
@@ -153,7 +153,7 @@ Toda funcionalidade protegida DEVE (MUST) exigir um usuário autenticado. Um vis
 
 #### Scenario: Calendário público sem autenticação
 - **GIVEN** um visitante não autenticado
-- **WHEN** ele acessa `calendario/`
+- **WHEN** ele acessa a raiz (`/`)
 - **THEN** o calendário público é exibido, sem redirecionamento para a página de login
 - **AND** o acesso a `ensalamento/` continua redirecionando para a página de login
 

@@ -181,7 +181,7 @@ class BrandTests(LayoutTestCase):
     )
 
     def test_titulo_e_icone_em_toda_pagina(self):
-        for user, url in ((None, '/contas/login/'), (None, '/calendario/'), (self.admin, '/inicio/')):
+        for user, url in ((None, '/contas/login/'), (None, '/'), (self.admin, '/inicio/')):
             with self.subTest(url=url):
                 if user:
                     self.client.force_login(user)

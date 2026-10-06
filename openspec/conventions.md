@@ -35,7 +35,7 @@ A referência de implementação é o app `accounts`.
 - As permissões são constantes do catálogo no `permissions.py` do app, no formato `RECURSO.ACAO`, e entram no banco por migration de dados.
 - Views e templates **nunca** decidem acesso pelo código, pelo nome ou pela marca de sistema do perfil, nem por `is_superadmin`. O único ponto de decisão é `User.has_perm`.
 - Nos templates, `perms.RECURSO.ACAO` serve **só** para mostrar ou esconder links e botões.
-- **Rota pública** (Change `calendario-publico`): a única rota aberta sem login além do fluxo de autenticação é `calendario/`. Ela tem view, formulário, consulta, templates e layout (`ui/layouts/public.html`) próprios, não declara `permission_required` nem `audit_resource`, não lê `request.user` e só aceita GET e HEAD. Nenhuma view autenticada é aberta por reaproveitamento. Rate limit e cache da rota pública ficam no proxy de produção, e não no código.
+- **Rota pública** (Change `calendario-publico`): a única rota aberta sem login além do fluxo de autenticação é a raiz da aplicação (`/`). Ela tem view, formulário, consulta, templates e layout (`ui/layouts/public.html`) próprios, não declara `permission_required` nem `audit_resource`, não lê `request.user` e só aceita GET e HEAD. Nenhuma view autenticada é aberta por reaproveitamento. Rate limit e cache da rota pública ficam no proxy de produção, e não no código.
 
 ## 5. Organização do código
 

@@ -26,6 +26,6 @@ class GlobalLoadingTests(TestCase):
         self.assert_single_hidden_loading(self.client.get('/inicio/', follow=True))
 
     def test_login_e_calendario_publico(self):
-        for url in ('/contas/login/', '/calendario/'):
+        for url in ('/contas/login/', '/'):
             with self.subTest(url=url):
                 self.assert_single_hidden_loading(self.client.get(url))

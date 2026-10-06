@@ -5,8 +5,8 @@ O calendário público DEVE (MUST) ter view, formulário, consulta, templates e 
 
 #### Scenario: Visitante acessa só a rota pública
 - **GIVEN** um visitante não autenticado
-- **WHEN** ele acessa `calendario/` e depois `ensalamento/`
-- **THEN** `calendario/` responde 200
+- **WHEN** ele acessa a raiz (`/`) e depois `ensalamento/`
+- **THEN** a raiz (`/`) responde 200
 - **AND** `ensalamento/` redireciona para a página de login com a indicação da página solicitada
 
 #### Scenario: Grade autenticada protegida como antes

@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from schedule import public_views, views
 
 urlpatterns = [
-    path('calendario/', csrf_exempt(public_views.PublicCalendarView.as_view()), name='public_calendar'),
+    path('', csrf_exempt(public_views.PublicCalendarView.as_view()), name='public_calendar'),
     path('espacos/', login_required(views.SpaceListView.as_view()), name='spaces_list'),
     path('espacos/novo/', login_required(views.SpaceCreateView.as_view()), name='spaces_create'),
     path('espacos/<int:pk>/editar/', login_required(views.SpaceUpdateView.as_view()), name='spaces_update'),

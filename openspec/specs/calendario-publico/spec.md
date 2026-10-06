@@ -1,24 +1,24 @@
 # calendario-publico Specification
 
 ## Purpose
-Consulta pública do ensalamento, sem autenticação, na rota `calendario/`: filtros por semestre, sala, docente, curso, nível e datas, a Grade com os dados mínimos de cada aula e o isolamento da área autenticada.
+Consulta pública do ensalamento, sem autenticação, na raiz da aplicação (`/`): filtros por semestre, sala, docente, curso, nível e datas, a Grade com os dados mínimos de cada aula e o isolamento da área autenticada.
 ## Requirements
 ### Requirement: Rota pública do calendário
-O sistema DEVE (MUST) oferecer o calendário público na rota `calendario/`, acessível sem autenticação, só pelos métodos GET e HEAD. A rota NÃO DEVE (MUST NOT) usar `login_required`, e a view NÃO DEVE (MUST NOT) declarar `permission_required` nem `audit_resource`. Os demais métodos DEVEM (MUST) ser recusados com 405. Nenhuma permissão nova DEVE (MUST) ser criada para o acesso. O mesmo conteúdo DEVE (MUST) ser entregue a visitantes e a usuários autenticados. A página DEVE (MUST) ter `<meta name="robots" content="noindex">`.
+O sistema DEVE (MUST) oferecer o calendário público na raiz da aplicação (`/`), acessível sem autenticação, só pelos métodos GET e HEAD. A rota NÃO DEVE (MUST NOT) usar `login_required`, e a view NÃO DEVE (MUST NOT) declarar `permission_required` nem `audit_resource`. Os demais métodos DEVEM (MUST) ser recusados com 405. Nenhuma permissão nova DEVE (MUST) ser criada para o acesso. O mesmo conteúdo DEVE (MUST) ser entregue a visitantes e a usuários autenticados. A página DEVE (MUST) ter `<meta name="robots" content="noindex">`.
 
 #### Scenario: Visitante abre o calendário
 - **GIVEN** um visitante não autenticado
-- **WHEN** ele acessa `calendario/`
+- **WHEN** ele acessa a raiz (`/`)
 - **THEN** a resposta é 200 com o calendário público
 - **AND** ele não é redirecionado para a página de login
 
 #### Scenario: Usuário autenticado vê o mesmo calendário
 - **GIVEN** um usuário autenticado sem nenhuma permissão
-- **WHEN** ele acessa `calendario/` com os mesmos filtros de um visitante
+- **WHEN** ele acessa a raiz (`/`) com os mesmos filtros de um visitante
 - **THEN** o conteúdo do calendário é o mesmo entregue ao visitante
 
 #### Scenario: Método de escrita recusado
-- **WHEN** um visitante envia POST para `calendario/`
+- **WHEN** um visitante envia POST para a raiz (`/`)
 - **THEN** a resposta é 405 e nada é gravado
 
 #### Scenario: Página fora dos buscadores
@@ -30,8 +30,8 @@ O calendário público DEVE (MUST) ter view, formulário, consulta, templates e 
 
 #### Scenario: Visitante acessa só a rota pública
 - **GIVEN** um visitante não autenticado
-- **WHEN** ele acessa `calendario/` e depois `ensalamento/`
-- **THEN** `calendario/` responde 200
+- **WHEN** ele acessa a raiz (`/`) e depois `ensalamento/`
+- **THEN** a raiz (`/`) responde 200
 - **AND** `ensalamento/` redireciona para a página de login com a indicação da página solicitada
 
 #### Scenario: Grade autenticada protegida como antes
@@ -127,7 +127,7 @@ O calendário público DEVE (MUST) aceitar pela URL os filtros `semestre` (códi
 As aulas só DEVEM (MUST) ser consultadas quando há uma sala, um docente ou um curso válido nos filtros. Sem nenhum deles, a página DEVE (MUST) mostrar "Escolha uma sala, um docente ou um curso." e NÃO DEVE (MUST NOT) consultar faixas, aulas nem e-mails, mesmo com semestre, nível e datas informados.
 
 #### Scenario: Primeira visita
-- **WHEN** um visitante abre `calendario/` sem parâmetros
+- **WHEN** um visitante abre a raiz (`/`) sem parâmetros
 - **THEN** a página mostra os filtros e "Escolha uma sala, um docente ou um curso."
 - **AND** nenhuma alocação é consultada
 

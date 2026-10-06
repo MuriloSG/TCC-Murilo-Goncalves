@@ -1,6 +1,6 @@
 ## Context
 
-O calendário público (`calendario/`, Change arquivada `2026-09-26-calendario-publico`) é uma `<table>` com as faixas de horário nas linhas e os dias úteis do intervalo nas colunas, com até 31 dias. Ele reaproveita o CSS da Grade mensal (`.timetable-scroll.is-month`, `.timetable-grid.is-month`): coluna de horários fixa com `--spacing-16`, cabeçalho dos dias fixo no topo e coluna de dia com `calc(var(--spacing-16) * 2 + var(--spacing-5))`, cerca de 148 px. O `calendar.js` rola a área até a coluna de "Hoje" e marca `aria-busy` durante a requisição do htmx.
+O calendário público (raiz da aplicação, `/`; Change arquivada `2026-09-26-calendario-publico`) é uma `<table>` com as faixas de horário nas linhas e os dias úteis do intervalo nas colunas, com até 31 dias. Ele reaproveita o CSS da Grade mensal (`.timetable-scroll.is-month`, `.timetable-grid.is-month`): coluna de horários fixa com `--spacing-16`, cabeçalho dos dias fixo no topo e coluna de dia com `calc(var(--spacing-16) * 2 + var(--spacing-5))`, cerca de 148 px. O `calendar.js` rola a área até a coluna de "Hoje" e marca `aria-busy` durante a requisição do htmx.
 
 Numa tela de 360 px, a área útil tem cerca de 326 px. Descontados os 64 px dos horários, cabe um dia e meio, e a rolagem livre para no meio das colunas. Os filtros, empilhados, ocupam a primeira tela.
 

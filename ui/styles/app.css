@@ -4113,7 +4113,7 @@
     }
 
     .is-collapsed .sidebar {
-      overflow: visible;
+      overflow-y: auto;
       padding-inline: var(--spacing-4);
 
       & .brand {
@@ -4132,31 +4132,28 @@
         white-space: nowrap;
       }
 
-      & .side-nav a {
+      & .side-nav a,
+      & .nav-group > summary {
         position: relative;
         justify-content: center;
         padding-inline: 0;
       }
 
-      & .nav-group > summary {
+      & .nav-group > summary .nav-chevron {
         display: none;
       }
 
-      & .nav-group::details-content {
-        content-visibility: visible;
-        display: contents;
-      }
-
       & .nav-sub {
-        margin: 0;
-        padding: 0;
-        border: 0;
+        margin: var(--spacing-1) 0 0;
+        padding: var(--spacing-1) 0 0;
+        border-left: 0;
+        border-top: 2px solid var(--color-sidebar-border);
       }
 
       & .nav-text {
-        position: absolute;
-        top: 50%;
-        left: calc(100% + var(--spacing-3));
+        position: fixed;
+        top: var(--tooltip-top, 0);
+        left: var(--tooltip-left, 0);
         z-index: 30;
         translate: 0 -50%;
         padding: var(--spacing-1) var(--spacing-2);
@@ -4173,7 +4170,9 @@
       }
 
       & .side-nav a:hover .nav-text,
-      & .side-nav a:focus-visible .nav-text {
+      & .side-nav a:focus-visible .nav-text,
+      & .nav-group > summary:hover .nav-text,
+      & .nav-group > summary:focus-visible .nav-text {
         opacity: 1;
       }
 

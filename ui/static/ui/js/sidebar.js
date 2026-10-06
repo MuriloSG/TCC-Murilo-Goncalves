@@ -19,6 +19,19 @@
     sync();
   });
 
+  shell.addEventListener("pointerover", place);
+  shell.addEventListener("focusin", place);
+
+  function place(event) {
+    var item = event.target.closest(".side-nav a, .nav-group > summary");
+    if (!item || !shell.classList.contains("is-collapsed")) {
+      return;
+    }
+    var box = item.getBoundingClientRect();
+    item.style.setProperty("--tooltip-top", box.top + box.height / 2 + "px");
+    item.style.setProperty("--tooltip-left", box.right + 12 + "px");
+  }
+
   button.hidden = false;
   sync();
 })();

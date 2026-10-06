@@ -21,6 +21,7 @@
       <div><span class="request-icon">{% icon "door-open" %}</span><dt>Espaço</dt><dd>{{ target.space.name }}</dd></div>
       <div><span class="request-icon">{% icon "clock" %}</span><dt>Data e horário</dt><dd>{{ target.date|date:"SHORT_DATE_FORMAT" }}<span class="request-detail">das {{ target.start_time|time }} às {{ target.end_time|time }}</span></dd></div>
       <div><span class="request-icon">{% icon "scroll-text" %}</span><dt>Descrição</dt><dd>{{ target.description }}</dd></div>
+      <div><span class="request-icon">{% icon "users-round" %}</span><dt>Quantidade de alunos</dt><dd>{{ target.student_count|default:"—" }}</dd></div>
     </dl>
   </section>
 

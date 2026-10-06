@@ -53,6 +53,14 @@ class SubmitTests(BookingTestCase):
         self.assertEqual(submit(self.ana, self.lab, description='  Reunião  ').description, 'Reunião')
         self.assertEqual(BookingRequest.objects.count(), 1)
 
+    def test_student_count_is_required_and_positive(self):
+        for count in (None, 0, 1000):
+            with self.subTest(count=count), self.assert_refused() as caught:
+                submit(self.ana, self.lab, student_count=count)
+            self.assertIn('student_count', caught.exception.message_dict)
+        self.assertEqual(submit(self.ana, self.lab, student_count=35).student_count, 35)
+        self.assertEqual(BookingRequest.objects.count(), 1)
+
     def test_end_must_follow_start(self):
         for start, end in ((time(16, 0), time(14, 0)), (time(16, 0), time(16, 0))):
             with self.subTest(start=start, end=end), self.assert_refused() as caught:

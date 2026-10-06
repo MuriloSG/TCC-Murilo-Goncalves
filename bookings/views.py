@@ -188,7 +188,7 @@ def request_related(queryset):
     )
 
 
-REQUEST_FIELDS = ('subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description')
+REQUEST_FIELDS = ('subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description', 'student_count')
 
 
 class BookingRequestCreateView(OperationFormView):
@@ -239,7 +239,7 @@ class BookingRequestCreateView(OperationFormView):
         data = form.cleaned_data
         return [
             self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
-            form.semester, data['teaching_assignment'], None, None, data['subject'],
+            data['student_count'], form.semester, data['teaching_assignment'], None, None, data['subject'],
         ]
 
     def form_valid(self, form):
@@ -299,7 +299,7 @@ class BookingOnBehalfCreateView(BookingRequestCreateView):
         data = form.cleaned_data
         return [
             self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
-            form.semester, data['teaching_assignment'], data['requested_for'], data['course'], data['subject'],
+            data['student_count'], form.semester, data['teaching_assignment'], data['requested_for'], data['course'], data['subject'],
         ]
 
 

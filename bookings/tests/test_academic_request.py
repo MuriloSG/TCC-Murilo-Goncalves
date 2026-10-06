@@ -39,10 +39,10 @@ class AcademicTestCase(TestCase):
         self.semester = self.networks.offering.semester
 
     def submit_as(self, user, assignment, semester=None, **overrides):
-        values = {'day': THURSDAY, 'start': time(16, 0), 'end': time(18, 0), 'description': 'Reunião do projeto.'} | overrides
+        values = {'day': THURSDAY, 'start': time(16, 0), 'end': time(18, 0), 'description': 'Reunião do projeto.', 'students': 30} | overrides
         return BookingRequest.objects.submit(
             user, self.lab, values['day'], values['start'], values['end'], values['description'],
-            semester or self.semester, assignment,
+            values['students'], semester or self.semester, assignment,
         )
 
     def refused(self, *arguments, **overrides):
@@ -79,7 +79,7 @@ class AssignmentTests(AcademicTestCase):
 
     def test_missing_semester_and_class_group(self):
         with self.assertRaises(ValidationError) as caught:
-            BookingRequest.objects.submit(self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0), 'Reunião.', None, None)
+            BookingRequest.objects.submit(self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0), 'Reunião.', 30, None, None)
         self.assertEqual(set(caught.exception.message_dict), {'semester', 'teaching_assignment'})
 
     def test_semester_without_period(self):
@@ -108,7 +108,7 @@ class ScreenTests(AcademicTestCase):
             'subject': self.networks.offering.subject_id,
             'teaching_assignment': self.networks.pk,
             'space': self.lab.pk, 'date': '2026-10-15', 'start_time': '16:00', 'end_time': '18:00',
-            'description': 'Reunião do projeto de extensão com os alunos.',
+            'description': 'Reunião do projeto de extensão com os alunos.', 'student_count': '30',
         } | values
 
     def refresh(self, **query):
@@ -208,7 +208,7 @@ class SubjectCheckTests(AcademicTestCase):
     def test_forged_subject_is_refused_by_the_model(self):
         with self.assertRaises(ValidationError) as caught:
             BookingRequest.objects.submit(
-                self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0), 'Reunião.', self.semester, self.networks,
+                self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0), 'Reunião.', 30, self.semester, self.networks,
                 subject=self.databases.offering.subject,
             )
         self.assertIn('teaching_assignment', caught.exception.message_dict)

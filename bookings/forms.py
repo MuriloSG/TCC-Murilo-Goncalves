@@ -22,6 +22,9 @@ from bookings.models import (
     REASON_MAX_LENGTH,
     REASON_REQUIRED_MESSAGE,
     REQUESTER_REQUIRED_MESSAGE,
+    STUDENT_COUNT_MAX,
+    STUDENT_COUNT_RANGE_MESSAGE,
+    STUDENT_COUNT_REQUIRED_MESSAGE,
     SUBJECT_REQUIRED_MESSAGE,
 )
 from schedule.forms import GridFilterForm
@@ -117,6 +120,18 @@ class BookingRequestForm(forms.Form):
         help_text='O que será feito no espaço, em uma ou duas frases.',
         widget=forms.Textarea(attrs={'rows': 3}),
         error_messages={'required': DESCRIPTION_REQUIRED_MESSAGE},
+    )
+    student_count = forms.IntegerField(
+        label='Quantidade de alunos',
+        min_value=1,
+        max_value=STUDENT_COUNT_MAX,
+        widget=forms.NumberInput(attrs={'class': 'input', 'inputmode': 'numeric'}),
+        error_messages={
+            'required': STUDENT_COUNT_REQUIRED_MESSAGE,
+            'invalid': STUDENT_COUNT_RANGE_MESSAGE,
+            'min_value': STUDENT_COUNT_RANGE_MESSAGE,
+            'max_value': STUDENT_COUNT_RANGE_MESSAGE,
+        },
     )
 
     DEPENDENTS = {}
@@ -247,7 +262,7 @@ class BookingOnBehalfForm(BookingRequestForm):
     )
 
     field_order = [
-        'requested_for', 'course', 'subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description',
+        'requested_for', 'course', 'subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description', 'student_count',
     ]
 
     def __init__(self, *args, **kwargs):

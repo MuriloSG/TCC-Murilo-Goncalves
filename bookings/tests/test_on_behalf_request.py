@@ -57,10 +57,10 @@ class OnBehalfTestCase(TestCase):
         self.chem = self.chemistry.offering.subject
 
     def submit_for(self, creator, requester, assignment, course=None, subject=None, **overrides):
-        values = {'day': THURSDAY, 'start': time(16, 0), 'end': time(18, 0), 'description': DESCRIPTION} | overrides
+        values = {'day': THURSDAY, 'start': time(16, 0), 'end': time(18, 0), 'description': DESCRIPTION, 'students': 30} | overrides
         return BookingRequest.objects.submit(
             creator, self.lab, values['day'], values['start'], values['end'], values['description'],
-            self.semester, assignment, requester,
+            values['students'], self.semester, assignment, requester,
             course or assignment.offering.class_group.course, subject or assignment.offering.subject,
         )
 
@@ -77,7 +77,7 @@ class OnBehalfTestCase(TestCase):
             'subject': self.redes.pk,
             'teaching_assignment': self.networks.pk,
             'space': self.lab.pk, 'date': '2026-10-15', 'start_time': '16:00', 'end_time': '18:00',
-            'description': DESCRIPTION,
+            'description': DESCRIPTION, 'student_count': '30',
         } | values
 
     def refresh(self, trigger='', **query):

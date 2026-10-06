@@ -85,7 +85,7 @@ class DetailTests(ReviewTestCase):
         content = self.client.get(url('agenda_review_detail', self.request)).content.decode()
         for text in (
             self.ana.name, 'ana@ifnmg.edu.br', 'Laboratório de Informática 2', '15/10/2026, das 16:00 às 18:00',
-            'Reunião do projeto de extensão com os alunos.', 'Pendente', 'Solicitação criada', 'Aprovar', 'Rejeitar', 'Sugerir alternativa',
+            'Reunião do projeto de extensão com os alunos.', 'Quantidade de alunos', 'Pendente', 'Solicitação criada', 'Aprovar', 'Rejeitar', 'Sugerir alternativa',
         ):
             with self.subTest(text=text):
                 self.assertIn(text, content)
@@ -109,7 +109,7 @@ class DecisionTests(ReviewTestCase):
         self.assertRedirects(response, url('agenda_review_detail', self.request), fetch_redirect_response=False)
         self.request.refresh_from_db()
         self.assertEqual(self.request.status, Status.APPROVED)
-        self.assertTrue(Booking.objects.filter(request=self.request).exists())
+        self.assertEqual(Booking.objects.get(request=self.request).student_count, 30)
 
     def test_approve_a_slot_taken_after_the_request(self):
         other = submit(self.bruno, self.lab)

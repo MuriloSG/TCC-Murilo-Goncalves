@@ -30,6 +30,7 @@ class AuditTests(BookingTestCase):
             'data': '2026-10-15',
             'horario': '16:00 às 18:00',
             'description': 'Reunião do projeto de extensão com os alunos.',
+            'quantidade_alunos': 30,
         })
 
     def test_approval_records_the_transition_and_the_booking(self):

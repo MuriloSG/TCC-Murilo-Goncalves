@@ -66,11 +66,12 @@ def academic(teacher='Viviane', subject='Redes', label='2º ANO A', code='2026/2
     return assignment
 
 
-def submit(user, space, day=THURSDAY, start=time(16, 0), end=time(18, 0), description='Reunião do projeto de extensão com os alunos.', assignment=None):
+def submit(user, space, day=THURSDAY, start=time(16, 0), end=time(18, 0), description='Reunião do projeto de extensão com os alunos.', assignment=None,
+           student_count=30):
     """Solicitação do usuário para uma turma dele, que é o docente de nome igual ao `username`."""
     assignment = assignment or academic(teacher=user.username)
     return BookingRequest.objects.submit(
-        user, space, day, start, end, description, assignment.offering.semester, assignment,
+        user, space, day, start, end, description, student_count, assignment.offering.semester, assignment,
     )
 
 

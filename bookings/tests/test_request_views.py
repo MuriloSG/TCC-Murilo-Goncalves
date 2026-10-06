@@ -33,7 +33,7 @@ class RequestScreenTestCase(TestCase):
             'subject': self.offering.subject_id,
             'teaching_assignment': self.assignment.pk,
             'space': self.lab.pk, 'date': '2026-10-15', 'start_time': '16:00', 'end_time': '18:00',
-            'description': 'Reunião do projeto de extensão com os alunos.', 'confirmar': '1',
+            'description': 'Reunião do projeto de extensão com os alunos.', 'student_count': '30', 'confirmar': '1',
         } | values
 
     def suggested(self, owner=None):
@@ -92,6 +92,15 @@ class CreateTests(RequestScreenTestCase):
                 response = self.client.post(CREATE, self.data(description=description))
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'Informe a descrição do uso do espaço.')
+        self.assertFalse(BookingRequest.objects.exists())
+
+    def test_student_count_is_required(self):
+        self.client.force_login(self.ana)
+        for count, message in (('', 'Informe a quantidade de alunos.'), ('0', 'Informe uma quantidade de alunos entre 1 e 999.')):
+            with self.subTest(count=count):
+                response = self.client.post(CREATE, self.data(student_count=count))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, message)
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_conflict_with_the_space_allocation(self):

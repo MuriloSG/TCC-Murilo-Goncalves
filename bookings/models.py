@@ -18,6 +18,7 @@ from django.conf import settings
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import DateTimeRangeField, RangeBoundary, RangeOperators
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Func, Q
 from django.utils import timezone
@@ -33,8 +34,11 @@ from schedule.models import Space, TeachingAssignment, teacher_of
 
 DESCRIPTION_MAX_LENGTH = 500
 REASON_MAX_LENGTH = 500
+STUDENT_COUNT_MAX = 999
 
 DESCRIPTION_REQUIRED_MESSAGE = 'Informe a descrição do uso do espaço.'
+STUDENT_COUNT_REQUIRED_MESSAGE = 'Informe a quantidade de alunos.'
+STUDENT_COUNT_RANGE_MESSAGE = f'Informe uma quantidade de alunos entre 1 e {STUDENT_COUNT_MAX}.'
 REASON_REQUIRED_MESSAGE = 'Informe o motivo da rejeição.'
 END_BEFORE_START_MESSAGE = 'O fim deve ser posterior ao início.'
 PAST_MESSAGE = 'Este horário já passou. Escolha um horário futuro.'
@@ -184,7 +188,7 @@ def check_period(semester, day):
 
 class BookingRequestManager(models.Manager):
     def prepare(
-        self, user, space, day, start, end, description, semester=None, assignment=None,
+        self, user, space, day, start, end, description, student_count=None, semester=None, assignment=None,
         requester=None, course=None, subject=None,
     ):
         """Confere a solicitação e a devolve sem gravar.
@@ -205,9 +209,11 @@ class BookingRequestManager(models.Manager):
         check_period(semester, day)
         request = self.model(
             requested_by=requester, created_by=user if on_behalf else None, space=space, date=day,
-            start_time=start, end_time=end, description=(description or '').strip(),
+            start_time=start, end_time=end, description=(description or '').strip(), student_count=student_count,
             status=self.model.Status.PENDING, teaching_assignment=assignment,
         )
+        if student_count is None:
+            raise ValidationError({'student_count': ValidationError(STUDENT_COUNT_REQUIRED_MESSAGE, code='required')})
         request.full_clean(
             exclude=['requested_by', 'created_by', 'space', 'teaching_assignment'], validate_constraints=False,
         )
@@ -215,7 +221,7 @@ class BookingRequestManager(models.Manager):
         return request
 
     def submit(
-        self, user, space, day, start, end, description, semester=None, assignment=None,
+        self, user, space, day, start, end, description, student_count=None, semester=None, assignment=None,
         requester=None, course=None, subject=None,
     ):
         """Cria a solicitação `PENDENTE`, sem criar agendamento nem ocupar o horário.
@@ -225,7 +231,7 @@ class BookingRequestManager(models.Manager):
         """
         with transaction.atomic():
             request = self.prepare(
-                user, space, day, start, end, description, semester, assignment, requester, course, subject,
+                user, space, day, start, end, description, student_count, semester, assignment, requester, course, subject,
             )
             request.save()
             offering = request.teaching_assignment.offering
@@ -239,6 +245,7 @@ class BookingRequestManager(models.Manager):
                 'data': day.isoformat(),
                 'horario': hours(start, end),
                 'description': request.description,
+                'quantidade_alunos': request.student_count,
             }
             if request.created_by_id:
                 values['solicitante'] = request.requested_by.username
@@ -295,6 +302,14 @@ class BookingRequest(models.Model):
         'descrição',
         max_length=DESCRIPTION_MAX_LENGTH,
         error_messages={'blank': DESCRIPTION_REQUIRED_MESSAGE, 'required': DESCRIPTION_REQUIRED_MESSAGE},
+    )
+    student_count = models.PositiveSmallIntegerField(
+        'quantidade de alunos',
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(1, STUDENT_COUNT_RANGE_MESSAGE), MaxValueValidator(STUDENT_COUNT_MAX, STUDENT_COUNT_RANGE_MESSAGE),
+        ],
     )
     status = models.CharField('situação', max_length=20, choices=Status.choices, default=Status.PENDING)
     rejection_reason = models.CharField('motivo da rejeição', max_length=REASON_MAX_LENGTH, blank=True)
@@ -490,6 +505,7 @@ class BookingManager(models.Manager):
                     starts_at=moment(day, start),
                     ends_at=moment(day, end),
                     description=request.description,
+                    student_count=request.student_count,
                     requested_by_id=request.requested_by_id,
                     approved_by=approved_by,
                 )
@@ -514,6 +530,7 @@ class Booking(models.Model):
     starts_at = models.DateTimeField('início')
     ends_at = models.DateTimeField('fim')
     description = models.CharField('descrição', max_length=DESCRIPTION_MAX_LENGTH)
+    student_count = models.PositiveSmallIntegerField('quantidade de alunos', null=True, blank=True)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='solicitante',
     )

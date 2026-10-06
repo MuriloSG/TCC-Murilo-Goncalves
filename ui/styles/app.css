@@ -264,7 +264,9 @@
   --container-notifications: 24rem;
   --container-sidebar: 17rem;
   --container-rail: 5rem;
-  --container-modal: 32rem;
+  --container-auth: 32rem;
+  --container-modal: 48rem;
+  --container-modal-wide: 60rem;
   --container-form: 40rem;
   --container-page: 80rem;
   --container-page-wide: 96rem;
@@ -3977,7 +3979,7 @@
 
   .modal-page,
   dialog.modal-wide {
-    max-width: var(--container-form);
+    max-width: var(--container-modal-wide);
   }
 
   dialog.modal .modal-foot {
@@ -4966,7 +4968,7 @@
     font-weight: var(--font-weight-bold);
 
     @variant lg {
-      max-width: var(--container-modal);
+      max-width: var(--container-auth);
       font-size: var(--text-3xl);
       line-height: var(--text-3xl--line-height);
     }
@@ -4979,7 +4981,7 @@
     line-height: var(--text-sm--line-height);
 
     @variant lg {
-      max-width: var(--container-modal);
+      max-width: var(--container-auth);
       margin-top: var(--spacing-4);
       font-size: var(--text-base);
       line-height: var(--text-base--line-height);
@@ -5012,7 +5014,7 @@
     display: grid;
     gap: var(--spacing-6);
     width: 100%;
-    max-width: var(--container-modal);
+    max-width: var(--container-auth);
     margin-inline: auto;
   }
 

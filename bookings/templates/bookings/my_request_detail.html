@@ -16,7 +16,7 @@
     </div>
     {% if can_cancel %}
       <div class="page-actions">
-        <a class="btn-secondary" href="{% url 'agenda_my_request_cancel' target.pk %}" hx-get="{% url 'agenda_my_request_cancel' target.pk %}" hx-target="#modal">{% icon "calendar-x" %}Cancelar agendamento</a>
+        <a class="btn-danger" href="{% url 'agenda_my_request_cancel' target.pk %}" hx-get="{% url 'agenda_my_request_cancel' target.pk %}" hx-target="#modal">{% icon "calendar-x" %}Cancelar agendamento</a>
       </div>
     {% endif %}
     {% if target.awaits_response %}

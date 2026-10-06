@@ -1,11 +1,12 @@
 """Cadastro de uma aula recorrente pela interface (Change criar-recorrencia-do-ensalamento)."""
 
-from datetime import date, time
+from datetime import date, datetime, time
 from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts import permissions
 from accounts.models import User
@@ -59,9 +60,10 @@ class CreateTestCase(TestCase):
         cls.superadmin.refresh_from_db()
 
     def setUp(self):
-        patcher = mock.patch('django.utils.timezone.localdate', return_value=TODAY)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        for name, value in (('localdate', TODAY), ('now', timezone.make_aware(datetime.combine(TODAY, time(8, 0))))):
+            patcher = mock.patch(f'django.utils.timezone.{name}', return_value=value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def create(self, user=None, start=TUESDAY, end=None, start_time=time(13, 20), count=1, space=KEEP, teachers=None, subject=None, group=None):
         return Allocation.objects.create_recurrence(

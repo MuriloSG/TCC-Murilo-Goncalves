@@ -16,9 +16,10 @@ from audit.models import AuditLog
 from imports.models import Import
 from schedule.models import Allocation, Space, SpaceDecision
 from schedule.spaces import CELLS_ONLY, CREATE, INACTIVE, PENDING, SIMILAR, classify_import
-from schedule.tests.test_import import CONTENT_TYPE, ImportTestCase, workbook_file
+from schedule.tests.test_import import CONTENT_TYPE, ImportTestCase, space_manager, workbook_file
 
 SOURCES = settings.BASE_DIR / 'sources'
+CORRECTED = 'planilha_example_sugerida_corrigida.xlsx'
 SECONDARY_CELL = ('SEGUNDA-FEIRA', '13:20 - 14:10', 0)
 
 
@@ -54,7 +55,9 @@ class SpaceImportTestCase(ImportTestCase):
 
 class ClassificationTests(SpaceImportTestCase):
     def test_first_import_of_the_corrected_spreadsheet_proposes_every_listed_space(self):
-        importation = self.preview(real('planilha_example_corrigida.xlsx'))
+        """A planilha corrigida traz a aba de usuários, e cadastrá-los exige `USUARIO.CRIAR`."""
+        self.executor = space_manager('completo@ifnmg.edu.br', extra_permissions=[permissions.USER_CREATE])
+        importation = self.preview(real(CORRECTED))
         self.assertEqual(importation.status, Import.Status.PENDING)
         resolution = classify_import(importation)
         self.assertEqual(len(resolution.proposed), 85)
@@ -66,7 +69,7 @@ class ClassificationTests(SpaceImportTestCase):
         self.assertTrue(importation.confirm(self.definition, self.executor))
         self.assertEqual(Space.objects.count(), 86)
         self.assertEqual(set(Space.objects.values_list('origin', 'source_import')), {('PLANILHA', importation.pk)})
-        again = self.preview(real('planilha_example_corrigida.xlsx'))
+        again = self.preview(real(CORRECTED))
         resolution = classify_import(again)
         self.assertEqual((len(resolution.to_create), len(resolution.pending), len(resolution.recognized)), (0, 0, 86))
 

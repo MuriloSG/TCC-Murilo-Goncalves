@@ -1,7 +1,7 @@
 """Alteração da recorrência de uma aula a partir de uma data (Change alterar-recorrencia-do-ensalamento)."""
 
 import re
-from datetime import date, time
+from datetime import date, datetime, time
 from unittest import mock
 
 from django.core.exceptions import ValidationError
@@ -9,6 +9,7 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts import permissions
 from accounts.models import User
@@ -64,9 +65,10 @@ class RecurrenceTestCase(TestCase):
         cls.superadmin.refresh_from_db()
 
     def setUp(self):
-        patcher = mock.patch('django.utils.timezone.localdate', return_value=TODAY)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        for name, value in (('localdate', TODAY), ('now', timezone.make_aware(datetime.combine(TODAY, time(8, 0))))):
+            patcher = mock.patch(f'django.utils.timezone.{name}', return_value=value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def change(self, user=None, cut=CUT, weekday=Weekday.MONDAY, start=time(10, 0), space=None, teachers=None, allocations=None):
         allocations = allocations or (self.first, self.second)

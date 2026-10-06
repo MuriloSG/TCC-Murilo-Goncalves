@@ -1,4 +1,4 @@
-"""Formulários da Agenda: a solicitação, a rejeição e a alternativa sugerida.
+"""Formulários da Agenda: a solicitação, a rejeição, a alternativa sugerida e o cancelamento.
 
 Os campos têm os nomes dos campos do model, para que a recusa de uma operação volte ao
 campo certo pelo `add_operation_error`. A faixa da Grade preenche o espaço, a data e o
@@ -315,6 +315,16 @@ class RejectForm(forms.Form):
         help_text='O motivo aparece para quem solicitou.',
         widget=forms.Textarea(attrs={'rows': 3}),
         error_messages={'required': REASON_REQUIRED_MESSAGE},
+    )
+
+
+class CancelForm(forms.Form):
+    cancellation_reason = forms.CharField(
+        label='Motivo do cancelamento',
+        required=False,
+        max_length=REASON_MAX_LENGTH,
+        help_text='Opcional. O motivo aparece no detalhe da solicitação.',
+        widget=forms.Textarea(attrs={'rows': 3}),
     )
 
 

@@ -1,4 +1,4 @@
-{% load ui %}<div class="request-layout{% if target.has_suggestion or target.rejection_reason %} has-aside{% endif %}">
+{% load ui %}<div class="request-layout{% if target.has_suggestion or target.rejection_reason or target.cancelled_at %} has-aside{% endif %}">
   <section class="card request-card" aria-labelledby="resumo-titulo">
     <div class="request-head">
       <div>
@@ -25,9 +25,9 @@
     </dl>
   </section>
 
-  {% if target.has_suggestion or target.rejection_reason %}
+  {% if target.has_suggestion or target.rejection_reason or target.cancelled_at %}
     <section class="card request-card" aria-labelledby="retorno-titulo">
-      <p class="eyebrow">Retorno da análise</p>
+      <p class="eyebrow">{% if target.has_suggestion or target.rejection_reason %}Retorno da análise{% else %}Encerramento{% endif %}</p>
       {% if target.has_suggestion %}
         <h2 class="request-title" id="retorno-titulo">Alternativa sugerida</h2>
         <div class="request-panel">
@@ -47,6 +47,15 @@
           <div class="request-message">
             <p>Motivo da rejeição</p>
             <blockquote>“{{ target.rejection_reason }}”</blockquote>
+          </div>
+        </div>
+      {% endif %}
+      {% if target.cancelled_at %}
+        {% if not target.has_suggestion %}<h2 class="request-title" id="retorno-titulo">Cancelamento</h2>{% endif %}
+        <div class="request-panel">
+          <div class="request-message">
+            <p>Motivo do cancelamento</p>
+            {% if target.cancellation_reason %}<blockquote>“{{ target.cancellation_reason }}”</blockquote>{% else %}<blockquote>Sem motivo</blockquote>{% endif %}
           </div>
         </div>
       {% endif %}

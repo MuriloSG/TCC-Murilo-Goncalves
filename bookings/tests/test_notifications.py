@@ -15,7 +15,7 @@ from notices.models import MESSAGE_MAX_LENGTH, Notification
 
 AGENDA_TYPES = [
     catalog.BOOKING_REQUESTED, catalog.BOOKING_APPROVED, catalog.BOOKING_REJECTED,
-    catalog.BOOKING_SUGGESTED, catalog.SUGGESTION_ACCEPTED, catalog.SUGGESTION_DECLINED,
+    catalog.BOOKING_SUGGESTED, catalog.SUGGESTION_ACCEPTED, catalog.SUGGESTION_DECLINED, catalog.BOOKING_CANCELLED,
 ]
 
 
@@ -201,3 +201,38 @@ class AnswerTests(NotificationTestCase):
         with self.assertRaises(ValidationError):
             self.request.decline_suggestion(self.ana)
         self.assertFalse(agenda_notifications().exists())
+
+
+class CancelTests(NotificationTestCase):
+    def setUp(self):
+        super().setUp()
+        self.request = submit(self.ana, self.lab)
+        self.request.approve(self.carla)
+        agenda_notifications().delete()
+
+    def test_requester_cancellation_notifies_who_approved(self):
+        self.request.cancel(self.ana)
+        self.assertEqual(self.recipients(catalog.BOOKING_CANCELLED), {'carla@ifnmg.edu.br'})
+        notification = self.only(catalog.BOOKING_CANCELLED)
+        self.assertEqual(notification.title, 'Agendamento cancelado')
+        self.assertEqual(
+            notification.message,
+            f'Ana cancelou o agendamento de Laboratório de Informática 2 em {self.request.schedule_text()}.',
+        )
+        self.assertEqual(notification.target_url, reverse('agenda_review_detail', args=[self.request.pk]))
+
+    def test_reviewer_cancellation_notifies_the_requester(self):
+        self.request.cancel(self.davi, 'Laboratório em manutenção.')
+        self.assertEqual(self.recipients(catalog.BOOKING_CANCELLED), {'ana@ifnmg.edu.br'})
+        notification = self.only(catalog.BOOKING_CANCELLED)
+        self.assertEqual(
+            notification.message,
+            f'O agendamento de Laboratório de Informática 2 em {self.request.schedule_text()} foi cancelado por Davi. '
+            'Veja o motivo na solicitação.',
+        )
+        self.assertEqual(notification.target_url, reverse('agenda_my_request', args=[self.request.pk]))
+
+    def test_refused_cancellation_notifies_nobody(self):
+        with self.assertRaises(ValidationError):
+            self.request.cancel(self.bruno)
+        self.assertFalse(agenda_notifications().filter(type=catalog.BOOKING_CANCELLED).exists())

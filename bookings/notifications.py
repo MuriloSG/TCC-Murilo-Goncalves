@@ -24,6 +24,7 @@ REJECTED = 'AGENDA_REJEITADA'
 SUGGESTED = 'AGENDA_ALTERNATIVA'
 ACCEPTED = 'AGENDA_ALTERNATIVA_ACEITA'
 DECLINED = 'AGENDA_ALTERNATIVA_RECUSADA'
+CANCELLED = 'AGENDA_CANCELADA'
 
 
 def review_url(request):
@@ -127,6 +128,20 @@ def declined(request):
     )
 
 
+def cancelled(request):
+    """Avisa a outra parte: quem aprovou, quando quem solicitou cancela, e quem solicitou, quando
+    quem analisa cancela (D5 da Change cancelar-agendamento-aprovado)."""
+    title = 'Agendamento cancelado'
+    booked = f'{request.booked_space.name} em {request.booked_schedule_text()}'
+    if request.cancelled_by_id == request.requested_by_id:
+        message = f'{request.requested_by.name} cancelou o agendamento de {booked}.'
+        return to_reviewers(deciders(request), catalog.BOOKING_CANCELLED, title, message, request)
+    message = f'O agendamento de {booked} foi cancelado por {request.cancelled_by.name}.'
+    if request.cancellation_reason:
+        message += ' Veja o motivo na solicitação.'
+    return to_requester(request, catalog.BOOKING_CANCELLED, title, message)
+
+
 EVENTS = {
     REQUESTED: requested,
     APPROVED: approved,
@@ -134,4 +149,5 @@ EVENTS = {
     SUGGESTED: suggested_alternative,
     ACCEPTED: accepted,
     DECLINED: declined,
+    CANCELLED: cancelled,
 }

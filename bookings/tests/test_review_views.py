@@ -161,3 +161,21 @@ class DecisionTests(ReviewTestCase):
         response = self.client.post(url('agenda_review_approve', self.request), follow=True)
         self.assertContains(response, 'Esta solicitação está rejeitada e não aceita esta ação.')
         self.assertFalse(Booking.objects.exists())
+
+
+class CancelTests(ReviewTestCase):
+    def test_cancel_an_approved_request(self):
+        self.request.approve(self.reviewer)
+        detail = url('agenda_review_detail', self.request)
+        self.assertTrue(self.client.get(detail).context['can_cancel'])
+        response = self.client.post(url('agenda_review_cancel', self.request), {'cancellation_reason': ''})
+        self.assertRedirects(response, detail, fetch_redirect_response=False)
+        self.request.refresh_from_db()
+        self.assertEqual((self.request.status, self.request.cancelled_by), (Status.CANCELLED, self.reviewer))
+        self.assertFalse(Booking.objects.exists())
+        self.assertContains(self.client.get(detail), 'Agendamento cancelado')
+
+    def test_pending_request_has_no_cancel(self):
+        self.assertFalse(self.client.get(url('agenda_review_detail', self.request)).context['can_cancel'])
+        response = self.client.post(url('agenda_review_cancel', self.request), {'cancellation_reason': ''})
+        self.assertContains(response, 'Esta solicitação está pendente e não aceita esta ação.')

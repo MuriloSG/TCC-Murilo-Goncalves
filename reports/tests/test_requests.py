@@ -123,6 +123,15 @@ class BuildTests(RequestsTestCase):
         self.assertEqual((report.approved, report.decided, report.approval_percent), (1, 3, 33))
         self.assertEqual([(row.label, row.count, row.percent) for row in report.statuses][2], ('Aprovada', 1, 25))
 
+    def test_cancelled_counts_as_approved(self):
+        self.ask(status=Status.APPROVED, decided=at(date(2026, 10, 2)))
+        self.ask(status=Status.CANCELLED, decided=at(date(2026, 10, 2)))
+        self.ask(status=Status.REJECTED, decided=at(date(2026, 10, 2)))
+        report = self.build()
+        self.assertEqual((report.approved, report.decided), (2, 3))
+        self.assertEqual([(row.label, row.count) for row in report.statuses][-1], ('Cancelada', 1))
+        self.assertEqual(report.weeks[9].detail, '3 solicitações: 1 aprovada, 1 rejeitada e 1 cancelada.')
+
     def test_decision_time_is_the_median(self):
         start = at(date(2026, 10, 1), 8)
         for hours in (2, 4, 30):

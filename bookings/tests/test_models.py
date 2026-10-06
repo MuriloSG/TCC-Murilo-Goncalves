@@ -10,7 +10,7 @@ from django.test import TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from bookings.models import Booking, BookingRequest, InvalidTransition, SlotUnavailable, moment
+from bookings.models import CANCEL_DEADLINE_MESSAGE, Booking, BookingRequest, InvalidTransition, SlotUnavailable, moment
 from bookings.occupancy import find_conflict
 from bookings.tests.base import FRIDAY, REQUESTER, REVIEWER, THURSDAY, frozen_clock, semester_with_lesson, space, submit, user_with
 from schedule.models import Allocation
@@ -342,6 +342,83 @@ class TransitionTests(BookingTestCase):
             stale.approve(self.reviewer)
         request.refresh_from_db()
         self.assertEqual(request.status, Status.REJECTED)
+
+
+class CancelTests(BookingTestCase):
+    def approved_for_ana(self, day=THURSDAY, start=time(16, 0), end=time(18, 0)):
+        request = submit(self.ana, self.lab, day, start, end)
+        request.approve(self.reviewer)
+        return request
+
+    def at(self, hour, minute, day=THURSDAY):
+        patcher = mock.patch('django.utils.timezone.now', return_value=timezone.make_aware(datetime.combine(day, time(hour, minute))))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_requester_and_reviewer_cancel_and_free_the_slot(self):
+        for user, reason in ((self.ana, ''), (self.reviewer, '  Turma em visita técnica.  ')):
+            with self.subTest(user=user.email):
+                request = self.approved_for_ana()
+                request.cancel(user, reason)
+                self.assertEqual(request.status, Status.CANCELLED)
+                self.assertEqual((request.cancelled_by, request.cancellation_reason), (user, reason.strip()))
+                self.assertIsNotNone(request.cancelled_at)
+                self.assertFalse(Booking.objects.exists())
+                self.assertIsNone(find_conflict(self.lab, THURSDAY, time(16, 0), time(18, 0)))
+                BookingRequest.objects.all().delete()
+
+    def test_deadline_is_one_hour_before_the_start(self):
+        request = self.approved_for_ana()
+        for hour, minute in ((15, 1), (15, 0)):
+            self.at(hour, minute)
+            with self.subTest(at=f'{hour}:{minute:02}'):
+                self.assertFalse(request.can_cancel(self.ana))
+                with self.assert_refused() as caught:
+                    request.cancel(self.ana)
+                self.assertEqual(caught.exception.messages, [CANCEL_DEADLINE_MESSAGE])
+                request.refresh_from_db()
+                self.assertEqual(request.status, Status.APPROVED)
+                self.assertTrue(Booking.objects.exists())
+        self.at(14, 59)
+        self.assertTrue(request.can_cancel(self.ana))
+        request.cancel(self.ana)
+        self.assertEqual(request.status, Status.CANCELLED)
+
+    def test_deadline_uses_the_accepted_suggestion(self):
+        request = submit(self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0))
+        request.suggest(self.reviewer, self.other_lab, THURSDAY, time(10, 0), time(11, 0))
+        request.accept_suggestion(self.ana)
+        self.at(9, 30)
+        with self.assert_refused():
+            request.cancel(self.ana)
+        self.at(8, 59)
+        request.cancel(self.ana)
+        self.assertEqual(request.status, Status.CANCELLED)
+        self.assertIsNone(find_conflict(self.other_lab, THURSDAY, time(10, 0), time(11, 0)))
+
+    def test_other_user_without_review_is_refused(self):
+        request = self.approved_for_ana()
+        self.assertFalse(request.can_cancel(self.bruno))
+        with self.assert_refused():
+            request.cancel(self.bruno)
+        request.refresh_from_db()
+        self.assertEqual(request.status, Status.APPROVED)
+        self.assertTrue(Booking.objects.exists())
+
+    def test_only_approved_requests_are_cancelled(self):
+        pending = submit(self.ana, self.lab, start=time(8, 0), end=time(9, 0))
+        rejected = submit(self.ana, self.lab, start=time(10, 0), end=time(11, 0))
+        rejected.reject(self.reviewer, 'Motivo.')
+        cancelled = self.approved_for_ana()
+        cancelled.cancel(self.ana)
+        for request in (pending, rejected, cancelled):
+            with self.subTest(status=request.status):
+                status = request.status
+                self.assertFalse(request.can_cancel(self.reviewer))
+                with self.assertRaises(InvalidTransition):
+                    request.cancel(self.reviewer)
+                request.refresh_from_db()
+                self.assertEqual(request.status, status)
 
 
 class ConcurrentApprovalTests(TransactionTestCase):

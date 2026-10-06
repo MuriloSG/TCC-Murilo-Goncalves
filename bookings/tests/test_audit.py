@@ -73,6 +73,22 @@ class AuditTests(BookingTestCase):
         log = self.logs()[-1]
         self.assertEqual((log.action, log.old_values, log.new_values), (catalog.DECLINE, {'situacao': 'ALTERNATIVA_SUGERIDA'}, {'situacao': 'ALTERNATIVA_RECUSADA'}))
 
+    def test_cancellation_records_the_transition_and_the_deleted_booking(self):
+        request = submit(self.ana, self.lab)
+        request.approve(self.reviewer)
+        booking = Booking.objects.get()
+        request.cancel(self.ana, 'Turma em visita técnica.')
+        cancellation, deleted = self.logs()[3:]
+        self.assertEqual(cancellation.action, catalog.CANCEL)
+        self.assertEqual(
+            (cancellation.old_values, cancellation.new_values),
+            ({'situacao': 'APROVADA'}, {'situacao': 'CANCELADA', 'motivo': 'Turma em visita técnica.'}),
+        )
+        self.assertEqual((deleted.action, deleted.resource, deleted.resource_id), (catalog.DELETE, catalog.BOOKING, str(booking.pk)))
+        self.assertEqual(deleted.old_values, {
+            'espaco': 'Laboratório de Informática 2', 'data': '2026-10-15', 'horario': '16:00 às 18:00', 'solicitacao': request.pk,
+        })
+
     def test_refused_operations_are_not_recorded(self):
         request = submit(self.ana, self.lab)
         other = submit(self.bruno, self.lab)

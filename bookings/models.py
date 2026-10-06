@@ -12,7 +12,7 @@ espaço no meio (D6). A ausência de sobreposição entre agendamentos é garant
 `ExclusionConstraint` do banco (D5).
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.postgres.constraints import ExclusionConstraint
@@ -35,6 +35,7 @@ from schedule.models import Space, TeachingAssignment, teacher_of
 DESCRIPTION_MAX_LENGTH = 500
 REASON_MAX_LENGTH = 500
 STUDENT_COUNT_MAX = 999
+CANCEL_DEADLINE = timedelta(hours=1)
 
 DESCRIPTION_REQUIRED_MESSAGE = 'Informe a descrição do uso do espaço.'
 STUDENT_COUNT_REQUIRED_MESSAGE = 'Informe a quantidade de alunos.'
@@ -52,6 +53,8 @@ NOT_A_TEACHER_MESSAGE = 'O seu usuário não corresponde a um docente do ensalam
 REQUESTER_REQUIRED_MESSAGE = 'Escolha o usuário.'
 COURSE_REQUIRED_MESSAGE = 'Escolha o curso.'
 SUBJECT_OUTSIDE_COURSE_MESSAGE = 'Esta disciplina não está entre as disciplinas do usuário no curso escolhido. Escolha outra disciplina.'
+CANCEL_DEADLINE_MESSAGE = 'O agendamento só pode ser cancelado até 1 hora antes do início.'
+CANCEL_PERMISSION_MESSAGE = 'Só quem solicitou ou quem analisa a Agenda pode cancelar este agendamento.'
 ASSIGNMENT_OUTSIDE_SUBJECT_MESSAGE = 'Esta turma não está entre as turmas do usuário na disciplina escolhida. Escolha outra turma.'
 
 
@@ -276,6 +279,7 @@ class BookingRequest(models.Model):
         REJECTED = 'REJEITADA', 'Rejeitada'
         SUGGESTED = 'ALTERNATIVA_SUGERIDA', 'Alternativa sugerida'
         DECLINED = 'ALTERNATIVA_RECUSADA', 'Alternativa recusada'
+        CANCELLED = 'CANCELADA', 'Cancelada'
 
     OPEN = (Status.PENDING, Status.SUGGESTED)
 
@@ -325,6 +329,11 @@ class BookingRequest(models.Model):
     )
     decided_at = models.DateTimeField('decidida em', null=True, blank=True)
     responded_at = models.DateTimeField('respondida em', null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', null=True, blank=True, verbose_name='cancelada por',
+    )
+    cancelled_at = models.DateTimeField('cancelada em', null=True, blank=True)
+    cancellation_reason = models.CharField('motivo do cancelamento', max_length=REASON_MAX_LENGTH, blank=True)
     created_at = models.DateTimeField('criada em', auto_now_add=True)
 
     objects = BookingRequestManager()
@@ -481,6 +490,65 @@ class BookingRequest(models.Model):
             record_transition(catalog.DECLINE, current, self.Status.SUGGESTED)
             announce(notifications.DECLINED, request=current)
         self.refresh_from_db()
+
+    def may_cancel(self, user):
+        return user.has_perm(permissions.BOOKING_REVIEW) or (
+            self.requested_by_id == user.pk and user.has_perm(permissions.BOOKING_REQUEST)
+        )
+
+    def within_cancel_deadline(self):
+        booking = Booking.objects.filter(request=self).values_list('starts_at', flat=True).first()
+        return booking is not None and timezone.now() < booking - CANCEL_DEADLINE
+
+    def can_cancel(self, user):
+        """Diz se o botão "Cancelar agendamento" aparece para o usuário; a operação confere de novo."""
+        return self.status == self.Status.APPROVED and self.may_cancel(user) and self.within_cancel_deadline()
+
+    def cancel(self, user, reason=''):
+        """Cancela a solicitação aprovada até 1 hora antes do início e exclui o agendamento.
+
+        Cancelam quem solicitou e quem analisa. Excluir o agendamento libera o espaço em todas
+        as leituras de ocupação sem filtro novo; o histórico fica na solicitação e na auditoria
+        (D1 a D3 da Change cancelar-agendamento-aprovado).
+        """
+        with transaction.atomic():
+            current = self.locked()
+            if not current.may_cancel(user):
+                raise ValidationError(CANCEL_PERMISSION_MESSAGE, code='permission')
+            if current.status != self.Status.APPROVED:
+                raise InvalidTransition(current.status)
+            booking = Booking.objects.select_for_update().select_related('space').get(request=current)
+            if timezone.now() >= booking.starts_at - CANCEL_DEADLINE:
+                raise ValidationError(CANCEL_DEADLINE_MESSAGE, code='deadline')
+            current.status = self.Status.CANCELLED
+            current.cancelled_by = user
+            current.cancelled_at = timezone.now()
+            current.cancellation_reason = (reason or '').strip()[:REASON_MAX_LENGTH]
+            current.save(update_fields=['status', 'cancelled_by', 'cancelled_at', 'cancellation_reason'])
+            record_transition(catalog.CANCEL, current, self.Status.APPROVED, motivo=current.cancellation_reason)
+            starts_at, ends_at = timezone.localtime(booking.starts_at), timezone.localtime(booking.ends_at)
+            AuditLog.objects.record(
+                catalog.DELETE,
+                catalog.BOOKING,
+                resource_id=booking.pk,
+                old_values={
+                    'espaco': booking.space.name,
+                    'data': starts_at.date().isoformat(),
+                    'horario': hours(starts_at.time(), ends_at.time()),
+                    'solicitacao': current.pk,
+                },
+            )
+            booking.delete()
+            announce(notifications.CANCELLED, request=current)
+        self.refresh_from_db()
+
+    @property
+    def booked_space(self):
+        """Espaço do agendamento: o sugerido, quando a alternativa foi aceita, ou o original."""
+        return self.suggested_space if self.has_suggestion else self.space
+
+    def booked_schedule_text(self):
+        return self.suggested_schedule_text() if self.has_suggestion else self.schedule_text()
 
     def schedule_text(self):
         return slot_text(self.date, self.start_time, self.end_time)

@@ -3,6 +3,8 @@
 Calculado a cada requisição e nunca gravado (Change gerar-relatorio-de-solicitacoes). Uma
 solicitação pertence ao semestre pela data de uso dentro do período dele (D1). Uma consulta
 traz as solicitações do recorte, e as contagens, a mediana e os rankings saem em Python (D9).
+A solicitação cancelada foi aprovada antes, e conta como aprovada na taxa de aprovação, no
+aceite da alternativa e no ranking dos espaços (Change cancelar-agendamento-aprovado).
 """
 
 import math
@@ -16,8 +18,9 @@ from bookings.models import BookingRequest
 from panel.indicators import step, waiting_text
 
 Status = BookingRequest.Status
-DECIDED = (Status.APPROVED, Status.REJECTED, Status.DECLINED)
-STATUS_ORDER = (Status.PENDING, Status.SUGGESTED, Status.APPROVED, Status.REJECTED, Status.DECLINED)
+DECIDED = (Status.APPROVED, Status.REJECTED, Status.DECLINED, Status.CANCELLED)
+APPROVED = (Status.APPROVED, Status.CANCELLED)
+STATUS_ORDER = (Status.PENDING, Status.SUGGESTED, Status.APPROVED, Status.REJECTED, Status.DECLINED, Status.CANCELLED)
 RANKING_SIZE = 10
 RECENT_SIZE = 10
 SPLIT_LABEL_WEEKS = 12
@@ -31,6 +34,7 @@ STATUS_COUNTS = {
     Status.APPROVED: ('aprovada', 'aprovadas'),
     Status.REJECTED: ('rejeitada', 'rejeitadas'),
     Status.DECLINED: ('com alternativa recusada', 'com alternativa recusada'),
+    Status.CANCELLED: ('cancelada', 'canceladas'),
 }
 
 
@@ -251,16 +255,16 @@ def build(filters, today=None):
             oldest = request.created_at
         if request.has_suggestion:
             report.suggested += 1
-            report.suggestion_accepted += request.status == Status.APPROVED
+            report.suggestion_accepted += request.status in APPROVED
             report.suggestion_declined += request.status == Status.DECLINED
             report.suggestion_rejected += request.status == Status.REJECTED
             report.suggestion_awaiting += request.status == Status.SUGGESTED
         space = demand.setdefault(request.space_id, SpaceDemand(space=request.space))
         space.total += 1
-        space.approved += request.status == Status.APPROVED
+        space.approved += request.status in APPROVED
         space.rejected += request.status == Status.REJECTED
     report.decided = sum(counts[status] for status in DECIDED)
-    report.approved = counts[Status.APPROVED]
+    report.approved = sum(counts[status] for status in APPROVED)
     report.pending = counts[Status.PENDING] + counts[Status.SUGGESTED]
     report.oldest_pending = waiting_text(oldest, today) if oldest else ''
     report.decision_time = duration_text(median(durations)) if durations else ''

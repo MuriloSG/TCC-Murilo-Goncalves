@@ -1,0 +1,8 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Cancelar o agendamento de {{ target.booked_space.name }}?{% endblock %}
+
+{% block body %}<p>O agendamento de {{ target.booked_schedule_text }} é excluído e o espaço fica disponível nesse horário.</p>{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "calendar-x" %}Cancelar agendamento</button>{% endblock %}

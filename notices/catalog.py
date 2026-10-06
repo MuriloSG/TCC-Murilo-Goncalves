@@ -21,6 +21,7 @@ BOOKING_REJECTED = 'AGENDA_REJEITADA'
 BOOKING_SUGGESTED = 'AGENDA_ALTERNATIVA'
 SUGGESTION_ACCEPTED = 'AGENDA_ALTERNATIVA_ACEITA'
 SUGGESTION_DECLINED = 'AGENDA_ALTERNATIVA_RECUSADA'
+BOOKING_CANCELLED = 'AGENDA_CANCELADA'
 
 TYPES = {
     INFORMATION: {
@@ -91,6 +92,13 @@ TYPES = {
         'description': 'O solicitante recusou a alternativa sugerida',
         'icon': 'calendar-x',
         'tone': 'info',
+        'manual': False,
+    },
+    BOOKING_CANCELLED: {
+        'label': 'Agendamento cancelado',
+        'description': 'Um agendamento aprovado foi cancelado',
+        'icon': 'calendar-x',
+        'tone': 'warning',
         'manual': False,
     },
 }

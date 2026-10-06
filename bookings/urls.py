@@ -25,9 +25,15 @@ urlpatterns = [
         login_required(views.DeclineSuggestionView.as_view()),
         name='agenda_my_request_decline',
     ),
+    path(
+        'agenda/minhas-solicitacoes/<int:pk>/cancelar/',
+        login_required(views.MyBookingCancelView.as_view()),
+        name='agenda_my_request_cancel',
+    ),
     path('agenda/solicitacoes/', login_required(views.BookingRequestReviewListView.as_view()), name='agenda_review_list'),
     path('agenda/solicitacoes/<int:pk>/', login_required(views.BookingRequestReviewDetailView.as_view()), name='agenda_review_detail'),
     path('agenda/solicitacoes/<int:pk>/aprovar/', login_required(views.ApproveView.as_view()), name='agenda_review_approve'),
     path('agenda/solicitacoes/<int:pk>/rejeitar/', login_required(views.RejectView.as_view()), name='agenda_review_reject'),
     path('agenda/solicitacoes/<int:pk>/sugerir/', login_required(views.SuggestView.as_view()), name='agenda_review_suggest'),
+    path('agenda/solicitacoes/<int:pk>/cancelar/', login_required(views.ReviewCancelView.as_view()), name='agenda_review_cancel'),
 ]

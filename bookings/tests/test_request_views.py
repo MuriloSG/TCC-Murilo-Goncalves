@@ -1,6 +1,6 @@
-"""Solicitação pela tela, "Minhas solicitações" e a resposta à alternativa (D1, D8)."""
+"""Solicitação pela tela, "Minhas solicitações", a resposta à alternativa e o cancelamento (D1, D8)."""
 
-from datetime import time
+from datetime import date, time
 
 from django.test import TestCase
 from django.urls import reverse
@@ -251,3 +251,43 @@ class AnswerTests(RequestScreenTestCase):
         self.assertContains(response, 'Esta solicitação está pendente e não aceita esta ação.')
         request.refresh_from_db()
         self.assertEqual(request.status, Status.PENDING)
+
+
+class CancelTests(RequestScreenTestCase):
+    def setUp(self):
+        super().setUp()
+        self.request = submit(self.ana, self.lab)
+        self.request.approve(self.reviewer)
+        self.detail = reverse('agenda_my_request', args=[self.request.pk])
+        self.cancel = reverse('agenda_my_request_cancel', args=[self.request.pk])
+
+    def test_cancel_from_the_own_request(self):
+        self.client.force_login(self.ana)
+        self.assertTrue(self.client.get(self.detail).context['can_cancel'])
+        self.assertEqual(self.client.get(self.cancel).status_code, 200)
+        response = self.client.post(self.cancel, {'cancellation_reason': 'Turma em visita técnica.'})
+        self.assertRedirects(response, self.detail, fetch_redirect_response=False)
+        self.request.refresh_from_db()
+        self.assertEqual((self.request.status, self.request.cancellation_reason), (Status.CANCELLED, 'Turma em visita técnica.'))
+        self.assertFalse(Booking.objects.exists())
+        detail = self.client.get(self.detail)
+        self.assertFalse(detail.context['can_cancel'])
+        self.assertContains(detail, 'Turma em visita técnica.')
+
+    def test_cancel_after_the_deadline(self):
+        soon = submit(self.ana, self.lab, date(2026, 10, 1), time(10, 30), time(11, 30))
+        soon.approve(self.reviewer)
+        self.client.force_login(self.ana)
+        self.assertFalse(self.client.get(reverse('agenda_my_request', args=[soon.pk])).context['can_cancel'])
+        response = self.client.post(reverse('agenda_my_request_cancel', args=[soon.pk]), {'cancellation_reason': ''})
+        self.assertContains(response, 'O agendamento só pode ser cancelado até 1 hora antes do início.')
+        soon.refresh_from_db()
+        self.assertEqual(soon.status, Status.APPROVED)
+
+    def test_cancel_by_another_user(self):
+        for user in (self.bruno, self.reviewer):
+            self.client.force_login(user)
+            with self.subTest(user=user.email):
+                self.assertEqual(self.client.post(self.cancel).status_code, 404)
+        self.request.refresh_from_db()
+        self.assertEqual(self.request.status, Status.APPROVED)

@@ -21,7 +21,7 @@ from accounts import permissions
 from accounts.utils import add_operation_error
 from accounts.views import ConfirmedActionView, OperationFormView
 from audit import catalog
-from bookings.forms import OWN_AGENDA, ALL_AGENDAS, AgendaFilterForm, BookingOnBehalfForm, BookingRequestForm, RejectForm, ReviewFilterForm, SuggestForm
+from bookings.forms import OWN_AGENDA, ALL_AGENDAS, AgendaFilterForm, BookingOnBehalfForm, BookingRequestForm, CancelForm, RejectForm, ReviewFilterForm, SuggestForm
 from bookings.models import BookingRequest
 from bookings.occupancy import agenda_sources, own_occurrences
 from schedule.models import Space
@@ -312,6 +312,7 @@ def status_badge(request):
         Status.REJECTED: ('error', 'x', 'Rejeitada'),
         Status.SUGGESTED: ('warning', 'arrow-left-right', 'Alternativa sugerida'),
         Status.DECLINED: ('error', 'x', 'Alternativa recusada'),
+        Status.CANCELLED: ('error', 'calendar-x', 'Cancelada'),
     }[request.status]
 
 
@@ -338,10 +339,12 @@ def history_of(request):
         else:
             events.append(event('Aprovada', 'check', 'success', who, moment))
     if request.responded_at:
-        if request.status == Status.APPROVED:
+        if request.status in (Status.APPROVED, Status.CANCELLED):
             events.append(event('Alternativa aceita', 'check', 'success', request.requested_by, request.responded_at))
         else:
             events.append(event('Alternativa recusada', 'x', 'error', request.requested_by, request.responded_at))
+    if request.cancelled_at:
+        events.append(event('Agendamento cancelado', 'calendar-x', 'error', request.cancelled_by, request.cancelled_at))
     return events
 
 
@@ -394,7 +397,9 @@ class MyBookingRequestDetailView(TemplateView):
         self.target = get_object_or_404(request_related(BookingRequest.objects), pk=kwargs['pk'], requested_by=request.user)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(target=detailed(self.target), **kwargs)
+        return super().get_context_data(
+            target=detailed(self.target), can_cancel=self.target.can_cancel(self.request.user), **kwargs,
+        )
 
 
 class OwnRequestActionView(ConfirmedActionView):
@@ -474,7 +479,9 @@ class BookingRequestReviewDetailView(TemplateView):
         self.target = get_object_or_404(request_related(BookingRequest.objects), pk=kwargs['pk'])
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(target=detailed(self.target), **kwargs)
+        return super().get_context_data(
+            target=detailed(self.target), can_cancel=self.target.can_cancel(self.request.user), **kwargs,
+        )
 
 
 def review_detail_url(target):
@@ -538,6 +545,51 @@ class SuggestView(ReviewFormView):
             self.request,
             f'Alternativa de {self.target.suggested_space.name} em {self.target.suggested_schedule_text()} sugerida.',
         )
+
+
+class CancelBookingView(OperationFormView):
+    """Modal "Cancelar agendamento", com o motivo opcional; o model confere quem cancela,
+    o estado e o prazo de 1 hora (Change cancelar-agendamento-aprovado)."""
+
+    audit_resource = catalog.BOOKING_REQUEST
+    model = BookingRequest
+    modal_template_name = 'bookings/cancel_form_modal.html'
+    form_class = CancelForm
+    title = 'Cancelar agendamento'
+
+    def get_target_queryset(self):
+        return request_related(BookingRequest.objects)
+
+    def get_close_url(self):
+        return self.get_success_url()
+
+    def perform(self, data):
+        space, schedule = self.target.booked_space.name, self.target.booked_schedule_text()
+        self.target.cancel(self.request.user, data['cancellation_reason'])
+        messages.success(self.request, f'Agendamento de {space} em {schedule} cancelado.')
+
+
+class MyBookingCancelView(CancelBookingView):
+    """Cancelamento por quem solicitou: só a própria solicitação, e o resto responde 404."""
+
+    permission_required = permissions.BOOKING_REQUEST
+    template_name = 'bookings/cancel_page.html'
+
+    def get_target_queryset(self):
+        return super().get_target_queryset().filter(requested_by=self.request.user)
+
+    def get_success_url(self):
+        return reverse('agenda_my_request', args=[self.target.pk])
+
+
+class ReviewCancelView(CancelBookingView):
+    """Cancelamento por quem analisa, a partir do detalhe da análise."""
+
+    permission_required = permissions.BOOKING_REVIEW
+    template_name = 'bookings/review_page.html'
+
+    def get_success_url(self):
+        return review_detail_url(self.target)
 
 
 class AgendaOccurrenceCancelView(OccurrenceCancelView):

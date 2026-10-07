@@ -106,9 +106,10 @@
     return this.native.id + "_opcao_" + index;
   };
 
-  State.prototype.render = function () {
+  State.prototype.render = function (activeIndex) {
     var state = this;
     var visible = this.options.slice(0, this.shown);
+    var scroll = this.list.scrollTop;
     this.list.textContent = "";
     visible.forEach(function (option, index) {
       var item = document.createElement("li");
@@ -128,7 +129,12 @@
     });
     this.empty.hidden = visible.length > 0;
     this.more.hidden = !(this.hasMore || this.shown < this.options.length);
-    this.highlight(visible.length ? 0 : -1);
+    if (activeIndex === undefined) {
+      this.highlight(visible.length ? 0 : -1);
+    } else {
+      this.list.scrollTop = scroll;
+      this.highlight(Math.min(activeIndex, visible.length - 1));
+    }
     this.place();
   };
 
@@ -229,8 +235,9 @@
         ? all.filter(function (option) { return normalize(option.rotulo).indexOf(term) !== -1; })
         : all;
       this.hasMore = false;
+      var previous = this.shown;
       this.shown = Math.min(append ? this.shown + PAGE_SIZE : PAGE_SIZE, this.options.length);
-      this.render();
+      this.render(append ? previous : undefined);
       return;
     }
     var page = append ? Math.floor(this.shown / PAGE_SIZE) + 1 : 1;
@@ -242,10 +249,11 @@
         if (request !== state.requestId) {
           return;
         }
+        var previous = state.options.length;
         state.options = append ? state.options.concat(data.opcoes) : data.opcoes;
         state.hasMore = data.tem_mais;
         state.shown = state.options.length;
-        state.render();
+        state.render(append ? previous : undefined);
       });
   };
 
@@ -289,7 +297,7 @@
     }
     option.selected = !option.selected;
     this.announce();
-    this.render();
+    this.render(Math.max(this.active, 0));
   };
 
   State.prototype.discard = function (value) {
@@ -300,7 +308,7 @@
     });
     this.announce();
     if (!this.panel.hidden) {
-      this.render();
+      this.render(Math.max(this.active, 0));
     }
   };
 

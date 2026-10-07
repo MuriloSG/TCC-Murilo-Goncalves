@@ -85,16 +85,11 @@
             </td>
           </tr>
         {% empty %}
-          <tr>
-            <td class="cell-primary" colspan="6">
-              {% if filtered %}
-                <p>Nenhum registro de auditoria encontrado para os filtros.</p>
-                <p><a class="link" href="{% url 'audit_log_list' %}">Limpar filtros</a></p>
-              {% else %}
-                Nenhum registro de auditoria.
-              {% endif %}
-            </td>
-          </tr>
+          {% if filtered %}{% url 'audit_log_list' as clear_url %}
+            {% include "ui/components/empty_row.html" with colspan=6 message="Nenhum registro de auditoria encontrado para os filtros." clear_url=clear_url clear_label="Limpar filtros" %}
+          {% else %}
+            {% include "ui/components/empty_row.html" with colspan=6 message="Nenhum registro de auditoria." %}
+          {% endif %}
         {% endfor %}
       </tbody>
     </table>

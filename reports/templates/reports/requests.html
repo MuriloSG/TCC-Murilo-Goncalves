@@ -131,7 +131,7 @@
                   </td>
                 </tr>
               {% empty %}
-                <tr><td class="cell-primary" colspan="6">Nenhuma solicitação de agendamento no período.</td></tr>
+                {% include "ui/components/empty_row.html" with colspan=6 message="Nenhuma solicitação de agendamento no período." %}
               {% endfor %}
             </tbody>
           </table>
@@ -205,7 +205,7 @@
                   </td>
                 </tr>
               {% empty %}
-                <tr><td class="cell-primary" colspan="5">Nenhuma solicitação rejeitada no período.</td></tr>
+                {% include "ui/components/empty_row.html" with colspan=5 message="Nenhuma solicitação rejeitada no período." %}
               {% endfor %}
             </tbody>
           </table>

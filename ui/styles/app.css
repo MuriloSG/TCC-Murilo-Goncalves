@@ -3380,8 +3380,8 @@
       border-bottom: 0;
     }
 
-    & tbody tr:hover {
-      background: var(--color-page);
+    & tbody tr:not(.empty-row):hover {
+      background: color-mix(in srgb, var(--color-page) 40%, var(--color-surface));
     }
 
     & .cell-actions {
@@ -3451,6 +3451,35 @@
 
       & .cell-actions {
         padding-top: var(--spacing-2);
+      }
+    }
+  }
+
+  .data-table .empty-row td {
+    display: table-cell;
+    padding: var(--spacing-10) var(--spacing-6);
+    color: var(--color-text-muted);
+    text-align: center;
+
+    &::before {
+      content: none;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-4);
+  }
+
+  .data-table tbody tr.empty-row {
+    @variant max-sm {
+      display: block;
+      padding: 0;
+
+      & td {
+        display: block;
       }
     }
   }

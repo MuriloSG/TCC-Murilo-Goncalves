@@ -67,7 +67,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td class="cell-primary" colspan="3">Nenhuma oferta no ensalamento.</td></tr>
+          {% include "ui/components/empty_row.html" with colspan=3 message="Nenhuma oferta no ensalamento." %}
         {% endfor %}
       </tbody>
     </table>

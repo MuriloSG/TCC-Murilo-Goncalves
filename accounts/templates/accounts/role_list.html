@@ -60,7 +60,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td class="cell-primary text-center" colspan="5">Nenhum perfil cadastrado.</td></tr>
+          {% include "ui/components/empty_row.html" with colspan=5 message="Nenhum perfil cadastrado." %}
         {% endfor %}
       </tbody>
     </table>

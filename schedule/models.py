@@ -903,25 +903,34 @@ class AllocationManager(models.Manager):
             semester__end_date__gte=day,
         ).exclude(exceptions__date=day)
 
-    def change_recurrence(self, allocation_ids, cut, executor, weekday, start_time, space, teachers):
+    def change_recurrence(self, allocation_ids, cut, executor, weekday, start_time, space, teachers, slot_count=None):
         """Altera a recorrência das alocações de uma aula a partir da data de corte.
 
         Cada alocação é encerrada na véspera do corte e uma nova versão começa nele, com os
         dados informados e o resto copiado. As exceções do corte em diante passam para a
-        versão nova. Tudo numa transação: uma recusa ou uma falha não deixa nada gravado.
-        Devolve o plano executado, com as versões novas gravadas.
+        versão nova. Quando a duração aumenta, as faixas a mais ganham alocação nova com
+        cópia das ocorrências canceladas; quando diminui, as que sobram só são encerradas.
+        Tudo numa transação: uma recusa ou uma falha não deixa nada gravado. Devolve o
+        plano executado, com as versões novas gravadas.
         """
         with transaction.atomic():
-            plan = self.plan_recurrence(allocation_ids, cut, executor, weekday, start_time, space, teachers)
+            plan = self.plan_recurrence(allocation_ids, cut, executor, weekday, start_time, space, teachers, slot_count)
             for change in plan.changes:
                 change.execute(cut)
+            created = [change.version.pk for change in plan.changes]
+            for change in plan.changes:
+                if change.current is None:
+                    change.record(created)
+            for removal in plan.removals:
+                removal.execute(cut)
             return plan
 
-    def plan_recurrence(self, allocation_ids, cut, executor, weekday, start_time, space, teachers):
+    def plan_recurrence(self, allocation_ids, cut, executor, weekday, start_time, space, teachers, slot_count=None):
         """Confere a alteração da recorrência e devolve o plano, sem gravar nada.
 
         As alocações são travadas quando há transação aberta, como no cancelamento. É a
         mesma conferência da execução, usada para o resumo mostrado antes da confirmação.
+        Sem `slot_count`, a aula mantém a quantidade de faixas que tem.
         """
         allocation_ids = sorted(set(allocation_ids))
         with transaction.atomic():
@@ -945,7 +954,7 @@ class AllocationManager(models.Manager):
                 raise ValidationError('A aula informada não existe. Atualize a Grade.', code='missing')
             semester = first.semester
             check_cut(locked, cut)
-            slots = consecutive_slots(semester, start_time, len(locked))
+            slots = consecutive_slots(semester, start_time, slot_count or len(locked))
             if slots is None:
                 raise ValidationError(
                     {'horario': ValidationError('Escolha um horário do semestre.', code='invalid_slot')},
@@ -969,7 +978,22 @@ class AllocationManager(models.Manager):
                 ), teachers=teachers)
                 for item, slot in zip(locked, slots)
             ]
-            plan = RecurrencePlan(cut=cut, changes=changes, executor=executor)
+            changes += [
+                RecurrenceAddition(version=Allocation(
+                    semester=semester,
+                    class_group=first.class_group,
+                    subject=first.subject,
+                    space=space,
+                    weekday=weekday,
+                    time_slot=slot,
+                    origin=Origin.MANUAL,
+                    valid_from=cut,
+                    valid_until=first.valid_until,
+                ), teachers=teachers)
+                for slot in slots[len(locked):]
+            ]
+            removals = [RecurrenceRemoval(current=item) for item in locked[len(slots):]]
+            plan = RecurrencePlan(cut=cut, changes=changes, executor=executor, removals=removals)
             if plan.before == plan.after:
                 raise ValidationError('Altere ao menos um dado da recorrência.', code='unchanged')
             plan.load_exceptions()
@@ -1152,20 +1176,6 @@ def consecutive_slots(semester, start_time, count):
         found.append(current)
         current = by_start.get(current.end_time)
     return found if len(found) == count else None
-
-
-def interval_choices(semester, count):
-    """Intervalos de `count` faixas seguidas do semestre, como opções do formulário."""
-    slots = sorted(TimeSlot.objects.filter(semester=semester), key=lambda slot: slot.start_time)
-    by_start = {slot.start_time: slot for slot in slots}
-    choices = []
-    for slot in slots:
-        chain = [slot]
-        while len(chain) < count and chain[-1].end_time in by_start:
-            chain.append(by_start[chain[-1].end_time])
-        if len(chain) == count:
-            choices.append((slot.start_time, chain[-1].end_time))
-    return choices
 
 
 def check_duplicates(plan):
@@ -1401,6 +1411,54 @@ class RecurrenceCreation:
         )
 
 
+@dataclass
+class RecurrenceAddition(RecurrenceCreation):
+    """Uma faixa a mais na alteração que aumenta a duração da aula.
+
+    Recebe as ocorrências canceladas da aula do corte em diante, para que o cancelamento
+    valha também na faixa nova.
+    """
+
+    copied: list = field(default_factory=list)
+    executor: object = None
+
+    def execute(self, cut):
+        super().execute(cut)
+        for day in self.copied:
+            exception = AllocationException.objects.create(
+                allocation=self.version, date=day, kind=AllocationException.Kind.CANCELLED, created_by=self.executor,
+            )
+            AuditLog.objects.record(
+                catalog.CANCEL,
+                catalog.SPACE_ALLOCATION_EXCEPTION,
+                resource_id=exception.pk,
+                new_values={'tipo': exception.kind, 'data': iso(day)},
+                metadata=self.version.audit_values() | {'a_partir_de': iso(cut)},
+            )
+
+
+@dataclass
+class RecurrenceRemoval:
+    """Uma faixa que deixa a aula na alteração que diminui a duração: só é encerrada."""
+
+    current: object
+
+    def execute(self, cut):
+        current = self.current
+        previous = current.audit_values()
+        current.valid_until = cut - timedelta(days=1)
+        current.full_clean(exclude=['space'])
+        current.save(update_fields=['valid_until'])
+        AuditLog.objects.record(
+            catalog.UPDATE,
+            catalog.SPACE_ALLOCATION,
+            resource_id=current.pk,
+            old_values={'vigente_ate': previous['vigente_ate']},
+            new_values={'vigente_ate': iso(current.valid_until)},
+            metadata=previous | {'a_partir_de': iso(cut), 'faixa_removida': True},
+        )
+
+
 @dataclass(frozen=True)
 class LessonSummary:
     """Disciplina e turma de uma aula, como o resumo do cadastro mostra."""
@@ -1453,24 +1511,30 @@ class RecurrencePlan:
     cut: object
     changes: list
     executor: object = None
+    removals: list = field(default_factory=list)
 
     @property
     def lesson(self):
         return self.changes[0].current
 
     @property
+    def currents(self):
+        """Alocações atuais da aula, as substituídas e as encerradas, na ordem das faixas."""
+        found = [change.current for change in self.changes if change.current is not None]
+        found += [removal.current for removal in self.removals]
+        return sorted(found, key=lambda item: item.time_slot.start_time)
+
+    @property
     def locked_ids(self):
         """Alocações que a conferência deixa de fora por serem as da própria aula. Na
         criação não há nenhuma."""
-        return [change.current.pk for change in self.changes if change.current is not None]
+        return [item.pk for item in self.currents]
 
     @property
     def before(self):
         if self.lesson is None:
             return None
-        return summary_of(
-            [change.current for change in self.changes], sorted(self.lesson.teachers.all(), key=lambda item: item.name),
-        )
+        return summary_of(self.currents, sorted(self.lesson.teachers.all(), key=lambda item: item.name))
 
     @property
     def after(self):
@@ -1521,9 +1585,15 @@ class RecurrencePlan:
         ).order_by('date'):
             by_allocation.setdefault(exception.allocation_id, []).append(exception)
         lost = set()
-        for change in self.changes:
+        replaced = [change for change in self.changes if change.current is not None]
+        for change in replaced:
             change.moved = by_allocation.get(change.current.pk, [])
             lost |= {exception.date for exception in change.moved if not change.version.occurs_on(exception.date)}
+        copied = sorted({exception.date for exception in replaced[0].moved})
+        for change in self.changes:
+            if change.current is None:
+                change.copied = copied
+                change.executor = self.executor
         if lost:
             dates = ', '.join(shown_date(day) for day in sorted(lost))
             raise ValidationError(

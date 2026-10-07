@@ -403,6 +403,7 @@ class RecurrenceChangeView(PlannedOperationView):
             'data': self.day,
             'dia': first.weekday,
             'horario': f'{first.time_slot.start_time:%H:%M}',
+            'duracao': len(self.allocations),
             'espaco': first.space_id,
             'docentes': [teacher.pk for teacher in first.teachers.all()],
         }
@@ -425,6 +426,7 @@ class RecurrenceChangeView(PlannedOperationView):
             'executor': self.request.user,
             'weekday': data['dia'],
             'start_time': data['horario'],
+            'slot_count': data['duracao'],
             'space': data['espaco'],
             'teachers': list(data['docentes']),
         }

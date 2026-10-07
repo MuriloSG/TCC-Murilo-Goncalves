@@ -70,7 +70,7 @@ class RecurrenceTestCase(TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def change(self, user=None, cut=CUT, weekday=Weekday.MONDAY, start=time(10, 0), space=None, teachers=None, allocations=None):
+    def change(self, user=None, cut=CUT, weekday=Weekday.MONDAY, start=time(10, 0), space=None, teachers=None, allocations=None, slot_count=None):
         allocations = allocations or (self.first, self.second)
         return Allocation.objects.change_recurrence(
             [allocation.pk for allocation in allocations],
@@ -80,6 +80,7 @@ class RecurrenceTestCase(TestCase):
             start,
             self.new_room if space is None else space,
             [self.viviane_teacher] if teachers is None else teachers,
+            slot_count,
         )
 
     def versions_of(self, allocation):
@@ -92,7 +93,7 @@ class RecurrenceTestCase(TestCase):
 
     def form_data(self, **overrides):
         return {
-            'data': CUT.isoformat(), 'dia': Weekday.MONDAY, 'horario': '10:00',
+            'data': CUT.isoformat(), 'dia': Weekday.MONDAY, 'horario': '10:00', 'duracao': '2',
             'espaco': str(self.new_room.pk), 'docentes': [str(self.viviane_teacher.pk)], **overrides,
         }
 
@@ -364,7 +365,9 @@ class ViewTests(RecurrenceTestCase):
         self.assertIn('Alterar recorrência', text)
         self.assertIn('A partir de', text)
         self.assertIn('value="2026-10-05"', text)
-        self.assertIn('Das 08:00 às 10:00', text)
+        self.assertIn('A partir das 08:00', text)
+        self.assertIn('Duração', text)
+        self.assertIn('<option value="2" selected>2 faixas seguidas</option>', text)
 
     def test_first_post_shows_the_summary_without_saving(self):
         self.client.force_login(self.changer)
@@ -517,3 +520,54 @@ class AcademicLinkTests(RecurrenceTestCase):
         with self.assertRaises(ValidationError):
             self.change(cut=date(2026, 8, 3), teachers=[self.otavio])
         self.assertEqual(self.teachers(), {'Viviane': True})
+
+
+class DurationTests(RecurrenceTestCase):
+    """A alteração aumenta ou diminui a quantidade de faixas seguidas da aula (Change
+    alterar-duracao-da-recorrencia)."""
+
+    def active_slots(self, day):
+        return sorted(
+            (item.time_slot.start_time, item.time_slot.end_time)
+            for item in Allocation.objects.filter(subject=self.first.subject)
+            if item.occurs_on(day)
+        )
+
+    def test_longer_lesson_gets_a_new_allocation_for_the_extra_slot(self):
+        plan = self.change(start=time(9, 0), slot_count=3)
+        self.assertEqual(self.active_slots(CUT), [(time(9, 0), time(10, 0)), (time(10, 0), time(11, 0)), (time(11, 0), time(12, 0))])
+        self.assertEqual(self.active_slots(MONDAY), [(time(10, 0), time(11, 0)), (time(11, 0), time(12, 0))])
+        self.assertEqual(plan.before.text, 'Segunda-feira, das 10:00 às 12:00, Sala 5')
+        self.assertEqual(plan.after.text, 'Segunda-feira, das 09:00 às 12:00, Sala 9')
+        added = plan.changes[-1].version
+        self.assertEqual(AuditLog.objects.filter(action=catalog.CREATE, resource=catalog.SPACE_ALLOCATION, resource_id=str(added.pk)).count(), 1)
+
+    def test_shorter_lesson_ends_the_slot_left_out(self):
+        plan = self.change(slot_count=1)
+        self.assertEqual(self.active_slots(CUT), [(time(10, 0), time(11, 0))])
+        self.second.refresh_from_db()
+        self.assertEqual(self.second.valid_until, date(2026, 10, 4))
+        self.assertEqual(plan.after.text, 'Segunda-feira, das 10:00 às 11:00, Sala 9')
+        record = AuditLog.objects.get(resource=catalog.SPACE_ALLOCATION, resource_id=str(self.second.pk))
+        self.assertEqual(record.new_values, {'vigente_ate': '2026-10-04'})
+
+    def test_only_the_duration_counts_as_a_change(self):
+        plan = self.change(space=self.room, slot_count=1)
+        self.assertEqual(len(plan.changes), 1)
+
+    def test_extra_slot_keeps_the_cancelled_occurrences(self):
+        AllocationException.objects.cancel([self.first.pk, self.second.pk], AFTER, self.superadmin)
+        plan = self.change(start=time(9, 0), slot_count=3)
+        added = plan.changes[-1].version
+        self.assertEqual(list(added.exceptions.values_list('date', flat=True)), [AFTER])
+        self.assertNotIn(AFTER, self.lessons(self.new_room, CUT, date(2026, 10, 31)))
+
+    def test_slots_beyond_the_semester_are_refused(self):
+        with self.assertRaises(ValidationError) as context:
+            self.change(start=time(10, 0), slot_count=3)
+        self.assertEqual(context.exception.message_dict, {'horario': ['Escolha um horário do semestre.']})
+
+    def test_form_sends_the_duration(self):
+        self.client.force_login(self.changer)
+        self.client.post(self.url(), self.form_data(horario='09:00', duracao='3', confirmar='1'))
+        self.assertEqual(len(self.active_slots(CUT)), 3)

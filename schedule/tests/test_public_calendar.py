@@ -13,7 +13,7 @@ from accounts.models import Role, User
 from accounts.permissions import USER_VIEW
 from audit.models import AuditLog
 from schedule import occupancy, public
-from schedule.models import ClassGroup, Course, Semester, Space, Stage, Weekday
+from schedule.models import Allocation, AllocationException, ClassGroup, Course, Origin, Semester, Space, Stage, Weekday
 from schedule.occupancy import Occurrence
 from schedule.tests.test_timetable import allocate
 from schedule.timetable import Entry
@@ -377,3 +377,68 @@ class QueryTests(PublicCalendarTestCase):
         for index, weekday in enumerate([Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY]):
             allocate(self.semester, group, f'Disciplina {index}', weekday, time(9, 0), time(9, 50), space=f'3{index}', teachers=['Aldo Gomes', f'Docente {index}'])
         self.assertEqual(self.count(docente='Aldo Gomes', inicio='2026-09-01', fim='2026-10-01'), before)
+
+
+ORIGINAL_URL = reverse('public_original_timetable')
+
+
+class OriginalTimetableTests(PublicCalendarTestCase):
+    """Horário original: semana típica importada, com os mesmos filtros e sem datas."""
+
+    def original(self, **params):
+        return public.original_timetable(params, TODAY)
+
+    def subjects(self, calendar):
+        return [
+            (day.label, entry.subject)
+            for day in calendar.week.days
+            for cell in day.cells
+            if cell and not cell.is_continued and not cell.is_outside
+            for cluster in cell.clusters
+            for entry in cluster.entries
+        ]
+
+    def test_visitor_opens_the_route_with_get_and_head_only(self):
+        self.assertEqual(self.client.get(ORIGINAL_URL).status_code, 200)
+        self.assertEqual(self.client.head(ORIGINAL_URL).status_code, 200)
+        for method in (self.client.post, self.client.put, self.client.patch, self.client.delete):
+            self.assertEqual(method(ORIGINAL_URL).status_code, 405)
+
+    def test_cancelled_occurrence_stays_in_the_original(self):
+        mathematics = self.group_b.allocations.get(subject__name='Matemática')
+        superadmin = User.objects.get(email='super@ifnmg.edu.br')
+        AllocationException.objects.cancel([mathematics.pk], date(2026, 9, 21), superadmin)
+        self.assertNotIn('Matemática', self.text(self.get(sala='11', inicio='2026-09-21', fim='2026-09-25')))
+        self.assertIn(('Segunda', 'Matemática'), self.subjects(self.original(sala='11')))
+
+    def test_changed_recurrence_keeps_the_imported_version(self):
+        mathematics = self.group_b.allocations.get(subject__name='Matemática')
+        Allocation.objects.filter(pk=mathematics.pk).update(valid_until=date(2026, 8, 31))
+        changed = allocate(self.semester, self.group_b, 'Matemática', Weekday.TUESDAY, time(7, 0), time(7, 50), space='11', teachers=['Érica'])
+        Allocation.objects.filter(pk=changed.pk).update(origin=Origin.MANUAL, valid_from=date(2026, 9, 1))
+        self.assertEqual(self.subjects(self.original(sala='11')), [('Segunda', 'Matemática')])
+
+    def test_bookings_are_never_read(self):
+        with mock.patch.object(public, 'public_bookings') as bookings:
+            self.original(sala='10')
+        bookings.assert_not_called()
+
+    def test_filters_are_the_same_and_dates_are_ignored(self):
+        self.assertEqual(self.original().message, public.CHOOSE_MESSAGE)
+        calendar = self.original(curso='INFORMÁTICA', turma='2º ANO A', inicio='x', fim='2026-01-01')
+        self.assertEqual(calendar.date_error, '')
+        self.assertEqual(
+            sorted(subject for _, subject in self.subjects(calendar)),
+            ['Banco de Dados', 'Estudo Orientado', 'Redes'],
+        )
+        self.assertEqual(self.subjects(self.original(docente='Érica', sala='7')), [('Sexta', 'Artes')])
+
+    def test_page_has_no_dates_and_links_back_keeping_the_filters(self):
+        response = self.client.get(ORIGINAL_URL, {'sala': '10', 'inicio': '2026-09-21', 'fim': '2026-09-25'})
+        self.assertNotIn('inicio', response.context['filter_form'].fields)
+        self.assertEqual(response.context['other_url'], f'{URL}?sala=10')
+        self.assertEqual(response.context['calendar'].notice, '')
+
+    def test_calendar_links_to_the_original_without_dates(self):
+        response = self.get(sala='10', inicio='2026-09-21', fim='2026-09-25')
+        self.assertEqual(response.context['other_url'], f'{ORIGINAL_URL}?sala=10')

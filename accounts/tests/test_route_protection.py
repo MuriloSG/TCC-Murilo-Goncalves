@@ -95,6 +95,7 @@ PROTECTED_ROUTES = {
 
 PUBLIC_ROUTES = {
     'public_calendar',
+    'public_original_timetable',
     'account_login',
     'account_logout',
     'account_reset_password',

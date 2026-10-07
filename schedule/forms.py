@@ -212,7 +212,7 @@ class PublicCalendarFilterForm(forms.Form):
         label='Data final', required=False, widget=DateInput(attrs={'class': 'input'}),
     )
 
-    def __init__(self, calendar, stage_choices, *args, **kwargs):
+    def __init__(self, calendar, stage_choices, *args, with_dates=True, **kwargs):
         options = calendar.options
         super().__init__(*args, initial={
             'semestre': calendar.semester_code,
@@ -230,6 +230,9 @@ class PublicCalendarFilterForm(forms.Form):
         self.fields['curso'].choices = [('', 'Todos os cursos'), *[(course.name, course.name) for course in options.courses]]
         self.fields['nivel'].choices = [('', 'Todos os níveis'), *stage_choices]
         self.fields['turma'].choices = [('', 'Turma'), *[(group.label, group.label) for group in options.groups]]
+        if not with_dates:
+            del self.fields['inicio'], self.fields['fim']
+            return
         for name in ('inicio', 'fim'):
             self.fields[name].disabled = not calendar.dates_enabled
             if calendar.date_error:

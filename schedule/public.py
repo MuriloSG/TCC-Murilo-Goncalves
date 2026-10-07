@@ -11,6 +11,10 @@ model e sem IDs (D5).
 A quantidade de consultas é fixa: no máximo dez, qualquer que seja o intervalo (D10), com a das
 turmas do curso escolhido e a das ocorrências canceladas, que somem da Grade datada sem expor
 a exceção (Change cancelar-ocorrencia-do-ensalamento).
+
+O horário original (Change ver-horario-original-no-calendario-publico) usa os mesmos filtros e
+mostra a semana típica só com as alocações importadas, sem as versões das alterações de
+recorrência, sem as ocorrências canceladas e sem os agendamentos.
 """
 
 from dataclasses import dataclass, field
@@ -21,7 +25,7 @@ from django.db.models import Prefetch
 from django.db.models.functions import Lower
 
 from accounts.models import User
-from schedule.models import Allocation, AllocationException, ClassGroup, Course, Space, Stage, Teacher
+from schedule.models import Allocation, AllocationException, ClassGroup, Course, Origin, Space, Stage, Teacher
 from schedule.occupancy import public_sources
 from schedule.timetable import (
     WEEKDAYS,
@@ -217,9 +221,15 @@ def teacher_emails(names):
     return dict(found)
 
 
-def public_allocations(semester, space=None, teacher=None, course=None, stage=None, group=None):
-    """Alocações do semestre com os filtros aplicados no banco, só com as colunas do card."""
+def public_allocations(semester, space=None, teacher=None, course=None, stage=None, group=None, original=False):
+    """Alocações do semestre com os filtros aplicados no banco, só com as colunas do card.
+
+    Com `original`, só as importadas, que continuam valendo como horário original mesmo
+    quando uma alteração de recorrência as encerrou.
+    """
     queryset = Allocation.objects.filter(semester=semester)
+    if original:
+        queryset = queryset.filter(origin=Origin.IMPORTED)
     if space is not None:
         queryset = queryset.filter(space=space)
     if teacher is not None:
@@ -455,8 +465,8 @@ class PublicCalendar:
         return ', '.join(parts)
 
 
-def public_calendar(params, today):
-    """Lê os filtros da URL e monta o calendário público, consultando as aulas só quando pode (D7, D8)."""
+def read_filters(params, today):
+    """Filtros comuns às duas telas públicas, normalizados: (calendário, semestre ou None)."""
     semesters = {semester.code: semester for semester in imported_semesters()}
     current = current_semester_code(today)
     codes = sorted(set(semesters) | {current}, reverse=True)
@@ -476,6 +486,18 @@ def public_calendar(params, today):
         group=chosen_group(params.get('turma'), groups),
         stage_key=stage_key if stage_key in STAGES else '',
     )
+    return calendar, semester
+
+
+def free_label(calendar):
+    only_space = calendar.space is not None and calendar.teacher is None and calendar.course is None and not calendar.stage_key
+    return 'disponível' if only_space else 'sem aula'
+
+
+def public_calendar(params, today):
+    """Lê os filtros da URL e monta o calendário público, consultando as aulas só quando pode (D7, D8)."""
+    calendar, semester = read_filters(params, today)
+    code = calendar.semester_code
     if semester is None:
         calendar.message = f'Nenhum horário publicado no semestre {code}.'
         return calendar
@@ -490,7 +512,7 @@ def public_calendar(params, today):
         return calendar
     if calendar.date_error:
         return calendar
-    calendar.free_label = 'disponível' if calendar.space is not None and calendar.teacher is None and calendar.course is None and not calendar.stage_key else 'sem aula'
+    calendar.free_label = free_label(calendar)
     if semester.has_period and not touches(semester, calendar.start, calendar.end):
         calendar.message = (
             f'O intervalo escolhido está fora do semestre {code}, de '
@@ -508,4 +530,23 @@ def public_calendar(params, today):
     else:
         calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'
         calendar.week = typical_week(semester, allocations, today)
+    return calendar
+
+
+def original_timetable(params, today):
+    """Monta o horário original: a semana típica das alocações importadas, sem datas."""
+    calendar, semester = read_filters(params, today)
+    code = calendar.semester_code
+    if semester is None:
+        calendar.message = f'Nenhum horário publicado no semestre {code}.'
+        return calendar
+    if not calendar.has_principal:
+        calendar.message = CHOOSE_MESSAGE
+        return calendar
+    calendar.free_label = free_label(calendar)
+    allocations = public_allocations(
+        semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key), calendar.group,
+        original=True,
+    )
+    calendar.week = typical_week(semester, allocations, today)
     return calendar

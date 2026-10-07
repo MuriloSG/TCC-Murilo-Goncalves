@@ -12,7 +12,10 @@
           <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
           <span class="brand-name">IFAgenda</span>
         </a>
-        <button class="icon-btn public-theme" type="button" data-theme-toggle aria-label="Trocar o modo de exibição" hidden>{% icon "sun" "theme-sun" %}{% icon "moon" "theme-moon" %}<span class="tip is-below" role="tooltip">Trocar o modo de exibição</span></button>
+        <div class="public-actions">
+          {% block header_actions %}{% endblock %}
+          <button class="icon-btn public-theme" type="button" data-theme-toggle aria-label="Trocar o modo de exibição" hidden>{% icon "sun" "theme-sun" %}{% icon "moon" "theme-moon" %}<span class="tip is-below" role="tooltip">Trocar o modo de exibição</span></button>
+        </div>
       </div>
     </header>
     <main class="public-main" id="conteudo" tabindex="-1">

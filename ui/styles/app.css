@@ -2087,7 +2087,6 @@
   }
 
   .public-theme {
-    margin-left: auto;
     border: 1px solid var(--color-divider);
 
     & .tip {
@@ -2242,6 +2241,28 @@
   .public-calendar > .card-head {
     flex-wrap: nowrap;
     align-items: center;
+  }
+  .public-switch {
+    flex-shrink: 0;
+    white-space: nowrap;
+    @media (width < 40rem) {
+      padding-inline: var(--spacing-2);
+      & .public-switch-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+    }
+  }
+  .public-actions {
+    display: flex;
+    margin-left: auto;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-width: 0;
   }
 
   .public-calendar {

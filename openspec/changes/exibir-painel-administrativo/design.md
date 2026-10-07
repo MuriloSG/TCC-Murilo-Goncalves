@@ -42,7 +42,7 @@ Legenda de prioridade: **V1** entra nesta Change; **Adiado** é viável mas fica
 |---|---|---|---|---|---|---|
 | A1 | Solicitações pendentes | Abrir a fila de análise | `BookingRequest.status=PENDENTE` | Sim | Nenhum | V1 |
 | A2 | Pendentes com horário já passado | Rejeitar o que não pode mais ser aprovado | `status=PENDENTE` e início `<= agora` | Sim | A aprovação já recusa; o indicador só antecipa | V1 |
-| A3 | Pendentes mais próximas de acontecer | Priorizar a decisão | `status=PENDENTE`, início `> agora`, ordem por `date`, `start_time` | Sim | Nenhum | V1 (lista, 5 itens) |
+| A3 | Pendentes pedidas por último | Priorizar a decisão | `status=PENDENTE`, início `> agora`, as 5 de `created_at` mais recente, mostradas por `date`, `start_time` | Sim | Nenhum | V1 (lista, 5 itens) |
 | A4 | Pendentes há mais tempo | Priorizar pela espera | `created_at` | Sim | Duplica A3 na prática; a lista mostra a espera em cada linha | V1 dentro de A3 |
 | A5 | Alternativas sugeridas aguardando resposta | Saber o que depende do solicitante | `status=ALTERNATIVA_SUGERIDA` | Sim | O administrador não age; é contexto | V1 (contagem) |
 | A6 | Agendamentos de hoje | Preparar o dia | `Booking.starts_at` na data | Sim | Já aparece na ocupação de hoje | V1 dentro de B2 |

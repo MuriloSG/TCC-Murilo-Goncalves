@@ -135,12 +135,12 @@ class RequestTests(PanelTestCase):
         self.assertEqual(summary['overdue'], 1)
         self.assertEqual(summary['upcoming'], [upcoming])
 
-    def test_closest_first_and_five_at_most(self):
+    def test_five_latest_requests_in_date_order(self):
         days = [date(2026, 10, day) for day in (12, 6, 7, 13, 8, 9, 14, 15)]
         for day in days:
             self.request(day)
         summary = indicators.requests_summary(timezone.localtime())
-        self.assertEqual([item.date for item in summary['upcoming']], sorted(days)[:5])
+        self.assertEqual([item.date for item in summary['upcoming']], sorted(days[-5:]))
         self.assertEqual(summary['pending'], 8)
 
     def test_empty_state(self):

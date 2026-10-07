@@ -53,7 +53,7 @@ def waiting_text(created_at, today):
 
 
 def requests_summary(moment):
-    """Contagens das solicitações e as cinco pendentes mais próximas de acontecer (A1 a A5)."""
+    """Contagens das solicitações e as cinco pendentes pedidas por último, na ordem da data de uso (A1 a A5)."""
     today, at = moment.date(), moment.time()
     passed = Q(date__lt=today) | Q(date=today, start_time__lte=at)
     pending = Q(status=BookingRequest.Status.PENDING)
@@ -62,11 +62,12 @@ def requests_summary(moment):
         overdue=Count('pk', filter=pending & passed),
         awaiting=Count('pk', filter=Q(status=BookingRequest.Status.SUGGESTED)),
     )
-    upcoming = list(
+    upcoming = sorted(
         BookingRequest.objects.filter(status=BookingRequest.Status.PENDING)
         .exclude(passed)
         .select_related('space', 'requested_by')
-        .order_by('date', 'start_time', 'created_at', 'pk')[:LIST_SIZE],
+        .order_by('-created_at', '-pk')[:LIST_SIZE],
+        key=lambda request: (request.date, request.start_time, request.created_at, request.pk),
     )
     for request in upcoming:
         request.waiting = waiting_text(request.created_at, today)

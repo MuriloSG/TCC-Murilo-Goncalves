@@ -9,7 +9,7 @@ O levantamento de indicadores da Direção de Ensino (`levantamento_indicadores_
 - Nova rota autenticada `painel/`, com a permissão nova `PAINEL.VISUALIZAR`, concedida pela migration ao perfil de sistema `ADMINISTRADOR`.
 - O item "Painel" entra em primeiro lugar no menu. Quem tem a permissão passa a abrir o painel depois do login, pela regra já existente do primeiro item liberado.
 - O painel tem quatro blocos, e cada um só aparece a quem tem também a permissão do módulo de onde vêm os dados:
-  - **Solicitações para decidir** (`AGENDA.ANALISAR`): contagem das pendentes, das pendentes com horário já passado e das alternativas sugeridas esperando resposta, e a lista das cinco pendentes mais próximas de acontecer.
+  - **Solicitações para decidir** (`AGENDA.ANALISAR`): contagem das pendentes, das pendentes com horário já passado e das alternativas sugeridas esperando resposta, e a lista das cinco pendentes pedidas por último, na ordem da data de uso.
   - **Ocupação dos espaços** (`ENSALAMENTO.VISUALIZAR`): horas ocupadas por espaço, hoje ou na semana atual, escolhidas por um campo de seleção, com aulas não canceladas e agendamentos aprovados, sem contar duas vezes o mesmo intervalo; e os espaços ativos sem ocupação no período.
   - **Pendências da grade** (`ENSALAMENTO.VISUALIZAR`): aulas sem espaço, aulas sem docente e possíveis conflitos de docente no semestre escolhido, e agendamentos em choque com uma aula.
   - **Importações sem conclusão** (`ENSALAMENTO.IMPORTAR`): importações do ensalamento que não foram confirmadas nem descartadas.

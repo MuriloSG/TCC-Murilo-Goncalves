@@ -1,0 +1,26 @@
+{% load ui %}
+  {% if importation.is_validated %}
+    {% if not confirm_refusal %}<form id="confirmar-importacao" method="post" hidden action="{{ confirm_url }}">{% csrf_token %}</form>{% endif %}
+    <div class="import-head-actions">
+      <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
+      {% if not confirm_refusal %}<button class="btn-primary" type="submit" form="confirmar-importacao">{% icon "check" %}Confirmar importação</button>{% endif %}
+    </div>
+  {% elif importation.needs_decision %}
+    <div class="import-head-actions">
+      <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
+    </div>
+  {% elif importation.status == "COM_ERROS" %}
+    <div class="import-head-actions">
+      {% if delete_url %}<a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>{% endif %}
+      <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo corrigido</a>
+    </div>
+  {% elif importation.status == "FALHOU" %}
+    <div class="import-head-actions">
+      {% if delete_url %}<a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>{% endif %}
+      <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo de novo</a>
+    </div>
+  {% elif delete_url %}
+    <div class="import-head-actions">
+      <a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>
+    </div>
+  {% endif %}

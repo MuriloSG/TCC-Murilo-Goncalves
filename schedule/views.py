@@ -1157,7 +1157,7 @@ def space_panel(importation, user):
     atualização ou erros na planilha. No restante, vem recolhido, com o resumo no cabeçalho.
     """
     status = importation.status
-    if status in (Import.Status.DISCARDED, Import.Status.RECEIVED, Import.Status.FAILED):
+    if status in (Import.Status.DISCARDED, Import.Status.RECEIVED, Import.Status.FAILED) or importation.is_busy:
         return None
     if status == Import.Status.CONCLUDED:
         return {'concluded': True, 'created': sorted(Space.objects.filter(source_import=importation), key=natural_key)}

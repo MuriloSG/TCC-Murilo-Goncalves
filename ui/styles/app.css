@@ -3907,6 +3907,56 @@
     flex: 1;
   }
 
+  .poll-region {
+    display: contents;
+  }
+
+  .import-head {
+    & > .audit-grid[hidden] {
+      display: none;
+    }
+  }
+
+  .import-head-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-2) var(--spacing-4);
+    min-height: var(--spacing-16);
+    padding: var(--spacing-3) var(--spacing-4);
+
+    @variant sm {
+      padding-inline: var(--spacing-6);
+    }
+  }
+
+  .import-head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-3);
+    margin-left: auto;
+
+    @variant max-sm {
+      order: 2;
+      width: 100%;
+      flex-direction: column;
+    }
+  }
+
+  .import-head-toggle {
+    & > svg {
+      transition: rotate var(--motion-base) ease;
+    }
+
+    &[aria-expanded="true"] > svg {
+      rotate: 180deg;
+    }
+
+    @variant max-sm {
+      margin-left: auto;
+    }
+  }
+
   .alert > .alert-body {
     flex: 1;
     display: grid;

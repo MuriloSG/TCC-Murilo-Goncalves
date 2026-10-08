@@ -46,10 +46,9 @@ Os documentos descrevem o comportamento do código revisado em 08/10/2026. Para 
 - [Banco de dados](operacao/banco-de-dados.md): recursos do PostgreSQL usados, migrations, comandos de dados.
 - [Deploy](operacao/deploy.md): o que existe, o que falta, passos depois de subir uma instância.
 
-## Decisões e pendências
+## Decisões
 
 - [Decisões técnicas](decisoes/README.md): as decisões que explicam a forma do sistema e o motivo registrado de cada uma.
-- [Pendências](pendencias.md): divergências, riscos e pontos que precisam de confirmação.
 
 ## Outras fontes
 

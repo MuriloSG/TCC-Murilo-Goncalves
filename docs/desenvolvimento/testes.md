@@ -49,7 +49,7 @@ Resumo da seção 7 das [convenções](convencoes.md#7-testes):
 
 ## Conferência visual
 
-Não há teste automatizado de navegador no repositório. As conferências manuais usam um banco separado (`visual_check`) e Playwright em container, nunca o banco de desenvolvimento; a última tentativa não foi concluída por falta de acesso ao PyPI. Ver [pendências](../pendencias.md#funcionalidades-não-concluídas).
+Não há teste automatizado de navegador no repositório. As conferências manuais usam um banco separado (`visual_check`) e Playwright em container, nunca o banco de desenvolvimento; a última tentativa não foi concluída por falta de acesso ao PyPI.
 
 ## Autorização dos comandos destrutivos nos testes
 

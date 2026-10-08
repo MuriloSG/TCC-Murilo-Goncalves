@@ -94,6 +94,8 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 **Motivo registrado.** A `django-notifications-hq` (1.8.3) não roda com Python 3.13 e Django 5.2 (verificado em 24/09/2026). O motivo da escolha do `InMemoryChannelLayer` não está registrado além de dispensar infraestrutura; a limitação a um processo foi reconhecida quando as importações passaram para o worker, e por isso o andamento delas usa polling.
 
+**Revisão em 08/10/2026.** Com `DJANGO_REDIS_URL`, a camada passou a ser o `RedisChannelLayer`, no Redis já usado pelo cache público, para que as notificações criadas pelo `import_worker` (troca de perfil na importação de usuários) cheguem ao sino. Um segundo Redis foi descartado; a política `allkeys-lru` e os 64 MB não mudaram, e por isso as chaves do Channels podem ser descartadas sob pressão de memória. Sem a URL, a camada continua em memória, com o aviso `notices.W001`. O cache `default` dos limites do allauth continua `LocMemCache`.
+
 ## 12. Cache das telas públicas no Redis com invalidação por geração
 
 **Decisão.** Alias `public` com `RedisCache` nativo do Django, só para `/` e `/horario-original/`. Invalidação global incrementando `public:generation` depois do commit de qualquer escrita relevante. O cache `default` continua `LocMemCache`.

@@ -71,12 +71,12 @@ Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd
 | `worker` | a mesma do `web` | Envia os e-mails registrados no outbox (`process_outbox`) |
 | `import_worker` | a mesma do `web` | Executa a prévia, a atualização da prévia e a confirmação das importações (`process_imports`) |
 | `db` | `postgres:17` | Banco de dados PostgreSQL, sem porta publicada no host |
-| `redis` | `redis:8-alpine` | Cache das telas públicas, sem porta publicada no host e sem gravar em disco |
+| `redis` | `redis:8-alpine` | Cache das telas públicas e camada do Channels, sem porta publicada no host e sem gravar em disco |
 | `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface e o recompila a cada alteração |
 
 - O código é montado em `/app`. O `web` recarrega sozinho ao alterar o código; o `worker` e o `import_worker` não. Depois de alterar o código de e-mails ou de importações, rode `docker compose restart worker` ou `docker compose restart import_worker`.
 - O `worker` e o `import_worker` reiniciam sozinhos se encerrarem, por exemplo quando sobem antes do `make migrate`.
-- `web`, `worker` e `import_worker` só iniciam depois que o healthcheck do `db` indica que o banco está pronto. A aplicação não espera o `redis`: sem ele, as telas públicas consultam o banco.
+- `web`, `worker` e `import_worker` só iniciam depois que o healthcheck do `db` indica que o banco está pronto. A aplicação não espera o `redis`: sem ele, as telas públicas consultam o banco e os avisos do sino falham (ficam no log) até ele voltar.
 - Os dados do PostgreSQL ficam no volume `postgres_data`, que `make down` preserva e `make reset-db` remove.
 - O `tailwind` grava `ui/static/ui/css/app.css`, que fica fora do Git. Uma classe nova num template aparece no CSS sem reiniciar containers. As dependências de Node.js ficam num volume anônimo em `/app/node_modules`; a imagem do `web` não tem Node.js.
 
@@ -95,9 +95,9 @@ Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
 | `DJANGO_CREDENTIALS_KEY` | `chave-de-credenciais-somente-para-desenvolvimento-local` | Cifra as senhas guardadas no banco, como a do servidor de e-mail. Trocá-la exige informar essas senhas de novo |
-| `DJANGO_REDIS_URL` | `redis://redis:6379/0` | Conexão do cache das telas públicas. Vazia, as telas públicas funcionam sem cache |
-| `DJANGO_REDIS_TIMEOUT` | `0.1` | Tempo limite, em segundos, de conexão e de leitura do Redis |
-| `DJANGO_CACHE_KEY_PREFIX` | `ifagenda` | Prefixo das chaves do cache. Ambientes que dividem um Redis usam prefixos diferentes |
+| `DJANGO_REDIS_URL` | `redis://redis:6379/0` | Conexão do cache das telas públicas e da camada do Channels. Vazia, as telas públicas funcionam sem cache e a camada fica em memória, com o aviso `notices.W001` |
+| `DJANGO_REDIS_TIMEOUT` | `0.1` | Tempo limite, em segundos, de conexão e de leitura do cache público e de conexão da camada do Channels |
+| `DJANGO_CACHE_KEY_PREFIX` | `ifagenda` | Prefixo das chaves do cache; a camada do Channels usa `<prefixo>:channels`. Ambientes que dividem um Redis usam prefixos diferentes |
 | `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail antes de desistir |
 | `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |
 | `DJANGO_OUTBOX_POLL_INTERVAL` | `5` | Segundos que o `worker` espera quando não há e-mail para enviar |

@@ -27,12 +27,12 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | Cifra | `DJANGO_CREDENTIALS_KEY` estável: trocá-la invalida a senha SMTP gravada |
 | Servidor ASGI | O WebSocket das notificações exige ASGI (`config.asgi.application`). `daphne` já está nas dependências; não há comando de produção definido |
 | Workers | `process_outbox` e `process_imports` rodando o tempo todo |
-| Redis | Opcional: sem `DJANGO_REDIS_URL` as telas públicas funcionam sem cache. Com ele, senha e rede privada |
+| Redis | Sem `DJANGO_REDIS_URL` as telas públicas funcionam sem cache e as notificações criadas pelo `import_worker` não chegam ao sino em tempo real (aviso `notices.W001`). Com ele, senha e rede privada. As chaves do Channels dividem o Redis com o cache público, sob `allkeys-lru` e 64 MB: sob pressão de memória podem ser descartadas, e quem perde a inscrição no grupo só volta a receber avisos ao reconectar (recarregar a página). |
 | Estáticos | Sem `STATIC_ROOT` e sem `collectstatic`. Com `DEBUG` desligado o Django não serve `ui/static/`; o CSS precisa ser gerado (`make css`) antes. Quem serve os estáticos não está definido |
 | Mídia | Nenhuma: o sistema não grava arquivos enviados |
 | HTTPS e cookies | `SECURE_PROXY_SSL_HEADER`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS` e HSTS não estão em `settings.py`. Ajustá-los exige alterar o settings, o que depende do proxy escolhido |
-| Proxy reverso | Fora do repositório. Deve aplicar o rate limit de `/` e `/horario-original/` (convenção da seção 4) e não guardar essas páginas com cache próprio, que ignoraria a invalidação da aplicação |
-| Vários processos web | `InMemoryChannelLayer` e o `LocMemCache` dos limites do allauth são por processo. Com mais de um processo, o sino só atualiza ao recarregar e os limites de tentativa não são compartilhados |
+| Proxy reverso | Fora do repositório. Deve aplicar o rate limit de `/` e `/horario-original/` (convenção da seção 4) e não guardar essas páginas com cache próprio, que ignoraria a invalidação da aplicação. Sem `ALLAUTH_TRUSTED_PROXY_COUNT` ou `ALLAUTH_TRUSTED_CLIENT_IP_HEADER`, os limites por IP do allauth passam a valer para o IP do proxy, compartilhados por todos; o valor depende do proxy escolhido |
+| Vários processos web | O `LocMemCache` dos limites do allauth é por processo: com mais de um processo, os limites de tentativa não são compartilhados. A camada do Channels só é compartilhada com `DJANGO_REDIS_URL` |
 | Logs | Sem `LOGGING`; ver [configuração](configuracao.md#não-configurado-no-repositório) |
 | Backup | Não há rotina no repositório |
 

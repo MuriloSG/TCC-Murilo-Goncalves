@@ -100,19 +100,26 @@ ASGI_APPLICATION = 'config.asgi.application'
 REDIS_URL = os.environ.get('DJANGO_REDIS_URL', '')
 REDIS_TIMEOUT = float(os.environ.get('DJANGO_REDIS_TIMEOUT', '0.1'))
 TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+CACHE_KEY_PREFIX = os.environ.get('DJANGO_CACHE_KEY_PREFIX', 'ifagenda')
 
 CACHES = {
     'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
     'public': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': REDIS_URL,
-        'KEY_PREFIX': os.environ.get('DJANGO_CACHE_KEY_PREFIX', 'ifagenda'),
+        'KEY_PREFIX': CACHE_KEY_PREFIX,
         'OPTIONS': {'socket_connect_timeout': REDIS_TIMEOUT, 'socket_timeout': REDIS_TIMEOUT},
     } if REDIS_URL and not TESTING else {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'},
 }
 
 CHANNEL_LAYERS = {
-    'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [{'address': REDIS_URL, 'socket_connect_timeout': REDIS_TIMEOUT}],
+            'prefix': f'{CACHE_KEY_PREFIX}:channels',
+        },
+    } if REDIS_URL and not TESTING else {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
 }
 
 

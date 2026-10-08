@@ -47,8 +47,8 @@ Implementação: `accounts.utils.require_safe_database`, chamada na primeira lin
 | `DJANGO_LOG_LEVEL` | Nível dos loggers do projeto. Padrão e recomendado em produção: `INFO`. `DEBUG` inclui o traceback das falhas de importação |
 | `DJANGO_SITE_URL` | Base dos links nos e-mails enviados pelo worker (que não tem requisição) |
 | `DJANGO_EMAIL_BACKEND` | Padrão: console. Para enviar de fato, `django.core.mail.backends.smtp.EmailBackend`. As credenciais vêm da interface, não de variáveis |
-| `DJANGO_REDIS_URL` | Vazia desliga o cache público (as telas consultam o banco). Fora da máquina de desenvolvimento, com senha (`redis://:senha@host:6379/0`) e TLS (`rediss://`) quando o Redis não está na rede privada |
-| `DJANGO_CACHE_KEY_PREFIX` | Diferente por instalação quando várias dividem o mesmo Redis |
+| `DJANGO_REDIS_URL` | Usada pelo cache público e pela camada do Channels. Vazia desliga o cache público (as telas consultam o banco) e deixa a camada em memória, com o aviso `notices.W001`. Fora da máquina de desenvolvimento, com senha (`redis://:senha@host:6379/0`) e TLS (`rediss://`) quando o Redis não está na rede privada |
+| `DJANGO_CACHE_KEY_PREFIX` | Diferente por instalação quando várias dividem o mesmo Redis. A camada do Channels usa `<prefixo>:channels` |
 | `DJANGO_OUTBOX_*`, `DJANGO_IMPORT_*` | Tentativas, intervalos, lotes e limites dos workers. Não estão no `compose.yaml`; valem os padrões de `settings.py` |
 
 ## Logs
@@ -84,7 +84,7 @@ Sem servidor SMTP cadastrado, nenhum e-mail sai, nem para o console.
 |---|---|---|
 | Fuso e idioma | `America/Sao_Paulo`, `pt-br` | `settings.py` |
 | Cache `default` | `LocMemCache`, por processo. Usado pelos limites de tentativas do allauth | `CACHES` |
-| Camada do Channels | `InMemoryChannelLayer`, por processo | `CHANNEL_LAYERS` |
+| Camada do Channels | `RedisChannelLayer` com `DJANGO_REDIS_URL`, só com timeout de conexão (a leitura bloqueia por até 5 segundos à espera de mensagens). Sem a URL e nos testes, `InMemoryChannelLayer`, por processo | `CHANNEL_LAYERS` |
 | Timeout SMTP | 30 segundos | `EMAIL_TIMEOUT` |
 | Limites da importação do ensalamento | 5000 linhas, 10 MiB | `schedule/imports.py` |
 | Prazo de cancelamento de agendamento | 1 hora antes do início | `bookings.models.CANCEL_DEADLINE` |

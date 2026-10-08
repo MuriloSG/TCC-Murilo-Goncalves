@@ -26,7 +26,7 @@ Disponível em toda tela autenticada, sem permissão própria.
 
 Uma notificação de outro usuário responde 404. O redirecionamento sem destino só aceita endereços do próprio host.
 
-Tempo real: o navegador abre `ws/notificacoes/`. Depois do commit de uma operação que cria notificações, `notices/realtime.py` avisa o grupo `notificacoes-<user_id>` e o navegador busca o fragmento do sino. Ver as limitações do `InMemoryChannelLayer` em [arquitetura](../arquitetura/visao-geral.md#tempo-real).
+Tempo real: o navegador abre `ws/notificacoes/`. Depois do commit de uma operação que cria notificações, `notices/realtime.py` avisa o grupo `notificacoes-<user_id>` e o navegador busca o fragmento do sino. Ver a camada usada e as limitações em [arquitetura](../arquitetura/visao-geral.md#tempo-real).
 
 Origem e autenticação do canal (`config/asgi.py`), em duas etapas independentes:
 

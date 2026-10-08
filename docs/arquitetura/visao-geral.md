@@ -10,7 +10,7 @@ Aplicação Django monolítica no padrão MTV, com um app por domínio, PostgreS
 | `worker` | `python manage.py process_outbox` | Envia os e-mails registrados no outbox |
 | `import_worker` | `python manage.py process_imports` | Executa a prévia, a atualização da prévia e a confirmação das importações |
 | `db` | `postgres:17` | Banco de dados |
-| `redis` | `redis:8-alpine`, sem persistência, 64 MB, `allkeys-lru` | Cache das telas públicas |
+| `redis` | `redis:8-alpine`, sem persistência, 64 MB, `allkeys-lru` | Cache das telas públicas e camada do Channels |
 | `tailwind` | `npx @tailwindcss/cli ... --watch=always` | Compila `ui/styles/app.css` em `ui/static/ui/css/app.css` |
 
 `web`, `worker` e `import_worker` usam a mesma imagem e montam o código em `/app`. Só o `web` recarrega sozinho ao alterar o código.
@@ -70,7 +70,7 @@ Os mecanismos genéricos não conhecem os apps que os usam. Cada app se registra
 
 ## Tempo real
 
-O sino de notificações escuta `ws/notificacoes/` (`notices/consumers.py`). O aviso é enviado em `transaction.on_commit` e só diz que as notificações do usuário mudaram; a página busca a contagem por HTTP. A camada é `InMemoryChannelLayer`, que só alcança conexões do mesmo processo. Uma notificação criada no `import_worker` ou em outro processo do `web` não chega em tempo real e aparece na próxima atualização da página. O acompanhamento das importações usa polling (`IMPORT_STATUS_POLL_SECONDS`) por esse motivo.
+O sino de notificações escuta `ws/notificacoes/` (`notices/consumers.py`). O aviso é enviado em `transaction.on_commit` e só diz que as notificações do usuário mudaram; a página busca a contagem por HTTP. Com `DJANGO_REDIS_URL`, a camada é o `RedisChannelLayer` (`channels_redis`), no mesmo Redis do cache público, com o prefixo `<DJANGO_CACHE_KEY_PREFIX>:channels`: uma notificação criada no `import_worker` ou em outro processo do `web` chega em tempo real. Sem a variável, e nos testes, a camada é `InMemoryChannelLayer`, que só alcança conexões do mesmo processo; fora dos testes, o check `notices.W001` avisa disso em todo comando de gestão. As chaves do Channels dividem o Redis com o cache público, sob `allkeys-lru` e 64 MB: sob pressão de memória podem ser descartadas, e quem perde a inscrição no grupo só volta a receber avisos ao reconectar (recarregar a página). O acompanhamento das importações usa polling (`IMPORT_STATUS_POLL_SECONDS`), adotado quando a camada só existia em memória.
 
 ## Fuso, idioma e formatos
 

@@ -49,10 +49,10 @@ Depois do login, `/inicio/` redireciona para o primeiro item do menu liberado ao
 | Driver | psycopg (binary) | 3.3.5 |
 | Interface | templates do Django, Tailwind CSS 4.3.3, htmx (arquivo local), ícones Lucide e fonte Open Sans locais | `package.json`, `ui/static/` |
 | Interações htmx no servidor | django-htmx | 1.29.0 |
-| Tempo real | Django Channels com `InMemoryChannelLayer`, servido pelo Daphne | channels 4.3.2, daphne 4.2.3 |
+| Tempo real | Django Channels com `RedisChannelLayer` (em memória sem `DJANGO_REDIS_URL`), servido pelo Daphne | channels 4.3.2, channels-redis 4.3.0, daphne 4.2.3 |
 | Planilhas XLSX | openpyxl | 3.1.5 |
 | Cifra da senha SMTP | cryptography (Fernet) | 50.0.1 |
-| Cache das telas públicas | Redis | `redis:8-alpine`, cliente redis 8.1.0 |
+| Cache das telas públicas e camada do Channels | Redis | `redis:8-alpine`, cliente redis 8.1.0 |
 | Compilação do CSS | Node.js, só no container `tailwind` | 22.23.2 |
 
 Não há API REST, front-end separado nem `django.contrib.admin`.

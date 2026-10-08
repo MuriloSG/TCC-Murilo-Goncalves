@@ -226,7 +226,7 @@ Cada `ImportRow` guarda os valores lidos e o plano (`action`, `target`, `changes
 ## Fora desta versão
 
 - Progresso e cancelamento de uma execução em andamento: a execução é uma transação e nada fica visível a outra conexão antes do commit.
-- Aviso em tempo real do fim da operação: o detalhe usa polling, porque o `InMemoryChannelLayer` não atravessa os processos `web` e `import_worker` (ver [tempo real](visao-geral.md#tempo-real)).
+- Aviso em tempo real do fim da operação: o detalhe usa polling, adotado quando a camada do Channels só existia em memória e não atravessava os processos `web` e `import_worker`; sem `DJANGO_REDIS_URL` a camada continua assim (ver [tempo real](visao-geral.md#tempo-real)).
 - Atualizar a prévia de uma importação `COM_ERROS` ou reenviá-la: corrige-se enviando outro arquivo, que cria outra importação.
 
 ## Testes

@@ -2,7 +2,11 @@ FROM node:22.23.2-slim AS tailwind
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+RUN chown node:node /app
+
+USER node
+
+COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci
 
 FROM python:3.13-slim

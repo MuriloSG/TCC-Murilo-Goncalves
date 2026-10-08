@@ -8,7 +8,7 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 
 | Item | Situação |
 |---|---|
-| Imagem da aplicação | `Dockerfile` com `python:3.13-slim` e as dependências do `requirements.txt`. Instala as dependências como root e roda como o usuário `app` (uid `APP_UID`, padrão 1000, sem shell nem sudo). O código é só lido; a escrita fica em `/tmp` (upload grande) e no home do usuário. Num host Linux cujo usuário não tenha uid 1000, construa com `--build-arg APP_UID=$(id -u)` para `makemigrations` conseguir gravar no repositório. O container `tailwind` continua como root: é ferramenta de desenvolvimento e não roda a aplicação. Não copia o código: depende do volume `.:/app` do `compose.yaml` |
+| Imagem da aplicação | `Dockerfile` com `python:3.13-slim` e as dependências do `requirements.txt`. Instala as dependências como root e roda como o usuário `app` (uid `APP_UID`, padrão 1000, sem shell nem sudo). O código é só lido; a escrita fica em `/tmp` (upload grande) e no home do usuário. Num host Linux cujo usuário não tenha uid 1000, construa com `--build-arg APP_UID=$(id -u)` para `makemigrations` conseguir gravar no repositório. O container `tailwind` roda como o usuário `node` da imagem (uid 1000), dono de `/app/node_modules`; num host Linux com outro uid, o CSS gerado no volume não poderá ser gravado. Não copia o código: depende do volume `.:/app` do `compose.yaml` |
 | Servidor | `python manage.py runserver 0.0.0.0:8000` (Daphne via `runserver`, por causa do Channels) |
 | Workers | `process_outbox` e `process_imports`, com `restart: unless-stopped` |
 | Redis | `redis:8-alpine` sem senha, sem persistência, 64 MB, `allkeys-lru`, sem porta publicada |

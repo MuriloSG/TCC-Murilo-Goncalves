@@ -6,7 +6,6 @@ Itens sem solução em 08/10/2026. O comportamento atual foi mantido em todos.
 
 | Item | Situação |
 |---|---|
-| Página com todas as notificações do usuário | Planejada e não implementada. O usuário vê só as 10 mais recentes no sino |
 | Comando de estatísticas do cache público (geração atual, hits, misses, chaves removidas) | Planejado e não implementado |
 | Redis como camada do Channels e para os limites de tentativas do allauth | Avaliação planejada, não feita |
 

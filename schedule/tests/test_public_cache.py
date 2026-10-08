@@ -286,6 +286,7 @@ class CommitTests(InvalidationTestCase):
             offering.sync_assignments()
         self.assertEqual(self.bumps(), before + 2)
 
+    @override_settings(ENVIRONMENT='local')
     def test_clear_data_invalidates(self):
         Space.objects.register('Sala 50')
         before = self.bumps()

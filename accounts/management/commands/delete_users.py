@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
 from accounts.models import User
+from accounts.utils import require_local_environment
 
 
 def references(model):
@@ -46,7 +47,8 @@ class Command(BaseCommand):
     registro de auditoria ou quem decidiu uma solicitação, fica com a referência vazia. O
     que depende dele obrigatoriamente, como o vínculo com o perfil, os e-mails do allauth, as
     solicitações e as importações que ele enviou, é excluído junto. Só roda com um
-    superadmin ativo, para que o sistema não fique sem acesso administrativo.
+    superadmin ativo, para que o sistema não fique sem acesso administrativo, e só com
+    `DJANGO_ENVIRONMENT=local` (`require_local_environment`), verificado antes de tudo.
     """
 
     help = 'Exclui os usuários que não são superadmin e os vínculos deles, mantendo perfis e superadmins.'
@@ -55,6 +57,7 @@ class Command(BaseCommand):
         parser.add_argument('--yes', action='store_true', help='Não pede confirmação.')
 
     def handle(self, *args, **options):
+        require_local_environment('delete_users')
         if not User.objects.filter(is_superadmin=True, is_active=True).exists():
             raise CommandError('Não há superadmin ativo. Crie um com create_superadmin antes de excluir os usuários.')
         pks = list(User.objects.filter(is_superadmin=False).values_list('pk', flat=True))

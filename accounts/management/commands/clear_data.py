@@ -2,6 +2,7 @@ from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 
+from accounts.utils import require_local_environment
 from schedule import public_cache
 
 KEPT_APPS = {'accounts', 'account', 'auth', 'contenttypes', 'sessions'}
@@ -13,7 +14,8 @@ class Command(BaseCommand):
     Usa `TRUNCATE ... RESTART IDENTITY CASCADE` nas tabelas dos apps fora de
     `KEPT_APPS`, o que também ignora a proteção do registro de auditoria, feita
     no model. As sessões ficam, para que ninguém perca o login. O `TRUNCATE` não dispara
-    sinais, e o cache público é invalidado explicitamente depois do commit.
+    sinais, e o cache público é invalidado explicitamente depois do commit. Só roda com
+    `DJANGO_ENVIRONMENT=local` (`require_local_environment`), verificado antes de tudo.
     """
 
     help = 'Exclui os dados do sistema e mantém apenas os usuários, perfis e permissões.'
@@ -22,6 +24,7 @@ class Command(BaseCommand):
         parser.add_argument('--yes', action='store_true', help='Não pede confirmação.')
 
     def handle(self, *args, **options):
+        require_local_environment('clear_data')
         tables = sorted({
             model._meta.db_table
             for model in apps.get_models(include_auto_created=True)

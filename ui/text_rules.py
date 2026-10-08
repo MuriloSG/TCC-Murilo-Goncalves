@@ -1,7 +1,7 @@
 """Regras do texto exibido pela interface e extração desse texto.
 
 As listas deste módulo são a fonte usada pela verificação automática das regras
-da seção 9 do openspec/conventions.md (tom, expressões proibidas, glossário e
+da seção 9 do docs/desenvolvimento/convencoes.md (tom, expressões proibidas, glossário e
 maiúsculas). A seção 9 é a referência de leitura: uma mudança numa das duas exige
 a mudança da outra no mesmo commit (D4 da Change definir-texto-da-interface).
 

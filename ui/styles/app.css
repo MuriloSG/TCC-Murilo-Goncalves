@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@source not "../../openspec";
+@source not "../../docs";
 @source not "../../sources";
 
 @font-face {

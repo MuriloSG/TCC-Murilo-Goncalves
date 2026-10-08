@@ -3,8 +3,9 @@
 Tudo o que a página pública expõe sai deste módulo. Ele lê as alocações do ensalamento
 acadêmico e nunca chama `occupancy()` nem `grid_sources()`: além das aulas, só entram as
 fontes registradas como públicas, hoje os agendamentos aprovados da Agenda, e só na consulta
-por sala ou por docente, com o horário, a sala, o nome e o e-mail de quem solicitou, sem a
-descrição (Change agendar-uso-eventual-dos-espacos). Os
+por sala ou por docente, com a sala, a disciplina, o curso, a turma e o nome do docente do
+vínculo ou de quem solicitou, sem a descrição e sem e-mail (Change agendar-uso-eventual-dos-espacos
+e commit `bbf8044`, que retirou os e-mails dos cards). Os
 templates recebem só `PublicEntry`, `PublicBooking` e a estrutura da Grade, sem referência a
 model e sem IDs (D5).
 

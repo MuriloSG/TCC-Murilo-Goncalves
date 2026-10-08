@@ -4,7 +4,9 @@
 
 Sistema web para agendamento de espaços físicos do IFNMG – Campus Salinas, desenvolvido com Django e PostgreSQL como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação.
 
-Todo o ambiente de desenvolvimento roda em Docker. Não é preciso instalar Python, Node.js nem PostgreSQL na máquina.
+A documentação do sistema (funcionalidades, regras, arquitetura, operação e decisões) está em [`docs/`](docs/README.md). Este arquivo cobre o ambiente de desenvolvimento.
+
+Todo o ambiente roda em Docker. Não é preciso instalar Python, Node.js nem PostgreSQL na máquina.
 
 ## Pré-requisitos
 
@@ -16,55 +18,21 @@ Todo o ambiente de desenvolvimento roda em Docker. Não é preciso instalar Pyth
 
 ## Primeira execução
 
-Depois de clonar o repositório, na raiz do projeto:
+Na raiz do projeto:
 
 ```bash
 make up                                # constrói as imagens, sobe os containers e gera o CSS
-make migrate                           # aplica as migrations no PostgreSQL
-make manage cmd="create_superadmin"    # cria o primeiro superadmin
+make migrate                           # aplica as migrations e cria os perfis e as permissões
+make manage cmd="create_superadmin"    # cria o primeiro superadmin (pede e-mail, nome e senha)
 ```
 
-Depois disso, entre em <http://localhost:8000/contas/login/> com o e-mail e a senha do superadmin. A raiz `/` ainda responde 404: ela está reservada para a consulta pública de disponibilidade.
+Depois:
 
-## Superadmin
+- `http://localhost:8000/` abre o calendário público, sem login.
+- `http://localhost:8000/contas/login/` é a entrada do sistema, com o e-mail e a senha do superadmin.
+- Cadastre um servidor de e-mail em **Configurações > E-mail** (veja [E-mails no desenvolvimento](#e-mails-no-desenvolvimento)). Sem isso nenhum e-mail sai, nem nos logs.
 
-O superadmin tem acesso irrestrito e é o único que configura os perfis. Ele não é um perfil nem uma permissão, mas uma característica do usuário, e só é controlado pelos comandos abaixo, nunca pela interface.
-
-**Criar o primeiro superadmin:**
-
-```bash
-make manage cmd="create_superadmin"
-```
-
-O comando pede o e-mail, o nome e a senha, duas vezes e sem exibi-la. A senha passa pela mesma política da interface. O usuário é criado ativo, com o perfil `ADMINISTRADOR`, sem depender do envio de e-mail. O comando recusa um e-mail já cadastrado: nesse caso, use o `set_superadmin`.
-
-**Conceder ou remover o superadmin de um usuário existente:**
-
-```bash
-make manage cmd="set_superadmin maria@ifnmg.edu.br --grant"
-make manage cmd="set_superadmin maria@ifnmg.edu.br --revoke"
-```
-
-A remoção é recusada se deixar o sistema sem nenhum usuário ativo com capacidade administrativa, isto é, sem superadmin ativo nem usuário cujo perfil conceda todas as permissões de `USUARIO`.
-
-## Usuários e perfis
-
-- Os perfis do sistema, `ADMINISTRADOR` e `DOCENTE`, são criados pelas migrations e não podem ser excluídos.
-- Usuários são cadastrados pela interface, em **Usuários**, por quem tem a permissão. O novo usuário recebe por e-mail um link para definir a própria senha. Ninguém define a senha de outra pessoa.
-- Usuários também podem ser cadastrados e atualizados em lote por uma planilha CSV, em **Usuários › Importar usuários**, por quem tem a permissão `USUARIO.IMPORTAR`. O arquivo usa UTF-8 e `;`, com as colunas `E-mail`, `Nome` e `Perfil` (código do perfil), e o modelo pode ser baixado na própria tela. O sistema mostra uma prévia sem gravar nada e só aplica a importação quando todas as linhas estão corretas e nada mudou desde a prévia.
-- Qualquer usuário ativo recupera o acesso em **Esqueci minha senha**, na página de login. O link vale por 3 dias e pode ser usado uma única vez.
-- Só o superadmin acessa **Perfis**, onde cria perfis personalizados e define as permissões de cada um. Um perfil novo não concede nenhuma permissão até que ele as escolha.
-- **Depois de cada módulo novo**, o superadmin deve revisar os perfis personalizados: as permissões novas chegam apenas aos perfis do sistema, conforme a configuração padrão do módulo.
-
-## Auditoria
-
-O sistema registra as ações numa tabela única, do login ao encerramento da sessão. Cada registro guarda quem fez, o que fez, sobre qual módulo e registro, quando, de onde (interface, sistema ou importação), o endereço IP e o cliente. Alterações de dados guardam também os valores anteriores e posteriores dos campos que mudaram. Senhas e tokens nunca são gravados.
-
-São auditados: entrada, entrada recusada e saída; solicitação de recuperação e redefinição de senha; acesso às telas de usuários, perfis, importações e auditoria; cadastro, alteração, troca de perfil, desativação e reativação de usuário; criação, alteração, mudança de permissões e exclusão de perfil; prévia, confirmação e descarte de importações; download do modelo de planilha; e as ações automáticas do `worker`, como o envio de cada e-mail.
-
-Quem tem a permissão `AUDITORIA.VISUALIZAR` consulta os registros em **Auditoria**, com filtros por usuário, ação, módulo, identificador do registro, período e origem, do mais recente para o mais antigo. O perfil `ADMINISTRADOR` recebe essa permissão pela migration, e o superadmin pode concedê-la a outros perfis.
-
-Os registros são somente de inclusão: a aplicação recusa qualquer alteração ou exclusão, e não existe tela, rota ou comando que os modifique.
+Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd="set_superadmin maria@ifnmg.edu.br --grant"` (ou `--revoke`).
 
 ## Comandos
 
@@ -84,44 +52,32 @@ Os registros são somente de inclusão: a aplicação recusa qualquer alteraçã
 | `make npm cmd="<comando>"` | `docker compose run --rm tailwind npm <comando>` | Executa um comando do npm no container `tailwind` |
 | `make psql` | `docker compose up -d --wait db` e depois `docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'` | Abre o `psql` no banco de dados |
 | `make reset-db` | `docker compose down -v` | **Apaga todos os dados do banco** e remove os containers |
+| `make clear-data` | `docker compose run --rm web python manage.py clear_data` | **Apaga todos os dados**, inclusive a auditoria, mantendo usuários, perfis e permissões |
+| `make delete-users` | `docker compose run --rm web python manage.py delete_users` | **Exclui os usuários que não são superadmin** e os registros que dependem deles |
+| `make set-passwords` | `docker compose run --rm web python manage.py set_passwords` | Define a mesma senha de desenvolvimento (`DEFAULT_PASSWORD` em `set_passwords.py`) para todos os usuários, inclusive superadmins |
 
 - Os comandos baseados em `run --rm` funcionam com o ambiente parado ou em execução. O Compose sobe o banco quando necessário e remove o container do comando ao final.
 - As migrations não são aplicadas automaticamente na subida do ambiente. Execute `make migrate` sempre que houver migrations novas.
-- Os testes rodam em um banco de testes criado temporariamente no próprio PostgreSQL e removido ao final da execução.
-- O `make up` usa `--renew-anon-volumes` porque as dependências de Node.js ficam num volume anônimo do container `tailwind` (veja **Serviços**). Sem a opção, o Compose reaproveitaria o volume antigo, e um `package-lock.json` alterado não chegaria ao container.
+- Os testes rodam num banco de testes criado no próprio PostgreSQL e removido ao final. Detalhes em [docs/desenvolvimento/testes.md](docs/desenvolvimento/testes.md).
+- `clear-data`, `delete-users` e `set-passwords` só rodam com `DJANGO_ENVIRONMENT=local` no `.env` e pedem confirmação. Sem a variável, são recusados antes de qualquer acesso ao banco. Não defina `local` em nenhuma instalação que não seja a máquina de desenvolvimento.
+- O `make up` usa `--renew-anon-volumes` porque as dependências de Node.js ficam num volume anônimo do container `tailwind`. Sem a opção, o Compose reaproveitaria o volume antigo, e um `package-lock.json` alterado não chegaria ao container.
 
 ## Serviços
 
 | Serviço | Imagem | Função |
 |---|---|---|
 | `web` | construída a partir do `Dockerfile` (Python 3.13) | Aplicação Django com o servidor de desenvolvimento na porta 8000 |
-| `worker` | a mesma do `web` | Envia os e-mails registrados no outbox, com o comando `process_outbox` |
-| `import_worker` | a mesma do `web` | Executa a prévia, a atualização da prévia e a confirmação das importações, com o comando `process_imports` |
+| `worker` | a mesma do `web` | Envia os e-mails registrados no outbox (`process_outbox`) |
+| `import_worker` | a mesma do `web` | Executa a prévia, a atualização da prévia e a confirmação das importações (`process_imports`) |
 | `db` | `postgres:17` | Banco de dados PostgreSQL, sem porta publicada no host |
 | `redis` | `redis:8-alpine` | Cache das telas públicas, sem porta publicada no host e sem gravar em disco |
-| `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface com o Tailwind CSS e o recompila a cada alteração |
+| `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface e o recompila a cada alteração |
 
-- O código do projeto é montado em `/app` no container `web`. Alterações feitas na máquina recarregam o servidor automaticamente, e arquivos gerados no container, como migrations, aparecem no repositório.
+- O código é montado em `/app`. O `web` recarrega sozinho ao alterar o código; o `worker` e o `import_worker` não. Depois de alterar o código de e-mails ou de importações, rode `docker compose restart worker` ou `docker compose restart import_worker`.
+- O `worker` e o `import_worker` reiniciam sozinhos se encerrarem, por exemplo quando sobem antes do `make migrate`.
+- `web`, `worker` e `import_worker` só iniciam depois que o healthcheck do `db` indica que o banco está pronto. A aplicação não espera o `redis`: sem ele, as telas públicas consultam o banco.
 - Os dados do PostgreSQL ficam no volume `postgres_data`, que `make down` preserva e `make reset-db` remove.
-- O `web`, o `worker` e o `import_worker` só são iniciados depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
-- O `redis` é só cache das telas públicas (`/` e `/horario-original/`). O PostgreSQL continua sendo a fonte de verdade: com o `redis` parado, as telas consultam o banco e respondem com o mesmo conteúdo. Ele não grava em disco, então reiniciá-lo esvazia o cache, e usa no máximo 64 MB, removendo as chaves menos usadas. A aplicação não espera o `redis` para subir.
-- O `worker` reinicia sozinho se encerrar, por exemplo quando sobe antes do `make migrate` ou quando o banco fica indisponível. Ele monta o mesmo código do `web`, mas não recarrega sozinho: depois de alterar o código de envio de e-mails, rode `docker compose restart worker`. O `import_worker` segue a mesma regra: depois de alterar o código de uma importação, rode `docker compose restart import_worker`.
-- O `tailwind` lê o `ui/styles/app.css` e os templates de todos os apps e grava `ui/static/ui/css/app.css`, que o `web` serve como arquivo estático. Uma classe nova num template aparece no CSS sem reiniciar containers. O CSS gerado fica fora do Git.
-- O `tailwind` monta o projeto em `/app`, como o `web`, e guarda as dependências de Node.js num volume anônimo em `/app/node_modules`, para que a montagem do projeto não as esconda. O Node.js só é usado para compilar o CSS: a imagem do `web` não o tem.
-
-## Acesso pelo celular na rede local
-
-Para testar a interface no celular, use `make dev-network` em vez de `make up`:
-
-```bash
-make dev-network
-```
-
-O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando esse endereço em `DJANGO_ALLOWED_HOSTS` e mostra a URL a ser digitada no celular, como `http://192.168.0.10:8000/`. O celular precisa estar no mesmo Wi-Fi do computador. Pare o ambiente com `make down`, como de costume.
-
-- Se o IPv4 não for detectado, descubra-o com `ipconfig getifaddr en0` no macOS ou `hostname -I` no Linux e informe-o: `make dev-network LOCAL_IP=192.168.0.10`.
-- O firewall do sistema, uma VPN ativa ou redes que isolam os aparelhos entre si (Wi-Fi de visitantes) podem impedir a conexão.
-- O comando é só para desenvolvimento na rede local: ele não publica o sistema na internet e não expõe o banco de dados.
+- O `tailwind` grava `ui/static/ui/css/app.css`, que fica fora do Git. Uma classe nova num template aparece no CSS sem reiniciar containers. As dependências de Node.js ficam num volume anônimo em `/app/node_modules`; a imagem do `web` não tem Node.js.
 
 ## Variáveis de ambiente
 
@@ -129,86 +85,76 @@ O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando
 |---|---|---|
 | `DJANGO_SECRET_KEY` | `django-insecure-somente-para-desenvolvimento-local` | Chave secreta do Django |
 | `DJANGO_DEBUG` | `1` | Modo de depuração, ativo somente com o valor `1` |
-| `DJANGO_ALLOWED_HOSTS` | vazio | Hosts aceitos pelo Django, separados por vírgula; vazio com `DJANGO_DEBUG=1` aceita apenas `localhost` e `127.0.0.1` |
-| `DJANGO_SITE_URL` | `http://localhost:8000` | Endereço do sistema usado nos links dos e-mails enviados pelo `worker` |
+| `DJANGO_ENVIRONMENT` | vazio | Declara a instalação. Só o valor exato `local` libera `clear_data`, `delete_users` e `set_passwords`; vazio ou qualquer outro valor os recusa |
+| `DJANGO_ALLOWED_HOSTS` | vazio | Hosts aceitos, separados por vírgula; vazio com `DJANGO_DEBUG=1` aceita apenas `localhost` e `127.0.0.1` |
+| `DJANGO_SITE_URL` | `http://localhost:8000` | Endereço usado nos links dos e-mails enviados pelo `worker` |
 | `POSTGRES_DB` | `agendamento` | Nome do banco de dados |
 | `POSTGRES_USER` | `agendamento` | Usuário do banco de dados |
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
-| `DJANGO_CREDENTIALS_KEY` | `chave-de-credenciais-somente-para-desenvolvimento-local` | Chave que cifra as senhas guardadas no banco, como a do servidor de e-mail. Trocá-la exige informar essas senhas de novo |
-| `DJANGO_REDIS_URL` | `redis://redis:6379/0` | Conexão do cache das telas públicas, compartilhada pelo `web` e pelo `import_worker`. Vazia, as telas públicas funcionam sem cache |
+| `DJANGO_CREDENTIALS_KEY` | `chave-de-credenciais-somente-para-desenvolvimento-local` | Cifra as senhas guardadas no banco, como a do servidor de e-mail. Trocá-la exige informar essas senhas de novo |
+| `DJANGO_REDIS_URL` | `redis://redis:6379/0` | Conexão do cache das telas públicas. Vazia, as telas públicas funcionam sem cache |
 | `DJANGO_REDIS_TIMEOUT` | `0.1` | Tempo limite, em segundos, de conexão e de leitura do Redis |
-| `DJANGO_CACHE_KEY_PREFIX` | `ifagenda` | Prefixo das chaves do cache. Ambientes que dividem um mesmo Redis usam prefixos diferentes |
-| `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail do outbox antes de desistir |
+| `DJANGO_CACHE_KEY_PREFIX` | `ifagenda` | Prefixo das chaves do cache. Ambientes que dividem um Redis usam prefixos diferentes |
+| `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail antes de desistir |
 | `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |
 | `DJANGO_OUTBOX_POLL_INTERVAL` | `5` | Segundos que o `worker` espera quando não há e-mail para enviar |
 | `DJANGO_OUTBOX_BATCH_SIZE` | `20` | E-mails enviados pelo `worker` a cada ciclo |
-| `DJANGO_IMPORT_MAX_ROWS` | `1000` | Linhas de dados aceitas numa importação por planilha |
-| `DJANGO_IMPORT_MAX_FILE_SIZE` | `1048576` | Tamanho máximo, em bytes, do arquivo de uma importação |
+| `DJANGO_IMPORT_MAX_ROWS` | `1000` | Linhas de dados aceitas numa importação, quando a importação não define limite próprio (o ensalamento aceita 5000) |
+| `DJANGO_IMPORT_MAX_FILE_SIZE` | `1048576` | Tamanho máximo, em bytes, do arquivo, quando a importação não define limite próprio (o ensalamento aceita 10 MiB) |
 | `DJANGO_IMPORT_MAX_ATTEMPTS` | `3` | Tentativas de uma operação de importação com erro inesperado antes de desistir |
 | `DJANGO_IMPORT_RETRY_DELAYS` | `30,120` | Intervalos, em segundos, entre as tentativas. O último se repete |
 | `DJANGO_IMPORT_POLL_INTERVAL` | `2` | Segundos que o `import_worker` espera quando não há operação pendente |
 | `DJANGO_IMPORT_STATUS_POLL_SECONDS` | `3` | Intervalo, em segundos, da consulta do andamento feita pelo detalhe da importação |
-| `DJANGO_IMPORT_LOCK_TIMEOUT` | `60` | Segundos que uma operação espera pela aquisição de uma trava. Não limita a duração da importação |
-| `DJANGO_IMPORT_STALE_AFTER` | `60` | Segundos depois do pedido a partir dos quais o detalhe mostra o aviso de demora. Não interrompe nem altera a operação |
+| `DJANGO_IMPORT_LOCK_TIMEOUT` | `60` | Segundos que uma operação espera por uma trava. Não limita a duração da importação |
+| `DJANGO_IMPORT_STALE_AFTER` | `60` | Segundos depois do pedido a partir dos quais o detalhe mostra o aviso de demora |
 
-`POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco. As variáveis do outbox e da importação não estão no `compose.yaml`: sem elas, valem os padrões da tabela, e elas podem ser definidas no `.env`.
+`POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`. As variáveis do outbox e da importação não estão no `compose.yaml`: sem elas, valem os padrões da tabela.
 
-Os valores padrão estão no `compose.yaml` e permitem subir o ambiente sem nenhuma configuração. Para sobrescrever um valor, crie um arquivo `.env` na raiz do projeto, que é ignorado pelo Git:
+Para sobrescrever um valor, crie um arquivo `.env` na raiz do projeto, ignorado pelo Git, e recrie os containers com `make up`:
 
 ```dotenv
 DJANGO_SECRET_KEY=outra-chave-local
+DJANGO_ENVIRONMENT=local
 ```
 
-- O PostgreSQL só lê `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` ao criar o banco. Se alterá-las depois da primeira execução, rode `make reset-db` para recriar o banco com os novos valores.
-- Se uma variável obrigatória estiver ausente, a aplicação não inicia e o erro indica o nome da variável.
+- O PostgreSQL só lê `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` ao criar o banco. Se alterá-las depois da primeira execução, rode `make reset-db`.
+- Sem uma variável obrigatória, a aplicação não inicia e o erro indica o nome da variável.
 
-> **Atenção:** os valores padrão são inseguros e servem apenas ao desenvolvimento local. Não os reutilize em nenhum ambiente acessível externamente.
+> **Atenção:** os valores padrão são inseguros e servem apenas ao desenvolvimento local. Não os reutilize em nenhum ambiente acessível externamente. Ver [docs/operacao/configuracao.md](docs/operacao/configuracao.md).
 
-## Cache das telas públicas
+## E-mails no desenvolvimento
 
-O calendário público e o horário original guardam no Redis as opções dos filtros do semestre (por 1 hora) e o HTML da Grade (por 10 minutos no calendário e 30 minutos no horário original). O tempo é só uma proteção: toda gravação confirmada num dado mostrado nessas telas (ensalamento, importação, espaços, docentes, disciplinas, turmas, cursos, agendamentos e os dados públicos dos usuários) invalida o cache logo depois do commit. A resposta traz o cabeçalho `X-Public-Cache` com `hit`, `miss` ou `bypass` (cache não usado) e `Cache-Control: no-cache`.
+O backend padrão é o de console: as mensagens aparecem em `make logs`. Mesmo assim, o servidor de e-mail precisa estar cadastrado em **Configurações > E-mail**; sem ele, nenhum e-mail sai e os envios do outbox ficam retidos. Para ver os e-mails nos logs, cadastre qualquer servidor (por exemplo `localhost`, porta `25`, segurança "Nenhuma", sem usuário).
 
-Em produção:
-
-- Use senha no Redis (`requirepass`, informada na URL: `redis://:senha@host:6379/0`), não publique a porta dele e deixe-o só na rede privada dos containers da aplicação. Se ele estiver em outra máquina, use TLS (`rediss://`).
-- A configuração do proxy de produção não está neste repositório. Confira nele se há cache HTTP nas rotas `/` e `/horario-original/`: um proxy que guarda a página por regra própria (por exemplo, `proxy_cache_valid` no Nginx) ignora a invalidação e pode mostrar a página antiga até o fim do tempo dele. Desligue esse cache ou use um tempo curto.
-
-## E-mail
-
-No desenvolvimento, nenhum e-mail sai de fato: o backend padrão é o de console, e cada mensagem aparece nos logs. O link de definição de senha de um usuário cadastrado é enviado pelo container `worker`, em alguns segundos. O link de recuperação pedido em **Esqueci minha senha** sai na hora, pelo container `web`. Para ver os dois, acompanhe:
-
-```bash
-make logs
-```
-
-O servidor de e-mail é cadastrado no próprio sistema, em **Configurações > E-mail**, por quem tem a permissão `CONFIGURACAO.EDITAR` (concedida ao perfil `ADMINISTRADOR`): servidor, porta, segurança, usuário, senha e remetente. A senha é guardada cifrada com a `DJANGO_CREDENTIALS_KEY` e nunca é exibida. Enquanto o servidor não estiver cadastrado, nenhum e-mail sai, nem no console: os envios do outbox ficam aguardando, sem gastar tentativas, e saem no primeiro ciclo do `worker` depois do cadastro. As alterações valem a partir do ciclo seguinte, sem reiniciar os containers.
-
-No desenvolvimento, cadastre qualquer servidor (por exemplo `localhost`, porta `25`, segurança "Nenhuma", sem usuário) para ver os e-mails nos logs. Para enviar de verdade, por exemplo pelo Gmail, defina no `.env` o backend SMTP e cadastre na tela o servidor `smtp.gmail.com`, a porta `587`, a segurança STARTTLS, a conta e uma senha de app, e não a senha da conta:
+Para enviar de verdade, por exemplo pelo Gmail, defina no `.env` o backend SMTP e cadastre na tela o servidor `smtp.gmail.com`, a porta `587`, a segurança STARTTLS, a conta e uma senha de app:
 
 ```dotenv
 DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 ```
 
-Depois de alterar o `.env`, recrie os containers com `make up`.
+O link de definição de senha de um usuário cadastrado sai pelo `worker` em alguns segundos; o de "Esqueci minha senha" sai na hora, pelo `web`. Detalhes em [docs/funcionalidades/emails.md](docs/funcionalidades/emails.md).
 
-Os e-mails que o sistema dispara por conta própria, como o link de definição de senha de um usuário cadastrado, passam pelo outbox: o cadastro grava a intenção de envio na mesma transação, e o `worker` envia depois. Se o envio falhar, o `worker` tenta de novo nos intervalos configurados e, no limite de tentativas, desiste e registra o erro no log. O usuário continua cadastrado e pode pedir um novo link em **Esqueci minha senha**.
+## Acesso pelo celular na rede local
 
-## Interface
+```bash
+make dev-network
+```
 
-- O visual segue a escala fechada de tokens do `ui/styles/app.css` (cores, espaçamentos, raios, sombras e fontes) e os componentes do app `ui`. A seção 9 do `openspec/conventions.md` explica como usá-los. Testes automáticos recusam valores soltos nos templates e pares de cores abaixo do contraste mínimo.
-- A fonte Open Sans, os ícones Lucide, o símbolo do IF e o htmx são arquivos do próprio projeto, com as licenças ao lado. Nenhuma página depende de servidor externo.
-- Todo campo de escolha usa o componente de seleção do app `ui`: a lista abre ancorada ao campo, com busca e 10 opções por vez, e o `select` nativo continua sendo o campo enviado, então sem JavaScript a tela funciona igual. No filtro por usuário da auditoria, as opções são buscadas e paginadas no servidor, e a página não carrega todos os usuários cadastrados.
-- As ações de gestão abrem em modal. O [htmx](https://htmx.org/) carrega o modal do servidor e envia o formulário, e o `ui/static/ui/js/modal.js` abre e fecha o `<dialog>`. Sem JavaScript, as mesmas URLs abrem como páginas.
+O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando esse endereço em `DJANGO_ALLOWED_HOSTS` e mostra a URL para o celular, como `http://192.168.0.10:8000/`. O celular precisa estar no mesmo Wi-Fi. Pare o ambiente com `make down`.
+
+- Se o IPv4 não for detectado, descubra-o com `ipconfig getifaddr en0` no macOS ou `hostname -I` no Linux e informe-o: `make dev-network LOCAL_IP=192.168.0.10`.
+- Firewall, VPN ativa ou redes que isolam os aparelhos (Wi-Fi de visitantes) podem impedir a conexão.
+- O comando não publica o sistema na internet e não expõe o banco de dados.
 
 ## Dependências
 
-As dependências Python ficam no `requirements.txt`, com versões fixas, e são instaladas durante a construção da imagem. Para adicionar ou atualizar uma dependência:
+As dependências Python ficam no `requirements.txt`, com versões fixas, e são instaladas na construção da imagem. Para adicionar ou atualizar uma:
 
 1. Edite o `requirements.txt`, fixando a versão com `==`.
-2. Execute `make up` para reconstruir a imagem e recriar o container `web`.
+2. Execute `make up` para reconstruir a imagem e recriar os containers.
 
-As dependências de Node.js servem só para compilar o CSS. Ficam no `package.json`, com versões exatas, travadas no `package-lock.json`, e são instaladas na construção da imagem do `tailwind`. Para adicionar uma:
+As dependências de Node.js servem só para compilar o CSS. Ficam no `package.json`, com versões exatas, travadas no `package-lock.json`, e são instaladas na construção da imagem do `tailwind`:
 
 ```bash
 make npm cmd="install --save-exact pacote@1.2.3"
@@ -217,7 +163,7 @@ make up
 
 ## Permissões de arquivos em hosts Linux
 
-O container roda como root. Em hosts Linux, arquivos criados por comandos executados no container, como migrations geradas com `makemigrations`, ficam com o root como dono. Para criá-los com o seu usuário, execute o comando Docker Compose com `--user`:
+O container roda como root. Em hosts Linux, arquivos criados por comandos executados no container, como migrations geradas com `makemigrations`, ficam com o root como dono. Para criá-los com o seu usuário:
 
 ```bash
 docker compose run --rm --user "$(id -u):$(id -g)" web python manage.py makemigrations
@@ -227,23 +173,6 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 
 ## Organização do repositório
 
-```text
-.
-├── compose.yaml       # serviços web, worker, db e tailwind
-├── Dockerfile         # imagens de desenvolvimento da aplicação e da compilação do CSS
-├── Makefile           # atalhos para os comandos do dia a dia
-├── requirements.txt   # dependências Python com versões fixas
-├── package.json       # dependências de Node.js da compilação do CSS
-├── package-lock.json
-├── manage.py
-├── config/            # configuração do projeto Django
-├── accounts/          # usuários, perfis, permissões e autenticação
-├── ui/                # layouts, componentes, tokens, ícones e regras de texto e visual
-├── outbox/            # envio dos e-mails disparados pelo sistema, pelo worker
-├── imports/           # motor de importação de planilhas CSV
-├── audit/             # registro centralizado das ações e consulta da auditoria
-├── openspec/          # Constitution, convenções, specs e changes do OpenSpec
-└── sources/           # texto do TCC
-```
+Apps Django: `accounts`, `ui`, `audit`, `outbox`, `system_settings`, `notices`, `imports`, `schedule`, `bookings`, `panel` e `reports`. A configuração fica em `config/`, a documentação em `docs/` e o texto do TCC com as planilhas de referência em `sources/`. Detalhes em [docs/arquitetura/estrutura-do-projeto.md](docs/arquitetura/estrutura-do-projeto.md).
 
-As funcionalidades do sistema e a estrutura de cada domínio são criadas pelas changes do OpenSpec, em `openspec/changes/`. As convenções de código que valem para todos os apps estão em `openspec/conventions.md`.
+As convenções de código estão em [docs/desenvolvimento/convencoes.md](docs/desenvolvimento/convencoes.md).

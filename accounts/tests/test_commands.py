@@ -2,7 +2,7 @@ from io import StringIO
 from unittest import mock
 
 from django.core.management import CommandError, call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from accounts.models import Role, User
 
@@ -106,6 +106,7 @@ class SetSuperadminTests(TestCase):
                     self.call('maria@ifnmg.edu.br', *args)
 
 
+@override_settings(ENVIRONMENT='local')
 class DeleteUsersTests(TestCase):
     def setUp(self):
         self.role = Role.objects.get(code='DOCENTE')
@@ -161,6 +162,7 @@ class DeleteUsersTests(TestCase):
         self.assertEqual(User.objects.count(), 2)
 
 
+@override_settings(ENVIRONMENT='local')
 class SetPasswordsTests(TestCase):
     def test_sets_the_default_password_for_every_user(self):
         superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)

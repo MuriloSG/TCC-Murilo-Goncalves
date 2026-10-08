@@ -16,7 +16,6 @@ Itens sem solução em 08/10/2026. O comportamento atual foi mantido em todos.
 | Limites de login por processo | O allauth usa o cache `default` (`LocMemCache`) |
 | WebSocket sem teste de navegador | Origem e sessão comprovadas pelos testes com a pilha do `config/asgi.py` e, no servidor, só a recusa sem sessão (403). Falta conferir num navegador real e atrás do proxy de produção, que não existe |
 | Container `tailwind` como root | Só o estágio Python roda como `app`. O `tailwind` grava `node_modules` num volume anônimo criado pela imagem |
-| Agendamento em choque após reimportação | A importação não detecta conflito com agendamentos aprovados; o painel lista o caso como "choque". Risco aceito quando a Agenda foi criada |
 
 ## Infraestrutura
 

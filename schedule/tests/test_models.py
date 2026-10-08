@@ -6,11 +6,13 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
+from audit import catalog
 from audit.models import AuditLog
 
 from schedule.models import (
     Allocation,
     ClassGroup,
+    ClassOffering,
     Course,
     Origin,
     Semester,
@@ -303,3 +305,68 @@ class SemesterPeriodTests(TestCase):
     def test_database_refuses_period_with_one_date(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
             Semester.objects.filter(pk=self.semester.pk).update(start_date=date(2026, 8, 3))
+
+
+class CourseTests(AllocationTestCase):
+    def audit_of(self, course, action):
+        return AuditLog.objects.get(resource=catalog.COURSE, resource_id=str(course.pk), action=action)
+
+    def test_register_normalizes_and_audits(self):
+        course = Course.objects.register('  Eng.   Pesca ', Stage.UNDERGRADUATE)
+        self.assertEqual(course.name, 'Eng. Pesca')
+        self.assertEqual(self.audit_of(course, catalog.CREATE).new_values, {'name': 'Eng. Pesca', 'etapa': Stage.UNDERGRADUATE})
+
+    def test_register_refuses_repeated_name_empty_name_and_unknown_stage(self):
+        for name, stage, field in (
+            ('eng. alimentos', Stage.UNDERGRADUATE, 'name'),
+            ('   ', Stage.UNDERGRADUATE, 'name'),
+            ('Eng. Pesca', 'DOUTORADO', 'stage'),
+            ('Eng. Pesca', '', 'stage'),
+        ):
+            with self.subTest(name=name, stage=stage), self.assertRaises(ValidationError) as context:
+                Course.objects.register(name, stage)
+            self.assertIn(field, context.exception.error_dict)
+        self.assertEqual(Course.objects.count(), 2)
+
+    def test_update_of_a_course_without_use_changes_name_and_stage(self):
+        self.food.update_details('Engenharia de Alimentos', Stage.SECONDARY)
+        self.assertEqual((self.food.name, self.food.stage), ('Engenharia de Alimentos', Stage.SECONDARY))
+        self.assertEqual(
+            self.audit_of(self.food, catalog.UPDATE).new_values, {'name': 'Engenharia de Alimentos', 'etapa': Stage.SECONDARY},
+        )
+
+    def test_update_with_the_same_values_changes_nothing(self):
+        self.food.update_details(' Eng.  Alimentos ', Stage.UNDERGRADUATE)
+        self.assertFalse(AuditLog.objects.filter(resource=catalog.COURSE).exists())
+
+    def test_update_of_a_course_in_use_is_refused(self):
+        uses = {
+            'oferta': lambda: ClassOffering.objects.record(self.semester, self.chemistry, self.food_group),
+            'aula': self.apply,
+        }
+        for use, create in uses.items():
+            for name, stage in (('Engenharia de Alimentos', Stage.UNDERGRADUATE), ('Eng. Alimentos', Stage.SECONDARY)):
+                with self.subTest(use=use, name=name, stage=stage), transaction.atomic():
+                    create()
+                    with self.assertRaises(ValidationError) as context:
+                        self.food.update_details(name, stage)
+                    self.assertEqual(context.exception.code, 'course_in_use')
+                    self.food.refresh_from_db()
+                    self.assertEqual((self.food.name, self.food.stage), ('Eng. Alimentos', Stage.UNDERGRADUATE))
+                    transaction.set_rollback(True)
+
+    def test_delete_of_a_course_with_a_class_group_is_refused(self):
+        with self.assertRaises(ValidationError) as context:
+            self.food.delete_course()
+        self.assertEqual(
+            context.exception.messages, ['O curso Eng. Alimentos tem turmas cadastradas e não pode ser excluído. Exclua as turmas antes.'],
+        )
+        self.assertTrue(Course.objects.filter(pk=self.food.pk).exists())
+
+    def test_delete_of_a_course_without_class_groups_is_audited(self):
+        course = Course.objects.register('Eng. Pesca', Stage.UNDERGRADUATE)
+        pk = course.pk
+        course.delete_course()
+        self.assertFalse(Course.objects.filter(pk=pk).exists())
+        entry = AuditLog.objects.get(resource=catalog.COURSE, resource_id=str(pk), action=catalog.DELETE)
+        self.assertEqual(entry.old_values, {'name': 'Eng. Pesca', 'etapa': Stage.UNDERGRADUATE})

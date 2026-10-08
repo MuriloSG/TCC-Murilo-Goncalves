@@ -25,7 +25,7 @@ from imports.forms import ImportUploadForm
 from imports.models import Import
 from imports.tests.worker import confirm, preview, refresh
 from outbox.models import OutboxEntry
-from schedule.imports import RECURRENCE_CHANGED, SpaceAllocationImport, concluded_message
+from schedule.imports import COURSE_STAGE_KEPT, RECURRENCE_CHANGED, SpaceAllocationImport, concluded_message
 from schedule.models import (
     Allocation,
     ClassGroup,
@@ -551,6 +551,56 @@ class DivergenceTests(ImportTestCase):
         self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(list(Semester.objects.values_list('code', flat=True)), ['2027/2'])
         self.assertEqual(Allocation.objects.filter(semester__code='2027/2').count(), 4)
+
+
+UNDERGRADUATE_COURSE = 'BACHARELADO EM ENGENHARIA DE TESTE'
+
+
+class RegisteredCourseTests(ImportTestCase):
+    """Curso cadastrado pela tela antes da importação, reaproveitado pelo nome (`NamedManager.resolve`)."""
+
+    def course_rows(self, importation):
+        return list(importation.rows.filter(values__Curso=UNDERGRADUATE_COURSE))
+
+    def test_name_differing_in_case_and_spaces_reuses_the_course(self):
+        course = Course.objects.register('  bacharelado   em engenharia de teste ', Stage.UNDERGRADUATE)
+        self.conclude()
+        self.assertEqual(Course.objects.count(), 2)
+        self.assertEqual(ClassGroup.objects.get(label='2º PERÍODO').course, course)
+        course.refresh_from_db()
+        self.assertEqual(course.name, 'bacharelado em engenharia de teste')
+
+    def test_name_differing_in_accents_creates_another_course(self):
+        Course.objects.register('AGROINDUSTRIA', Stage.SECONDARY)
+        self.conclude()
+        self.assertEqual(Course.objects.count(), 3)
+        self.assertEqual(ClassGroup.objects.get(label='1º ANO A').course.name, 'AGROINDÚSTRIA')
+
+    def test_divergent_stage_is_kept_with_a_warning_and_the_row_is_processed(self):
+        course = Course.objects.register(UNDERGRADUATE_COURSE, Stage.SECONDARY)
+        importation = self.preview()
+        self.assertEqual(importation.status, Import.Status.VALIDATED)
+        rows = self.course_rows(importation)
+        self.assertEqual(len(rows), 3)
+        for row in rows:
+            with self.subTest(cell=row.values['Célula']):
+                self.assertEqual(row.warnings, [COURSE_STAGE_KEPT[Stage.SECONDARY]])
+                self.assertEqual(row.action, 'create')
+        self.assertTrue(confirm(importation, self.definition, self.executor))
+        self.assertEqual(importation.revalidation_count, 0)
+        self.assertEqual([row.warnings for row in self.course_rows(importation)], [[COURSE_STAGE_KEPT[Stage.SECONDARY]]] * 3)
+        course.refresh_from_db()
+        self.assertEqual(course.stage, Stage.SECONDARY)
+        self.assertEqual(Allocation.objects.filter(class_group__course=course).count(), 3)
+        self.assertEqual(
+            self.definition.warning_labels[COURSE_STAGE_KEPT[Stage.SECONDARY]],
+            'O curso está cadastrado como Ensino médio e a aba da planilha indica Graduação. A etapa cadastrada foi mantida.',
+        )
+
+    def test_same_stage_gives_no_warning(self):
+        Course.objects.register(UNDERGRADUATE_COURSE, Stage.UNDERGRADUATE)
+        importation = self.conclude()
+        self.assertEqual([row.warnings for row in self.course_rows(importation)], [[]] * 3)
 
 
 BLANK = {'own_início': '', 'own_fim': ''}

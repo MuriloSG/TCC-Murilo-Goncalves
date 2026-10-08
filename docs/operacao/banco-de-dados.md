@@ -20,8 +20,9 @@ O sistema depende do PostgreSQL e não roda em outro banco:
 
 ## Migrations
 
-- As migrations foram consolidadas antes do primeiro deploy (commit `49ec2b3`). Estado atual: `0001_initial` em cada app, mais `accounts/0002_system_roles_and_permissions`, `bookings/0002_student_count`, `bookings/0003_cancellation` e `imports/0002_processar_em_segundo_plano`.
+- As migrations foram consolidadas antes do primeiro deploy (commit `49ec2b3`). Estado atual: `0001_initial` em cada app, mais `accounts/0002_system_roles_and_permissions`, `accounts/0003_course_permissions`, `bookings/0002_student_count`, `bookings/0003_cancellation` e `imports/0002_processar_em_segundo_plano`.
 - `accounts/0002` cria o catálogo de permissões e os perfis `ADMINISTRADOR` e `DOCENTE`, com as concessões iniciais. Os códigos estão escritos na migration, sem importar `accounts/permissions.py`.
+- `accounts/0003` cria as permissões `CURSO.*` e as concede ao `ADMINISTRADOR`. Perfis personalizados precisam ser revisados pelo superadmin.
 - As migrations não rodam na subida dos containers. Rode `make migrate` depois de cada atualização.
 - Em hosts Linux, migrations geradas no container ficam com dono root; ver [`README.md`](../../README.md#permissões-de-arquivos-em-hosts-linux).
 

@@ -61,6 +61,7 @@ MENU = (
             ('ENSALAMENTO.IMPORTAR', 'space_allocation_import_list'),
         )),
         MenuItem('Espaços', 'door-open', 'spaces_', (('ESPACO.VISUALIZAR', 'spaces_list'),)),
+        MenuItem('Cursos', 'book-open', 'courses_', (('CURSO.VISUALIZAR', 'courses_list'),)),
         MenuItem('Disciplinas', 'graduation-cap', 'subjects_', (('DISCIPLINA.VISUALIZAR', 'subjects_list'),)),
         MenuItem('Turmas', 'school', 'class_groups_', (('TURMA.VISUALIZAR', 'class_groups_list'),)),
     )),

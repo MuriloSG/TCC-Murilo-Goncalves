@@ -49,6 +49,7 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 | `AGENDA.SOLICITAR` | Solicitar, acompanhar as próprias solicitações e responder à alternativa | ✓ | ✓ |
 | `AGENDA.ANALISAR` | Analisar solicitações: aprovar, rejeitar, sugerir, cancelar | ✓ | |
 | `AGENDA.CRIAR` | Criar solicitação em nome de outro usuário | ✓ | |
+| `CURSO.VISUALIZAR`, `CRIAR`, `EDITAR`, `EXCLUIR` | Cursos, sem escopo de docente | ✓ | |
 | `DISCIPLINA.VISUALIZAR`, `CRIAR`, `EDITAR`, `EXCLUIR` | Disciplinas do próprio escopo | ✓ | |
 | `TURMA.VISUALIZAR`, `CRIAR`, `EDITAR`, `EXCLUIR` | Turmas do próprio escopo | ✓ | |
 
@@ -87,7 +88,7 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 | | Painel | `PAINEL.VISUALIZAR` |
 | | Agenda | `AGENDA.VISUALIZAR` |
 | Gestão acadêmica | Ensalamento | `ENSALAMENTO.VISUALIZAR` ou, sem ela, `ENSALAMENTO.IMPORTAR` (abre as importações) |
-| | Espaços, Disciplinas, Turmas | `ESPACO.VISUALIZAR`, `DISCIPLINA.VISUALIZAR`, `TURMA.VISUALIZAR` |
+| | Espaços, Cursos, Disciplinas, Turmas | `ESPACO.VISUALIZAR`, `CURSO.VISUALIZAR`, `DISCIPLINA.VISUALIZAR`, `TURMA.VISUALIZAR` |
 | Relatórios | Mapa de calor | `RELATORIO.VISUALIZAR` e `ENSALAMENTO.VISUALIZAR` |
 | | Solicitações | `RELATORIO.VISUALIZAR` e `AGENDA.ANALISAR` |
 | | Notificações | `NOTIFICACAO.PUBLICAR` |

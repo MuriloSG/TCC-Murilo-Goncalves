@@ -47,6 +47,8 @@ from imports.models import Import
 from schedule.forms import (
     ClassGroupFilterForm,
     ClassGroupForm,
+    CourseFilterForm,
+    CourseForm,
     GridFilterForm,
     RecurrenceChangeForm,
     RecurrenceCreateForm,
@@ -62,6 +64,7 @@ from schedule.models import (
     AllocationException,
     ClassGroup,
     ClassOffering,
+    Course,
     Semester,
     Space,
     SpaceDecision,
@@ -850,6 +853,119 @@ def audit_history_action(resource, pk):
     """Ação da linha que abre a consulta da auditoria filtrada pelo registro."""
     query = urlencode({'recurso': resource, 'registro': pk})
     return {'url': f"{reverse('audit_log_list')}?{query}", 'label': 'Ver auditoria', 'icon': 'scroll-text', 'danger': False, 'page': True}
+
+
+class CourseListView(ListView):
+    """Lista de cursos com busca e filtro de etapa pela URL, sem escopo de docente.
+
+    Quando o formulário de filtros pede pelo htmx, responde só com a tabela e o rodapé. Só o
+    curso sem turmas pode ser excluído.
+    """
+
+    permission_required = permissions.COURSE_VIEW
+    audit_resource = catalog.COURSE
+    template_name = 'schedule/course_list.html'
+    table_template_name = 'schedule/partials/course_table.html'
+    table_target = 'tabela-cursos'
+    context_object_name = 'courses'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.filters = CourseFilterForm(request.GET)
+        self.term, self.stage = self.filters.criteria()
+
+    def get_queryset(self):
+        return Course.objects.search(self.term, self.stage).annotate(class_group_count=Count('class_groups')).order_by('name')
+
+    def get_template_names(self):
+        if self.request.htmx and self.request.htmx.target == self.table_target:
+            return [self.table_template_name]
+        return super().get_template_names()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(
+            filters=self.filters,
+            filtered=bool(self.term) or bool(self.stage),
+            total=Course.objects.count(),
+            table_target=self.table_target,
+            **kwargs,
+        )
+        context['page'] = paginate(self.request, self.object_list)
+        context['courses'] = context['page'].object_list
+        user = self.request.user
+        for course in context['courses']:
+            course.deletable = not course.class_group_count and user.has_perm(permissions.COURSE_DELETE)
+            course.history_action = audit_history_action(catalog.COURSE, course.pk) if user.has_perm(permissions.AUDIT_VIEW) else None
+        return context
+
+
+class CourseDetailView(TemplateView):
+    """Detalhe do curso com as turmas, cada uma com o total de ofertas e de aulas."""
+
+    permission_required = permissions.COURSE_VIEW
+    audit_resource = catalog.COURSE
+    template_name = 'schedule/course_detail.html'
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.target = get_object_or_404(Course, pk=kwargs['pk'])
+
+    def get_context_data(self, **kwargs):
+        class_groups = self.target.class_groups.annotate(
+            offering_count=Count('offerings', distinct=True), lesson_count=Count('allocations', distinct=True),
+        ).order_by('label')
+        user = self.request.user
+        history = audit_history_action(catalog.COURSE, self.target.pk) if user.has_perm(permissions.AUDIT_VIEW) else None
+        return super().get_context_data(
+            target=self.target, class_groups=class_groups, in_use=self.target.is_in_use, history=history, **kwargs,
+        )
+
+
+class CourseFormView(OperationFormView):
+    audit_resource = catalog.COURSE
+    template_name = 'schedule/course_form.html'
+    modal_template_name = 'schedule/course_form_modal.html'
+    success_url = reverse_lazy('courses_list')
+    form_class = CourseForm
+
+
+class CourseCreateView(CourseFormView):
+    permission_required = permissions.COURSE_CREATE
+    title = 'Cadastrar curso'
+    submit_label = 'Cadastrar'
+
+    def perform(self, data):
+        course = Course.objects.register(data['name'], data['stage'])
+        messages.success(self.request, f'Curso {course.name} cadastrado.')
+
+
+class CourseUpdateView(CourseFormView):
+    permission_required = permissions.COURSE_EDIT
+    model = Course
+    title = 'Editar curso'
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'target': self.target}
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(in_use=self.target.is_in_use, **kwargs)
+
+    def perform(self, data):
+        self.target.update_details(data['name'], data['stage'])
+        messages.success(self.request, f'Curso {self.target.name} atualizado.')
+
+
+class CourseDeleteView(ConfirmedActionView):
+    permission_required = permissions.COURSE_DELETE
+    audit_resource = catalog.COURSE
+    model = Course
+    template_name = 'schedule/course_confirm.html'
+    modal_template_name = 'schedule/course_confirm_modal.html'
+    success_url = reverse_lazy('courses_list')
+
+    def perform(self):
+        self.target.delete_course()
+        messages.success(self.request, f'Curso {self.target.name} excluído.')
 
 
 class AcademicListView(ListView):

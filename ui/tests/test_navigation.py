@@ -29,7 +29,7 @@ class GroupVisibilityTests(NavigationTestCase):
         response, menu, _ = self.menu(self.admin, '/auditoria/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(list(menu), ['Painel', 'Agenda', 'Gestão acadêmica', 'Relatórios', 'Notificações', 'Administração', 'Configurações'])
-        self.assertEqual(menu['Gestão acadêmica'], ['Ensalamento', 'Espaços', 'Disciplinas', 'Turmas'])
+        self.assertEqual(menu['Gestão acadêmica'], ['Ensalamento', 'Espaços', 'Cursos', 'Disciplinas', 'Turmas'])
         self.assertEqual(menu['Administração'], ['Usuários', 'Perfis e permissões', 'Auditoria'])
 
     def test_cada_item_do_grupo_segue_a_propria_permissao(self):

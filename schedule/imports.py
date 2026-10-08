@@ -62,6 +62,7 @@ from schedule.models import (
     Semester,
     SPACE_PERMISSION_MESSAGE,
     Space,
+    Stage,
     Subject,
     Teacher,
     TimeSlot,
@@ -105,6 +106,10 @@ GROUP_COLUMN = 'Turma'
 COURSE_COLUMN = 'Curso'
 
 COURSE_WITHOUT_TITLE = 'curso_sem_titulo'
+COURSE_STAGE_KEPT = {
+    Stage.UNDERGRADUATE: 'curso_etapa_graduacao_mantida',
+    Stage.SECONDARY: 'curso_etapa_ensino_medio_mantida',
+}
 ASSOCIATED_TO_NEW = 'outro_nome_de_espaco_novo'
 RECURRENCE_CHANGED = 'recorrencia_alterada'
 SPACE_PENDING = 'espaco_a_decidir'
@@ -431,6 +436,12 @@ class SpaceAllocationImport(ImportDefinition):
     }
     warning_labels = {
         COURSE_WITHOUT_TITLE: 'O nome do curso veio do cabeçalho da turma, porque a planilha não traz o título.',
+        COURSE_STAGE_KEPT[Stage.UNDERGRADUATE]: (
+            'O curso está cadastrado como Graduação e a aba da planilha indica Ensino médio. A etapa cadastrada foi mantida.'
+        ),
+        COURSE_STAGE_KEPT[Stage.SECONDARY]: (
+            'O curso está cadastrado como Ensino médio e a aba da planilha indica Graduação. A etapa cadastrada foi mantida.'
+        ),
         ASSOCIATED_TO_NEW: 'O nome será guardado como outro nome de um espaço cadastrado por esta importação.',
         RECURRENCE_CHANGED: 'Esta aula foi definida no sistema e não foi atualizada pela planilha.',
         USER_WITH_OTHER_DATA: (
@@ -722,9 +733,10 @@ class SpaceAllocationImport(ImportDefinition):
             plan.errors.append(duplicate_error(state.duplicates[identity]))
             return plan
         try:
-            course = state.remembered(
-                (Course, course_name), lambda: Course.objects.resolve(course_name, stage=STAGES[sheet_of(values)]),
-            )
+            stage = STAGES[sheet_of(values)]
+            course = state.remembered((Course, course_name), lambda: Course.objects.resolve(course_name, stage=stage))
+            if course.stage != stage:
+                plan.warnings.append(COURSE_STAGE_KEPT[course.stage])
             group = state.remembered((ClassGroup, course.pk, label), lambda: ClassGroup.objects.resolve(course, label))
             subject = state.remembered((Subject, activity.subject_name), lambda: Subject.objects.resolve(activity.subject_name))
             slot = state.remembered((TimeSlot, slot_times), lambda: TimeSlot.objects.resolve(state.semester, *slot_times))

@@ -23,7 +23,7 @@ from imports.forms import ImportUploadForm
 from imports.tests.worker import confirm, preview
 from schedule import public_cache
 from schedule.imports import SpaceAllocationImport
-from schedule.models import Allocation, ClassOffering, Space, Teacher
+from schedule.models import Allocation, ClassOffering, Course, Space, Stage, Teacher
 from schedule.tests.test_import import PERIOD, space_manager, workbook_file
 from schedule.tests.test_public_calendar import TODAY, PublicCalendarTestCase
 
@@ -239,6 +239,17 @@ class CommitTests(InvalidationTestCase):
             lab.deactivate,
             lambda: lab.reactivate(),
             lab.delete_space,
+        ):
+            before = self.bumps()
+            operation()
+            self.assertEqual(self.bumps(), before + 1)
+
+    def test_course_changes_bump(self):
+        course = Course.objects.register('Eng. Alimentos', Stage.UNDERGRADUATE)
+        for operation in (
+            lambda: course.update_details('Engenharia de Alimentos', Stage.UNDERGRADUATE),
+            lambda: course.update_details('Engenharia de Alimentos', Stage.SECONDARY),
+            course.delete_course,
         ):
             before = self.bumps()
             operation()

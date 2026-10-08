@@ -537,15 +537,103 @@ class Teacher(NamedRecord):
         constraints = [models.UniqueConstraint(Lower('name'), name='teacher_name_unique_ci')]
 
 
+class CourseInUse(ValidationError):
+    """Recusa de alterar curso com turmas em uso no ensalamento ou de excluir curso com turmas.
+
+    A importação identifica o curso pelo nome: renomear um curso em uso faria a próxima
+    importação criar outro curso com o nome da planilha. A turma protege o curso (`PROTECT`).
+    """
+
+    def __init__(self, name, operation):
+        if operation == 'alterar':
+            message = (
+                f'O curso {name} tem turmas com ofertas ou aulas no ensalamento e não pode ser alterado, '
+                'porque a próxima importação criaria outro cadastro com o nome da planilha.'
+            )
+        else:
+            message = f'O curso {name} tem turmas cadastradas e não pode ser excluído. Exclua as turmas antes.'
+        super().__init__(message, code='course_in_use')
+
+
+class CourseQuerySet(models.QuerySet):
+    def search(self, term='', stage=''):
+        """Busca pelo nome e filtra pela etapa informada."""
+        queryset = self
+        if term:
+            queryset = queryset.filter(name__icontains=term)
+        if stage:
+            queryset = queryset.filter(stage=stage)
+        return queryset
+
+
+class CourseManager(NamedManager.from_queryset(CourseQuerySet)):
+    def register(self, name, stage):
+        """Cadastra o curso pela tela de Cursos, com o registro de auditoria."""
+        with transaction.atomic():
+            course = self.model(name=name, stage=stage)
+            course.full_clean()
+            course.save()
+            AuditLog.objects.record(catalog.CREATE, catalog.COURSE, resource_id=course.pk, new_values=course.snapshot())
+            return course
+
+
 class Course(NamedRecord):
-    """Curso a que pertencem as turmas de um grupo de colunas da planilha."""
+    """Curso a que pertencem as turmas de um grupo de colunas da planilha.
+
+    A importação reaproveita o curso pelo nome (`NamedManager.resolve`) e mantém a etapa
+    cadastrada, mesmo quando a aba da planilha indica outra.
+    """
 
     stage = models.CharField('etapa de ensino', max_length=12, choices=Stage.choices)
+
+    objects = CourseManager()
 
     class Meta(NamedRecord.Meta):
         verbose_name = 'curso'
         verbose_name_plural = 'cursos'
         constraints = [models.UniqueConstraint(Lower('name'), name='course_name_unique_ci')]
+
+    @property
+    def is_in_use(self):
+        """Diz se alguma turma do curso tem oferta ou aula no ensalamento."""
+        return (
+            ClassOffering.objects.filter(class_group__course=self).exists()
+            or Allocation.objects.filter(class_group__course=self).exists()
+        )
+
+    def snapshot(self):
+        return {'name': self.name, 'etapa': self.stage}
+
+    def lock(self):
+        return type(self).objects.select_for_update().get(pk=self.pk)
+
+    def update_details(self, name, stage):
+        """Altera o nome e a etapa, recusado quando o curso está em uso; sem efeito quando igual."""
+        with transaction.atomic():
+            course = self.lock()
+            previous = course.snapshot()
+            course.name = name
+            course.stage = stage
+            course.full_clean()
+            if course.snapshot() == previous:
+                return
+            if course.is_in_use:
+                raise CourseInUse(previous['name'], 'alterar')
+            course.save(update_fields=['name', 'stage'])
+            AuditLog.objects.record_changes(catalog.COURSE, course.pk, previous, course.snapshot())
+        self.refresh_from_db()
+
+    def delete_course(self):
+        """Exclui o curso sem turmas, com o registro de auditoria."""
+        with transaction.atomic():
+            course = self.lock()
+            if course.class_groups.exists():
+                raise CourseInUse(course.name, 'excluir')
+            AuditLog.objects.record(catalog.DELETE, catalog.COURSE, resource_id=course.pk, old_values=course.snapshot())
+            try:
+                course.delete()
+            except models.ProtectedError as error:
+                raise CourseInUse(course.name, 'excluir') from error
 
 
 class AcademicRecordInUse(ValidationError):

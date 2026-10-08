@@ -87,7 +87,7 @@ Ordem das linhas: usuários da aba opcional, valores dos catálogos (salas e dep
 
 - `lock()` classifica e aplica os espaços, resolve o semestre, aplica o período e trava as alocações do semestre e os usuários da aba.
 - Usuários da aba: e-mail novo é cadastrado como na [importação de usuários](autenticacao-e-usuarios.md#importação-de-usuários); usuário existente não é alterado, e a diferença de dados ou a situação inativa vira aviso.
-- Atividade: resolve curso, turma, disciplina, faixa e docentes pelo nome, criando o que falta, e chama `Allocation.objects.apply`, que cria a alocação ou atualiza espaço e docentes. Alocação com vigência definida (alterada no sistema) não é tocada, e a linha recebe aviso.
+- Atividade: resolve curso, turma, disciplina, faixa e docentes pelo nome, criando o que falta, e chama `Allocation.objects.apply`, que cria a alocação ou atualiza espaço e docentes. Alocação com vigência definida (alterada no sistema) não é tocada, e a linha recebe aviso. Curso já cadastrado com etapa diferente da aba mantém a etapa, e a linha recebe aviso.
 - `finish()` registra as ofertas e sincroniza os vínculos de docente das linhas mantidas, uma vez.
 - Nada é excluído. Uma alocação que saiu da planilha continua no banco.
 - Reimportar é idempotente: cada item é procurado pela identidade (ver [regras de negócio](../regras/regras-de-negocio.md#importação-da-planilha)) e o registro existente é reaproveitado, com as mesmas chaves. A mesma planilha confirmada de novo não cria nem altera nenhuma linha; uma aula existente só muda de espaço ou de docentes quando a planilha traz outros.

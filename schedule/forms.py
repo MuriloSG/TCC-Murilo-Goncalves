@@ -4,7 +4,7 @@ from django import forms
 from django.db.models import Q
 
 from schedule.models import (
-    ClassGroup, Course, Space, SpaceOrigin, Subject, Teacher, TimeSlot, Weekday,
+    ClassGroup, Course, Space, SpaceOrigin, Stage, Subject, Teacher, TimeSlot, Weekday,
 )
 from schedule.timetable import natural_key
 from ui.forms import DateInput
@@ -62,6 +62,56 @@ class SpaceFilterForm(forms.Form):
         self.is_valid()
         data = self.cleaned_data
         return data.get('busca', ''), data.get('situacao') or 'todos', data.get('origem') or 'todas'
+
+
+class CourseFilterForm(forms.Form):
+    """Busca e filtro de etapa da lista de cursos, recebidos pela URL.
+
+    Uma etapa inválida é descartada sem mensagem, e a lista trata o campo como todas.
+    """
+
+    busca = forms.CharField(
+        label='Buscar pelo nome',
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'search', 'class': 'input', 'placeholder': 'Buscar curso'}),
+    )
+    etapa = forms.ChoiceField(
+        label='Etapa de ensino',
+        choices=[('', 'Todas as etapas'), *Stage.choices],
+        required=False,
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+
+    def criteria(self):
+        self.is_valid()
+        data = self.cleaned_data
+        return data.get('busca', ''), data.get('etapa', '')
+
+
+class CourseForm(forms.Form):
+    """Nome e etapa do curso, no cadastro e na edição pela tela de Cursos.
+
+    A importação reaproveita o curso só pelo nome igual ao do título da planilha, sem
+    diferenciar a caixa e os espaços repetidos; acentos diferentes dão outro curso.
+    """
+
+    name = forms.CharField(
+        label='Nome',
+        max_length=200,
+        help_text='Use o nome como aparece no título da planilha do ensalamento, com os mesmos acentos.',
+        widget=forms.TextInput(attrs={'autocomplete': 'off'}),
+    )
+    stage = forms.ChoiceField(
+        label='Etapa de ensino',
+        choices=[('', 'Selecione a etapa'), *Stage.choices],
+        widget=forms.Select(attrs={'class': 'input'}),
+    )
+
+    def __init__(self, *args, target=None, **kwargs):
+        if target is not None:
+            kwargs['initial'] = {'name': target.name, 'stage': target.stage} | (kwargs.get('initial') or {})
+        super().__init__(*args, **kwargs)
 
 
 class SubjectFilterForm(forms.Form):

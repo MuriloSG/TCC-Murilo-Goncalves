@@ -66,6 +66,7 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 | A identidade da alocação é semestre, turma, dia, faixa e disciplina (mais o início da vigência). Duas alocações podem ter o mesmo espaço, dia e faixa: é aula compartilhada, não conflito | `allocation_unique` |
 | Alocação existente só tem espaço e docentes atualizados. Alocação alterada no sistema (com vigência) não é tocada pela planilha | `Allocation.update_details`, `AllocationManager.apply` |
 | Reimportação idempotente: cada item é procurado pela identidade e o registro existente é reaproveitado (aula pela identidade acima; curso, disciplina e docente pelo nome sem diferenciar maiúsculas; turma por curso e rótulo; faixa por semestre, início e fim; espaço por qualquer nome dele). Reimportar a mesma planilha não cria nem altera nada, e as chaves continuam as mesmas. Agendamentos aprovados não são alterados nem cancelados | `AllocationManager.apply`, `NamedManager.resolve`, `IdempotentReimportTests` |
+| Curso existente com a mesma grafia é reaproveitado com a etapa cadastrada, mesmo quando a aba indica outra; a linha recebe o aviso `curso_etapa_graduacao_mantida` ou `curso_etapa_ensino_medio_mantida` e é processada | `execute_activity`, `COURSE_STAGE_KEPT`, `RegisteredCourseTests` |
 | A mesma alocação descrita em mais de uma célula é erro em todas as células | `repeated_activities` |
 | Docente fora da lista de `Validação de Dados` é erro da linha | `schedule/activities.py` |
 | A importação não detecta conflito de espaço nem de docente | `Allocation` (docstring) |
@@ -107,6 +108,8 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 | Regra | Onde |
 |---|---|
 | Disciplina única pelo nome em todo o sistema; turma única pelo rótulo dentro do curso; sem diferenciar a caixa | `subject_name_unique_ci`, `class_group_label_unique_ci` |
+| Curso único pelo nome, sem diferenciar a caixa; nome e etapa obrigatórios | `course_name_unique_ci`, `NamedRecord.clean` |
+| Curso com alguma turma com oferta ou aula não tem nome nem etapa alterados; curso com turmas não é excluído | `Course.update_details`, `Course.delete_course`, `CourseInUse` |
 | O curso da turma não muda | `ClassGroup.update_details` |
 | Disciplina ou turma com oferta ou aula não pode ser renomeada nem excluída | `AcademicRecordInUse` |
 | O escopo visível é o do docente correspondente ao usuário; só o superadmin vê todos. Perfil `ADMINISTRADOR` sem docente correspondente tem escopo vazio | `teacher_scope`, `SubjectQuerySet.visible_to`, `ClassGroupQuerySet.visible_to`; testes em `schedule/tests/test_academic_views.py` |

@@ -1,0 +1,34 @@
+{% load ui %}<table class="data-table compact-rows">
+  <thead>
+    <tr>
+      <th scope="col">Curso</th>
+      <th scope="col">Etapa de ensino</th>
+      <th scope="col">Turmas</th>
+      <th scope="col" class="cell-actions">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in courses %}
+      <tr>
+        <td class="cell-primary" data-label="Curso"><a class="link person-name" href="{% url 'courses_detail' item.pk %}">{{ item.name }}</a></td>
+        <td class="cell-meta" data-label="Etapa de ensino">{{ item.get_stage_display }}</td>
+        <td class="cell-meta" data-label="Turmas">{{ item.class_group_count }}</td>
+        <td class="cell-actions" data-label="Ações">
+          {% row_action "courses_update" item.pk "Editar" "pencil" when=perms.CURSO.EDITAR as edit %}
+          {% row_action "courses_delete" item.pk "Excluir curso" "trash-2" when=item.deletable danger=True as delete %}
+          {% action_list edit as visible %}
+          {% action_list delete item.history_action as more %}
+          {% action_list edit delete item.history_action as compact %}
+          {% include "ui/components/row_actions.html" %}
+        </td>
+      </tr>
+    {% empty %}
+      {% if filtered %}{% url 'courses_list' as clear_url %}
+        {% include "ui/components/empty_row.html" with colspan=4 message="Nenhum curso encontrado." clear_url=clear_url clear_label="Limpar filtros" %}
+      {% else %}
+        {% include "ui/components/empty_row.html" with colspan=4 message="Nenhum curso cadastrado." %}
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+{% include "ui/components/pagination.html" with noun="curso" noun_plural="cursos" hx_target=table_target %}

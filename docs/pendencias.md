@@ -9,8 +9,6 @@ Itens sem solução em 08/10/2026. O comportamento atual foi mantido em todos.
 | Página com todas as notificações do usuário | Planejada e não implementada. O usuário vê só as 10 mais recentes no sino |
 | Comando de estatísticas do cache público (geração atual, hits, misses, chaves removidas) | Planejado e não implementado |
 | Redis como camada do Channels e para os limites de tentativas do allauth | Avaliação planejada, não feita |
-| Conferência visual no navegador (360 a 1280 px, teclado, sem JavaScript) | Não registrada para a Grade do ensalamento, o cadastro e o encerramento de aula e o acompanhamento das importações em segundo plano. A última tentativa falhou por falta de acesso ao PyPI no container do Playwright |
-| Imagem de referência das telas da Agenda | A convenção da seção 9.8 pede uma imagem de referência antes de cada tela nova; a da Agenda não foi registrada |
 
 ## Código
 

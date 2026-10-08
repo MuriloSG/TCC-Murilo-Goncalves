@@ -26,6 +26,7 @@ EXPORT = 'EXPORTAR'
 PUBLISH = 'PUBLICAR'
 SEND = 'ENVIAR'
 FAIL = 'FALHAR'
+IMPORT_FAIL = 'FALHAR_PROCESSAMENTO'
 APPROVE = 'APROVAR'
 REJECT = 'REJEITAR'
 SUGGEST = 'SUGERIR'
@@ -51,6 +52,7 @@ ACTION_LABELS = {
     PUBLISH: 'Publicação',
     SEND: 'Envio',
     FAIL: 'Falha no envio',
+    IMPORT_FAIL: 'Falha no processamento',
     APPROVE: 'Aprovação',
     REJECT: 'Rejeição',
     SUGGEST: 'Sugestão de alternativa',

@@ -13,6 +13,7 @@ from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
 from imports.reader import SourceRow
+from imports.tests.worker import confirm, preview
 from outbox import handlers
 from outbox.models import OutboxEntry
 from outbox.worker import process_next
@@ -161,7 +162,7 @@ class ImportChangeTests(ChangeRecordTestCase):
         ]
 
     def preview(self, *emails):
-        return Import.objects.preview(self.definition, self.rows(*emails), 'usuarios.csv', self.admin)
+        return preview(self.definition, self.rows(*emails), 'usuarios.csv', self.admin)
 
     def test_preview_records_the_import_and_no_user(self):
         importation = self.preview('ana@ifnmg.edu.br', 'bruno@ifnmg.edu.br')
@@ -176,7 +177,7 @@ class ImportChangeTests(ChangeRecordTestCase):
 
     def test_confirmation_records_the_import_and_each_user(self):
         importation = self.preview('ana@ifnmg.edu.br', 'bruno@ifnmg.edu.br')
-        self.assertTrue(importation.confirm(self.definition, self.admin))
+        self.assertTrue(confirm(importation, self.definition, self.admin))
         entry = self.entries(catalog.IMPORT, catalog.USER_IMPORT).get()
         self.assertEqual(entry.metadata['cadastrados'], 2)
         created = self.entries(catalog.CREATE, catalog.USER).filter(origin=catalog.IMPORTED)

@@ -21,6 +21,7 @@ from imports.forms import ImportUploadForm
 from imports.models import Import
 from imports.reader import FileRejected
 from imports.tests.definitions import GroupImport
+from imports.tests.worker import confirm, preview
 from imports.workbook import WorkbookSource, cell_reference
 
 SEMESTER_LABEL = 'Semestre'
@@ -195,7 +196,7 @@ class AuditMetadataTests(TestCase):
             definition=self.definition,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        return Import.objects.preview(
+        return preview(
             self.definition, form.cleaned_data['rows'], form.cleaned_data['file'].name, self.executor,
         )
 
@@ -210,7 +211,7 @@ class AuditMetadataTests(TestCase):
 
     def test_confirmation_record_is_the_summary_of_the_import(self):
         importation = self.preview()
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         record = self.record(catalog.IMPORT)
         self.assertEqual(importation.resolved_by, self.executor)
         self.assertEqual(str(record.resource_id), str(importation.pk))
@@ -230,7 +231,7 @@ class AuditMetadataTests(TestCase):
 
     def test_only_the_import_itself_is_recorded(self):
         importation = self.preview()
-        importation.confirm(self.definition, self.executor)
+        confirm(importation, self.definition, self.executor)
         self.assertEqual(Group.objects.count(), 3)
         self.assertEqual(
             list(AuditLog.objects.order_by('pk').values_list('action', 'resource')),

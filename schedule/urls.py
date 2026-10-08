@@ -73,6 +73,11 @@ urlpatterns = [
         name='space_allocation_import_detail',
     ),
     path(
+        'ensalamento/importacoes/<int:pk>/andamento/',
+        login_required(views.SpaceAllocationImportStatusView.as_view()),
+        name='space_allocation_import_status',
+    ),
+    path(
         'ensalamento/importacoes/<int:pk>/confirmar/',
         login_required(views.SpaceAllocationImportConfirmView.as_view()),
         name='space_allocation_import_confirm',

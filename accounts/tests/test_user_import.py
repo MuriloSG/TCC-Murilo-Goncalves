@@ -7,6 +7,7 @@ from accounts.imports import UserImport, concluded_message
 from accounts.models import AdministrativeContinuityViolation, Permission, Role, RolePermission, User, UserRole
 from imports.models import Import
 from imports.reader import read_csv
+from imports.tests.worker import confirm, preview, run_worker
 from outbox.models import OutboxEntry
 
 HEADER = 'E-mail;Nome;Perfil;Nome de usuário\n'
@@ -32,10 +33,10 @@ class UserImportTestCase(TestCase):
     def preview(self, lines, executor=None):
         upload = SimpleUploadedFile('usuarios.csv', (HEADER + lines).encode())
         definition = UserImport()
-        return Import.objects.preview(definition, read_csv(upload, definition), 'usuarios.csv', executor or self.admin)
+        return preview(definition, read_csv(upload, definition), 'usuarios.csv', executor or self.admin)
 
     def confirm(self, importation, executor=None):
-        return importation.confirm(UserImport(), executor or self.admin)
+        return confirm(importation, UserImport(), executor or self.admin)
 
     def row(self, importation, line=2):
         return importation.rows.get(line_number=line)
@@ -184,6 +185,16 @@ class PermissionTests(UserImportTestCase):
         self.assertFalse(self.confirm(importation, executor))
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual(User.objects.get(email='bruno@ifnmg.edu.br').role, self.teacher)
+
+    def test_permission_is_checked_when_the_worker_executes(self):
+        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\n')
+        executor = self.executor_with(permissions.USER_IMPORT, permissions.USER_CREATE)
+        importation.request_confirmation(UserImport(), executor)
+        RolePermission.objects.filter(role__code='IMPORTACAO', permission__code=permissions.USER_CREATE).delete()
+        run_worker(UserImport())
+        importation.refresh_from_db()
+        self.assertEqual((importation.status, importation.operation), ('COM_ERROS', None))
+        self.assertFalse(User.objects.filter(email='ana@ifnmg.edu.br').exists())
 
     def test_confirmation_by_another_administrator(self):
         other = create_user('outro@ifnmg.edu.br', 'Outro', self.administrator)

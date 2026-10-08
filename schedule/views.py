@@ -12,7 +12,6 @@ A importação não tem modelo para baixar, porque a planilha é a do campus e n
 pelo sistema.
 """
 
-import logging
 from dataclasses import replace
 from datetime import timedelta
 from urllib.parse import urlencode
@@ -40,6 +39,7 @@ from imports.views import (
     ImportDiscardView,
     ImportListView,
     ImportScreens,
+    ImportStatusView,
     ImportUploadView,
     load_importation,
 )
@@ -90,7 +90,6 @@ from schedule.timetable import (
     week_start,
 )
 
-logger = logging.getLogger(__name__)
 
 WEEK_VIEW = 'semana'
 MONTH_VIEW = 'mes'
@@ -703,6 +702,11 @@ class SpaceAllocationImportDetailView(ImportDetailView):
         return context
 
 
+class SpaceAllocationImportStatusView(ImportStatusView):
+    permission_required = permissions.SPACE_ALLOCATION_IMPORT
+    screens = SPACE_ALLOCATION_IMPORT_SCREENS
+
+
 class SpaceAllocationImportConfirmView(ImportConfirmView):
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     screens = SPACE_ALLOCATION_IMPORT_SCREENS
@@ -1082,7 +1086,6 @@ class ClassGroupDeleteView(ConfirmedActionView):
 
 
 PERMISSION_MESSAGE = SPACE_PERMISSION_MESSAGE
-REFRESH_FAILED_MESSAGE = 'Não foi possível atualizar a prévia.'
 
 
 def plural(total, singular, many):
@@ -1154,12 +1157,12 @@ def space_panel(importation, user):
     atualização ou erros na planilha. No restante, vem recolhido, com o resumo no cabeçalho.
     """
     status = importation.status
-    if status == Import.Status.DISCARDED:
+    if status in (Import.Status.DISCARDED, Import.Status.RECEIVED, Import.Status.FAILED):
         return None
     if status == Import.Status.CONCLUDED:
         return {'concluded': True, 'created': sorted(Space.objects.filter(source_import=importation), key=natural_key)}
     resolution = classify_import(importation)
-    is_open = status in (Import.Status.VALIDATED, Import.Status.PENDING)
+    is_open = status in (Import.Status.VALIDATED, Import.Status.PENDING) and not importation.is_busy
     pending = []
     for entry in resolution.pending:
         actions = decision_actions(entry, user) if is_open else []
@@ -1185,13 +1188,14 @@ def space_panel(importation, user):
     associated = resolution.to_associate
     blocked = is_open and any(not item['actions'] and not item['choose'] for item in pending)
     lines = summary_lines(resolution) if is_open else []
-    refresh_failed = status == Import.Status.PENDING and not resolution.pending
+    refresh_failed = is_open and importation.outcome == Import.Outcome.REFRESH_FAILED
     with_errors = status == Import.Status.WITH_ERRORS
     return {
         'concluded': False,
         'expanded': bool(pending) or blocked or refresh_failed or with_errors,
         'open': is_open,
-        'ready': status == Import.Status.VALIDATED,
+        'ready': status == Import.Status.VALIDATED and not importation.is_busy,
+        'busy': importation.is_busy,
         'with_errors': with_errors,
         'recognized': sorted((entry.name for entry in resolution.recognized), key=str.casefold),
         'proposed': [
@@ -1264,22 +1268,20 @@ def ready_summary(resolution):
 
 
 def refresh_after_decision(request, importation):
-    """Atualiza a prévia quando não resta pendência ou quando a importação estava pronta (D12).
+    """Pede a atualização da prévia quando não resta pendência ou quando a importação estava pronta (D12).
 
-    A decisão já está gravada, numa transação própria. Uma falha inesperada da atualização é
-    registrada no log e deixa a importação como estava; o quadro mostra a recuperação.
+    A decisão já está gravada, numa transação própria. A atualização é executada pelo worker
+    (Change processar-importacao-em-segundo-plano), e a falha dela fica no resultado da
+    importação, que o quadro mostra com a recuperação.
     """
     current = Import.objects.get(pk=importation.pk)
     if classify_import(current).pending and current.status != Import.Status.VALIDATED:
         return
     try:
-        current.refresh(SPACE_ALLOCATION_IMPORT_SCREENS.definition, request.user)
+        current.request_refresh(request.user)
     except ValidationError as error:
         for message in error.messages:
             messages.error(request, message)
-    except Exception:
-        logger.exception('Falha ao atualizar a prévia da importação %s.', current.pk)
-        messages.error(request, REFRESH_FAILED_MESSAGE)
 
 
 def panel_url(importation):
@@ -1331,7 +1333,7 @@ class SpaceWithdrawView(View):
 
 
 class SpaceRefreshView(View):
-    """Refaz a atualização da prévia depois de uma falha: é a recuperação, e não o fluxo normal."""
+    """Pede de novo a atualização da prévia depois de uma falha: é a recuperação, e não o fluxo normal."""
 
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     http_method_names = ['post']
@@ -1339,13 +1341,10 @@ class SpaceRefreshView(View):
     def post(self, request, *args, **kwargs):
         importation = load_importation(SPACE_ALLOCATION_IMPORT_SCREENS, kwargs['pk'])
         try:
-            importation.refresh(SPACE_ALLOCATION_IMPORT_SCREENS.definition, request.user)
+            importation.request_refresh(request.user)
         except ValidationError as error:
             for message in error.messages:
                 messages.error(request, message)
-        except Exception:
-            logger.exception('Falha ao atualizar a prévia da importação %s.', importation.pk)
-            messages.error(request, REFRESH_FAILED_MESSAGE)
         return HttpResponseRedirect(panel_url(importation))
 
 

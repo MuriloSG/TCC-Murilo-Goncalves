@@ -17,6 +17,7 @@ from accounts.permissions import (
 from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
+from imports.tests.worker import run_worker
 from schedule.models import Allocation, Semester, Space
 from schedule.tests.test_import import PERIOD, TEACHERS, SPACES, workbook_file
 from schedule.views import SPACE_ALLOCATION_IMPORT_SCREENS
@@ -39,9 +40,19 @@ class ScreenTestCase(TestCase):
         urls = [SPACE_ALLOCATION_IMPORT_SCREENS.url(name, *([pk] if pk else [])) for name in names]
         return urls if pk else [reverse('space_allocation_grid'), *urls]
 
+    def post(self, url, data=None, follow=False):
+        """Envia o POST e deixa o worker executar a operação pedida antes de abrir a página seguinte."""
+        response = self.client.post(url, data or {})
+        run_worker(SPACE_ALLOCATION_IMPORT_SCREENS.definition)
+        if not follow or response.status_code != 302:
+            return response
+        page = self.client.get(response.url, follow=True)
+        page.redirect_chain = [(response.url, response.status_code), *page.redirect_chain]
+        return page
+
     def upload(self, semester='2026/1', uploaded=None):
         self.client.force_login(self.importer)
-        return self.client.post(
+        return self.post(
             SPACE_ALLOCATION_IMPORT_SCREENS.url('upload'),
             {'own_semestre': semester, **PERIOD, 'file': uploaded if uploaded is not None else workbook_file()},
             follow=True,
@@ -82,8 +93,7 @@ class UploadTests(ScreenTestCase):
 
     def test_upload_without_the_semester_shows_the_error(self):
         self.client.force_login(self.importer)
-        response = self.client.post(
-            SPACE_ALLOCATION_IMPORT_SCREENS.url('upload'), {'file': workbook_file()},
+        response = self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('upload'), {'file': workbook_file()},
         )
         self.assertContains(response, 'Informe o semestre da planilha.')
         self.assertFalse(Import.objects.exists())
@@ -104,8 +114,7 @@ class ConfirmationScreenTests(ScreenTestCase):
 
     def test_confirmation_applies_and_shows_the_totals(self):
         self.client.force_login(self.importer)
-        response = self.client.post(
-            SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', self.importation.pk), follow=True,
+        response = self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', self.importation.pk), follow=True,
         )
         self.importation.refresh_from_db()
         self.assertEqual(self.importation.status, Import.Status.CONCLUDED)
@@ -116,7 +125,7 @@ class ConfirmationScreenTests(ScreenTestCase):
 
     def test_audit_of_the_confirmation_has_the_actor_and_the_summary(self):
         self.client.force_login(self.importer)
-        self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', self.importation.pk))
+        self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', self.importation.pk))
         record = AuditLog.objects.filter(action=catalog.IMPORT).latest('pk')
         self.assertEqual(record.user, self.importer)
         self.assertEqual(record.resource, catalog.SPACE_ALLOCATION_IMPORT)
@@ -128,8 +137,7 @@ class ConfirmationScreenTests(ScreenTestCase):
 
     def test_discard_keeps_the_domain_untouched(self):
         self.client.force_login(self.importer)
-        response = self.client.post(
-            SPACE_ALLOCATION_IMPORT_SCREENS.url('discard', self.importation.pk), follow=True,
+        response = self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('discard', self.importation.pk), follow=True,
         )
         self.importation.refresh_from_db()
         self.assertEqual(self.importation.status, Import.Status.DISCARDED)
@@ -194,7 +202,7 @@ class GridScreenTests(ScreenTestCase):
     def setUp(self):
         super().setUp()
         self.upload(semester='2026/2')
-        self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
+        self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
         self.url = reverse('space_allocation_grid')
 
     def grid(self, query='', today=date(2026, 9, 25)):
@@ -245,7 +253,7 @@ class DatedGridScreenTests(ScreenTestCase):
     def setUp(self):
         super().setUp()
         self.upload(semester='2026/2')
-        self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
+        self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
         self.url = reverse('space_allocation_grid')
         self.semester = Semester.objects.get(code='2026/2')
 
@@ -301,7 +309,7 @@ class MonthGridScreenTests(ScreenTestCase):
     def setUp(self):
         super().setUp()
         self.upload(semester='2026/2')
-        self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
+        self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', Import.objects.get().pk))
         self.url = reverse('space_allocation_grid')
         Semester.objects.get(code='2026/2').define_period(date(2026, 8, 5), date(2026, 12, 18))
 
@@ -365,7 +373,7 @@ class ClashConfirmationTests(ScreenTestCase):
         self.upload(uploaded=workbook_file(undergraduate=clash))
         importation = Import.objects.get()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
-        response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
+        response = self.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.CONCLUDED)
         self.assertEqual(response.redirect_chain[-1][0], SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', importation.pk))
@@ -408,7 +416,7 @@ class DeletionTests(ScreenTestCase):
     def test_with_the_permission_the_import_is_deleted(self):
         self.client.force_login(self.remover)
         self.assertEqual(self.client.get(self.url).status_code, 200)
-        response = self.client.post(self.url, follow=True)
+        response = self.post(self.url, follow=True)
         self.assertRedirects(response, SPACE_ALLOCATION_IMPORT_SCREENS.url('list'))
         self.assertContains(response, 'excluída')
         self.assertFalse(Import.objects.exists())
@@ -428,7 +436,7 @@ class DeletionTests(ScreenTestCase):
         self.client.force_login(self.remover)
         url = SPACE_ALLOCATION_IMPORT_SCREENS.url('delete', pending.pk)
         self.assertNotContains(self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('detail', pending.pk)), url)
-        response = self.client.post(url, follow=True)
+        response = self.post(url, follow=True)
         self.assertContains(response, 'não pode ser excluída')
         self.assertTrue(Import.objects.filter(pk=pending.pk).exists())
 

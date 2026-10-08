@@ -2,11 +2,12 @@
 
 from unittest import mock
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from accounts import permissions
 from imports.models import Import
+from imports.tests.worker import run_worker
 from schedule.models import Space, SpaceDecision
 from schedule.tests.test_import import PERIOD, workbook_file
 from schedule.tests.test_space_import import SECONDARY_CELL, user_with
@@ -34,7 +35,14 @@ class PanelTestCase(TestCase):
             SPACE_ALLOCATION_IMPORT_SCREENS.url('upload'),
             {'own_semestre': semester, **PERIOD, 'file': uploaded if uploaded is not None else workbook_file()},
         )
+        run_worker(SPACE_ALLOCATION_IMPORT_SCREENS.definition)
         return Import.objects.latest('pk')
+
+    def submit(self, url, data=None):
+        """Envia o POST, deixa o worker executar o que ele pediu e abre a tela para onde ele redireciona."""
+        response = self.client.post(url, data or {})
+        run_worker(SPACE_ALLOCATION_IMPORT_SCREENS.definition)
+        return self.client.get(response.url)
 
     def detail(self, importation, user=None):
         self.client.force_login(user or self.manager)
@@ -42,10 +50,9 @@ class PanelTestCase(TestCase):
 
     def decide(self, importation, name, kind, user=None, **extra):
         self.client.force_login(user or self.manager)
-        return self.client.post(
+        return self.submit(
             reverse('space_allocation_import_decide', args=[importation.pk]),
             {'nome': name, 'decisao': kind, **extra},
-            follow=True,
         )
 
 
@@ -84,12 +91,12 @@ class PanelTests(PanelTestCase):
         response = self.detail(importation, self.importer)
         self.assertNotContains(response, 'Confirmar importação')
         self.assertContains(response, 'O seu perfil não tem permissão para essa configuração.')
-        response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
+        response = self.submit(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk))
         self.assertContains(response, 'O seu perfil não tem permissão para essa configuração.')
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.client.force_login(self.manager)
-        response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
+        response = self.submit(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk))
         self.assertContains(response, '4 espaços cadastrados.')
         self.assertEqual(Space.objects.count(), 4)
 
@@ -114,7 +121,7 @@ class PanelTests(PanelTestCase):
 
     def test_concluded_import_lists_the_spaces_it_created(self):
         importation = self.upload()
-        response = self.client.post(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk), follow=True)
+        response = self.submit(SPACE_ALLOCATION_IMPORT_SCREENS.url('confirm', importation.pk))
         self.assertContains(response, '4 espaços cadastrados.')
         self.assertContains(response, '4 espaços cadastrados por esta importação.')
         self.assertNotContains(response, 'Nenhuma alteração foi feita no cadastro de espaços.')
@@ -150,26 +157,38 @@ class AutomaticRefreshTests(PanelTestCase):
     def test_withdrawing_a_decision_brings_back_the_pending(self):
         importation = self.upload(workbook_file(secondary={SECONDARY_CELL: 'Biologia (Érica) (Zoo I)'}))
         self.decide(importation, 'Zoo I', SpaceDecision.Kind.NEW)
-        response = self.client.post(
-            reverse('space_allocation_import_withdraw', args=[importation.pk]), {'nome': 'Zoo I'}, follow=True,
-        )
+        response = self.submit(reverse('space_allocation_import_withdraw', args=[importation.pk]), {'nome': 'Zoo I'})
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.PENDING)
         self.assertContains(response, 'Decisão sobre o espaço Zoo I desfeita.')
 
     def test_failed_refresh_keeps_the_decision_and_offers_to_try_again(self):
         importation = self.upload(workbook_file(secondary={SECONDARY_CELL: 'Biologia (Érica) (Zoo I)'}))
-        with mock.patch.object(Import, 'refresh', side_effect=RuntimeError('falha')):
+        with override_settings(IMPORT_MAX_ATTEMPTS=1), mock.patch.object(Import, 'run_refresh', side_effect=RuntimeError('falha')):
             response = self.decide(importation, 'Zoo I', SpaceDecision.Kind.NEW)
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.PENDING)
         self.assertTrue(SpaceDecision.objects.filter(found_name='Zoo I').exists())
         self.assertContains(response, 'Não foi possível atualizar a prévia.')
         self.assertContains(response, 'Tentar novamente')
-        self.client.post(reverse('space_allocation_import_refresh', args=[importation.pk]))
+        self.submit(reverse('space_allocation_import_refresh', args=[importation.pk]))
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertNotContains(self.detail(importation), 'Tentar novamente')
+
+    def test_decision_while_the_refresh_is_pending_is_refused(self):
+        importation = self.upload(workbook_file(undergraduate=TWO_CELL_NAMES))
+        importation.request_refresh(self.manager)
+        response = self.client.post(
+            reverse('space_allocation_import_decide', args=[importation.pk]),
+            {'nome': 'Zoo I', 'decisao': SpaceDecision.Kind.NEW},
+            follow=True,
+        )
+        self.assertContains(response, 'Esta importação está em processamento e não aceita outra ação até ele terminar.')
+        self.assertFalse(SpaceDecision.objects.exists())
+        importation.refresh_from_db()
+        self.assertEqual((importation.status, importation.operation), (Import.Status.PENDING, Import.Operation.REFRESH))
+        self.assertNotContains(response, 'É um espaço novo')
 
     def test_decision_without_the_permission_is_refused_with_message(self):
         Space.objects.register('HV 5')
@@ -188,6 +207,7 @@ class AutomaticRefreshTests(PanelTestCase):
         self.assertContains(page, 'Escolher o espaço de Zoo I')
         self.assertContains(page, 'Lab. Zootecnia')
         self.client.post(url, {'espaco': target.pk})
+        run_worker(SPACE_ALLOCATION_IMPORT_SCREENS.definition)
         decision = SpaceDecision.objects.get()
         self.assertEqual((decision.kind, decision.space), ('ASSOCIAR', target))
         importation.refresh_from_db()

@@ -206,3 +206,11 @@ OUTBOX_BATCH_SIZE = int(os.environ.get('DJANGO_OUTBOX_BATCH_SIZE', '20'))
 
 IMPORT_MAX_FILE_SIZE = int(os.environ.get('DJANGO_IMPORT_MAX_FILE_SIZE', str(1024 * 1024)))
 IMPORT_MAX_ROWS = int(os.environ.get('DJANGO_IMPORT_MAX_ROWS', '1000'))
+IMPORT_MAX_ATTEMPTS = int(os.environ.get('DJANGO_IMPORT_MAX_ATTEMPTS', '3'))
+IMPORT_RETRY_DELAYS = [
+    int(delay) for delay in os.environ.get('DJANGO_IMPORT_RETRY_DELAYS', '30,120').split(',')
+]
+IMPORT_POLL_INTERVAL = float(os.environ.get('DJANGO_IMPORT_POLL_INTERVAL', '2'))
+IMPORT_STATUS_POLL_SECONDS = int(os.environ.get('DJANGO_IMPORT_STATUS_POLL_SECONDS', '3'))
+IMPORT_LOCK_TIMEOUT = int(os.environ.get('DJANGO_IMPORT_LOCK_TIMEOUT', '60'))
+IMPORT_STALE_AFTER = int(os.environ.get('DJANGO_IMPORT_STALE_AFTER', '60'))

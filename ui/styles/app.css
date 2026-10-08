@@ -3907,6 +3907,12 @@
     flex: 1;
   }
 
+  .alert > .alert-body {
+    flex: 1;
+    display: grid;
+    gap: var(--spacing-1);
+  }
+
   .alert.is-leaving {
     animation: fade-out var(--motion-fast) ease-in forwards;
   }

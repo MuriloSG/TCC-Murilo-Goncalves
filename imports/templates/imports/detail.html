@@ -12,6 +12,7 @@
 {% block content %}
 {% include "imports/partials/detail_summary.html" %}
 {% if screens.panel_template %}{% include screens.panel_template %}{% endif %}
+{% if importation.status != "RECEBIDA" and importation.status != "FALHOU" %}
   <section class="card" id="linhas-secao" aria-labelledby="linhas-importacao">
     <div class="card-head">
       <div>
@@ -58,4 +59,5 @@
     </div>
     {% include "ui/components/pagination.html" with noun="linha" noun_plural="linhas" %}
   </section>
+{% endif %}
 {% endblock %}

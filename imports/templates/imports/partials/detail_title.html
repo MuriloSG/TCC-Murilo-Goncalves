@@ -3,7 +3,8 @@
     <div>
       <h1 class="page-title">Importação de {{ importation.file_name }}</h1>
     </div>
-    {% if importation.is_validated %}
+    {% if processing %}
+    {% elif importation.is_validated %}
       {% if not confirm_refusal %}<form id="confirmar-importacao" method="post" action="{{ confirm_url }}">{% csrf_token %}</form>{% endif %}
       <div class="page-actions">
         <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
@@ -17,6 +18,11 @@
       <div class="page-actions">
         {% if delete_url %}<a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>{% endif %}
         <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo corrigido</a>
+      </div>
+    {% elif importation.status == "FALHOU" %}
+      <div class="page-actions">
+        {% if delete_url %}<a class="btn-danger" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal">{% icon "trash-2" %}Excluir importação</a>{% endif %}
+        <a class="btn-primary" href="{{ upload_url }}" hx-get="{{ upload_url }}" hx-target="#modal">{% icon "upload" %}Enviar arquivo de novo</a>
       </div>
     {% elif delete_url %}
       <div class="page-actions">

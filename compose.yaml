@@ -49,6 +49,17 @@ services:
       db:
         condition: service_healthy
 
+  import_worker:
+    build: .
+    command: python manage.py process_imports
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+
   tailwind:
     build:
       context: .

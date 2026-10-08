@@ -22,6 +22,7 @@ from audit import catalog
 from audit.models import AuditLog
 from imports.forms import ImportUploadForm
 from imports.models import Import
+from imports.tests.worker import confirm, preview, refresh
 from outbox.models import OutboxEntry
 from schedule.imports import RECURRENCE_CHANGED, SpaceAllocationImport, concluded_message
 from schedule.models import (
@@ -147,14 +148,14 @@ class ImportTestCase(TestCase):
             definition=self.definition,
         )
         self.assertTrue(form.is_valid(), form.errors)
-        return Import.objects.preview(
+        return preview(
             self.definition, form.cleaned_data['rows'], form.cleaned_data['file'].name, self.executor,
         )
 
     def conclude(self, uploaded=None, semester='2026/1', period=None):
         importation = self.preview(uploaded, semester, period)
         self.assertEqual(importation.status, Import.Status.VALIDATED, self.errors_of(importation))
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         return importation
 
     def errors_of(self, importation):
@@ -345,7 +346,7 @@ class ReimportTests(ImportTestCase):
         row = importation.rows.get(values__Célula=f'{UNDERGRADUATE_SHEET}!C3')
         self.assertEqual((row.action, row.changes), ('update', {'space': ['1/13', '2/6']}))
         self.assertEqual(self.allocation().space.name, '1/13')
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(self.allocation().space.name, '2/6')
         self.assertEqual(Allocation.objects.count(), 4)
 
@@ -359,7 +360,7 @@ class ReimportTests(ImportTestCase):
         importation = self.preview(changed)
         row = importation.rows.get(values__Célula=f'{UNDERGRADUATE_SHEET}!C3')
         self.assertEqual((row.action, row.changes), ('update', {'teachers': [['Elza'], ['Elza', 'Viviane']]}))
-        importation.confirm(self.definition, self.executor)
+        confirm(importation, self.definition, self.executor)
         self.assertEqual(
             sorted(teacher.name for teacher in self.allocation().teachers.all()), ['Elza', 'Viviane'],
         )
@@ -439,7 +440,7 @@ class ReimportTests(ImportTestCase):
         row = importation.rows.get(values__Célula=f'{UNDERGRADUATE_SHEET}!C3')
         self.assertEqual(row.action, 'unchanged')
         self.assertEqual(row.warnings, [RECURRENCE_CHANGED])
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(list(Allocation.objects.order_by('pk').values()), versions)
 
     def test_the_same_activity_twice_is_a_duplicate_error(self):
@@ -460,7 +461,7 @@ class DivergenceTests(ImportTestCase):
     def test_data_changed_after_the_preview_gives_a_new_plan(self):
         importation = self.preview()
         Space.objects.register('1/13')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         importation.refresh_from_db()
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertEqual(importation.revalidation_count, 1)
@@ -469,7 +470,7 @@ class DivergenceTests(ImportTestCase):
 
     def test_confirmation_uses_the_recorded_semester(self):
         importation = self.preview(semester='2027/2')
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(list(Semester.objects.values_list('code', flat=True)), ['2027/2'])
         self.assertEqual(Allocation.objects.filter(semester__code='2027/2').count(), 4)
 
@@ -508,7 +509,7 @@ class PeriodImportTests(ImportTestCase):
         self.conclude()
         importation = self.preview(period=LATER, uploaded=workbook_file(spaces=[*SPACES, 'Zoo II']))
         Space.objects.register('Zoo II')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         self.assertEqual(self.period(), (date(2026, 8, 3), date(2026, 12, 18)))
 
     def test_reimport_with_new_dates_updates_and_audits_the_previous(self):
@@ -611,7 +612,7 @@ class RealSpreadsheetTests(ImportTestCase):
         self.assertEqual(summary['create'], 1706 - 121 - summary['pending'] - summary['unchanged'] - without_action)
         self.assertEqual(summary['update'], 0)
         with self.assertRaises(Exception):
-            importation.confirm(self.definition, self.executor)
+            confirm(importation, self.definition, self.executor)
         self.assertFalse(Allocation.objects.exists())
 
 
@@ -847,13 +848,13 @@ class UserSheetTests(ImportTestCase):
         importation = self.preview(self.with_users(ELZA, ('viviane', 'Viviane', 'DOCENTE', 'Viviane')))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         with self.assertRaises(Exception):
-            importation.confirm(self.definition, self.executor)
+            confirm(importation, self.definition, self.executor)
         self.assertFalse(self.imported_users().exists())
         self.assertFalse(Allocation.objects.exists())
 
     def test_preview_does_not_persist_users(self):
         importation = self.preview(self.with_users(ELZA, VIVIANE))
-        importation.refresh(self.definition, self.executor)
+        refresh(importation, self.definition, self.executor)
         self.assertFalse(self.imported_users().exists())
         self.assertFalse(self.password_links().exists())
         self.assertFalse(self.user_audit().exists())
@@ -873,7 +874,7 @@ class UserSheetTests(ImportTestCase):
     def test_divergence_rolls_back_users(self):
         importation = self.preview(self.with_users(ELZA, VIVIANE))
         User.objects.register(email='elza@ifnmg.edu.br', name='Elza Souza', role=self.teacher_role, username='Elza')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         self.assertEqual(importation.revalidation_count, 1)
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertFalse(User.objects.filter(email='viviane@ifnmg.edu.br').exists())
@@ -882,10 +883,8 @@ class UserSheetTests(ImportTestCase):
     def test_unexpected_error_after_users_rolls_back_everything(self):
         importation = self.preview(self.with_users(ELZA))
         with patch.object(Allocation.objects, 'apply', side_effect=RuntimeError):
-            with self.assertRaises(RuntimeError):
-                importation.confirm(self.definition, self.executor)
-        importation.refresh_from_db()
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
+            self.assertFalse(confirm(importation, self.definition, self.executor))
+        self.assertEqual((importation.status, importation.operation), (Import.Status.VALIDATED, Import.Operation.CONFIRMATION))
         self.assertFalse(self.imported_users().exists())
         self.assertFalse(self.password_links().exists())
         self.assertFalse(Allocation.objects.exists())
@@ -895,7 +894,7 @@ class UserSheetTests(ImportTestCase):
     def test_confirmer_without_permission(self):
         importation = self.preview(self.with_users(ELZA))
         confirmer = space_manager('semcadastro@ifnmg.edu.br')
-        self.assertFalse(importation.confirm(self.definition, confirmer))
+        self.assertFalse(confirm(importation, self.definition, confirmer))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         self.assertFalse(User.objects.filter(email='elza@ifnmg.edu.br').exists())
         self.assertFalse(Allocation.objects.exists())

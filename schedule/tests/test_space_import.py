@@ -14,6 +14,7 @@ from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
+from imports.tests.worker import confirm, refresh
 from schedule.models import Allocation, Space, SpaceDecision
 from schedule.spaces import CELLS_ONLY, CREATE, INACTIVE, PENDING, SIMILAR, classify_import
 from schedule.tests.test_import import CONTENT_TYPE, ImportTestCase, space_manager, workbook_file
@@ -49,7 +50,7 @@ class SpaceImportTestCase(ImportTestCase):
 
     def decide(self, importation, name, kind, user=None, **target):
         SpaceDecision.objects.decide(importation, name, kind, user or self.executor, **target)
-        importation.refresh(self.definition, user or self.executor)
+        refresh(importation, self.definition, user or self.executor)
         return importation
 
 
@@ -66,7 +67,7 @@ class ClassificationTests(SpaceImportTestCase):
         self.assertFalse(Space.objects.exists())
         self.decide(importation, 'Lab. Química', SpaceDecision.Kind.NEW)
         self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(Space.objects.count(), 86)
         self.assertEqual(set(Space.objects.values_list('origin', 'source_import')), {('PLANILHA', importation.pk)})
         again = self.preview(real(CORRECTED))
@@ -141,7 +142,7 @@ class ClassificationTests(SpaceImportTestCase):
         self.assertNotIn('lab. de madeira', classify_import(importation).found)
         row = importation.rows.get(values__Nome='Lab. de Madeira')
         self.assertEqual((row.action, row.warnings, row.pending), (None, [], []))
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertFalse(Space.objects.get(pk=space.pk).is_active)
 
     def test_active_space_without_lessons_is_recognized(self):
@@ -162,7 +163,7 @@ class DecisionTests(SpaceImportTestCase):
         self.assertEqual(Space.objects.get(pk=space.pk).other_names, [])
         decision_record = AuditLog.objects.filter(resource=catalog.SPACE_ALLOCATION_IMPORT, action=catalog.UPDATE).get()
         self.assertEqual(decision_record.new_values, {'nome_encontrado': 'HV5', 'decisao': 'ASSOCIAR', 'espaco': 'HV 5'})
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         space.refresh_from_db()
         self.assertEqual((space.other_names, space.origin), (['HV5'], 'MANUAL'))
         self.assertEqual(Allocation.objects.get(subject__name='Biologia').space, space)
@@ -177,7 +178,7 @@ class DecisionTests(SpaceImportTestCase):
         importation = self.preview(secondary('Biologia (Érica) (Zoo I)'))
         self.decide(importation, 'Zoo I', SpaceDecision.Kind.NEW, user=self.creator)
         self.assertFalse(Space.objects.filter(name='Zoo I').exists())
-        self.assertTrue(importation.confirm(self.definition, self.creator))
+        self.assertTrue(confirm(importation, self.definition, self.creator))
         space = Space.objects.get(name='Zoo I')
         self.assertEqual((space.origin, space.source_import), ('PLANILHA', importation))
         record = AuditLog.objects.get(resource=catalog.SPACE, action=catalog.CREATE, resource_id=str(space.pk))
@@ -193,7 +194,7 @@ class DecisionTests(SpaceImportTestCase):
         self.assertEqual([candidate.found_key for candidate in entry.candidates], ['hv 3'])
         self.assertEqual(self.entry(importation, 'HV 3').outcome, CREATE)
         self.decide(importation, 'HV3', SpaceDecision.Kind.SAME, user=self.creator, target_name='HV 3')
-        self.assertTrue(importation.confirm(self.definition, self.creator))
+        self.assertTrue(confirm(importation, self.definition, self.creator))
         space = Space.objects.get(name='HV 3')
         self.assertEqual(space.other_names, ['HV3'])
         self.assertEqual(set(Allocation.objects.values_list('space', flat=True)), {space.pk})
@@ -204,7 +205,7 @@ class DecisionTests(SpaceImportTestCase):
         importation = self.decide(self.preview(), 'HV 3', SpaceDecision.Kind.REACTIVATE)
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         self.assertFalse(Space.objects.get(pk=space.pk).is_active)
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertTrue(Space.objects.get(pk=space.pk).is_active)
         summary = AuditLog.objects.filter(action=catalog.IMPORT).latest('pk').metadata
         self.assertEqual(summary['espacos_reativados'], 1)
@@ -221,15 +222,15 @@ class DecisionTests(SpaceImportTestCase):
         importation = self.decide(self.preview(secondary('Biologia (Érica) (Zoo I)')), 'Zoo I', SpaceDecision.Kind.NEW)
         self.assertEqual(importation.status, Import.Status.VALIDATED)
         SpaceDecision.objects.withdraw(importation, 'zoo i', self.executor)
-        self.assertEqual(importation.refresh(self.definition, self.executor), Import.Status.PENDING)
+        self.assertEqual(refresh(importation, self.definition, self.executor), Import.Status.PENDING)
         self.assertEqual(self.entry(importation, 'Zoo I').outcome, PENDING)
 
     def test_recognition_prevails_over_an_old_decision(self):
         importation = self.decide(self.preview(secondary('Biologia (Érica) (Sala 101)')), 'Sala 101', SpaceDecision.Kind.NEW)
         manual = Space.objects.register('Sala 101')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(Space.objects.filter(name__iexact='Sala 101').count(), 1)
         self.assertEqual(Allocation.objects.get(subject__name='Biologia').space, manual)
 
@@ -249,9 +250,9 @@ class DecisionTests(SpaceImportTestCase):
     def test_two_imports_proposing_the_same_space_create_it_once(self):
         first = self.preview()
         second = self.preview(semester='2026/2')
-        self.assertTrue(first.confirm(self.definition, self.executor))
-        self.assertFalse(second.confirm(self.definition, self.executor))
-        self.assertTrue(second.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(first, self.definition, self.executor))
+        self.assertFalse(confirm(second, self.definition, self.executor))
+        self.assertTrue(confirm(second, self.definition, self.executor))
         self.assertEqual(sorted(Space.objects.values_list('name', flat=True)), ['1/13', '2/6', 'HV 3', 'Lab. de Madeira'])
 
 
@@ -259,16 +260,16 @@ class PermissionTests(SpaceImportTestCase):
     def test_importer_only_cannot_confirm_what_changes_the_registry(self):
         importation = self.preview()
         with self.assertRaisesMessage(ValidationError, 'O seu perfil não tem permissão para essa configuração.'):
-            importation.confirm(self.definition, self.importer_only)
+            confirm(importation, self.definition, self.importer_only)
         importation.refresh_from_db()
         self.assertEqual((importation.status, importation.revalidation_count), (Import.Status.VALIDATED, 0))
         self.assertFalse(Space.objects.exists())
-        self.assertTrue(importation.confirm(self.definition, self.creator))
+        self.assertTrue(confirm(importation, self.definition, self.creator))
         self.assertEqual(Space.objects.count(), 4)
 
     def test_importer_only_concludes_when_the_registry_does_not_change(self):
         self.conclude()
-        self.assertTrue(self.preview().confirm(self.definition, self.importer_only))
+        self.assertTrue(confirm(self.preview(), self.definition, self.importer_only))
 
     def test_decision_without_the_permission_is_refused(self):
         space = Space.objects.register('HV 5')
@@ -286,5 +287,5 @@ class PermissionTests(SpaceImportTestCase):
         space.deactivate()
         importation = self.decide(self.preview(), 'HV 3', SpaceDecision.Kind.REACTIVATE)
         with self.assertRaises(ValidationError):
-            importation.confirm(self.definition, self.creator)
+            confirm(importation, self.definition, self.creator)
         self.assertFalse(Space.objects.get(pk=space.pk).is_active)

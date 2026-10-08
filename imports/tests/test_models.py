@@ -5,7 +5,7 @@ from pathlib import Path
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import connection
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 
 import imports
 from accounts.models import User
@@ -14,6 +14,7 @@ from audit.models import AuditLog
 from imports.models import Import, ImportRow
 from imports.reader import SourceRow
 from imports.tests.definitions import GroupImport
+from imports.tests.worker import confirm, preview, refresh, run_worker
 
 
 def rows(*names):
@@ -26,7 +27,7 @@ class ImportTestCase(TestCase):
         self.definition = GroupImport()
 
     def preview(self, *names):
-        return Import.objects.preview(self.definition, rows(*names), 'grupos.csv', self.executor)
+        return preview(self.definition, rows(*names), 'grupos.csv', self.executor)
 
 
 class PreviewTests(ImportTestCase):
@@ -64,7 +65,7 @@ class PreviewTests(ImportTestCase):
     def test_reader_errors_skip_execution(self):
         source = rows('Docentes')
         source[0].errors.append(imports.definitions.RowError('Nome', 'required', 'Preencha a coluna Nome.'))
-        importation = Import.objects.preview(self.definition, source, 'grupos.csv', self.executor)
+        importation = preview(self.definition, source, 'grupos.csv', self.executor)
         row = importation.rows.get()
         self.assertIsNone(row.action)
         self.assertEqual(row.errors[0]['code'], 'required')
@@ -75,10 +76,19 @@ class PreviewTests(ImportTestCase):
         self.assertEqual(importation.file_errors, [{'code': 'forbidden', 'message': 'Grupo proibido.'}])
         self.assertEqual(importation.rows.get().errors, [])
 
-    def test_unexpected_error_creates_no_import(self):
-        with self.assertRaises(RuntimeError):
-            self.preview('Docentes', 'FALHA')
-        self.assertFalse(Import.objects.exists())
+    @override_settings(IMPORT_MAX_ATTEMPTS=1)
+    def test_unexpected_error_exhausted_leaves_the_import_failed(self):
+        importation = self.preview('Docentes', 'FALHA')
+        self.assertEqual((importation.status, importation.operation), ('FALHOU', None))
+        self.assertEqual(importation.outcome_message, 'A prévia não foi gerada por uma falha do sistema. Envie o arquivo de novo.')
+        self.assertIn('RuntimeError', importation.last_error)
+        self.assertFalse(Group.objects.exists())
+        self.assertTrue(importation.is_deletable)
+
+    def test_unexpected_error_with_attempts_left_keeps_the_preview_pending(self):
+        importation = self.preview('Docentes', 'FALHA')
+        self.assertEqual((importation.status, importation.operation, importation.attempts), ('RECEBIDA', 'PREVIA', 1))
+        self.assertFalse(importation.rows.exclude(action=None).exists())
         self.assertFalse(Group.objects.exists())
 
     def test_plan_is_deterministic(self):
@@ -94,7 +104,7 @@ class ConfirmTests(ImportTestCase):
 
     def test_identical_plan_applies_and_records_who_confirmed(self):
         importation = self.preview('Docentes', 'Técnicos')
-        self.assertTrue(importation.confirm(self.definition, self.other))
+        self.assertTrue(confirm(importation, self.definition, self.other))
         self.assertEqual(set(Group.objects.values_list('name', flat=True)), {'Docentes', 'Técnicos'})
         self.assertEqual(importation.status, 'CONCLUIDA')
         self.assertEqual(importation.resolved_by, self.other)
@@ -105,19 +115,19 @@ class ConfirmTests(ImportTestCase):
     def test_changed_data_gives_new_plan_without_applying(self):
         importation = self.preview('Docentes', 'Técnicos')
         Group.objects.create(name='Docentes')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         self.assertEqual(list(Group.objects.values_list('name', flat=True)), ['Docentes'])
         self.assertEqual(importation.status, 'VALIDADA')
         self.assertEqual(importation.revalidation_count, 1)
         self.assertEqual(importation.rows.get(line_number=2).action, 'unchanged')
         self.assertIsNone(importation.resolved_by)
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(importation.status, 'CONCLUIDA')
 
     def test_new_plan_with_errors(self):
         importation = self.preview('Docentes')
         Group.objects.create(name='PROIBIDO')
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertFalse(Group.objects.filter(name='Docentes').exists())
 
@@ -126,22 +136,23 @@ class ConfirmTests(ImportTestCase):
         row = importation.rows.get(line_number=3)
         row.values = {'Nome': 'FALHA'}
         row.save()
-        with self.assertRaises(RuntimeError):
-            importation.confirm(self.definition, self.executor)
-        importation.refresh_from_db()
-        self.assertEqual(importation.status, 'VALIDADA')
+        self.assertFalse(confirm(importation, self.definition, self.executor))
+        self.assertEqual((importation.status, importation.operation, importation.attempts), ('VALIDADA', 'CONFIRMACAO', 1))
+        self.assertIn('RuntimeError: falha inesperada', importation.last_error)
+        self.assertGreater(importation.next_attempt_at, importation.requested_at)
         self.assertFalse(Group.objects.exists())
+        self.assertEqual(importation.rows.get(line_number=3).action, 'create')
 
     def test_final_statuses_refuse_confirm_and_discard(self):
         concluded = self.preview('Docentes')
-        concluded.confirm(self.definition, self.executor)
+        confirm(concluded, self.definition, self.executor)
         with_errors = self.preview('ERRO')
         discarded = self.preview('Técnicos')
         discarded.discard(self.definition, self.executor)
         for importation in (concluded, with_errors, discarded):
             with self.subTest(status=importation.status):
                 with self.assertRaises(ValidationError):
-                    importation.confirm(self.definition, self.executor)
+                    confirm(importation, self.definition, self.executor)
                 with self.assertRaises(ValidationError):
                     importation.discard(self.definition, self.executor)
         self.assertEqual(list(Group.objects.values_list('name', flat=True)), ['Docentes'])
@@ -162,7 +173,7 @@ class PendingTests(ImportTestCase):
         self.assertEqual((row.action, row.pending), (None, [{'code': 'decidir', 'key': 'DECIDIR'}]))
         self.assertFalse(Group.objects.exists())
         self.assertEqual(importation.summary()['pending'], 1)
-        self.assertIsNone(self.definition.received)
+        self.assertEqual(self.definition.received.pk, importation.pk)
 
     def test_error_prevails_over_pending(self):
         self.assertEqual(self.preview('DECIDIR', 'ERRO').status, 'COM_ERROS')
@@ -175,7 +186,7 @@ class PendingTests(ImportTestCase):
     def test_needing_decision_is_not_confirmed_nor_deleted_but_is_discarded(self):
         importation = self.preview('DECIDIR')
         with self.assertRaises(ValidationError):
-            importation.confirm(self.definition, self.executor)
+            confirm(importation, self.definition, self.executor)
         with self.assertRaises(ValidationError):
             importation.remove(self.definition, self.executor)
         importation.refresh_from_db()
@@ -186,45 +197,43 @@ class PendingTests(ImportTestCase):
     def test_refresh_replaces_the_plan_without_counting_divergence(self):
         importation = self.preview('Docentes', 'DECIDIR')
         Group.objects.create(name='DECIDIDO')
-        self.assertEqual(importation.refresh(self.definition, self.executor), 'VALIDADA')
+        self.assertEqual(refresh(importation, self.definition, self.executor), 'VALIDADA')
         self.assertEqual(importation.revalidation_count, 0)
         self.assertEqual(importation.rows.get(line_number=3).action, 'create')
         self.assertEqual(self.definition.received.pk, importation.pk)
         self.assertEqual(set(Group.objects.values_list('name', flat=True)), {'DECIDIDO'})
         self.assertFalse(AuditLog.objects.filter(action=catalog.UPDATE).exists())
-        self.assertTrue(importation.confirm(self.definition, self.executor))
+        self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(importation.status, 'CONCLUIDA')
 
     def test_refresh_back_to_pending(self):
         importation = self.preview('Docentes', 'DECIDIR')
         Group.objects.create(name='DECIDIDO')
-        importation.refresh(self.definition, self.executor)
+        refresh(importation, self.definition, self.executor)
         Group.objects.filter(name='DECIDIDO').delete()
-        self.assertEqual(importation.refresh(self.definition, self.executor), 'PENDENTE')
+        self.assertEqual(refresh(importation, self.definition, self.executor), 'PENDENTE')
 
     def test_unexpected_error_on_refresh_changes_nothing(self):
         importation = self.preview('Docentes', 'DECIDIR')
         row = importation.rows.get(line_number=2)
         row.values = {'Nome': 'FALHA'}
         row.save()
-        with self.assertRaises(RuntimeError):
-            importation.refresh(self.definition, self.executor)
-        importation.refresh_from_db()
-        self.assertEqual(importation.status, 'PENDENTE')
+        self.assertEqual(refresh(importation, self.definition, self.executor), 'PENDENTE')
+        self.assertEqual((importation.operation, importation.attempts), ('ATUALIZACAO', 1))
         self.assertEqual(importation.rows.get(line_number=2).action, 'create')
 
     def test_refresh_of_final_status_is_refused(self):
         importation = self.preview('Docentes')
-        importation.confirm(self.definition, self.executor)
+        confirm(importation, self.definition, self.executor)
         with self.assertRaises(ValidationError):
-            importation.refresh(self.definition, self.executor)
+            refresh(importation, self.definition, self.executor)
 
     def test_own_check_refuses_confirmation_without_reexecuting(self):
         importation = self.preview('Docentes')
         self.definition.refusal = 'Falta a permissão.'
         self.definition.locked = None
         with self.assertRaisesMessage(ValidationError, 'Falta a permissão.'):
-            importation.confirm(self.definition, self.executor)
+            confirm(importation, self.definition, self.executor)
         importation.refresh_from_db()
         self.assertEqual((importation.status, importation.revalidation_count), ('VALIDADA', 0))
         self.assertIsNone(self.definition.locked)
@@ -233,9 +242,9 @@ class PendingTests(ImportTestCase):
     def test_confirmation_with_pending_after_changed_data(self):
         importation = self.preview('Docentes', 'DECIDIR')
         Group.objects.create(name='DECIDIDO')
-        importation.refresh(self.definition, self.executor)
+        refresh(importation, self.definition, self.executor)
         Group.objects.filter(name='DECIDIDO').delete()
-        self.assertFalse(importation.confirm(self.definition, self.executor))
+        self.assertFalse(confirm(importation, self.definition, self.executor))
         self.assertEqual((importation.status, importation.revalidation_count), ('PENDENTE', 1))
 
 
@@ -253,7 +262,7 @@ class RemoveTests(ImportTestCase):
     def test_pending_and_concluded_are_refused(self):
         pending = self.preview('Docentes')
         concluded = self.preview('Técnicos')
-        concluded.confirm(self.definition, self.executor)
+        confirm(concluded, self.definition, self.executor)
         for importation in (pending, concluded):
             with self.subTest(status=importation.status):
                 with self.assertRaises(ValidationError):
@@ -273,24 +282,30 @@ class ConcurrentConfirmTests(TransactionTestCase):
 
     def test_simultaneous_confirmations_apply_once(self):
         executor = User.objects.create(email='admin@ifnmg.edu.br', name='Admin')
-        importation = Import.objects.preview(GroupImport(), rows('Docentes'), 'grupos.csv', executor)
+        definition = GroupImport()
+        importation = preview(definition, rows('Docentes'), 'grupos.csv', executor)
         results, barrier = [], threading.Barrier(2)
 
-        def confirm():
+        def request():
             try:
                 barrier.wait(5)
-                results.append(Import.objects.get(pk=importation.pk).confirm(GroupImport(), executor))
+                Import.objects.get(pk=importation.pk).request_confirmation(definition, executor)
+                results.append('aceita')
             except ValidationError:
                 results.append('recusada')
             finally:
                 connection.close()
 
-        threads = [threading.Thread(target=confirm) for _ in range(2)]
+        threads = [threading.Thread(target=request) for _ in range(2)]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        self.assertEqual(sorted(results, key=str), [True, 'recusada'])
+        self.assertEqual(sorted(results), ['aceita', 'recusada'])
+        run_worker(definition)
+        run_worker(definition)
+        importation.refresh_from_db()
+        self.assertEqual((importation.status, importation.operation), ('CONCLUIDA', None))
         self.assertEqual(Group.objects.filter(name='Docentes').count(), 1)
 
 

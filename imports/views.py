@@ -8,6 +8,7 @@ declarada nas subclasses destas views.
 from dataclasses import dataclass
 from typing import Callable
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
@@ -17,6 +18,7 @@ from django.urls import reverse
 from django.utils.formats import number_format
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
+from django_htmx.http import HttpResponseClientRefresh
 
 from audit import catalog
 from audit.models import AuditLog
@@ -27,15 +29,12 @@ from imports.reader import listing
 from ui.pagination import ROWS_PAGE_SIZE, paginate
 from ui.views import ModalView
 
-DIVERGENCE_MESSAGE = 'Os dados mudaram desde a prévia. Confira a nova prévia e confirme de novo.'
-
-
 @dataclass(frozen=True)
 class ImportScreens:
     """Descrição das telas de uma importação: definição, textos e prefixo das rotas.
 
     As rotas do app seguem o prefixo: `<prefixo>_list`, `_upload`, `_template`,
-    `_detail`, `_confirm`, `_discard` e `_delete`. A rota do modelo existe só quando a
+    `_detail`, `_status`, `_confirm`, `_discard` e `_delete`. A rota do modelo existe só quando a
     importação tem modelo, e a de exclusão só quando `delete_permission` é declarada.
 
     `section_permission` é a permissão da tela da seção: sem ela, o caminho de navegação
@@ -92,11 +91,13 @@ def screens_context(screens, user):
 
 
 STATUS_BADGES = {
+    Import.Status.RECEIVED.value: ('info', 'clock'),
     Import.Status.VALIDATED.value: ('info', 'info'),
     Import.Status.PENDING.value: ('warning', 'triangle-alert'),
     Import.Status.WITH_ERRORS.value: ('error', 'circle-x'),
     Import.Status.CONCLUDED.value: ('success', 'circle-check'),
     Import.Status.DISCARDED.value: ('info', 'circle-minus'),
+    Import.Status.FAILED.value: ('error', 'circle-x'),
 }
 
 
@@ -114,7 +115,7 @@ def detail_tabs(screens, pk, current):
 
 def confirmation_refusal(screens, importation, user):
     """Mensagem da verificação própria da confirmação para este usuário, ou None quando ele pode confirmar."""
-    if not importation.is_validated:
+    if not importation.is_validated or importation.is_busy:
         return None
     try:
         screens.definition.check_confirmation(importation, user)
@@ -126,10 +127,16 @@ def confirmation_refusal(screens, importation, user):
 def detail_head_context(screens, importation, current, user):
     """Contexto do cabeçalho do detalhe, igual em todas as abas: situação, ações e resumo."""
     importation.tone, importation.icon = status_badge(importation.status)
+    summary = importation.summary()
     return {
         'confirm_refusal': confirmation_refusal(screens, importation, user),
+        'summary': summary,
+        'concluded_text': (
+            screens.concluded_message(summary, importation)
+            if importation.status == Import.Status.CONCLUDED else None
+        ),
+        'processing': processing_context(screens, importation),
         'importation': importation,
-        'summary': importation.summary(),
         'upload_values': upload_values(screens.definition, importation),
         'confirm_url': screens.url('confirm', importation.pk),
         'discard_url': screens.url('discard', importation.pk),
@@ -139,9 +146,27 @@ def detail_head_context(screens, importation, current, user):
     }
 
 
+def processing_context(screens, importation):
+    """Quadro da operação pendente, com o aviso de demora calculado da hora do pedido (D9, D13)."""
+    if not importation.is_busy:
+        return None
+    stale = importation.is_stale
+    status_url = screens.url('status', importation.pk)
+    return {
+        'label': importation.get_operation_display(),
+        'requested_at': importation.requested_at,
+        'stale': stale,
+        'status_url': f'{status_url}?demora=1' if stale else status_url,
+        'poll_seconds': settings.IMPORT_STATUS_POLL_SECONDS,
+    }
+
+
 def delete_url(screens, importation, user):
     """Rota da exclusão, oferecida só na situação que a permite e a quem tem a permissão."""
-    if screens.delete_permission and importation.is_deletable and user.has_perm(screens.delete_permission):
+    if (
+        screens.delete_permission and importation.is_deletable and not importation.is_busy
+        and user.has_perm(screens.delete_permission)
+    ):
         return screens.url('delete', importation.pk)
     return None
 
@@ -207,8 +232,11 @@ class ImportUploadView(ModalView, FormView):
         return super().get_context_data(**kwargs, **screens_context(self.screens, self.request.user))
 
     def form_valid(self, form):
-        self.importation = Import.objects.preview(
+        self.importation = Import.objects.request_preview(
             self.screens.definition, form.cleaned_data['rows'], form.cleaned_data['file'].name, self.request.user,
+        )
+        messages.success(
+            self.request, f'Arquivo {self.importation.file_name} enviado. A prévia está em processamento.',
         )
         return super().form_valid(form)
 
@@ -335,8 +363,30 @@ class ImportDetailView(DetailView):
         }
 
 
+class ImportStatusView(View):
+    """Andamento consultado pelo quadro de processamento do detalhe (D9 da Change processar-importacao-em-segundo-plano).
+
+    Responde 204 enquanto a operação está pendente, e pede o recarregamento da página quando
+    ela termina ou quando o aviso de demora passa a valer e o quadro ainda não o mostra. O
+    estado vem do banco a cada consulta; nada depende da página ficar aberta.
+    """
+
+    screens = None
+    http_method_names = ['get']
+
+    def get(self, request, *args, **kwargs):
+        importation = load_importation(self.screens, kwargs['pk'])
+        if importation.is_busy and (not importation.is_stale or request.GET.get('demora')):
+            return HttpResponse(status=204)
+        return HttpResponseClientRefresh()
+
+
 class ImportConfirmView(View):
-    """Confirmação por POST. A página de prévia é o GET que mostra o que será confirmado (D16)."""
+    """Pedido de confirmação por POST. A página de prévia é o GET que mostra o que será confirmado (D16).
+
+    A requisição só registra a operação pendente; o worker executa a confirmação, e o
+    resultado aparece no detalhe.
+    """
 
     screens = None
     http_method_names = ['post']
@@ -344,15 +394,12 @@ class ImportConfirmView(View):
     def post(self, request, *args, **kwargs):
         importation = load_importation(self.screens, kwargs['pk'])
         try:
-            concluded = importation.confirm(self.screens.definition, request.user)
+            importation.request_confirmation(self.screens.definition, request.user)
         except ValidationError as error:
             for message in error.messages:
                 messages.error(request, message)
         else:
-            if concluded:
-                messages.success(request, self.screens.concluded_message(importation.summary(), importation))
-            else:
-                messages.warning(request, DIVERGENCE_MESSAGE)
+            messages.success(request, f'Confirmação da importação do arquivo {importation.file_name} em processamento.')
         return HttpResponseRedirect(self.screens.url('detail', importation.pk))
 
 

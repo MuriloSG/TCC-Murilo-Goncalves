@@ -2038,9 +2038,10 @@ class SpaceDecisionManager(models.Manager):
     """
 
     def locked_import(self, importation):
+        """Trava a importação sem esperar, recusando a que tem operação pendente (D5 da Change processar-importacao-em-segundo-plano)."""
         from imports.models import Import
 
-        current = Import.objects.select_for_update().get(pk=importation.pk)
+        current = Import.objects.get(pk=importation.pk).lock_idle()
         if current.status not in (Import.Status.VALIDATED, Import.Status.PENDING):
             raise ValidationError(
                 f'Esta importação está {current.get_status_display().lower()} e não aceita decisões de espaço.',

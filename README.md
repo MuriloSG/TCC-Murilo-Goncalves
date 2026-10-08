@@ -96,13 +96,14 @@ Os registros são somente de inclusão: a aplicação recusa qualquer alteraçã
 |---|---|---|
 | `web` | construída a partir do `Dockerfile` (Python 3.13) | Aplicação Django com o servidor de desenvolvimento na porta 8000 |
 | `worker` | a mesma do `web` | Envia os e-mails registrados no outbox, com o comando `process_outbox` |
+| `import_worker` | a mesma do `web` | Executa a prévia, a atualização da prévia e a confirmação das importações, com o comando `process_imports` |
 | `db` | `postgres:17` | Banco de dados PostgreSQL, sem porta publicada no host |
 | `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface com o Tailwind CSS e o recompila a cada alteração |
 
 - O código do projeto é montado em `/app` no container `web`. Alterações feitas na máquina recarregam o servidor automaticamente, e arquivos gerados no container, como migrations, aparecem no repositório.
 - Os dados do PostgreSQL ficam no volume `postgres_data`, que `make down` preserva e `make reset-db` remove.
-- O `web` e o `worker` só são iniciados depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
-- O `worker` reinicia sozinho se encerrar, por exemplo quando sobe antes do `make migrate` ou quando o banco fica indisponível. Ele monta o mesmo código do `web`, mas não recarrega sozinho: depois de alterar o código de envio de e-mails, rode `docker compose restart worker`.
+- O `web`, o `worker` e o `import_worker` só são iniciados depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
+- O `worker` reinicia sozinho se encerrar, por exemplo quando sobe antes do `make migrate` ou quando o banco fica indisponível. Ele monta o mesmo código do `web`, mas não recarrega sozinho: depois de alterar o código de envio de e-mails, rode `docker compose restart worker`. O `import_worker` segue a mesma regra: depois de alterar o código de uma importação, rode `docker compose restart import_worker`.
 - O `tailwind` lê o `ui/styles/app.css` e os templates de todos os apps e grava `ui/static/ui/css/app.css`, que o `web` serve como arquivo estático. Uma classe nova num template aparece no CSS sem reiniciar containers. O CSS gerado fica fora do Git.
 - O `tailwind` monta o projeto em `/app`, como o `web`, e guarda as dependências de Node.js num volume anônimo em `/app/node_modules`, para que a montagem do projeto não as esconda. O Node.js só é usado para compilar o CSS: a imagem do `web` não o tem.
 
@@ -139,6 +140,12 @@ O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando
 | `DJANGO_OUTBOX_BATCH_SIZE` | `20` | E-mails enviados pelo `worker` a cada ciclo |
 | `DJANGO_IMPORT_MAX_ROWS` | `1000` | Linhas de dados aceitas numa importação por planilha |
 | `DJANGO_IMPORT_MAX_FILE_SIZE` | `1048576` | Tamanho máximo, em bytes, do arquivo de uma importação |
+| `DJANGO_IMPORT_MAX_ATTEMPTS` | `3` | Tentativas de uma operação de importação com erro inesperado antes de desistir |
+| `DJANGO_IMPORT_RETRY_DELAYS` | `30,120` | Intervalos, em segundos, entre as tentativas. O último se repete |
+| `DJANGO_IMPORT_POLL_INTERVAL` | `2` | Segundos que o `import_worker` espera quando não há operação pendente |
+| `DJANGO_IMPORT_STATUS_POLL_SECONDS` | `3` | Intervalo, em segundos, da consulta do andamento feita pelo detalhe da importação |
+| `DJANGO_IMPORT_LOCK_TIMEOUT` | `60` | Segundos que uma operação espera pela aquisição de uma trava. Não limita a duração da importação |
+| `DJANGO_IMPORT_STALE_AFTER` | `60` | Segundos depois do pedido a partir dos quais o detalhe mostra o aviso de demora. Não interrompe nem altera a operação |
 
 `POSTGRES_HOST` (`db`) e `POSTGRES_PORT` (`5432`) são fixadas no `compose.yaml`, pois apontam para o serviço de banco. As variáveis do outbox e da importação não estão no `compose.yaml`: sem elas, valem os padrões da tabela, e elas podem ser definidas no `.env`.
 

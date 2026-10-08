@@ -30,6 +30,11 @@ urlpatterns = [
         name='user_import_detail',
     ),
     path(
+        'usuarios/importacoes/<int:pk>/andamento/',
+        login_required(views.UserImportStatusView.as_view()),
+        name='user_import_status',
+    ),
+    path(
         'usuarios/importacoes/<int:pk>/confirmar/',
         login_required(views.UserImportConfirmView.as_view()),
         name='user_import_confirm',

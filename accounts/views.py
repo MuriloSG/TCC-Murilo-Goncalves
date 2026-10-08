@@ -15,6 +15,7 @@ from imports.views import (
     ImportDiscardView,
     ImportListView,
     ImportScreens,
+    ImportStatusView,
     ImportTemplateView,
     ImportUploadView,
 )
@@ -419,6 +420,11 @@ class UserImportTemplateView(ImportTemplateView):
 class UserImportDetailView(ImportDetailView):
     permission_required = permissions.USER_IMPORT
     audit_resource = catalog.USER_IMPORT
+    screens = USER_IMPORT_SCREENS
+
+
+class UserImportStatusView(ImportStatusView):
+    permission_required = permissions.USER_IMPORT
     screens = USER_IMPORT_SCREENS
 
 

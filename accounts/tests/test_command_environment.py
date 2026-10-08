@@ -4,14 +4,18 @@ A recusa é conferida com `assertNumQueries(0)`: o comando para antes de consult
 banco e antes de perguntar qualquer coisa no terminal.
 """
 
+import os
 from io import StringIO
 from unittest import mock
 
 from django.conf import settings
-from django.core.management import CommandError, call_command
+from django.core.management import CommandError, call_command, get_commands
+from django.core.management.commands import flush as django_flush
+from django.db import connections
 from django.test import TestCase, TransactionTestCase, override_settings
 
 from accounts.models import Role, User
+from config import test_runner
 from schedule.models import Space
 
 PASSWORD = 'Senha-forte-123'
@@ -121,3 +125,54 @@ class LocalClearDataTests(TransactionTestCase):
         call_command('clear_data', '--yes', stdout=StringIO())
         self.assertEqual(Space.objects.count(), 0)
         self.assertEqual(User.objects.count(), 1)
+
+
+class FlushGuardTests(CommandEnvironmentTestCase):
+    """Trava do `flush`, com o `handle` nativo substituído: nenhum teste apaga dados."""
+
+    def flush(self, **options):
+        with mock.patch.object(django_flush.Command, 'handle', return_value=None) as native:
+            call_command('flush', interactive=False, verbosity=0, stdout=StringIO(), **options)
+        return native
+
+    def assertRefused(self, name):
+        before = self.snapshot()
+        with (
+            mock.patch.dict(connections['default'].settings_dict, NAME=name),
+            mock.patch.object(test_runner, 'created_test_databases', set()),
+            mock.patch.object(django_flush.Command, 'handle', return_value=None) as native,
+            self.assertNumQueries(0),
+            self.assertRaises(CommandError) as raised,
+        ):
+            call_command('flush', interactive=False, verbosity=0, stdout=StringIO())
+        native.assert_not_called()
+        self.assertEqual(self.snapshot(), before)
+        self.assertIn('flush', str(raised.exception))
+
+    def test_project_command_replaces_the_native_one(self):
+        self.assertEqual(get_commands()['flush'], 'accounts')
+
+    def test_test_database_created_by_the_runner_is_allowed(self):
+        current = ('default', connections['default'].settings_dict['NAME'])
+        self.assertIn(current, test_runner.created_test_databases)
+        for value in ('', 'producao'):
+            with self.subTest(environment=value), override_settings(ENVIRONMENT=value):
+                self.flush().assert_called_once()
+
+    def test_operational_database_outside_local_is_refused(self):
+        for name in (os.environ['POSTGRES_DB'], 'test_' + os.environ['POSTGRES_DB'], 'test_agendamento'):
+            for value in ('', 'producao', 'Local'):
+                with self.subTest(name=name, environment=value), override_settings(ENVIRONMENT=value):
+                    self.assertRefused(name)
+
+    def test_database_not_created_by_this_runner_is_refused_even_with_the_test_name(self):
+        current = connections['default'].settings_dict['NAME']
+        with override_settings(ENVIRONMENT=''):
+            self.assertRefused(current)
+
+    def test_local_environment_delegates_to_the_native_command(self):
+        with (
+            override_settings(ENVIRONMENT='local'),
+            mock.patch.object(test_runner, 'created_test_databases', set()),
+        ):
+            self.flush().assert_called_once()

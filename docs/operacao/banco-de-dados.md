@@ -44,5 +44,9 @@ Só rodam com `DJANGO_ENVIRONMENT=local` ([configuração](configuracao.md#ident
 ## Lacunas
 
 - Não há rotina de backup nem de restauração no repositório.
-- O comando nativo `flush` do Django apaga todas as tabelas e não tem a trava de ambiente, porque o `TransactionTestCase` o chama a cada teste. Não há alvo do `Makefile` nem script que o chame.
+- `DJANGO_ENVIRONMENT=local` apontando para o banco errado ainda permite `clear_data`, `delete_users`, `set_passwords` e `flush`: a trava identifica a instalação, e não o banco.
+
+## `flush`
+
+O comando nativo do Django apaga todas as tabelas. O projeto o substitui por `accounts/management/commands/flush.py`, com a mesma trava do `clear_data`: fora de `DJANGO_ENVIRONMENT=local`, `make manage cmd="flush"` é recusado antes de qualquer acesso ao banco. A única exceção é um banco de teste criado pelo runner do próprio processo (`config/test_runner.py`, inclusive as cópias do `--parallel`), que é onde o `TransactionTestCase` o chama. O nome do banco sozinho não dispensa a trava: um banco operacional chamado `test_algo` continua protegido. Para limpar os dados de desenvolvimento, prefira `make clear-data`, que mantém usuários e sessões.
 - Não há política de retenção para `AuditLog`, `Notification`, `OutboxEntry` e importações antigas; as tabelas só crescem.

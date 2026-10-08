@@ -30,6 +30,7 @@ class Command(BaseCommand):
             for signum in (signal.SIGTERM, signal.SIGINT):
                 signal.signal(signum, lambda *_: stop.set())
         reason = None
+        logger.info('Worker dos envios iniciado.')
         while True:
             try:
                 processed = process_batch(settings.OUTBOX_BATCH_SIZE, should_stop=stop.is_set)
@@ -46,3 +47,4 @@ class Command(BaseCommand):
                 break
             if processed == 0:
                 stop.wait(settings.OUTBOX_POLL_INTERVAL)
+        logger.info('Worker dos envios encerrado.')

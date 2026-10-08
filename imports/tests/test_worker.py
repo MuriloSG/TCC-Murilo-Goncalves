@@ -4,6 +4,7 @@ import threading
 from datetime import timedelta
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
@@ -180,6 +181,70 @@ class FailureTests(WorkerTestCase):
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual(importation.rows.get().errors[0]['code'], 'required')
 
+
+
+class LoggingTests(WorkerTestCase):
+    """Eventos do worker no log, só com número, tipo, operação e classe do erro."""
+
+    def test_configuration_sends_the_project_loggers_to_stdout(self):
+        handler = settings.LOGGING['handlers']['stdout']
+        self.assertEqual((handler['class'], handler['stream']), ('logging.StreamHandler', 'ext://sys.stdout'))
+        for name in settings.APP_LOGGERS:
+            with self.subTest(name):
+                self.assertEqual(settings.LOGGING['loggers'][name]['level'], settings.LOG_LEVEL)
+                self.assertEqual(settings.LOGGING['loggers'][name]['handlers'], ['stdout'])
+        self.assertEqual(settings.LOGGING['loggers']['django.request']['level'], 'ERROR')
+
+    def test_preview_logs_start_and_completion(self):
+        importation = self.requested('Docentes')
+        with self.assertLogs('imports', 'INFO') as logs:
+            run_worker(self.definition)
+        self.assertEqual(logs.output, [
+            f'INFO:imports:Importação {importation.pk} (GRUPO): PREVIA iniciada, tentativa 1.',
+            f'INFO:imports:Importação {importation.pk} (GRUPO): PREVIA concluída, situação VALIDADA, resultado -.',
+        ])
+
+    def test_failure_logs_the_error_class_without_the_message(self):
+        importation = self.validated('Docentes')
+        importation.request_confirmation(self.definition, self.executor)
+        error = RuntimeError('linha 3: Ana Souza, ana.souza@ifnmg.edu.br')
+        with mock.patch.object(GroupImport, 'check_file', side_effect=error), self.assertLogs('imports', 'DEBUG') as logs:
+            run_worker(self.definition)
+        warnings = [record for record in logs.records if record.levelname == 'WARNING']
+        self.assertEqual(
+            [record.getMessage() for record in warnings],
+            [f'Importação {importation.pk} (GRUPO): CONFIRMACAO falhou na tentativa 1: RuntimeError.'],
+        )
+        for record in logs.records:
+            self.assertNotIn('ana.souza', record.getMessage())
+        self.assertTrue(any(record.exc_info for record in logs.records if record.levelname == 'DEBUG'))
+        importation.refresh_from_db()
+        self.assertEqual(importation.last_error, f'RuntimeError: {error}')
+
+    @override_settings(IMPORT_MAX_ATTEMPTS=1)
+    def test_exhausted_failure_is_an_error(self):
+        importation = self.validated('Docentes')
+        importation.request_confirmation(self.definition, self.executor)
+        with (
+            mock.patch.object(GroupImport, 'check_file', side_effect=RuntimeError('dado da planilha')),
+            self.assertLogs('imports', 'ERROR') as logs,
+        ):
+            run_worker(self.definition)
+        self.assertEqual(logs.output, [
+            f'ERROR:imports:Importação {importation.pk} (GRUPO): CONFIRMACAO falhou na tentativa 1 '
+            'e não será tentada de novo: RuntimeError.',
+        ])
+
+    def test_worker_command_logs_start_and_stop(self):
+        with (
+            mock.patch('imports.management.commands.process_imports.close_old_connections'),
+            self.assertLogs('imports', 'INFO') as logs,
+        ):
+            call_command('process_imports', once=True)
+        self.assertEqual(logs.output, [
+            'INFO:imports:Worker das importações iniciado.',
+            'INFO:imports:Worker das importações encerrado.',
+        ])
 
 class RequesterTests(WorkerTestCase):
     def test_execution_uses_the_requester_as_executor_and_auditor(self):

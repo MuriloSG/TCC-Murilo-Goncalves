@@ -28,9 +28,7 @@ from datetime import date, timedelta
 from types import SimpleNamespace
 
 from django.db.models import Prefetch
-from django.db.models.functions import Lower
 
-from accounts.models import User
 from schedule.models import Allocation, AllocationException, ClassGroup, Course, Origin, Semester, Space, Stage, Teacher
 from schedule import public_cache
 from schedule.occupancy import public_sources
@@ -65,19 +63,9 @@ LIMIT_MESSAGE = f'Escolha um intervalo de até {MAX_DAYS} dias.'
 
 @dataclass(frozen=True)
 class PublicTeacher:
-    """Docente no card: o nome do ensalamento e, quando houver correspondência, o e-mail."""
+    """Docente no card, só com o nome do ensalamento."""
 
     name: str
-    email: str = ''
-
-    @property
-    def mailbox(self):
-        """Parte do e-mail antes do @, para a quebra de linha cair no @ e não numa letra solta."""
-        return self.email.partition('@')[0]
-
-    @property
-    def domain(self):
-        return self.email.partition('@')[2]
 
 
 @dataclass(frozen=True)
@@ -241,22 +229,6 @@ def chosen(value, records):
     return next((record for record in records if record.name.casefold() == key), None)
 
 
-def teacher_emails(names):
-    """E-mails dos usuários ativos cujo `username` corresponde exatamente ao nome do docente (D4).
-
-    Uma consulta, só com `username` e `email`, pelo índice de `Lower('username')`.
-    """
-    keys = {name.lower() for name in names}
-    if not keys:
-        return {}
-    found = (
-        User.objects.annotate(key=Lower('username'))
-        .filter(key__in=keys, is_active=True)
-        .values_list('key', 'email')
-    )
-    return dict(found)
-
-
 def public_allocations(semester, space=None, teacher=None, course=None, stage=None, group=None, original=False):
     """Alocações do semestre com os filtros aplicados no banco, só com as colunas do card.
 
@@ -292,13 +264,11 @@ def public_allocations(semester, space=None, teacher=None, course=None, stage=No
 
 
 def entries_of(allocations):
-    """Aulas do card de cada alocação, com os e-mails dos docentes numa consulta só."""
-    names = {teacher.name for allocation in allocations for teacher in allocation.teachers.all()}
-    emails = teacher_emails(names)
+    """Aulas do card de cada alocação, sem consulta além do prefetch de `public_allocations`."""
     result = []
     for allocation in allocations:
         teachers = tuple(
-            PublicTeacher(name=teacher.name, email=emails.get(teacher.name.lower(), ''))
+            PublicTeacher(name=teacher.name)
             for teacher in sorted(allocation.teachers.all(), key=lambda item: item.name)
         )
         result.append((allocation, PublicEntry(

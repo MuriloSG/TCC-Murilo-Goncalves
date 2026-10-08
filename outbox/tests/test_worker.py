@@ -69,11 +69,12 @@ class ProcessTests(TestCase):
     def test_temporary_failure_schedules_next_attempt(self):
         entry = self.entry(kind='FALHA')
         before = timezone.now()
-        with self.assertLogs('outbox', 'WARNING'):
+        with self.assertLogs('outbox', 'WARNING') as logs:
             process_next()
         entry.refresh_from_db()
         self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
         self.assertIn('SMTPException: servidor indisponível', entry.last_error)
+        self.assertEqual(logs.output, [f'WARNING:outbox:Envio {entry.pk} (FALHA) falhou na tentativa 1: SMTPException.'])
         self.assertAlmostEqual(
             (entry.next_attempt_at - before).total_seconds(), 60, delta=5,
         )

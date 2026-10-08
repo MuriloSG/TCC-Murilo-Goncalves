@@ -1,3 +1,4 @@
+import logging
 import signal
 import threading
 
@@ -6,6 +7,8 @@ from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
 from imports.worker import process_next
+
+logger = logging.getLogger('imports')
 
 
 
@@ -27,6 +30,7 @@ class Command(BaseCommand):
         if not options['once']:
             for signum in (signal.SIGTERM, signal.SIGINT):
                 signal.signal(signum, lambda *_: stop.set())
+        logger.info('Worker das importações iniciado.')
         while True:
             close_old_connections()
             processed = 0
@@ -36,3 +40,4 @@ class Command(BaseCommand):
                 break
             if processed == 0:
                 stop.wait(settings.IMPORT_POLL_INTERVAL)
+        logger.info('Worker das importações encerrado.')

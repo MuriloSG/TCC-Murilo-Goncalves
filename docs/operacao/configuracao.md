@@ -33,12 +33,30 @@ Implementação: `accounts.utils.require_local_environment`, chamada na primeira
 | Variável | Efeito |
 |---|---|
 | `DJANGO_DEBUG` | Ativo só com `1`. O padrão do `compose.yaml` é `1`; em produção, omita ou use outro valor |
-| `DJANGO_ALLOWED_HOSTS` | Lista separada por vírgula. Vazia com `DEBUG` desligado recusa todos os hosts |
+| `DJANGO_ALLOWED_HOSTS` | Lista separada por vírgula. Vazia com `DEBUG` desligado recusa todos os hosts. Também é a lista de origens aceitas no WebSocket das notificações; nunca use `*` |
+| `DJANGO_LOG_LEVEL` | Nível dos loggers do projeto. Padrão e recomendado em produção: `INFO`. `DEBUG` inclui o traceback das falhas de importação |
 | `DJANGO_SITE_URL` | Base dos links nos e-mails enviados pelo worker (que não tem requisição) |
 | `DJANGO_EMAIL_BACKEND` | Padrão: console. Para enviar de fato, `django.core.mail.backends.smtp.EmailBackend`. As credenciais vêm da interface, não de variáveis |
 | `DJANGO_REDIS_URL` | Vazia desliga o cache público (as telas consultam o banco). Fora da máquina de desenvolvimento, com senha (`redis://:senha@host:6379/0`) e TLS (`rediss://`) quando o Redis não está na rede privada |
 | `DJANGO_CACHE_KEY_PREFIX` | Diferente por instalação quando várias dividem o mesmo Redis |
 | `DJANGO_OUTBOX_*`, `DJANGO_IMPORT_*` | Tentativas, intervalos, lotes e limites dos workers. Não estão no `compose.yaml`; valem os padrões de `settings.py` |
+
+## Logs
+
+`LOGGING` em `config/settings.py` manda tudo para o `stdout` do container, no formato `data nível logger mensagem`, para a plataforma de hospedagem capturar.
+
+| Logger | Nível | Eventos |
+|---|---|---|
+| `imports` | `DJANGO_LOG_LEVEL` | INFO: worker iniciado e encerrado; operação iniciada (número, tipo, operação, tentativa) e concluída (situação e resultado). WARNING: recusa na execução, falha com nova tentativa. ERROR: falha final, tentativas esgotadas. DEBUG: traceback da falha |
+| `outbox` | `DJANGO_LOG_LEVEL` | INFO: worker iniciado e encerrado, servidor de e-mail de volta. WARNING: falha com nova tentativa, envios retidos. ERROR: falha final, tipo sem tratador |
+| `accounts`, `notices`, `schedule` | `DJANGO_LOG_LEVEL` | E-mail do allauth não enviado, falha do canal de tempo real, Redis indisponível e invalidação do cache público |
+| `django` | WARNING | Segurança (`DisallowedHost`, CSRF) e avisos do Django |
+| `django.request` | ERROR | Só os erros 5xx, com traceback. Os 404 e 403 ficam de fora, para não encher o log a cada requisição |
+| raiz | WARNING | Bibliotecas de terceiros |
+
+Fica fora do log, de propósito: a mensagem das exceções das importações e dos envios, que pode trazer valores das linhas ou endereços de e-mail (o texto completo continua em `last_error`, na tela da importação e na auditoria); o conteúdo dos arquivos importados; senhas, cookies, sessões e credenciais do SMTP. Requisições bem-sucedidas não são registradas, além da linha de acesso do servidor de desenvolvimento.
+
+Nos testes, o runner (`config/test_runner.py`) deixa esses loggers em WARNING, salvo `DJANGO_LOG_LEVEL` informado; o `assertLogs` continua vendo o INFO.
 
 ## Configuração guardada no banco
 

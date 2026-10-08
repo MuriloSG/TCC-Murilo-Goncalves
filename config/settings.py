@@ -231,3 +231,24 @@ IMPORT_POLL_INTERVAL = float(os.environ.get('DJANGO_IMPORT_POLL_INTERVAL', '2'))
 IMPORT_STATUS_POLL_SECONDS = int(os.environ.get('DJANGO_IMPORT_STATUS_POLL_SECONDS', '3'))
 IMPORT_LOCK_TIMEOUT = int(os.environ.get('DJANGO_IMPORT_LOCK_TIMEOUT', '60'))
 IMPORT_STALE_AFTER = int(os.environ.get('DJANGO_IMPORT_STALE_AFTER', '60'))
+
+LOG_LEVEL = os.environ.get('DJANGO_LOG_LEVEL', 'INFO').upper()
+APP_LOGGERS = ('accounts', 'imports', 'notices', 'outbox', 'schedule')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'plain': {'format': '%(asctime)s %(levelname)s %(name)s %(message)s'},
+    },
+    'handlers': {
+        'stdout': {'class': 'logging.StreamHandler', 'stream': 'ext://sys.stdout', 'formatter': 'plain'},
+    },
+    'root': {'handlers': ['stdout'], 'level': 'WARNING'},
+    'loggers': {
+        'django': {'handlers': ['stdout'], 'level': 'WARNING', 'propagate': False},
+        'django.request': {'handlers': ['stdout'], 'level': 'ERROR', 'propagate': False},
+        **{name: {'handlers': ['stdout'], 'level': LOG_LEVEL, 'propagate': False} for name in APP_LOGGERS},
+    },
+}
+
+TEST_RUNNER = 'config.test_runner.TestRunner'

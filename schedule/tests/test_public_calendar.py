@@ -170,10 +170,18 @@ class TeacherTests(PublicCalendarTestCase):
         self.assertIn('Adailton', html)
         self.assertNotIn('adailton@ifnmg.edu.br', html)
 
-    def test_match_ignores_case_but_is_exact(self):
-        self.assertEqual(public.teacher_emails({'Aldo Gomes'}), {'aldo gomes': 'aldo.gomes@ifnmg.edu.br'})
-        self.assertEqual(public.teacher_emails({'Aldo'}), {})
-        self.assertEqual(public.teacher_emails({'Aldo Gomes '}), {})
+    def test_teacher_with_user_shows_only_the_name(self):
+        html = self.text(self.get(docente='Aldo Gomes', inicio='2026-09-21', fim='2026-09-21'))
+        self.assertIn('Aldo Gomes', html)
+        self.assertNotIn('aldo.gomes@ifnmg.edu.br', html)
+
+    def test_entries_carry_the_sorted_teacher_names_without_new_queries(self):
+        allocations = public.public_allocations(self.semester)
+        with self.assertNumQueries(0):
+            entries = dict((allocation.subject.name, entry) for allocation, entry in public.entries_of(allocations))
+        self.assertEqual(entries['Banco de Dados'].teachers, (public.PublicTeacher(name='Aldo Gomes'),))
+        self.assertEqual(entries['Banco de Dados'].space, '10')
+        self.assertEqual(entries['Matemática'].teachers, (public.PublicTeacher(name='Érica'),))
 
 
 class FilterTests(PublicCalendarTestCase):

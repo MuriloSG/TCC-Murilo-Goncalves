@@ -15,3 +15,8 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+ARG APP_UID=1000
+RUN useradd --uid "${APP_UID}" --user-group --create-home --shell /usr/sbin/nologin app
+
+USER app

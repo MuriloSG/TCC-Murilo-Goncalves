@@ -118,4 +118,4 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 **Motivo registrado.** Os três comandos apagam dados ou trocam todas as senhas, inclusive dos superadmins, e o repositório não tinha como distinguir a máquina de desenvolvimento de outras instalações. `DEBUG` não serve como evidência, porque o padrão do `compose.yaml` é `1` e uma instalação mal configurada o herdaria. O padrão da variável é vazio, então a falta de configuração nega.
 
-**Consequência.** Na máquina de desenvolvimento, `DJANGO_ENVIRONMENT=local` precisa estar no `.env`. O `flush` nativo do Django ficou sem a trava, porque o `TransactionTestCase` o usa a cada teste.
+**Consequência.** Na máquina de desenvolvimento, `DJANGO_ENVIRONMENT=local` precisa estar no `.env`. Em 08/10/2026 o `flush` ganhou a mesma trava, por um comando do projeto que o substitui; o banco de teste criado pelo runner (`config/test_runner.py`) fica dispensado, porque o `TransactionTestCase` o usa a cada teste.

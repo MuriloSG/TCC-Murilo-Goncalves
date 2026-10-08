@@ -1,6 +1,6 @@
 # Testes
 
-Test runner padrão do Django, no PostgreSQL do container `db`. O banco de teste é criado e removido a cada execução; o banco de desenvolvimento não é tocado.
+Test runner do Django estendido em `config/test_runner.py` (registra os bancos de teste para a trava do `flush` e silencia o INFO dos loggers do projeto), no PostgreSQL do container `db`. O banco de teste é criado e removido a cada execução; o banco de desenvolvimento não é tocado.
 
 ```bash
 make test                                               # suíte inteira
@@ -11,7 +11,7 @@ make manage cmd="test bookings.tests.test_models.SubmitTests.test_past_start_is_
 
 Sem `make`: `docker compose run --rm web python manage.py test`.
 
-Situação em 08/10/2026: 1639 testes, todos passando, em cerca de 92 segundos. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
+Situação em 08/10/2026: 1656 testes, todos passando, em cerca de 90 segundos. Com `--parallel` a suíte não roda: um teste lança exceção com traceback que o multiprocessing não serializa (`cannot pickle 'traceback' object`), falha anterior a esta data. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
 
 A convenção do projeto é rodar a suíte inteira antes de cada commit. Não há CI no repositório.
 
@@ -30,7 +30,7 @@ A convenção do projeto é rodar a suíte inteira antes de cada commit. Não h�
 | `ui/tests/test_contrast.py` | Pares de cores de `ui/contrast.py` acima do contraste AA, nos dois temas |
 | `schedule/tests/test_public_cache.py`, `BulkWriteScanTests` | Toda escrita sem sinais nos models das telas públicas chama a invalidação do cache |
 | `accounts/tests/test_catalog.py` | Catálogo de permissões coerente com a migration |
-| `accounts/tests/test_command_environment.py` | `clear_data`, `delete_users` e `set_passwords` recusados fora de `DJANGO_ENVIRONMENT=local` sem nenhuma consulta ao banco (`assertNumQueries(0)`), e executados com `local` |
+| `accounts/tests/test_command_environment.py` | `clear_data`, `delete_users`, `set_passwords` e `flush` recusados fora de `DJANGO_ENVIRONMENT=local` sem nenhuma consulta ao banco (`assertNumQueries(0)`), e executados com `local`. O `flush` também roda no banco de teste criado pelo runner, e é recusado num banco que o runner não criou, mesmo com nome de teste |
 
 ## Regras para escrever testes
 

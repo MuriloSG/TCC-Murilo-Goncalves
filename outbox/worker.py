@@ -8,6 +8,9 @@ e o e-mail pode sair de novo (entrega pelo menos uma vez).
 Cada lote carrega a configuração SMTP gravada antes de travar qualquer envio. Sem
 ela, ou com ela inválida, o lote não toca nos envios: eles continuam a enviar, sem
 tentativa consumida (D5 da Change configurar-servidor-de-email).
+
+O log de falha leva o número, o tipo e a classe da exceção, sem a mensagem, que pode
+conter endereços de e-mail; o texto completo fica em `last_error`.
 """
 
 import logging
@@ -66,11 +69,13 @@ def process(entry, smtp, connection):
         if entry.status == OutboxEntry.Status.FAILED:
             record(catalog.FAIL, entry)
             logger.error(
-                'Envio %s falhou na tentativa %s e não será tentado de novo: %s',
-                entry.pk, entry.attempts, entry.last_error,
+                'Envio %s (%s) falhou na tentativa %s e não será tentado de novo: %s.',
+                entry.pk, entry.kind, entry.attempts, type(error).__name__,
             )
         else:
-            logger.warning('Envio %s falhou na tentativa %s: %s', entry.pk, entry.attempts, entry.last_error)
+            logger.warning(
+                'Envio %s (%s) falhou na tentativa %s: %s.', entry.pk, entry.kind, entry.attempts, type(error).__name__,
+            )
         return
     if message is None:
         entry.mark_discarded()

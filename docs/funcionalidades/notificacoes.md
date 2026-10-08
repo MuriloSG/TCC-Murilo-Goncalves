@@ -28,6 +28,13 @@ Uma notificação de outro usuário responde 404. O redirecionamento sem destino
 
 Tempo real: o navegador abre `ws/notificacoes/`. Depois do commit de uma operação que cria notificações, `notices/realtime.py` avisa o grupo `notificacoes-<user_id>` e o navegador busca o fragmento do sino. Ver as limitações do `InMemoryChannelLayer` em [arquitetura](../arquitetura/visao-geral.md#tempo-real).
 
+Origem e autenticação do canal (`config/asgi.py`), em duas etapas independentes:
+
+1. Origem: o `AllowedHostsOriginValidator` do Channels compara o cabeçalho `Origin` do handshake com `ALLOWED_HOSTS` e recusa com 403 a origem fora da lista e o handshake sem `Origin` (todo navegador o envia). O `Host` não é usado como substituto. Com `DEBUG` e a lista vazia, aceita só `localhost`, `127.0.0.1` e `[::1]`; sem `DEBUG` e com a lista vazia, recusa tudo. A lista é lida uma vez, quando a aplicação ASGI é montada.
+2. Sessão: o `NotificationsConsumer` recusa visitante e usuário inativo.
+
+Atrás de um proxy, o `Origin` é o endereço público digitado no navegador, que precisa estar em `DJANGO_ALLOWED_HOSTS`. Um `*` na lista aceitaria qualquer origem e não deve ser usado em produção.
+
 ## Publicação manual
 
 Permissão `NOTIFICACAO.PUBLICAR`.

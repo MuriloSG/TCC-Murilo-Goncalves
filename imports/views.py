@@ -127,20 +127,20 @@ def confirmation_refusal(screens, importation, user):
 def detail_head_context(screens, importation, current, user):
     """Contexto do cabeçalho do detalhe, igual em todas as abas: situação, ações e resumo."""
     importation.tone, importation.icon = status_badge(importation.status)
-    summary = importation.summary()
+    deletion = delete_url(screens, importation, user)
     return {
         'confirm_refusal': confirmation_refusal(screens, importation, user),
-        'summary': summary,
-        'concluded_text': (
-            screens.concluded_message(summary, importation)
-            if importation.status == Import.Status.CONCLUDED else None
-        ),
+        'summary': importation.summary(),
         'processing': processing_context(screens, importation),
         'importation': importation,
         'upload_values': upload_values(screens.definition, importation),
         'confirm_url': screens.url('confirm', importation.pk),
         'discard_url': screens.url('discard', importation.pk),
-        'delete_url': delete_url(screens, importation, user),
+        'delete_url': deletion,
+        'has_actions': not importation.is_busy and (
+            importation.is_validated or importation.needs_decision or bool(deletion)
+            or importation.status in (Import.Status.WITH_ERRORS, Import.Status.FAILED)
+        ),
         'review_url': screens.url(screens.review_route, importation.pk),
         'tabs': detail_tabs(screens, importation.pk, current),
     }
@@ -153,8 +153,6 @@ def processing_context(screens, importation):
     stale = importation.is_stale
     status_url = screens.url('status', importation.pk)
     return {
-        'label': importation.get_operation_display(),
-        'requested_at': importation.requested_at,
         'stale': stale,
         'status_url': f'{status_url}?demora=1' if stale else status_url,
         'poll_seconds': settings.IMPORT_STATUS_POLL_SECONDS,
@@ -369,6 +367,10 @@ class ImportStatusView(View):
     Responde 204 enquanto a operação está pendente, e pede o recarregamento da página quando
     ela termina ou quando o aviso de demora passa a valer e o quadro ainda não o mostra. O
     estado vem do banco a cada consulta; nada depende da página ficar aberta.
+
+    O worker não tem requisição para registrar mensagens, por isso a conclusão vira mensagem
+    aqui, na consulta que percebe o fim, e aparece uma vez na página recarregada. Quem volta
+    depois vê a situação "Concluída" no detalhe.
     """
 
     screens = None
@@ -378,6 +380,8 @@ class ImportStatusView(View):
         importation = load_importation(self.screens, kwargs['pk'])
         if importation.is_busy and (not importation.is_stale or request.GET.get('demora')):
             return HttpResponse(status=204)
+        if importation.status == Import.Status.CONCLUDED:
+            messages.success(request, self.screens.concluded_message(importation.summary(), importation))
         return HttpResponseClientRefresh()
 
 

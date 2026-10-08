@@ -318,7 +318,7 @@ O registro `CRIAR` da importação continua sendo gravado ao fim da prévia, e n
 - **Confirmar**: redireciona para o detalhe com "Confirmação da importação do arquivo planilha.xlsx em processamento." O texto de divergência sai da resposta e vai para o `outcome`.
 - **Selo**: o da situação de negócio, como hoje (`RECEBIDA` tem o selo "Recebida"). Com operação pendente, o detalhe e a lista acrescentam o selo "Em processamento".
 - **Detalhe com operação pendente**:
-  - quadro com a operação e a hora ("Prévia em processamento desde 14:30.");
+  - o selo "Em processamento", sem frase com a operação e a hora do pedido (retirada a pedido do autor em 07/10/2026);
   - sem os controles de confirmar, descartar, excluir e decidir;
   - na prévia, as linhas ainda não têm plano e a tabela não é mostrada;
   - na atualização e na confirmação, o plano atual aparece como está.
@@ -331,6 +331,7 @@ O registro `CRIAR` da importação continua sendo gravado ao fim da prévia, e n
   - `DIVERGENCIA`, com a mensagem atual de divergência;
   - `RECUSADA`, com a mensagem da verificação ou da desativação;
   - `FALHA_CONFIRMACAO` e `FALHA_ATUALIZACAO`, com "A confirmação não foi concluída por uma falha do sistema. Nada foi aplicado. Confirme de novo." (ou "A atualização da prévia não foi concluída..." na atualização).
+- **Conclusão**: a mensagem de conclusão da importação específica (`concluded_message`) aparece como mensagem do `django.contrib.messages`, como nas demais telas, e não como aviso fixo no detalhe. O worker não tem requisição, então a rota de andamento registra a mensagem na consulta que percebe a importação `CONCLUIDA` e pede o recarregamento, e a página a mostra uma vez. Quem abre o detalhe depois vê a situação "Concluída".
 - **`FALHOU`**: selo "Falhou" e "A prévia não foi gerada por uma falha do sistema. Envie o arquivo de novo."
 - **Painel e quadro de espaços**: continuam lendo a situação de negócio, sem mudança de regra. O quadro de espaços passa a esconder os controles com operação pendente. A condição de "Não foi possível atualizar a prévia." passa a ser `outcome = FALHA_ATUALIZACAO`, e não a inferência atual (`PENDENTE` sem nome pendente).
 

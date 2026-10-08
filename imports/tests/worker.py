@@ -5,6 +5,9 @@ teste guarda nela, como a recusa da confirmação, chegue ao worker.
 """
 
 from unittest import mock
+from urllib.parse import urlsplit
+
+from django.urls import resolve, reverse
 
 from imports import registry
 from imports.models import Import
@@ -15,6 +18,13 @@ def run_worker(*definitions):
     with mock.patch.dict(registry._definitions, {definition.kind: definition for definition in definitions}):
         while process_next():
             pass
+
+
+def poll(client, url):
+    """Faz a consulta de andamento que o detalhe da importação faria depois de o worker terminar."""
+    match = resolve(urlsplit(url).path)
+    if match.url_name and match.url_name.endswith('_detail'):
+        client.get(reverse(match.url_name.removesuffix('_detail') + '_status', kwargs=match.kwargs))
 
 
 def preview(definition, rows, file_name, executor):

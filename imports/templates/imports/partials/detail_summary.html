@@ -1,14 +1,15 @@
 {% load ui %}
   {% if processing %}
-    <div class="alert tone-info" role="status" id="andamento-importacao" hx-get="{{ processing.status_url }}" hx-trigger="every {{ processing.poll_seconds }}s" hx-swap="none">{% icon "clock" %}
-      <div class="alert-body">
-        <p>{{ processing.label }} em processamento desde {{ processing.requested_at|time }}.</p>
-        {% if processing.stale %}
-          <p>O processamento está demorando mais que o esperado. Ele continua sendo executado em segundo plano.</p>
-          <p>O sistema pode continuar sendo usado. Volte a esta tela depois para consultar o resultado.</p>
-        {% endif %}
-        <noscript><p><a class="btn-secondary" href="{{ request.path }}">{% icon "clock" %}Atualizar página</a></p></noscript>
-      </div>
+    <div id="andamento-importacao" hx-get="{{ processing.status_url }}" hx-trigger="every {{ processing.poll_seconds }}s" hx-swap="none">
+      {% if processing.stale %}
+        <div class="alert tone-info" role="status">{% icon "clock" %}
+          <div class="alert-body">
+            <p>O processamento está demorando mais que o esperado. Ele continua sendo executado em segundo plano.</p>
+            <p>O sistema pode continuar sendo usado. Volte a esta tela depois para consultar o resultado.</p>
+          </div>
+        </div>
+      {% endif %}
+      <noscript><p><a class="btn-secondary" href="{{ request.path }}">{% icon "clock" %}Atualizar página</a></p></noscript>
     </div>
   {% elif importation.status == "FALHOU" %}
     <div class="alert tone-error" role="alert">{% icon "circle-x" %}<p>{{ importation.outcome_message }}</p></div>
@@ -17,14 +18,9 @@
   {% elif importation.outcome %}
     <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>{{ importation.outcome_message }}</p></div>
   {% endif %}
-  {% if concluded_text %}
-    <div class="alert tone-success" role="status">{% icon "circle-check" %}<p>{{ concluded_text }}</p></div>
-  {% endif %}
   {% if processing %}
   {% elif importation.status == "VALIDADA" and confirm_refusal %}
     <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>{{ confirm_refusal }}</p></div>
-  {% elif importation.status == "VALIDADA" %}
-    <div class="alert tone-info" role="status">{% icon "info" %}<p>Prévia pronta. Nenhum dado foi gravado. Confira as linhas e confirme a importação.</p></div>
   {% elif importation.status == "PENDENTE" %}
     <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>A importação precisa de decisão antes de ser confirmada. Nenhum dado foi gravado.</p></div>
   {% elif importation.status == "COM_ERROS" %}

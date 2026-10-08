@@ -17,7 +17,7 @@ from accounts.permissions import (
 from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
-from imports.tests.worker import run_worker
+from imports.tests.worker import poll, run_worker
 from schedule.models import Allocation, Semester, Space
 from schedule.tests.test_import import PERIOD, TEACHERS, SPACES, workbook_file
 from schedule.views import SPACE_ALLOCATION_IMPORT_SCREENS
@@ -46,6 +46,7 @@ class ScreenTestCase(TestCase):
         run_worker(SPACE_ALLOCATION_IMPORT_SCREENS.definition)
         if not follow or response.status_code != 302:
             return response
+        poll(self.client, response.url)
         page = self.client.get(response.url, follow=True)
         page.redirect_chain = [(response.url, response.status_code), *page.redirect_chain]
         return page

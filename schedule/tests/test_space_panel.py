@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from accounts import permissions
 from imports.models import Import
-from imports.tests.worker import run_worker
+from imports.tests.worker import poll, run_worker
 from schedule.models import Space, SpaceDecision
 from schedule.tests.test_import import PERIOD, workbook_file
 from schedule.tests.test_space_import import SECONDARY_CELL, user_with
@@ -42,6 +42,7 @@ class PanelTestCase(TestCase):
         """Envia o POST, deixa o worker executar o que ele pediu e abre a tela para onde ele redireciona."""
         response = self.client.post(url, data or {})
         run_worker(SPACE_ALLOCATION_IMPORT_SCREENS.definition)
+        poll(self.client, response.url)
         return self.client.get(response.url)
 
     def detail(self, importation, user=None):

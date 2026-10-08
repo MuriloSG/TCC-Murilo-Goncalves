@@ -1,10 +1,9 @@
 {% load ui %}
+  <h1 class="sr-only">Importação de {{ importation.file_name }}</h1>
+  {% if has_actions %}
   <div class="page-head">
-    <div>
-      <h1 class="page-title">Importação de {{ importation.file_name }}</h1>
-    </div>
-    {% if processing %}
-    {% elif importation.is_validated %}
+    <div></div>
+    {% if importation.is_validated %}
       {% if not confirm_refusal %}<form id="confirmar-importacao" method="post" action="{{ confirm_url }}">{% csrf_token %}</form>{% endif %}
       <div class="page-actions">
         <a class="btn-secondary" href="{{ discard_url }}" hx-get="{{ discard_url }}" hx-target="#modal">{% icon "x" %}Descartar importação</a>
@@ -30,3 +29,4 @@
       </div>
     {% endif %}
   </div>
+  {% endif %}

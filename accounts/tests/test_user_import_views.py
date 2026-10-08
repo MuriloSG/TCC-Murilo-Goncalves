@@ -10,7 +10,7 @@ from accounts.imports import UserImport
 from accounts.models import Role, User
 from imports.models import Import
 from imports.reader import SourceRow
-from imports.tests.worker import preview, run_worker
+from imports.tests.worker import poll, preview, run_worker
 from outbox.models import OutboxEntry
 from ui.pagination import ROWS_PAGE_SIZE
 
@@ -130,7 +130,7 @@ class DetailTests(ImportViewsTestCase):
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
         self.assertContains(response, 'Confirmar importação')
         self.assertContains(response, 'Descartar importação')
-        self.assertContains(response, 'Prévia pronta. Nenhum dado foi gravado.')
+        self.assertNotContains(response, 'Prévia pronta.')
         self.assertContains(response, 'Perfil: DOCENTE → ADMINISTRADOR')
         self.assertContains(response, '1 cadastro, 1 atualização e 0 sem alteração')
 
@@ -202,7 +202,10 @@ class ConfirmAndDiscardTests(ImportViewsTestCase):
         self.assertEqual((importation.status, importation.operation), ('VALIDADA', 'CONFIRMACAO'))
         self.assertFalse(User.objects.filter(email='ana@ifnmg.edu.br').exists())
         run_worker(UserImport())
+        self.assertNotContains(self.client.get(f'/usuarios/importacoes/{importation.pk}/'), 'Importação concluída.')
+        poll(self.client, f'/usuarios/importacoes/{importation.pk}/')
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
+        self.assertIn('Importação concluída.', [str(message) for message in response.context['messages']][0])
         self.assertContains(
             response,
             'Importação concluída. 1 usuário cadastrado. '
@@ -307,8 +310,7 @@ class ProcessingTests(ImportViewsTestCase):
     def test_detail_of_a_pending_preview_shows_the_panel_without_actions_or_rows(self):
         importation = self.requested()
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
-        hour = timezone.localtime(importation.requested_at).strftime('%H:%M')
-        self.assertContains(response, f'Prévia em processamento desde {hour}.')
+        self.assertNotContains(response, 'em processamento desde')
         self.assertContains(response, 'Em processamento')
         self.assertContains(response, 'Recebida')
         self.assertContains(response, f'hx-get="/usuarios/importacoes/{importation.pk}/andamento/"')
@@ -322,7 +324,7 @@ class ProcessingTests(ImportViewsTestCase):
         importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
         self.client.post(f'/usuarios/importacoes/{importation.pk}/confirmar/')
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
-        self.assertContains(response, 'Confirmação em processamento desde')
+        self.assertNotContains(response, 'em processamento desde')
         self.assertContains(response, 'Validada')
         self.assertContains(response, 'Linhas do arquivo')
         self.assertNotContains(response, 'Confirmar importação')

@@ -1,22 +1,18 @@
 from django.core.management.commands import flush
-from django.db import DEFAULT_DB_ALIAS, connections
+from django.db import DEFAULT_DB_ALIAS
 
-from accounts.utils import require_local_environment
-from config import test_runner
+from accounts.utils import require_safe_database
 
 
 class Command(flush.Command):
-    """`flush` do Django com a mesma trava de ambiente do `clear_data`.
+    """`flush` do Django com a mesma trava do `clear_data`.
 
     Substitui o comando nativo, porque um app do projeto tem precedência sobre o
-    `django.core`. Antes de qualquer acesso ao banco, recusa a execução fora de
-    `DJANGO_ENVIRONMENT=local` (`require_local_environment`), exceto num banco de teste
-    criado pelo runner deste processo (`config.test_runner`), que é o caso do
-    `TransactionTestCase`. O nome do banco sozinho não dispensa a trava.
+    `django.core`. Antes de apagar, confirma que o banco do alias escolhido é o banco local
+    comprovado ou um banco de teste criado pelo runner deste processo, que é o caso do
+    `TransactionTestCase` (`require_safe_database`).
     """
 
     def handle(self, **options):
-        alias = options['database'] or DEFAULT_DB_ALIAS
-        if (alias, connections[alias].settings_dict['NAME']) not in test_runner.created_test_databases:
-            require_local_environment('flush')
+        require_safe_database('flush', options['database'] or DEFAULT_DB_ALIAS)
         return super().handle(**options)

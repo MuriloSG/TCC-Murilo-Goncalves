@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import User
-from accounts.utils import require_local_environment
+from accounts.utils import require_safe_database
 
 DEFAULT_PASSWORD = 'senha123#'
 
@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     Serve ao ambiente de desenvolvimento, para entrar com qualquer usuário. A senha é gravada
     com o hash do Django, e não em texto puro, e não passa pelas regras de força da senha. Só
-    roda com `DJANGO_ENVIRONMENT=local` (`require_local_environment`), verificado antes de tudo.
+    roda com o banco local comprovado (`require_safe_database`), verificado antes de tudo.
     """
 
     help = 'Define a mesma senha para todos os usuários (padrão: senha123#).'
@@ -22,7 +22,7 @@ class Command(BaseCommand):
         parser.add_argument('--yes', action='store_true', help='Não pede confirmação.')
 
     def handle(self, *args, **options):
-        require_local_environment('set_passwords')
+        require_safe_database('set_passwords')
         users = list(User.objects.order_by('pk'))
         if not options['yes']:
             answer = input(f'A senha de {len(users)} usuários será substituída. Digite "sim" para continuar: ')

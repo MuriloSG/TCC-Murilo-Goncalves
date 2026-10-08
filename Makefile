@@ -5,7 +5,7 @@ MANAGE = $(COMPOSE) run --rm web python manage.py
 
 LOCAL_IP = $(shell ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}')
 
-.PHONY: help up dev-network down logs migrate makemigrations test shell manage css npm psql reset-db clear-data delete-users set-passwords
+.PHONY: help up dev-network down logs migrate makemigrations test shell manage css npm psql reset-db mark-local-db clear-data delete-users set-passwords
 
 help: ## Lista os comandos disponíveis
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -56,6 +56,10 @@ psql: ## Abre o psql no banco de dados do container db
 
 reset-db: ## ATENÇÃO: para os containers e apaga todos os dados do banco
 	$(COMPOSE) down -v
+
+mark-local-db: ## Marca o banco do container db como banco local, condição dos comandos destrutivos
+	$(COMPOSE) up -d --wait db
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "ALTER DATABASE \"$$POSTGRES_DB\" SET ifagenda.environment = '"'"'local'"'"'"'
 
 clear-data: ## ATENÇÃO: apaga todos os dados do banco, mantendo apenas os usuários, perfis e permissões
 	$(MANAGE) clear_data

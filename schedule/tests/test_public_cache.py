@@ -478,6 +478,7 @@ class BulkWriteScanTests(SimpleTestCase):
     REVIEWED = {
         ('accounts/management/commands/set_passwords.py', "User.objects.bulk_update(users, ['password'])"),
         ('accounts/management/commands/clear_data.py', 'with transaction.atomic(), connection.cursor() as cursor:'),
+        ('accounts/utils.py', 'with connection.cursor() as cursor:'),
         ('imports/worker.py', 'with connection.cursor() as cursor:'),
         ('schedule/models.py', 'SpaceName.objects.bulk_create(SpaceName(space=space, name=name) for name in names)'),
         ('schedule/models.py', 'AllocationException.objects.filter(pk__in=moved_ids).update(allocation=version)'),

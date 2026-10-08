@@ -29,6 +29,8 @@ DEBUG = os.environ.get('DJANGO_DEBUG') == '1'
 
 ENVIRONMENT = os.environ.get('DJANGO_ENVIRONMENT', '')
 
+LOCAL_DATABASE = os.environ.get('DJANGO_LOCAL_DATABASE', '')
+
 ALLOWED_HOSTS = [host for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if host]
 
 

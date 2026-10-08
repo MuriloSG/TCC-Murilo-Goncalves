@@ -44,7 +44,7 @@ A referência de implementação é o app `accounts`.
 - O objeto alvo da rota é carregado no `setup()` da view, com `get_object_or_404`.
 - **Regras de negócio ficam no model** (princípio P2 do TCC, em [visão geral](../sistema/visao-geral.md#princípios-do-tcc)): operações do model ou do manager, numa transação, lançam `ValidationError` ou uma exceção derivada dela quando recusadas. Views e comandos só chamam essas operações.
 - **Formulários** declaram explicitamente os campos aceitos. Campos sensíveis (senha, `is_superadmin`, `is_system`, código imutável) nunca estão neles. Campo somente leitura por regra de negócio usa `readonly`, e não `disabled`, para que um valor forjado chegue ao model e seja recusado com mensagem.
-- Comando de gerenciamento que apaga dados em massa ou troca senhas chama `accounts.utils.require_local_environment` na primeira linha do `handle()`, antes de qualquer consulta ou pergunta, e tem os testes de recusa com `assertNumQueries(0)`. Ele só roda com `DJANGO_ENVIRONMENT=local`.
+- Comando de gerenciamento que apaga dados em massa ou troca senhas chama `accounts.utils.require_safe_database` na primeira linha do `handle()`, antes de qualquer outra consulta ou pergunta, e entra em `COMMANDS` de `accounts/tests/test_command_environment.py`. Ele só roda no banco local comprovado (ambiente, identidade declarada e marca no banco) ou num banco de teste criado pelo runner. As recusas por ambiente e identidade não consultam o banco (`assertNumQueries(0)`); a da marca faz uma leitura.
 - Recusas de regra de negócio aparecem como erro do formulário (`OperationFormView`) ou como mensagem do `django.contrib.messages` (`ConfirmedActionView`), sem alterar dados.
 
 ## 6. Views e interface

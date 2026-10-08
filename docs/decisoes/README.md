@@ -20,7 +20,7 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 | 12 | [Cache das telas públicas no Redis com invalidação por geração](#12-cache-das-telas-públicas-no-redis-com-invalidação-por-geração) |
 | 13 | [Servidor SMTP configurado no banco, senha cifrada](#13-servidor-smtp-configurado-no-banco-senha-cifrada) |
 | 14 | [Interface sem dependências externas em tempo de execução](#14-interface-sem-dependências-externas-em-tempo-de-execução) |
-| 15 | [Comandos destrutivos só com `DJANGO_ENVIRONMENT=local`](#15-comandos-destrutivos-só-com-django_environmentlocal) |
+| 15 | [Comandos destrutivos só no banco local comprovado](#15-comandos-destrutivos-só-no-banco-local-comprovado) |
 
 ## 1. Monólito Django com regras de negócio no model
 
@@ -112,10 +112,12 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 **Motivo registrado.** Consistência visual exigida pelo TCC (P8). Fontes e scripts por CDN dependeriam de rede externa, que pode ser instável, e enviariam o IP de cada acesso a terceiros. A rede só é usada na construção da imagem do `tailwind`. Os detalhes estão na seção 9 das [convenções](../desenvolvimento/convencoes.md#9-interface-e-texto).
 
-## 15. Comandos destrutivos só com `DJANGO_ENVIRONMENT=local`
+## 15. Comandos destrutivos só no banco local comprovado
 
 **Decisão.** `clear_data`, `delete_users` e `set_passwords` só rodam quando `settings.ENVIRONMENT` é exatamente `local`, lido de `DJANGO_ENVIRONMENT`. Ausente, vazio, outro valor ou valor ambíguo recusam com `CommandError`, na primeira linha do `handle()`, antes de qualquer consulta, prompt ou escrita (`accounts.utils.require_local_environment`).
 
 **Motivo registrado.** Os três comandos apagam dados ou trocam todas as senhas, inclusive dos superadmins, e o repositório não tinha como distinguir a máquina de desenvolvimento de outras instalações. `DEBUG` não serve como evidência, porque o padrão do `compose.yaml` é `1` e uma instalação mal configurada o herdaria. O padrão da variável é vazio, então a falta de configuração nega.
 
 **Consequência.** Na máquina de desenvolvimento, `DJANGO_ENVIRONMENT=local` precisa estar no `.env`. Em 08/10/2026 o `flush` ganhou a mesma trava, por um comando do projeto que o substitui; o banco de teste criado pelo runner (`config/test_runner.py`) fica dispensado, porque o `TransactionTestCase` o usa a cada teste.
+
+**Revisão em 08/10/2026.** O ambiente identificava a instalação, e não o banco: com `local` no `.env` e `POSTGRES_HOST` apontando para outro servidor, os quatro comandos rodavam. A trava passou a ser `accounts.utils.require_safe_database`, que exige também `DJANGO_LOCAL_DATABASE` igual a `host:porta/nome` da conexão e, no banco conectado, o mesmo nome e a marca `ifagenda.environment = 'local'` (`make mark-local-db`). A marca fica no próprio banco, e não em convenção de nome, para que um banco operacional nunca seja tomado por local. O runner continua liberando só os bancos que criou. Detalhes em [configuração](../operacao/configuracao.md#identificação-da-instalação-e-do-banco-local).

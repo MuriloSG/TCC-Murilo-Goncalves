@@ -1,6 +1,6 @@
 # Testes
 
-Test runner do Django estendido em `config/test_runner.py` (registra os bancos de teste para a trava do `flush` e silencia o INFO dos loggers do projeto), no PostgreSQL do container `db`. O banco de teste é criado e removido a cada execução; o banco de desenvolvimento não é tocado.
+Test runner do Django estendido em `config/test_runner.py` (registra os bancos de teste para a trava dos comandos destrutivos e silencia o INFO dos loggers do projeto), no PostgreSQL do container `db`. O banco de teste é criado e removido a cada execução; o banco de desenvolvimento não é tocado.
 
 ```bash
 make test                                               # suíte inteira
@@ -30,7 +30,7 @@ A convenção do projeto é rodar a suíte inteira antes de cada commit. Não h�
 | `ui/tests/test_contrast.py` | Pares de cores de `ui/contrast.py` acima do contraste AA, nos dois temas |
 | `schedule/tests/test_public_cache.py`, `BulkWriteScanTests` | Toda escrita sem sinais nos models das telas públicas chama a invalidação do cache |
 | `accounts/tests/test_catalog.py` | Catálogo de permissões coerente com a migration |
-| `accounts/tests/test_command_environment.py` | `clear_data`, `delete_users`, `set_passwords` e `flush` recusados fora de `DJANGO_ENVIRONMENT=local` sem nenhuma consulta ao banco (`assertNumQueries(0)`), e executados com `local`. O `flush` também roda no banco de teste criado pelo runner, e é recusado num banco que o runner não criou, mesmo com nome de teste |
+| `accounts/tests/test_command_environment.py` | `flush`, `clear_data`, `delete_users` e `set_passwords` recusados fora de `DJANGO_ENVIRONMENT=local`, sem `DJANGO_LOCAL_DATABASE`, com identidade diferente da declarada, sem a marca no banco, com outra marca, com nome efetivo divergente e num banco com nome de teste fora do registro do runner; mensagens sem configuração nem credenciais; execução no banco local simulado (marca só na sessão do teste) e no banco de teste do runner; registro do runner esvaziado ao final, mesmo com falha |
 
 ## Regras para escrever testes
 
@@ -50,3 +50,7 @@ Resumo da seção 7 das [convenções](convencoes.md#7-testes):
 ## Conferência visual
 
 Não há teste automatizado de navegador no repositório. As conferências manuais usam um banco separado (`visual_check`) e Playwright em container, nunca o banco de desenvolvimento; a última tentativa não foi concluída por falta de acesso ao PyPI. Ver [pendências](../pendencias.md#funcionalidades-não-concluídas).
+
+## Autorização dos comandos destrutivos nos testes
+
+O `TransactionTestCase` chama `flush` a cada teste, e os testes dos comandos destrutivos rodam no banco de teste. `config.test_runner.TestRunner` registra, em `created_test_databases`, o par (alias, nome) de cada banco que ele criou, inclusive as cópias do `--parallel`, e `require_safe_database` libera só esses. O registro existe apenas no processo do runner: um comando digitado à mão nunca o preenche, e um banco operacional chamado `test_algo` continua recusado. O Django chama `teardown_databases` num `finally`, e o runner esvazia o registro também num `finally`, mesmo se a remoção dos bancos falhar.

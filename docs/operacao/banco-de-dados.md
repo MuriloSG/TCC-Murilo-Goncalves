@@ -33,7 +33,7 @@ O sistema depende do PostgreSQL e não roda em outro banco:
 
 ## Comandos que alteram dados em massa
 
-Só rodam com `DJANGO_ENVIRONMENT=local` ([configuração](configuracao.md#identificação-da-instalação)); fora disso são recusados antes de acessar o banco. Pedem confirmação, exceto com `--yes`.
+Só rodam no banco local comprovado: `DJANGO_ENVIRONMENT=local`, `DJANGO_LOCAL_DATABASE` igual ao banco configurado e a marca gravada por `make mark-local-db` no próprio banco ([configuração](configuracao.md#identificação-da-instalação-e-do-banco-local)). Fora disso são recusados antes de qualquer pergunta ou escrita. Pedem confirmação, exceto com `--yes`.
 
 | Comando | Efeito |
 |---|---|
@@ -44,9 +44,8 @@ Só rodam com `DJANGO_ENVIRONMENT=local` ([configuração](configuracao.md#ident
 ## Lacunas
 
 - Não há rotina de backup nem de restauração no repositório.
-- `DJANGO_ENVIRONMENT=local` apontando para o banco errado ainda permite `clear_data`, `delete_users`, `set_passwords` e `flush`: a trava identifica a instalação, e não o banco.
 
 ## `flush`
 
-O comando nativo do Django apaga todas as tabelas. O projeto o substitui por `accounts/management/commands/flush.py`, com a mesma trava do `clear_data`: fora de `DJANGO_ENVIRONMENT=local`, `make manage cmd="flush"` é recusado antes de qualquer acesso ao banco. A única exceção é um banco de teste criado pelo runner do próprio processo (`config/test_runner.py`, inclusive as cópias do `--parallel`), que é onde o `TransactionTestCase` o chama. O nome do banco sozinho não dispensa a trava: um banco operacional chamado `test_algo` continua protegido. Para limpar os dados de desenvolvimento, prefira `make clear-data`, que mantém usuários e sessões.
+O comando nativo do Django apaga todas as tabelas. O projeto o substitui por `accounts/management/commands/flush.py`, com a mesma trava do `clear_data`, aplicada ao alias escolhido em `--database`: fora do banco local comprovado, `make manage cmd="flush"` é recusado antes de apagar. A única exceção é um banco de teste criado pelo runner do próprio processo (`config/test_runner.py`, inclusive as cópias do `--parallel`), que é onde o `TransactionTestCase` o chama. O nome do banco sozinho não dispensa a trava: um banco operacional chamado `test_algo` continua protegido. Para limpar os dados de desenvolvimento, prefira `make clear-data`, que mantém usuários e sessões.
 - Não há política de retenção para `AuditLog`, `Notification`, `OutboxEntry` e importações antigas; as tabelas só crescem.

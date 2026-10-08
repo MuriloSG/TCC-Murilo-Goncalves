@@ -13,20 +13,30 @@ A lista completa das variáveis de ambiente, com os valores padrão do desenvolv
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Também usadas pelo container `db` na criação do banco |
 | `POSTGRES_HOST`, `POSTGRES_PORT` | Fixadas no `compose.yaml` (`db`, `5432`) |
 
-## Identificação da instalação
+## Identificação da instalação e do banco local
 
-`DJANGO_ENVIRONMENT` vira `settings.ENVIRONMENT`. É a única forma de o sistema saber que está na máquina de desenvolvimento.
+`flush`, `clear_data`, `delete_users` e `set_passwords` apagam dados ou trocam todas as senhas. Antes de qualquer pergunta ou escrita, `accounts.utils.require_safe_database` confirma que o banco de destino é o banco da máquina de desenvolvimento. As três condições valem juntas, nesta ordem:
 
-| Valor | Efeito |
-|---|---|
-| `local`, exatamente | Libera `clear_data`, `delete_users` e `set_passwords` |
-| ausente, vazio ou qualquer outro (`producao`, `homologacao`, `staging`, `Local`, `local `) | Os três comandos são recusados com `CommandError`, antes de qualquer acesso ao banco |
+| Condição | Configuração | Consulta ao banco |
+|---|---|---|
+| A instalação é local | `DJANGO_ENVIRONMENT` exatamente `local` (`settings.ENVIRONMENT`) | Nenhuma |
+| O banco configurado é o declarado | `DJANGO_LOCAL_DATABASE` (`settings.LOCAL_DATABASE`) igual a `host:porta/nome` da conexão, formada por `POSTGRES_HOST`, `POSTGRES_PORT` e `POSTGRES_DB`. Na máquina de desenvolvimento: `db:5432/agendamento` | Nenhuma |
+| O banco conectado confirma | `current_database()` igual ao nome configurado e a marca `ifagenda.environment = 'local'` gravada no próprio banco, com `make mark-local-db` | Uma leitura |
 
-- O padrão em `settings.py` e no `compose.yaml` é vazio: uma instalação sem a variável recusa os comandos.
-- `DEBUG` não é considerado: `DJANGO_DEBUG=1` sem `DJANGO_ENVIRONMENT=local` continua recusando.
-- Na máquina de desenvolvimento, defina `DJANGO_ENVIRONMENT=local` no `.env`. Em homologação e produção, use outro valor ou deixe a variável ausente. Nenhum outro comportamento do sistema depende dela.
+- Qualquer condição falhando recusa com `CommandError`, sem perguntar nada e sem alterar dados. A mensagem diz qual configuração conferir e não repete valores configurados nem credenciais.
+- Variável ausente, vazia ou ambígua (`Local`, `local `) recusa. O padrão em `settings.py` e no `compose.yaml` é vazio para as duas variáveis.
+- `DEBUG` não é considerado: `DJANGO_DEBUG=1` sem as condições acima continua recusando.
+- A marca fica no banco (`ALTER DATABASE ... SET`), e não no `.env`: um banco operacional nunca a tem, qualquer que seja o nome dele, e copiar o `.env` da máquina de desenvolvimento para outra instalação não basta para liberar os comandos. Um nome com `test_`, `dev_` ou `local_` não conta.
+- Na máquina de desenvolvimento, defina no `.env` `DJANGO_ENVIRONMENT=local` e `DJANGO_LOCAL_DATABASE=db:5432/agendamento` e rode `make mark-local-db` uma vez. A marca some com `make reset-db`, junto com o volume. Em homologação e produção, deixe as duas variáveis ausentes e não grave a marca. Nenhum outro comportamento do sistema depende delas.
+- Nos testes, os bancos criados pelo runner deste processo (`config/test_runner.py`) são liberados sem as três condições. Ver [testes](../desenvolvimento/testes.md).
 
-Implementação: `accounts.utils.require_local_environment`, chamada na primeira linha do `handle()` de cada comando. Testes: `accounts/tests/test_command_environment.py`.
+Limitações que permanecem:
+
+- Quem tem acesso ao banco como dono pode gravar a marca num banco errado, ou rodar `SET ifagenda.environment = 'local'` na própria sessão. A trava evita o engano, e não um ato deliberado.
+- A identidade compara o que está configurado (`host:porta/nome`), e não o endereço de rede resolvido. A confirmação efetiva é feita pelo nome do banco conectado e pela marca.
+- Só o alias `default` existe. Um alias novo passa pela mesma trava, pela opção `--database` do `flush`, e precisa da sua própria marca e da mesma identidade declarada.
+
+Implementação: `accounts.utils.require_safe_database`, chamada na primeira linha do `handle()` de cada comando. Testes: `accounts/tests/test_command_environment.py`.
 
 ## Variáveis que mudam o comportamento fora do desenvolvimento
 

@@ -79,7 +79,7 @@
 | `delete_users [--yes]` | `accounts` | Exclui os usuários que não são superadmin e os registros que dependem deles. Exige um superadmin ativo |
 | `set_passwords [--password X] [--yes]` | `accounts` | Define a mesma senha (padrão `DEFAULT_PASSWORD` do comando) para todos os usuários |
 
-`clear_data`, `delete_users` e `set_passwords` só rodam com `DJANGO_ENVIRONMENT=local` (`accounts.utils.require_local_environment`).
+`flush`, `clear_data`, `delete_users` e `set_passwords` só rodam no banco local comprovado ou num banco de teste criado pelo runner (`accounts.utils.require_safe_database`).
 | `process_outbox` | `outbox` | Laço do worker de e-mails |
 | `process_imports` | `imports` | Laço do worker de importações |
 

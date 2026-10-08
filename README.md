@@ -52,6 +52,7 @@ Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd
 | `make npm cmd="<comando>"` | `docker compose run --rm tailwind npm <comando>` | Executa um comando do npm no container `tailwind` |
 | `make psql` | `docker compose up -d --wait db` e depois `docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'` | Abre o `psql` no banco de dados |
 | `make reset-db` | `docker compose down -v` | **Apaga todos os dados do banco** e remove os containers |
+| `make mark-local-db` | `ALTER DATABASE "$POSTGRES_DB" SET ifagenda.environment = 'local'` no container `db` | Marca o banco de desenvolvimento como local, condição dos comandos destrutivos. Rodar uma vez, e de novo depois de `make reset-db` |
 | `make clear-data` | `docker compose run --rm web python manage.py clear_data` | **Apaga todos os dados**, inclusive a auditoria, mantendo usuários, perfis e permissões |
 | `make delete-users` | `docker compose run --rm web python manage.py delete_users` | **Exclui os usuários que não são superadmin** e os registros que dependem deles |
 | `make set-passwords` | `docker compose run --rm web python manage.py set_passwords` | Define a mesma senha de desenvolvimento (`DEFAULT_PASSWORD` em `set_passwords.py`) para todos os usuários, inclusive superadmins |
@@ -59,7 +60,7 @@ Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd
 - Os comandos baseados em `run --rm` funcionam com o ambiente parado ou em execução. O Compose sobe o banco quando necessário e remove o container do comando ao final.
 - As migrations não são aplicadas automaticamente na subida do ambiente. Execute `make migrate` sempre que houver migrations novas.
 - Os testes rodam num banco de testes criado no próprio PostgreSQL e removido ao final. Detalhes em [docs/desenvolvimento/testes.md](docs/desenvolvimento/testes.md).
-- `clear-data`, `delete-users` e `set-passwords` só rodam com `DJANGO_ENVIRONMENT=local` no `.env` e pedem confirmação. Sem a variável, são recusados antes de qualquer acesso ao banco. Não defina `local` em nenhuma instalação que não seja a máquina de desenvolvimento.
+- `clear-data`, `delete-users` e `set-passwords` (e `make manage cmd="flush"`) só rodam com `DJANGO_ENVIRONMENT=local` e `DJANGO_LOCAL_DATABASE=db:5432/agendamento` no `.env` e com o banco marcado uma vez por `make mark-local-db`, e pedem confirmação. Sem isso, são recusados antes de qualquer pergunta ou escrita. Não defina essas variáveis nem grave a marca em nenhuma instalação que não seja a máquina de desenvolvimento. Ver [configuração](docs/operacao/configuracao.md#identificação-da-instalação-e-do-banco-local).
 - O `make up` usa `--renew-anon-volumes` porque as dependências de Node.js ficam num volume anônimo do container `tailwind`. Sem a opção, o Compose reaproveitaria o volume antigo, e um `package-lock.json` alterado não chegaria ao container.
 
 ## Serviços
@@ -85,7 +86,8 @@ Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd
 |---|---|---|
 | `DJANGO_SECRET_KEY` | `django-insecure-somente-para-desenvolvimento-local` | Chave secreta do Django |
 | `DJANGO_DEBUG` | `1` | Modo de depuração, ativo somente com o valor `1` |
-| `DJANGO_ENVIRONMENT` | vazio | Declara a instalação. Só o valor exato `local` libera `clear_data`, `delete_users` e `set_passwords`; vazio ou qualquer outro valor os recusa |
+| `DJANGO_ENVIRONMENT` | vazio | Declara a instalação. Só o valor exato `local`, junto com `DJANGO_LOCAL_DATABASE` e a marca no banco, libera `flush`, `clear_data`, `delete_users` e `set_passwords`; vazio ou qualquer outro valor os recusa |
+| `DJANGO_LOCAL_DATABASE` | vazio | Banco local esperado, em `host:porta/nome` (`db:5432/agendamento`). Precisa ser igual ao banco configurado para liberar os comandos destrutivos |
 | `DJANGO_ALLOWED_HOSTS` | vazio | Hosts aceitos, separados por vírgula; vazio com `DJANGO_DEBUG=1` aceita apenas `localhost` e `127.0.0.1` |
 | `DJANGO_SITE_URL` | `http://localhost:8000` | Endereço usado nos links dos e-mails enviados pelo `worker` |
 | `POSTGRES_DB` | `agendamento` | Nome do banco de dados |
@@ -116,6 +118,7 @@ Para sobrescrever um valor, crie um arquivo `.env` na raiz do projeto, ignorado 
 ```dotenv
 DJANGO_SECRET_KEY=outra-chave-local
 DJANGO_ENVIRONMENT=local
+DJANGO_LOCAL_DATABASE=db:5432/agendamento
 ```
 
 - O PostgreSQL só lê `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` ao criar o banco. Se alterá-las depois da primeira execução, rode `make reset-db`.

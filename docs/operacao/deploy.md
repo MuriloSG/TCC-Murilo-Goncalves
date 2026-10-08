@@ -22,7 +22,7 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | `DEBUG` | `DJANGO_DEBUG` diferente de `1`. Com `DEBUG` desligado, `ALLOWED_HOSTS` vazio recusa todas as requisições |
 | `SECRET_KEY` | `DJANGO_SECRET_KEY` própria; sem ela a aplicação não inicia. O padrão do `compose.yaml` é inseguro |
 | `ALLOWED_HOSTS` | `DJANGO_ALLOWED_HOSTS` com os nomes reais da instalação |
-| Identificação | `DJANGO_ENVIRONMENT` ausente ou diferente de `local`, para que `clear_data`, `delete_users` e `set_passwords` sejam recusados |
+| Identificação | `DJANGO_ENVIRONMENT` e `DJANGO_LOCAL_DATABASE` ausentes, e o banco sem a marca `ifagenda.environment`, para que `flush`, `clear_data`, `delete_users` e `set_passwords` sejam recusados |
 | Banco | PostgreSQL 15 ou superior (usa `nulls_distinct`), com permissão para `CREATE EXTENSION btree_gist` na primeira migration de `bookings`. Variáveis `POSTGRES_*` |
 | Cifra | `DJANGO_CREDENTIALS_KEY` estável: trocá-la invalida a senha SMTP gravada |
 | Servidor ASGI | O WebSocket das notificações exige ASGI (`config.asgi.application`). `daphne` já está nas dependências; não há comando de produção definido |
@@ -41,7 +41,7 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | Instrução | Motivo |
 |---|---|
 | `make up`, `make dev-network` e o `compose.yaml` | Montam o código por volume, rodam `runserver` com `DEBUG=1` e usam segredos padrão |
-| `DJANGO_ENVIRONMENT=local` no `.env` | Libera os comandos destrutivos |
+| `DJANGO_ENVIRONMENT=local` e `DJANGO_LOCAL_DATABASE` no `.env`, e `make mark-local-db` | Juntos, liberam os comandos destrutivos |
 | `make clear-data`, `make delete-users`, `make set-passwords` | Apagam dados ou trocam todas as senhas; recusados fora de `local` |
 | `make reset-db` | `docker compose down -v` apaga o volume do PostgreSQL do projeto Compose |
 | `DJANGO_EMAIL_BACKEND` de console e servidor SMTP `localhost` | Os e-mails só aparecem nos logs |

@@ -1,11 +1,12 @@
 """Runner dos testes, que registra os bancos de teste que ele mesmo criou.
 
-O `flush` do projeto (`accounts/management/commands/flush.py`) só dispensa a trava de
-ambiente para um banco desta lista. Ela existe apenas no processo do runner, entre a
+A trava dos comandos destrutivos (`accounts.utils.require_safe_database`) libera, sem
+exigir o banco local, só um banco desta lista. Ela existe apenas no processo do runner, entre a
 criação e a remoção dos bancos de teste: um `manage.py flush` digitado à mão nunca a
 preenche, mesmo que o banco tenha nome parecido com o de teste. Com `--parallel`, entram
 também as cópias que o runner cria para cada processo (`test_<nome>_1`, `_2`, ...), que os
-processos herdam do runner.
+processos herdam do runner. O Django chama `teardown_databases` num `finally`, e a lista
+é esvaziada mesmo se a remoção dos bancos falhar.
 """
 
 import logging
@@ -41,5 +42,7 @@ class TestRunner(DiscoverRunner):
         return old_config
 
     def teardown_databases(self, old_config, **kwargs):
-        created_test_databases.clear()
-        super().teardown_databases(old_config, **kwargs)
+        try:
+            super().teardown_databases(old_config, **kwargs)
+        finally:
+            created_test_databases.clear()

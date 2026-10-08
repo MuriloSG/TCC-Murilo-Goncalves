@@ -16,6 +16,8 @@ decisão do cadastro (Change importar-salas-sem-aula).
 
 from dataclasses import dataclass, field
 
+from django.db.models import prefetch_related_objects
+
 from accounts import permissions
 from schedule.activities import ACTIVITY_COLUMN, Catalog, resolve
 from schedule.models import Space, SpaceDecision, SpaceName, SpaceOrigin
@@ -189,11 +191,15 @@ def effect_permissions(outcome, target=None, target_key=None, moves_from=None):
 
 
 def registry():
-    """Nomes do cadastro, cada um com o seu espaço, e a lista de todos os nomes."""
-    names = {}
-    for item in SpaceName.objects.select_related('space'):
-        names[key_of(item.name)] = (item.name, item.space)
-    return names
+    """Nomes do cadastro, cada um com o seu espaço, e a lista de todos os nomes.
+
+    Os outros nomes de cada espaço vêm numa consulta só, para que `other_names` não consulte
+    o banco por espaço (A7 da Change otimizar-consultas-do-sistema). Cada nome continua com o
+    seu próprio objeto de espaço, como antes.
+    """
+    items = list(SpaceName.objects.select_related('space'))
+    prefetch_related_objects([item.space for item in items], 'names')
+    return {key_of(item.name): (item.name, item.space) for item in items}
 
 
 def read_found(values_list, registry_names):
@@ -344,12 +350,17 @@ def classify_import(importation):
 
 @dataclass
 class Applied:
-    """O que a execução aplicou ao cadastro: o espaço de cada nome e os valores anteriores."""
+    """O que a execução aplicou ao cadastro: o espaço de cada nome e os valores anteriores.
+
+    `altered` são os espaços existentes que a execução alterou: os que perderam ou ganharam
+    um outro nome e os reativados.
+    """
 
     spaces: dict = field(default_factory=dict)
     created: set = field(default_factory=set)
     previous_names: dict = field(default_factory=dict)
     reactivated: set = field(default_factory=set)
+    altered: set = field(default_factory=set)
 
 
 def metadata_of(entry, importation):
@@ -377,11 +388,13 @@ def apply(resolution, importation=None):
     for entry in entries:
         if entry.moves_from is not None:
             entry.moves_from.remove_name(entry.name, metadata=metadata_of(entry, importation))
+            applied.altered.add(entry.moves_from.pk)
     for entry in entries:
         space = entry.reactivates
         if space is not None and space.pk not in applied.reactivated:
             space.reactivate(metadata=metadata_of(entry, importation))
             applied.reactivated.add(space.pk)
+            applied.altered.add(space.pk)
     source = importation if importation is not None and importation.pk is not None else None
     for entry in resolution.to_create:
         space = Space.objects.register(
@@ -398,6 +411,7 @@ def apply(resolution, importation=None):
             applied.spaces[entry.key] = applied.spaces[entry.target_key]
             continue
         entry.target.add_name(entry.name, metadata=metadata_of(entry, importation))
+        applied.altered.add(entry.target.pk)
         applied.spaces[entry.key] = entry.target
     for entry in entries:
         if entry.outcome in (RECOGNIZED, REACTIVATE):

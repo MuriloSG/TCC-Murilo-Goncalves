@@ -844,8 +844,18 @@ def teacher_names(teachers):
 
 
 class AllocationManager(models.Manager):
-    def apply(self, semester, class_group, subject, weekday, time_slot, space=None, teachers=()):
+    def apply(self, semester, class_group, subject, weekday, time_slot, space=None, teachers=(), versions=None):
         """Cria a alocação ou atualiza o espaço e os docentes da que já existe.
+
+        `versions` são as alocações desta identidade já lidas por quem chama, na ordem de
+        `valid_from, pk` e com o espaço e os docentes carregados, como a importação as lê na
+        trava do semestre; sem elas, a identidade é consultada aqui. Na criação, a existência
+        das chaves estrangeiras e a unicidade da identidade não são consultadas de novo: os
+        registros vieram do banco na transação de quem chama, e a identidade acabou de ser
+        procurada sob a trava das alocações do semestre. As validações dos campos e o
+        `clean()` continuam. Só a gravação abre transação: a leitura e o `unchanged` não
+        abrem savepoint, e a atualização tem a transação própria de `update_details` (D3 e
+        D4 da Change otimizar-consultas-do-sistema).
 
         Devolve a alocação, a ação (`create`, `update` ou `unchanged`) e as mudanças, com o
         valor anterior e o novo de cada campo alterado, em valores canônicos. Nada é
@@ -858,7 +868,7 @@ class AllocationManager(models.Manager):
         """
         teachers = list(teachers)
         names = teacher_names(teachers)
-        with transaction.atomic():
+        if versions is None:
             versions = list(self.filter(
                 semester=semester,
                 class_group=class_group,
@@ -866,29 +876,31 @@ class AllocationManager(models.Manager):
                 weekday=weekday,
                 time_slot=time_slot,
             ).order_by('valid_from', 'pk'))
-            versioned = next((version for version in versions if version.is_versioned), None)
-            if versioned is not None:
-                return versioned, 'unchanged', {}
-            existing = versions[0] if versions else None
-            if existing is None:
-                allocation = self.model(
-                    semester=semester,
-                    class_group=class_group,
-                    subject=subject,
-                    weekday=weekday,
-                    time_slot=time_slot,
-                    space=space,
-                    origin=Origin.IMPORTED,
-                )
-                allocation.full_clean(exclude=['space'])
-                allocation.save()
-                allocation.teachers.set(teachers)
-                changes = {
-                    'space': [None, space.name if space else None],
-                    'teachers': [None, names],
-                }
-                return allocation, 'create', changes
-            return existing, *existing.update_details(space, teachers)
+        versioned = next((version for version in versions if version.is_versioned), None)
+        if versioned is not None:
+            return versioned, 'unchanged', {}
+        if versions:
+            return versions[0], *versions[0].update_details(space, teachers)
+        with transaction.atomic():
+            allocation = self.model(
+                semester=semester,
+                class_group=class_group,
+                subject=subject,
+                weekday=weekday,
+                time_slot=time_slot,
+                space=space,
+                origin=Origin.IMPORTED,
+            )
+            allocation.full_clean(
+                exclude=['space', 'semester', 'class_group', 'subject', 'time_slot'], validate_constraints=False,
+            )
+            allocation.save()
+            allocation.teachers.add(*teachers)
+        changes = {
+            'space': [None, space.name if space else None],
+            'teachers': [None, names],
+        }
+        return allocation, 'create', changes
 
     def active_on(self, day):
         """Alocações que ocorrem na data: o dia da semana dela, o período do semestre, a
@@ -1793,6 +1805,33 @@ class ClassOfferingManager(models.Manager):
             offering.sync_assignments()
             return offering
 
+    def record_many(self, semester, pairs):
+        """`record` de vários pares de disciplina e turma do semestre, com poucas consultas em conjunto.
+
+        Recebe as chaves da disciplina e da turma de cada par. O resultado de cada oferta é o de
+        `record`: a oferta que falta é criada e os vínculos dela são sincronizados com as
+        alocações atuais (D5 da Change otimizar-consultas-do-sistema).
+        """
+        pairs = set(pairs)
+        if not pairs:
+            return []
+        with transaction.atomic():
+            self.bulk_create(
+                [self.model(semester=semester, subject_id=subject, class_group_id=group) for subject, group in pairs],
+                ignore_conflicts=True,
+            )
+            offerings = [
+                offering
+                for offering in self.filter(
+                    semester=semester,
+                    subject_id__in={subject for subject, _ in pairs},
+                    class_group_id__in={group for _, group in pairs},
+                )
+                if (offering.subject_id, offering.class_group_id) in pairs
+            ]
+            sync_offerings(semester.pk, offerings)
+            return offerings
+
 
 class ClassOffering(models.Model):
     """Oferta de uma disciplina para uma turma num semestre (D2).
@@ -1843,15 +1882,43 @@ class ClassOffering(models.Model):
         Cria o vínculo que falta e nunca exclui nenhum: o docente que saiu das alocações
         atuais fica registrado com `is_current=False` e volta a `True` se reaparecer.
         """
-        present = set(
-            self.current_allocations().filter(teachers__isnull=False).values_list('teachers', flat=True),
-        )
-        TeachingAssignment.objects.bulk_create(
-            [TeachingAssignment(offering=self, teacher_id=teacher, is_current=True) for teacher in present],
-            ignore_conflicts=True,
-        )
-        self.assignments.filter(teacher__in=present, is_current=False).update(is_current=True)
-        self.assignments.exclude(teacher__in=present).filter(is_current=True).update(is_current=False)
+        sync_offerings(self.semester_id, [self])
+
+
+def sync_offerings(semester_id, offerings):
+    """Sincroniza os vínculos de docente de várias ofertas do mesmo semestre em conjunto.
+
+    Os docentes atuais de cada oferta são os das alocações atuais da mesma tripla, sem fim de
+    vigência, como em `ClassOffering.current_allocations`.
+    """
+    by_pair = {(offering.subject_id, offering.class_group_id): offering.pk for offering in offerings}
+    if not by_pair:
+        return
+    present = {
+        (by_pair[(subject, group)], teacher)
+        for subject, group, teacher in Allocation.objects.filter(
+            semester=semester_id,
+            subject_id__in={subject for subject, _ in by_pair},
+            class_group_id__in={group for _, group in by_pair},
+            valid_until__isnull=True,
+            teachers__isnull=False,
+        ).values_list('subject_id', 'class_group_id', 'teachers')
+        if (subject, group) in by_pair
+    }
+    TeachingAssignment.objects.bulk_create(
+        [TeachingAssignment(offering_id=offering, teacher_id=teacher, is_current=True) for offering, teacher in present],
+        ignore_conflicts=True,
+    )
+    current, former = [], []
+    for pk, offering, teacher, is_current in TeachingAssignment.objects.filter(
+        offering__in=by_pair.values(),
+    ).values_list('pk', 'offering_id', 'teacher_id', 'is_current'):
+        if ((offering, teacher) in present) != is_current:
+            (current if not is_current else former).append(pk)
+    if current:
+        TeachingAssignment.objects.filter(pk__in=current).update(is_current=True)
+    if former:
+        TeachingAssignment.objects.filter(pk__in=former).update(is_current=False)
 
 
 class TeachingAssignmentQuerySet(models.QuerySet):

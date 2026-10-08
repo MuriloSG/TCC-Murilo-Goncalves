@@ -139,6 +139,15 @@ class ImportDefinition:
         """Valor de um campo próprio como aparece no resumo; o gravado nas linhas não muda."""
         return value
 
+    def finish(self, executor):
+        """Etapa final, depois de todas as linhas e antes das verificações do arquivo.
+
+        Roda na mesma transação e com a mesma importação em curso que as linhas, e só deve
+        considerar o que as linhas mantidas fizeram: a prévia a desfaz junto com elas, e a
+        confirmação a grava junto com elas (Change otimizar-consultas-do-sistema). Um erro
+        do banco aqui não é erro de uma linha, e sobe como erro inesperado da execução.
+        """
+
     def check_file(self, executor):
         """Verificações do arquivo inteiro, depois de todas as linhas. Devolve RowError sem coluna."""
         return []

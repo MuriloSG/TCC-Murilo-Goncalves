@@ -145,6 +145,15 @@ class RunState:
 
     `user_duplicates` guarda, pela célula de origem, os erros de e-mail ou de nome de usuário
     repetido na aba de usuários (D8 da Change importar-usuarios-com-o-ensalamento).
+
+    `records` guarda os cursos, turmas, disciplinas, faixas e docentes já resolvidos, pela
+    grafia exata da busca, para que a mesma grafia não volte ao banco na mesma execução;
+    `users` guarda os usuários da aba lidos na trava, pelo e-mail gravado; `allocations`
+    guarda as alocações do semestre lidas na trava, pela identidade; e
+    `offerings` os pares de disciplina e turma das linhas mantidas, sincronizados em
+    `finish()`. O que uma linha acrescenta a eles fica em `row` e só passa a valer quando a
+    linha é mantida: o registro criado por uma linha desfeita deixa de existir no banco
+    (D1, D2, D3 e D5 da Change otimizar-consultas-do-sistema).
     """
 
     def __init__(self, importation=None):
@@ -157,6 +166,50 @@ class RunState:
         self.applied = None
         self.reported = set()
         self.user_duplicates = {}
+        self.records = {}
+        self.users = {}
+        self.allocations = {}
+        self.offerings = set()
+        self.row = RowMemory()
+
+    def remembered(self, key, find):
+        """Registro da grafia, buscado no banco só na primeira vez; `find` devolve o registro e se o criou."""
+        if key in self.records:
+            return self.records[key]
+        if key in self.row.records:
+            return self.row.records[key]
+        record, created = find()
+        (self.row.records if created else self.records)[key] = record
+        return record
+
+    def versions(self, identity):
+        return self.allocations.get(identity, []) + self.row.allocations.get(identity, [])
+
+    def keep_row(self):
+        """Incorpora o que a linha mantida acrescentou."""
+        self.records |= self.row.records
+        for identity, items in self.row.allocations.items():
+            self.allocations.setdefault(identity, []).extend(items)
+        self.offerings |= self.row.offerings
+        self.row = RowMemory()
+
+
+class RowMemory:
+    """O que a linha em execução acrescentou à memória da execução, ainda provisório."""
+
+    def __init__(self):
+        self.records = {}
+        self.allocations = {}
+        self.offerings = set()
+
+
+def identity_of(allocation):
+    return (allocation.class_group_id, allocation.subject_id, allocation.weekday, allocation.time_slot_id)
+
+
+def version_order(allocation):
+    """Ordem de `valid_from, pk` do banco, com a vigência vazia por último."""
+    return (allocation.valid_from is None, allocation.valid_from or date.min, allocation.pk)
 
 
 def semester_field():
@@ -464,15 +517,32 @@ class SpaceAllocationImport(ImportDefinition):
         state.duplicates = repeated_activities(rows, state.catalog)
         state.user_duplicates = repeated_users(rows)
         self.lock_users(rows)
-        list(
+        self.lock_allocations(state)
+
+    def lock_allocations(self, state):
+        """Trava as alocações do semestre e as guarda pela identidade, com o espaço e os docentes.
+
+        A trava continua só nas linhas de alocação: o espaço e os docentes vêm de consultas
+        próprias do `prefetch_related`, sem `FOR UPDATE` (D3).
+        """
+        allocations = (
             Allocation.objects.filter(semester=state.semester)
             .order_by('pk')
             .select_for_update()
-            .values_list('pk', flat=True)
+            .prefetch_related('space', 'teachers')
         )
+        for allocation in allocations:
+            allocation.semester = state.semester
+            state.allocations.setdefault(identity_of(allocation), []).append(allocation)
+        for versions in state.allocations.values():
+            versions.sort(key=version_order)
 
     def lock_users(self, rows):
-        """Trava os usuários com os e-mails da aba, e nada consulta quando ela não existe (D12)."""
+        """Trava os usuários com os e-mails da aba, e nada consulta quando ela não existe (D12).
+
+        Os usuários travados ficam na execução pelo e-mail gravado, com o perfil, e a trava
+        continua só nas linhas de usuário (A8 da Change otimizar-consultas-do-sistema).
+        """
         emails = [
             User.objects.normalize_email(row.values.get(USER_EMAIL_COLUMN))
             for row in rows
@@ -480,7 +550,8 @@ class SpaceAllocationImport(ImportDefinition):
         ]
         if not emails:
             return
-        list(User.objects.filter(email__in=emails).order_by('pk').select_for_update().values_list('pk', flat=True))
+        users = User.objects.filter(email__in=emails).order_by('pk').select_for_update().prefetch_related('roles')
+        RUN.get().users = {user.email: user for user in users}
 
     def apply_period(self, semester, rows):
         """Aplica ao semestre o período gravado nas linhas, e guarda a mudança para a auditoria.
@@ -504,6 +575,19 @@ class SpaceAllocationImport(ImportDefinition):
         return name
 
     def execute_row(self, values, executor):
+        """Executa a linha e incorpora à memória da execução o que ela acrescentou, se for mantida.
+
+        O motor desfaz a linha com erro ou pendência; a linha que lança exceção também é desfeita,
+        e o que ela acrescentou é descartado quando a próxima começa.
+        """
+        state = RUN.get()
+        state.row = RowMemory()
+        plan = self.plan_row(values, executor)
+        if not plan.errors and not plan.pending:
+            state.keep_row()
+        return plan
+
+    def plan_row(self, values, executor):
         row_kind = values.get(KIND_COLUMN)
         if row_kind == USER_KIND:
             return self.execute_user(values, executor)
@@ -528,7 +612,7 @@ class SpaceAllocationImport(ImportDefinition):
         if errors:
             return RowPlan(errors=errors)
         cleaned, errors = USERS.clean_values(values)
-        user = User.objects.filter(email__iexact=cleaned['email']).first()
+        user = RUN.get().users.get(cleaned['email']) or User.objects.filter(email__iexact=cleaned['email']).first()
         if user is None:
             return USERS.create(cleaned, errors, executor)
         if errors:
@@ -536,9 +620,13 @@ class SpaceAllocationImport(ImportDefinition):
         return RowPlan(action='unchanged', target=user.pk, warnings=self.user_warnings(user, cleaned))
 
     def user_warnings(self, user, cleaned):
-        """Avisos do usuário existente: outros dados no cadastro e situação inativa (D7)."""
+        """Avisos do usuário existente: outros dados no cadastro e situação inativa (D7).
+
+        O perfil é lido dos perfis carregados com o usuário, sem nova consulta: o usuário tem um
+        perfil só, pela restrição `user_role_one_per_user`.
+        """
         warnings = []
-        role = user.role
+        role = next(iter(user.roles.all()), None)
         differs = (
             cleaned.get('name') != user.name
             or cleaned['username'] != user.username
@@ -579,7 +667,13 @@ class SpaceAllocationImport(ImportDefinition):
         return RowPlan(action='unchanged', target=space.pk)
 
     def space_changes(self, space, applied):
-        """Outros nomes e situação do espaço existente antes e depois desta execução."""
+        """Outros nomes e situação do espaço existente antes e depois desta execução.
+
+        O espaço que a execução não alterou não tem mudança, e não é lido de novo (A7 da
+        Change otimizar-consultas-do-sistema).
+        """
+        if space.pk not in applied.altered:
+            return {}
         previous_names, was_active = applied.previous_names.get(space.pk, (space.other_names, space.is_active))
         space.refresh_from_db()
         changes = {}
@@ -628,12 +722,18 @@ class SpaceAllocationImport(ImportDefinition):
             plan.errors.append(duplicate_error(state.duplicates[identity]))
             return plan
         try:
-            course, _ = Course.objects.resolve(course_name, stage=STAGES[sheet_of(values)])
-            group, _ = ClassGroup.objects.resolve(course, label)
-            subject, _ = Subject.objects.resolve(activity.subject_name)
-            slot, _ = TimeSlot.objects.resolve(state.semester, *slot_times)
+            course = state.remembered(
+                (Course, course_name), lambda: Course.objects.resolve(course_name, stage=STAGES[sheet_of(values)]),
+            )
+            group = state.remembered((ClassGroup, course.pk, label), lambda: ClassGroup.objects.resolve(course, label))
+            subject = state.remembered((Subject, activity.subject_name), lambda: Subject.objects.resolve(activity.subject_name))
+            slot = state.remembered((TimeSlot, slot_times), lambda: TimeSlot.objects.resolve(state.semester, *slot_times))
             space = state.applied.spaces.get(space_key) if entry is not None else None
-            teachers = [Teacher.objects.get(name__iexact=name) for name in activity.teacher_names]
+            teachers = [
+                state.remembered((Teacher, name), lambda name=name: (Teacher.objects.get(name__iexact=name), False))
+                for name in activity.teacher_names
+            ]
+            identity = (group.pk, subject.pk, weekday, slot.pk)
             allocation, action, changes = Allocation.objects.apply(
                 semester=state.semester,
                 class_group=group,
@@ -642,11 +742,14 @@ class SpaceAllocationImport(ImportDefinition):
                 time_slot=slot,
                 space=space,
                 teachers=teachers,
+                versions=state.versions(identity),
             )
-            ClassOffering.objects.record(state.semester, subject, group)
         except ValidationError as error:
             plan.errors = errors_from_validation(error, self.columns_by_field)
             return plan
+        if action == 'create':
+            state.row.allocations[identity] = [allocation]
+        state.row.offerings.add((subject.pk, group.pk))
         plan.action = action
         plan.changes = changes | self.new_space_change(entry, space)
         if allocation.is_versioned:
@@ -658,6 +761,11 @@ class SpaceAllocationImport(ImportDefinition):
         else:
             plan.target = None if key in state.created else allocation.pk
         return plan
+
+    def finish(self, executor):
+        """Sincroniza uma vez as ofertas e os vínculos de docente das linhas mantidas (D5)."""
+        state = RUN.get()
+        ClassOffering.objects.record_many(state.semester, state.offerings)
 
     def check_confirmation(self, importation, executor):
         """Permissões de espaço de quem confirma, pelo que a confirmação alterará no cadastro (D11)."""

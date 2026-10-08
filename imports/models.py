@@ -422,10 +422,12 @@ class Import(models.Model):
         rows, plan = self.execute_rows(definition, executor)
         if not plan.has_errors and plan.comparable() == self.comparable(rows):
             transaction.savepoint_commit(savepoint)
+            created = []
             for row, (_, row_plan) in zip(rows, plan.rows):
                 if row_plan.created is not None:
                     row.created_object = str(row_plan.created)
-                    row.save(update_fields=['created_object'])
+                    created.append(row)
+            ImportRow.objects.bulk_update(created, ['created_object'])
             self.status = self.Status.CONCLUDED
             self.resolved_by = executor
             self.resolved_at = timezone.now()

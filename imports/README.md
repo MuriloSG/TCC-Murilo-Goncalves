@@ -138,6 +138,7 @@ transação do worker, com a importação RECEBIDA travada
   savepoint do domínio
     trava o que a importação vai ler (definition.lock)
     para cada linha: savepoint próprio → definition.execute_row → plano da linha
+    etapa final (definition.finish)
     verificações do arquivo (definition.check_file)
   rollback do savepoint do domínio
   grava o plano nas ImportRow, a situação dada por ele e o fim da operação
@@ -145,6 +146,8 @@ commit
 ```
 
 As linhas rodam na ordem em que a leitura as entrega, e uma importação específica pode usar essa ordem para executar fases sem estado novo. O ensalamento executa primeiro os usuários da aba opcional `usuários - sistema`, depois os catálogos e por fim as atividades; sem a aba, não há linha de usuário e a execução começa pelos catálogos. Todas as fases ficam no mesmo savepoint, e por isso a prévia desfaz os usuários junto com o resto e a confirmação só os grava junto com o ensalamento (Change `importar-usuarios-com-o-ensalamento`).
+
+A etapa final (`finish`) é opcional e roda uma vez depois de todas as linhas, na mesma transação e com a mesma importação em curso. Ela só deve considerar o que as linhas mantidas fizeram, e por isso é desfeita na prévia e gravada na confirmação junto com elas. Um erro do banco nela não é erro de uma linha: ele sobe como erro inesperado da execução e segue as novas tentativas do worker. O ensalamento a usa para sincronizar uma vez as ofertas e os vínculos de docente das linhas mantidas, em vez de uma vez por linha. A importação específica pode guardar, durante uma execução, os registros que já leu ou criou, desde que a memória seja descartada no fim e que o que uma linha desfeita criou deixe de valer para as seguintes (Change `otimizar-consultas-do-sistema`).
 
 Na fonte de planilha em grade, a importação declara as abas obrigatórias (`sheets`), cuja ausência recusa o arquivo, e as opcionais (`optional_sheets`), cuja ausência não recusa nada e cuja leitura é feita pela própria importação.
 

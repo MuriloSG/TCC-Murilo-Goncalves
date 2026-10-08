@@ -98,7 +98,7 @@ def execute_row(definition, row, executor):
 
 
 def run(definition, rows, executor, importation=None):
-    """Trava, executa cada linha e as verificações do arquivo, e devolve o Plan.
+    """Trava, executa cada linha, a etapa final e as verificações do arquivo, e devolve o Plan.
 
     As linhas rodam com a origem de importação na auditoria: o responsável continua
     sendo o executor, e os registros das operações de domínio mostram que vieram de
@@ -108,5 +108,6 @@ def run(definition, rows, executor, importation=None):
     with definition.execution(importation), acting_from_import(executor):
         definition.lock(rows, executor)
         plan = Plan(rows=[(row, execute_row(definition, row, executor)) for row in rows])
+        definition.finish(executor)
         plan.file_errors = list(definition.check_file(executor))
     return plan

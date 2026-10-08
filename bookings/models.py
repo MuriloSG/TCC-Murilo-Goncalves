@@ -43,6 +43,7 @@ STUDENT_COUNT_RANGE_MESSAGE = f'Informe uma quantidade de alunos entre 1 e {STUD
 REASON_REQUIRED_MESSAGE = 'Informe o motivo da rejeição.'
 END_BEFORE_START_MESSAGE = 'O fim deve ser posterior ao início.'
 PAST_MESSAGE = 'Este horário já passou. Escolha um horário futuro.'
+WEEKEND_MESSAGE = 'Agendamentos só podem ser feitos de segunda a sexta. Escolha outra data.'
 SAME_SUGGESTION_MESSAGE = 'A alternativa deve mudar o espaço, a data ou o horário da solicitação.'
 OWNER_ONLY_MESSAGE = 'Só quem solicitou pode responder à alternativa.'
 PERMISSION_MESSAGE = 'Sem permissão para esta ação na Agenda.'
@@ -189,6 +190,16 @@ def check_period(semester, day):
         )})
 
 
+def check_weekday(day, field='date'):
+    """Recusa sábado e domingo: a Agenda só aceita datas de segunda a sexta.
+
+    Vale para a data pedida e para a sugerida. A aprovação e o aceite de uma
+    alternativa não conferem de novo, para não travar solicitações anteriores à regra.
+    """
+    if day is not None and day.weekday() >= 5:
+        raise ValidationError({field: ValidationError(WEEKEND_MESSAGE, code='weekend')})
+
+
 class BookingRequestManager(models.Manager):
     def prepare(
         self, user, space, day, start, end, description, student_count=None, semester=None, assignment=None,
@@ -196,7 +207,7 @@ class BookingRequestManager(models.Manager):
     ):
         """Confere a solicitação e a devolve sem gravar.
 
-        Confere a permissão, a cadeia do vínculo, o período do semestre, os campos, o espaço,
+        Confere a permissão, a cadeia do vínculo, o período do semestre, o dia útil, os campos, o espaço,
         o horário e os conflitos, nesta ordem. É a mesma conferência do envio, usada para a
         revisão mostrada antes da confirmação. O ID da turma vale só como vínculo atual do
         docente que é o solicitante, no semestre.
@@ -210,6 +221,7 @@ class BookingRequestManager(models.Manager):
         require(user, permissions.BOOKING_CREATE if on_behalf else permissions.BOOKING_REQUEST)
         check_assignment(requester, semester, assignment, course, subject, on_behalf=on_behalf)
         check_period(semester, day)
+        check_weekday(day)
         request = self.model(
             requested_by=requester, created_by=user if on_behalf else None, space=space, date=day,
             start_time=start, end_time=end, description=(description or '').strip(), student_count=student_count,
@@ -433,6 +445,7 @@ class BookingRequest(models.Model):
                 raise InvalidTransition(current.status)
             if (space.pk, day, start, end) == (current.space_id, current.date, current.start_time, current.end_time):
                 raise ValidationError(SAME_SUGGESTION_MESSAGE, code='same')
+            check_weekday(day, field='suggested_date')
             check_slot(space, day, start, end, prefix='suggested_')
             previous = current.status
             current.status = self.Status.SUGGESTED

@@ -109,6 +109,20 @@ class CreateTests(RequestScreenTestCase):
         self.assertContains(response, 'Este espaço está ocupado pelo ensalamento das 14:10 às 15:00. Escolha outro horário.')
         self.assertFalse(BookingRequest.objects.exists())
 
+    def test_weekend_is_refused_by_the_server(self):
+        self.client.force_login(self.ana)
+        for day in ('2026-10-17', '2026-10-18'):
+            with self.subTest(day=day):
+                response = self.client.post(CREATE, self.data(date=day))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'Agendamentos só podem ser feitos de segunda a sexta. Escolha outra data.')
+        self.assertFalse(BookingRequest.objects.exists())
+
+    def test_date_field_asks_the_calendar_for_weekdays_only(self):
+        self.client.force_login(self.ana)
+        content = self.client.get(CREATE, {'data': '2026-10-15'}, headers={'HX-Request': 'true'}).content.decode()
+        self.assertRegex(content, r'<input type="date" name="date"[^>]*data-weekdays-only')
+
     def test_forged_inactive_space(self):
         self.other_lab.deactivate()
         self.client.force_login(self.ana)

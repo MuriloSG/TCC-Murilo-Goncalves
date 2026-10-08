@@ -20,6 +20,7 @@ from accounts import permissions
 from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
+from bookings.models import Booking, BookingRequest
 from imports.forms import ImportUploadForm
 from imports.models import Import
 from imports.tests.worker import confirm, preview, refresh
@@ -33,6 +34,7 @@ from schedule.models import (
     Origin,
     Semester,
     Space,
+    SpaceName,
     Stage,
     Subject,
     Teacher,
@@ -455,6 +457,82 @@ class ReimportTests(ImportTestCase):
         self.assertIn(f'{UNDERGRADUATE_SHEET}!C3#1', errors[0][0]['message'])
         self.assertIn(f'{UNDERGRADUATE_SHEET}!C3#2', errors[0][0]['message'])
         self.assertEqual(Allocation.objects.count(), 0)
+
+
+class IdempotentReimportTests(ImportTestCase):
+    """Reimportar reaproveita os registros pela identidade e não regrava o que não mudou."""
+
+    MODELS = (Semester, Space, SpaceName, Teacher, Course, Subject, ClassGroup, TimeSlot, Allocation, ClassOffering, TeachingAssignment)
+
+    def snapshot(self):
+        """Linhas gravadas de cada modelo, com chaves e relacionamentos, e os docentes de cada aula."""
+        rows = {model.__name__: list(model.objects.order_by('pk').values()) for model in self.MODELS}
+        rows['Allocation.teachers'] = list(Allocation.teachers.through.objects.order_by('allocation_id', 'teacher_id').values_list('allocation_id', 'teacher_id'))
+        return rows
+
+    def changed(self):
+        return workbook_file(undergraduate={
+            ('SEGUNDA ', '07:20 - 08:10', 0): 'QUÍMICA ORGÂNICA (Elza/ Viviane) (2/6)',
+            ('SEGUNDA ', '08:10 - 09:00', 0): 'QUÍMICA ORGÂNICA (Elza) (1/13)',
+            ('SEGUNDA ', '09:20 - 10:10', 1): 'Cálculo III (Viviane) (2/6)',
+        })
+
+    def test_the_same_file_three_times_keeps_the_persisted_rows(self):
+        self.conclude()
+        first = self.snapshot()
+        self.assertEqual(len(first['Allocation']), 4)
+        for attempt in (2, 3):
+            with self.subTest(attempt=attempt):
+                summary = self.conclude().summary()
+                self.assertEqual((summary['create'], summary['update']), (0, 0))
+                self.assertEqual(self.snapshot(), first)
+
+    def test_changed_space_and_teachers_update_the_same_lesson(self):
+        self.conclude()
+        before = self.snapshot()
+        lesson = self.allocation()
+        importation = self.conclude(self.changed())
+        self.assertEqual((importation.summary()['create'], importation.summary()['update']), (0, 1))
+        after = self.snapshot()
+        updated = self.allocation()
+        self.assertEqual(updated.pk, lesson.pk)
+        self.assertEqual(updated.space.name, '2/6')
+        self.assertEqual(sorted(teacher.name for teacher in updated.teachers.all()), ['Elza', 'Viviane'])
+        expected = [
+            row | {'space_id': updated.space_id} if row['id'] == lesson.pk else row for row in before['Allocation']
+        ]
+        self.assertEqual(after['Allocation'], expected)
+        viviane = Teacher.objects.get(name='Viviane').pk
+        self.assertEqual(
+            sorted(after['Allocation.teachers']), sorted(before['Allocation.teachers'] + [(lesson.pk, viviane)]),
+        )
+        for model in self.MODELS:
+            if model not in (Allocation, ClassOffering, TeachingAssignment):
+                with self.subTest(model=model.__name__):
+                    self.assertEqual(after[model.__name__], before[model.__name__])
+        self.assertEqual(self.conclude(self.changed()).summary()['update'], 0)
+        self.assertEqual(self.snapshot(), after)
+
+    def test_approved_booking_is_untouched_by_the_reimport(self):
+        self.conclude()
+        monday = date(2026, 8, 10)
+        lesson = self.allocation()
+        owner = User.objects.create_superadmin('agenda@ifnmg.edu.br', 'Agenda', 'Senha-forte-123')
+        request = BookingRequest.objects.create(
+            requested_by=owner, space=lesson.space, date=monday, start_time=time(7, 30), end_time=time(8, 0),
+            description='Reunião aprovada antes da reimportação.', student_count=10,
+            status=BookingRequest.Status.APPROVED, decided_by=owner,
+        )
+        booking = Booking.objects.book(request, lesson.space, monday, time(7, 30), time(8, 0), owner)
+        requests = list(BookingRequest.objects.values())
+        bookings = list(Booking.objects.values())
+        for uploaded in (None, self.changed()):
+            self.conclude(uploaded)
+            with self.subTest(changed=uploaded is not None):
+                self.assertEqual(list(BookingRequest.objects.values()), requests)
+                self.assertEqual(list(Booking.objects.values()), bookings)
+        booking.refresh_from_db()
+        self.assertEqual((booking.request.status, booking.space_id), (BookingRequest.Status.APPROVED, lesson.space_id))
 
 
 class DivergenceTests(ImportTestCase):

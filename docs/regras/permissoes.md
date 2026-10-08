@@ -91,10 +91,11 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 | Relatórios | Mapa de calor | `RELATORIO.VISUALIZAR` e `ENSALAMENTO.VISUALIZAR` |
 | | Solicitações | `RELATORIO.VISUALIZAR` e `AGENDA.ANALISAR` |
 | | Notificações | `NOTIFICACAO.PUBLICAR` |
-| Administração | Usuários, Perfis e permissões, Auditoria | `USUARIO.VISUALIZAR`, `PERFIL.VISUALIZAR`, `AUDITORIA.VISUALIZAR` |
+| Administração | Usuários | `USUARIO.VISUALIZAR` ou, sem ela, `USUARIO.IMPORTAR` (abre as importações de usuários) |
+| | Perfis e permissões, Auditoria | `PERFIL.VISUALIZAR`, `AUDITORIA.VISUALIZAR` |
 | Configurações | E-mail | `CONFIGURACAO.EDITAR` |
 
-As importações de usuários não têm item no menu: abrem pelo botão "Importações" da lista de usuários, mostrado com `USUARIO.IMPORTAR`. Um perfil com `USUARIO.IMPORTAR` sem `USUARIO.VISUALIZAR` só chega a elas pela URL `/usuarios/importacoes/`.
+As importações de usuários abrem pelo botão "Importações" da lista de usuários, mostrado com `USUARIO.IMPORTAR`, ou pelo item Usuários do menu para quem tem `USUARIO.IMPORTAR` sem `USUARIO.VISUALIZAR`. O menu só indica o caminho: cada tela exige a própria permissão no servidor. `USUARIO.IMPORTAR` não libera a lista nem o cadastro de usuários, e excluir uma importação exige `USUARIO.EXCLUIR_IMPORTACAO`.
 
 ## Permissão nova
 

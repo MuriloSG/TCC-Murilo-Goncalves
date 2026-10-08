@@ -38,7 +38,8 @@
   State.prototype.inRange = function (day) {
     var min = parse(this.input.min);
     var max = parse(this.input.max);
-    return !(min && day < min) && !(max && day > max);
+    var weekend = "weekdaysOnly" in this.input.dataset && (day.getDay() === 0 || day.getDay() === 6);
+    return !weekend && !(min && day < min) && !(max && day > max);
   };
 
   State.prototype.render = function () {

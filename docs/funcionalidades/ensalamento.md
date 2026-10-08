@@ -90,6 +90,8 @@ Ordem das linhas: usuários da aba opcional, valores dos catálogos (salas e dep
 - Atividade: resolve curso, turma, disciplina, faixa e docentes pelo nome, criando o que falta, e chama `Allocation.objects.apply`, que cria a alocação ou atualiza espaço e docentes. Alocação com vigência definida (alterada no sistema) não é tocada, e a linha recebe aviso.
 - `finish()` registra as ofertas e sincroniza os vínculos de docente das linhas mantidas, uma vez.
 - Nada é excluído. Uma alocação que saiu da planilha continua no banco.
+- Reimportar é idempotente: cada item é procurado pela identidade (ver [regras de negócio](../regras/regras-de-negocio.md#importação-da-planilha)) e o registro existente é reaproveitado, com as mesmas chaves. A mesma planilha confirmada de novo não cria nem altera nenhuma linha; uma aula existente só muda de espaço ou de docentes quando a planilha traz outros.
+- A importação não confere conflito com agendamentos aprovados e não os altera nem cancela. O choque aparece no painel (ver [pendências](../pendencias.md)).
 - A auditoria registra o resumo da importação, não cada entidade. As alterações no cadastro de espaços têm registro próprio no módulo `ESPACO`.
 
 ### Espaços encontrados

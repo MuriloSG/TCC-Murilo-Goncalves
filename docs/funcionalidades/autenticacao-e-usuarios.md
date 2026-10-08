@@ -60,7 +60,7 @@ make manage cmd="set_superadmin maria@ifnmg.edu.br --revoke"
 
 ## Importação de usuários
 
-Rotas em `/usuarios/importacoes/`, acessadas pelo botão "Importações" da lista de usuários. O ciclo de vida é o do [motor de importação](../arquitetura/motor-de-importacao.md).
+Rotas em `/usuarios/importacoes/`, acessadas pelo botão "Importações" da lista de usuários ou, para quem tem `USUARIO.IMPORTAR` sem `USUARIO.VISUALIZAR`, pelo item Usuários do menu. O ciclo de vida é o do [motor de importação](../arquitetura/motor-de-importacao.md).
 
 | Ação | Permissão |
 |---|---|

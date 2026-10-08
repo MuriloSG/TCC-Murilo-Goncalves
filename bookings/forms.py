@@ -40,7 +40,7 @@ END_REQUIRED_MESSAGE = 'Informe o fim.'
 def date_field(label):
     return forms.DateField(
         label=label,
-        widget=DateInput(attrs={'class': 'input'}),
+        widget=DateInput(attrs={'class': 'input', 'data-weekdays-only': ''}),
         error_messages={'required': DATE_REQUIRED_MESSAGE, 'invalid': 'Informe a data no formato dd/mm/aaaa.'},
     )
 

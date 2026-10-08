@@ -65,6 +65,7 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 | Nada é excluído. Alocação que saiu da planilha continua | `AllocationManager.apply` |
 | A identidade da alocação é semestre, turma, dia, faixa e disciplina (mais o início da vigência). Duas alocações podem ter o mesmo espaço, dia e faixa: é aula compartilhada, não conflito | `allocation_unique` |
 | Alocação existente só tem espaço e docentes atualizados. Alocação alterada no sistema (com vigência) não é tocada pela planilha | `Allocation.update_details`, `AllocationManager.apply` |
+| Reimportação idempotente: cada item é procurado pela identidade e o registro existente é reaproveitado (aula pela identidade acima; curso, disciplina e docente pelo nome sem diferenciar maiúsculas; turma por curso e rótulo; faixa por semestre, início e fim; espaço por qualquer nome dele). Reimportar a mesma planilha não cria nem altera nada, e as chaves continuam as mesmas. Agendamentos aprovados não são alterados nem cancelados | `AllocationManager.apply`, `NamedManager.resolve`, `IdempotentReimportTests` |
 | A mesma alocação descrita em mais de uma célula é erro em todas as células | `repeated_activities` |
 | Docente fora da lista de `Validação de Dados` é erro da linha | `schedule/activities.py` |
 | A importação não detecta conflito de espaço nem de docente | `Allocation` (docstring) |
@@ -118,6 +119,7 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 | Só quem corresponde a um docente do ensalamento solicita, e só para turmas de vínculos atuais dele no semestre. A disciplina e o curso informados precisam ser os do vínculo | `check_assignment` |
 | Quem tem `AGENDA.CRIAR` cria em nome de outro usuário ativo, que também precisa ser docente com vínculo atual | `BookingRequestManager.prepare`, `teacher_users` |
 | O semestre precisa ter período, e a data, estar dentro dele | `bookings.models.check_period` |
+| Só de segunda a sexta: sábado e domingo são recusados na solicitação (própria ou em nome de outro) e na alternativa sugerida. O calendário do campo de data desabilita esses dias (`data-weekdays-only`), mas a regra vale no servidor sem JavaScript. A aprovação e o aceite da alternativa não conferem o dia, para não travar solicitações anteriores à regra | `bookings.models.check_weekday` |
 | Descrição obrigatória (até 500 caracteres). Quantidade de alunos obrigatória, de 1 a 999 | `BookingRequest` |
 | Fim depois do início; início no futuro; espaço ativo | `check_slot` |
 | Conflito: intervalo semiaberto `[início, fim)`. Há conflito com aula que ocorre na data (fora as canceladas) ou com agendamento aprovado. `14:00–15:00` não conflita com `15:00–16:00` | `bookings.occupancy.find_conflict` |
@@ -171,7 +173,6 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 |---|---|
 | Página com todas as notificações do usuário | Não implementada (tarefa 6.2 de `notificar-usuarios`). Só o sino, com as 10 mais recentes |
 | Recorrência de agendamento | Não existe. O agendamento é numa data só |
-| Agendamento aos sábados e domingos | Nenhuma regra recusa a data. A solicitação aceita sábado e domingo digitados no campo de data, mas a Grade, a Agenda e o calendário público só mostram de segunda a sexta. Decisão pendente: ver [pendências](../pendencias.md) |
 | Capacidade do espaço e conferência da quantidade de alunos | Não existe. A quantidade é só informativa |
 | Rate limit das rotas públicas | Fora da aplicação; o proxy de produção não está no repositório |
 | Notificação por e-mail | Não existe |

@@ -11,7 +11,7 @@ make manage cmd="test bookings.tests.test_models.SubmitTests.test_past_start_is_
 
 Sem `make`: `docker compose run --rm web python manage.py test`.
 
-Situação em 08/10/2026: 1620 testes, todos passando, em cerca de 85 segundos. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
+Situação em 08/10/2026: 1639 testes, todos passando, em cerca de 92 segundos. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
 
 A convenção do projeto é rodar a suíte inteira antes de cada commit. Não há CI no repositório.
 

@@ -20,7 +20,8 @@ class DateInput(forms.DateInput):
 
     O input nativo do tipo date continua sendo o campo enviado, no formato
     aaaa-mm-dd, e sem JavaScript é ele que aparece. O calendário só preenche o
-    input e dispara os eventos input e change.
+    input e dispara os eventos input e change. Com o atributo data-weekdays-only,
+    o calendário também desabilita sábado e domingo.
     """
 
     input_type = 'date'

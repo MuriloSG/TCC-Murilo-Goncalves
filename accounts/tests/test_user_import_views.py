@@ -66,6 +66,41 @@ class AccessTests(ImportViewsTestCase):
             with self.subTest(route):
                 self.assertEqual(client.get(routes[route][0]).status_code, 200)
 
+    def test_direct_access_follows_each_permission(self):
+        discarded = self.preview('bia@ifnmg.edu.br;Bia;DOCENTE')
+        discarded.discard(UserImport(), self.admin)
+        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE').pk
+        screens = (
+            '/usuarios/importacoes/', '/usuarios/importacoes/nova/', '/usuarios/importacoes/modelo/',
+            f'/usuarios/importacoes/{importation}/', f'/usuarios/importacoes/{importation}/descartar/',
+        )
+        cases = (
+            ('so_importa', (permissions.USER_IMPORT,), 403, 200),
+            ('so_visualiza', (permissions.USER_VIEW,), 200, 403),
+            ('ambas', (permissions.USER_VIEW, permissions.USER_IMPORT), 200, 200),
+            ('nenhuma', (permissions.PANEL_VIEW,), 403, 403),
+        )
+        for name, codes, user_list, imports in cases:
+            client = Client()
+            client.force_login(self.user_with(*codes, email=f'{name}@ifnmg.edu.br'))
+            with self.subTest(name, url='/usuarios/'):
+                self.assertEqual(client.get('/usuarios/').status_code, user_list)
+            for url in screens:
+                with self.subTest(name, url=url):
+                    self.assertEqual(client.get(url).status_code, imports)
+            for url in ('/usuarios/novo/', f'/usuarios/importacoes/{discarded.pk}/excluir/'):
+                with self.subTest(name, url=url):
+                    self.assertEqual(client.post(url).status_code, 403)
+        self.assertTrue(Import.objects.filter(pk=discarded.pk).exists())
+
+    def test_deleting_an_import_needs_its_own_permission(self):
+        discarded = self.preview('bia@ifnmg.edu.br;Bia;DOCENTE')
+        discarded.discard(UserImport(), self.admin)
+        client = Client()
+        client.force_login(self.user_with(permissions.USER_IMPORT, permissions.USER_IMPORT_DELETE))
+        self.assertNotEqual(client.post(f'/usuarios/importacoes/{discarded.pk}/excluir/').status_code, 403)
+        self.assertFalse(Import.objects.filter(pk=discarded.pk).exists())
+
     def test_import_of_another_kind_gives_404(self):
         other = Import.objects.create(kind='GRUPO', status='VALIDADA', file_name='grupos.csv', created_by=self.admin)
         for suffix in ('', 'confirmar/', 'descartar/'):

@@ -244,6 +244,11 @@ class ChainSecurityTests(OnBehalfTestCase):
     def post(self, **values):
         return self.client.post(CREATE, self.data(confirmar='1', **values))
 
+    def test_weekend_is_refused_by_the_server(self):
+        response = self.post(date='2026-10-17')
+        self.assertContains(response, 'Agendamentos só podem ser feitos de segunda a sexta. Escolha outra data.')
+        self.assertFalse(BookingRequest.objects.exists())
+
     def test_course_of_another_user(self):
         response = self.post(requested_for=self.erica.pk, course=self.agriculture.pk,
                              subject=self.redes.pk, teaching_assignment=self.erica_networks.pk)

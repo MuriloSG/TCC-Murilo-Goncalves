@@ -59,8 +59,36 @@ class GroupVisibilityTests(NavigationTestCase):
                 self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_acao_sem_visualizar_nao_mostra_o_item(self):
-        _, menu, _ = self.menu(self.user_with(permissions.SPACE_CREATE, permissions.USER_IMPORT, permissions.PANEL_VIEW), '/inicio/')
+        _, menu, _ = self.menu(self.user_with(permissions.SPACE_CREATE, permissions.SUBJECT_CREATE, permissions.PANEL_VIEW), '/inicio/')
         self.assertEqual(list(menu), ['Painel'])
+
+
+class UserImportEntryTests(NavigationTestCase):
+    def test_usuarios_leva_a_tela_permitida(self):
+        cases = (
+            ((permissions.USER_IMPORT,), '/usuarios/importacoes/'),
+            ((permissions.USER_VIEW,), '/usuarios/'),
+            ((permissions.USER_VIEW, permissions.USER_IMPORT), '/usuarios/'),
+        )
+        for codes, target in cases:
+            with self.subTest(codes=codes):
+                response, menu, items = self.menu(self.user_with(*codes), target)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(menu, {'Administração': ['Usuários']})
+                self.assertEqual(items[0]['children'][0]['url'], target)
+
+    def test_sem_as_permissoes_nao_ha_item_de_usuarios(self):
+        _, menu, _ = self.menu(self.user_with(permissions.PANEL_VIEW, permissions.USER_IMPORT_DELETE), '/inicio/')
+        self.assertEqual(list(menu), ['Painel'])
+
+    def test_importacoes_marcam_o_item_usuarios(self):
+        _, _, items = self.menu(self.user_with(permissions.USER_IMPORT), '/usuarios/importacoes/')
+        self.assertTrue(items[0]['current'])
+        self.assertEqual([child['label'] for child in items[0]['children'] if child['current']], ['Usuários'])
+
+    def test_inicio_abre_as_importacoes_para_quem_so_importa(self):
+        self.client.force_login(self.user_with(permissions.USER_IMPORT))
+        self.assertRedirects(self.client.get(reverse('home')), '/usuarios/importacoes/', fetch_redirect_response=False)
 
 
 class CurrentItemTests(NavigationTestCase):

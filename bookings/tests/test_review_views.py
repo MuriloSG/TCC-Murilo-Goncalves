@@ -156,6 +156,12 @@ class DecisionTests(ReviewTestCase):
         self.request.refresh_from_db()
         self.assertEqual(self.request.status, Status.PENDING)
 
+    def test_suggest_a_weekend_date(self):
+        response = self.client.post(url('agenda_review_suggest', self.request), self.suggestion(suggested_date='2026-10-17'))
+        self.assertContains(response, 'Agendamentos só podem ser feitos de segunda a sexta. Escolha outra data.')
+        self.request.refresh_from_db()
+        self.assertEqual(self.request.status, Status.PENDING)
+
     def test_invalid_transition_by_the_screen(self):
         self.request.reject(self.reviewer, 'Motivo.')
         response = self.client.post(url('agenda_review_approve', self.request), follow=True)

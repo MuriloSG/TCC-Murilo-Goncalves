@@ -36,11 +36,11 @@ O ensalamento não é alterado pela Agenda. São três conceitos em tabelas sepa
 
 ## Fluxo
 
-1. **Solicitar** (`BookingRequest.objects.prepare` e `submit`): o formulário escolhe a disciplina e a turma entre os vínculos atuais do docente no semestre da data. O primeiro envio mostra a revisão sem gravar; a confirmação grava a solicitação `PENDENTE` e notifica quem analisa. Nenhum horário é reservado nesse momento.
+1. **Solicitar** (`BookingRequest.objects.prepare` e `submit`): o formulário escolhe a disciplina e a turma entre os vínculos atuais do docente no semestre da data. A data precisa ser de segunda a sexta (`check_weekday`); o calendário do campo já desabilita sábado e domingo. O primeiro envio mostra a revisão sem gravar; a confirmação grava a solicitação `PENDENTE` e notifica quem analisa. Nenhum horário é reservado nesse momento.
 2. **Analisar**: quem tem `AGENDA.ANALISAR`
    - aprova (`approve`): confere o conflito de novo, trava o espaço e cria o `Booking` com o horário original;
    - rejeita (`reject`): motivo obrigatório;
-   - sugere alternativa (`suggest`): outro espaço, data ou horário, disponível no momento, com mensagem opcional. A alternativa não reserva o horário.
+   - sugere alternativa (`suggest`): outro espaço, data (de segunda a sexta) ou horário, disponível no momento, com mensagem opcional. A alternativa não reserva o horário.
 3. **Responder à alternativa** (só quem solicitou): aceitar (`accept_suggestion`) confere a disponibilidade de novo e cria o `Booking` com os dados sugeridos; recusar (`decline_suggestion`) encerra sem agendamento.
 4. **Cancelar** (`cancel`): agendamento aprovado, até 1 hora antes do início, por quem solicitou ou por quem analisa. Motivo opcional. Exclui o `Booking`, o que libera o espaço em todas as leituras de ocupação.
 

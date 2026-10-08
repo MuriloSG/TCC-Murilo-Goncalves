@@ -70,7 +70,10 @@ MENU = (
     )),
     MenuItem('Notificações', 'bell', 'notice_', (('NOTIFICACAO.PUBLICAR', 'notice_list'),)),
     MenuGroup('Administração', 'lock', (
-        MenuItem('Usuários', 'users', 'user_', (('USUARIO.VISUALIZAR', 'user_list'),)),
+        MenuItem('Usuários', 'users', 'user_', (
+            ('USUARIO.VISUALIZAR', 'user_list'),
+            ('USUARIO.IMPORTAR', 'user_import_list'),
+        )),
         MenuItem('Perfis e permissões', 'shield-check', 'role_', (('PERFIL.VISUALIZAR', 'role_list'),)),
         MenuItem('Auditoria', 'scroll-text', 'audit_', (('AUDITORIA.VISUALIZAR', 'audit_log_list'),)),
     )),

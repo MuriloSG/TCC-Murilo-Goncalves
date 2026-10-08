@@ -10,7 +10,7 @@ from django.test import TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from bookings.models import CANCEL_DEADLINE_MESSAGE, Booking, BookingRequest, InvalidTransition, SlotUnavailable, moment
+from bookings.models import CANCEL_DEADLINE_MESSAGE, WEEKEND_MESSAGE, Booking, BookingRequest, InvalidTransition, SlotUnavailable, moment
 from bookings.occupancy import find_conflict
 from bookings.tests.base import FRIDAY, REQUESTER, REVIEWER, THURSDAY, frozen_clock, semester_with_lesson, space, submit, user_with
 from schedule.models import Allocation
@@ -110,6 +110,61 @@ class SubmitTests(BookingTestCase):
         with self.assert_refused():
             submit(viewer, self.lab)
         self.assertFalse(BookingRequest.objects.exists())
+
+
+class WeekendTests(BookingTestCase):
+    SATURDAY = date(2026, 10, 17)
+    SUNDAY = date(2026, 10, 18)
+
+    def test_saturday_and_sunday_are_refused(self):
+        for day in (self.SATURDAY, self.SUNDAY):
+            with self.subTest(day=day), self.assert_refused() as caught:
+                submit(self.ana, self.lab, day)
+            self.assertEqual(caught.exception.message_dict['date'], [WEEKEND_MESSAGE])
+        self.assertFalse(BookingRequest.objects.exists())
+
+    def test_every_weekday_is_accepted(self):
+        for offset in range(5):
+            day = date(2026, 10, 19 + offset)
+            with self.subTest(day=day):
+                self.assertEqual(submit(self.ana, self.lab, day).status, Status.PENDING)
+        self.assertEqual(BookingRequest.objects.count(), 5)
+
+    def test_weekend_outside_the_semester_reports_the_period_first(self):
+        with self.assert_refused() as caught:
+            submit(self.ana, self.lab, date(2027, 1, 9))
+        self.assertEqual(
+            caught.exception.message_dict['date'],
+            ['A data 09/01/2027 está fora do período do semestre 2026/2. Escolha outra data.'],
+        )
+
+    def test_weekend_suggestion_is_refused(self):
+        request = submit(self.ana, self.lab)
+        with self.assert_refused() as caught:
+            request.suggest(self.reviewer, self.other_lab, self.SATURDAY, time(14, 0), time(16, 0))
+        self.assertEqual(caught.exception.message_dict['suggested_date'], [WEEKEND_MESSAGE])
+        request.refresh_from_db()
+        self.assertEqual(request.status, Status.PENDING)
+
+    def test_request_from_before_the_rule_can_still_be_approved(self):
+        request = BookingRequest.objects.create(
+            requested_by=self.ana, space=self.lab, date=self.SATURDAY, start_time=time(8, 0), end_time=time(10, 0),
+            description='Solicitação anterior à regra.', student_count=30, status=Status.PENDING,
+        )
+        request.approve(self.reviewer)
+        self.assertEqual(request.status, Status.APPROVED)
+        self.assertEqual(timezone.localtime(request.booking.starts_at).date(), self.SATURDAY)
+
+    def test_suggestion_from_before_the_rule_can_still_be_accepted(self):
+        request = submit(self.ana, self.lab)
+        BookingRequest.objects.filter(pk=request.pk).update(
+            status=Status.SUGGESTED, suggested_space=self.other_lab, suggested_date=self.SUNDAY,
+            suggested_start_time=time(8, 0), suggested_end_time=time(10, 0), decided_by=self.reviewer,
+        )
+        request.refresh_from_db()
+        request.accept_suggestion(self.ana)
+        self.assertEqual(request.status, Status.APPROVED)
+        self.assertEqual(timezone.localtime(request.booking.starts_at).date(), self.SUNDAY)
 
 
 class ConflictTests(BookingTestCase):

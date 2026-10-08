@@ -1,15 +1,4 @@
-"""Entidades do ensalamento e as operações que a importação aciona.
-
-As regras de identificação, de deduplicação e de atualização são operações destes models
-e dos seus managers, conforme o P2 da Constitution: a importação específica só as chama e
-traduz as recusas em erros da linha.
-
-A identidade de uma alocação é semestre, turma, dia da semana, faixa de horário e
-disciplina, mais o início da vigência, que separa as versões de uma recorrência alterada
-(Change alterar-recorrencia-do-ensalamento). Não existe restrição sobre semestre, espaço,
-dia e faixa, porque a planilha institucional tem aulas compartilhadas por turmas diferentes
-na mesma sala e no mesmo horário (D8 da Change importar-ensalamento-da-planilha).
-"""
+"""Entidades do ensalamento; não há restrição de espaço e horário porque existem aulas compartilhadas."""
 
 from copy import copy
 from dataclasses import dataclass, field
@@ -65,14 +54,10 @@ def taken_message(verbose_name):
 
 
 class NamedManager(models.Manager):
-    """Manager dos registros identificados pelo nome, sem diferenciar maiúsculas de minúsculas."""
+    """Manager dos registros identificados pelo nome, sem diferenciar a caixa."""
 
     def resolve(self, name, **defaults):
-        """Devolve o registro deste nome, criando-o quando não existir.
-
-        A procura pela identidade antes de criar é o que impede a importação de duplicar
-        um registro, e a restrição de unicidade do banco é a garantia (D12).
-        """
+        """Devolve o registro deste nome, criando-o quando não existir."""
         normalized = normalize_name(name)
         if normalized is None:
             raise ValidationError({'name': ValidationError(NAME_REQUIRED_MESSAGE, code='required')})
@@ -87,12 +72,7 @@ class NamedManager(models.Manager):
 
 
 class NamedRecord(models.Model):
-    """Registro identificado pelo nome, gravado como informado e único sem diferenciar a caixa.
-
-    A unicidade é conferida no `clean()`, e não pelo `unique=True` do campo, porque o valor
-    é gravado como foi lido: sem baixar a caixa, a conferência do campo não alcançaria dois
-    valores que diferem só nela. A UniqueConstraint de cada model é a garantia do banco.
-    """
+    """A unicidade sem caixa é conferida no `clean()`, porque o nome é gravado como foi lido."""
 
     name = models.CharField('nome', max_length=200)
 
@@ -132,12 +112,7 @@ class SemesterManager(models.Manager):
             return semester, True
 
     def check_period(self, code, start_date, end_date):
-        """Confere as datas do período informadas no envio da importação do semestre (D3).
-
-        As duas datas vão juntas e seguem as regras do período. Em branco, só servem para
-        um semestre que já tem período, que é preservado; o semestre novo ou sem período
-        exige as duas. O fim nunca é inferido do código. Nada é gravado.
-        """
+        """Confere as datas do período do envio; em branco, só servem a semestre que já tem período."""
         existing = self.filter(code=(code or '').strip()).first()
         if start_date is None and end_date is None:
             if existing is None or not existing.has_period:
@@ -155,12 +130,7 @@ PERIOD_REQUIRED_MESSAGE = 'Informe o início e o fim do semestre, que ainda não
 
 
 class Semester(models.Model):
-    """Semestre letivo, recorte a que pertencem as faixas de horário e as alocações.
-
-    O período é opcional: a planilha não o traz, e sem ele a Grade mostra a semana típica.
-    Com ele, as alocações do semestre viram ocorrências datadas (D2 da Change
-    visualizar-ocupacao-por-semana-e-mes).
-    """
+    """Período opcional: sem ele, a Grade mostra a semana típica."""
 
     code = models.CharField(
         'código',
@@ -215,12 +185,7 @@ class Semester(models.Model):
             )
 
     def define_period(self, start_date, end_date):
-        """Grava o período do semestre e devolve se ele mudou (D2 e D3).
-
-        Quem chama é a importação, que registra o período no resumo auditado; por isso
-        esta operação não grava auditoria própria. A recusa não altera o semestre: os
-        valores só ficam no objeto depois de validados.
-        """
+        """Grava o período e devolve se mudou; a auditoria fica no resumo da importação."""
         with transaction.atomic():
             candidate = copy(self)
             candidate.start_date, candidate.end_date = start_date, end_date
@@ -257,11 +222,7 @@ class SpaceNameTaken(ValidationError):
 
 
 class SpaceWithBookings(ValidationError):
-    """Recusa da exclusão de um espaço citado por solicitações de agendamento da Agenda.
-
-    A solicitação e o agendamento protegem o espaço (D3 da Change
-    agendar-uso-eventual-dos-espacos); sem esta recusa, a exclusão falharia no banco.
-    """
+    """Recusa a exclusão de espaço com solicitações, que de outro modo falharia no banco."""
 
     def __init__(self, name):
         super().__init__(
@@ -308,12 +269,7 @@ class SpaceQuerySet(models.QuerySet):
 
 
 class SpaceManager(models.Manager.from_queryset(SpaceQuerySet)):
-    """Operações do cadastro de espaços (D2 e D3 da Change manipulacao-dos-espacos).
-
-    Cada operação que altera o cadastro grava o próprio registro de auditoria no módulo
-    `ESPACO`, na transação de quem chama. Chamada pela importação, ela roda com a origem de
-    importação, e `metadata` leva a chave da importação e quem decidiu.
-    """
+    """Operações do cadastro de espaços, cada uma com o próprio registro de auditoria no módulo `ESPACO`."""
 
     def named(self, name):
         """Espaço identificado pelo nome atual ou por um outro nome, sem diferenciar a caixa."""
@@ -375,14 +331,7 @@ def save_names(space, names):
 
 
 class Space(NamedRecord):
-    """Espaço físico do campus, com o nome atual, os outros nomes, a origem e a situação.
-
-    A origem e a importação de origem são definidas na criação e nunca mudam: `MANUAL` para
-    o cadastro pela tela e `PLANILHA` para o espaço criado pela confirmação de uma
-    importação. Todos os nomes que identificam o espaço, o atual inclusive, ficam em
-    `SpaceName`, cuja restrição garante que uma grafia identifique um espaço só (D2 e D3 da
-    Change manipulacao-dos-espacos).
-    """
+    """Origem fixa na criação; todos os nomes ficam em `SpaceName`, que garante uma grafia por espaço."""
 
     origin = models.CharField('origem', max_length=8, choices=SpaceOrigin.choices)
     source_import = models.ForeignKey(
@@ -415,11 +364,7 @@ class Space(NamedRecord):
         return type(self).objects.select_for_update().get(pk=self.pk)
 
     def update_details(self, name, other_names):
-        """Altera o nome e os outros nomes; o nome anterior passa a ser outro nome.
-
-        Um outro nome escolhido como nome novo deixa de ser outro nome. Origem, importação de
-        origem, situação e alocações não mudam.
-        """
+        """Altera os nomes; o nome anterior passa a ser outro nome."""
         current = normalize_name(name)
         if current is None:
             raise ValidationError({'name': ValidationError(NAME_REQUIRED_MESSAGE, code='required')})
@@ -484,7 +429,7 @@ class Space(NamedRecord):
         return not self.allocations.exists()
 
     def delete_space(self):
-        """Exclui o espaço sem aula, com os outros nomes e as decisões que o citam (D17)."""
+        """Exclui o espaço sem aula, com os outros nomes e as decisões que o citam."""
         with transaction.atomic():
             space = self.lock()
             if space.allocations.exists():
@@ -502,7 +447,7 @@ class Space(NamedRecord):
 
 
 class SpaceName(models.Model):
-    """Grafia que identifica um espaço: o nome atual ou um outro nome (D2)."""
+    """Grafia que identifica um espaço: o nome atual ou um outro nome."""
 
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name='names', verbose_name='espaço')
     name = models.CharField('nome', max_length=200)
@@ -522,14 +467,7 @@ class SpaceName(models.Model):
 
 
 class Teacher(NamedRecord):
-    """Docente do ensalamento, identificado pelo nome que a planilha usa.
-
-    O nome guarda o mesmo valor que o `User.username`, com a mesma normalização, e é isso
-    que torna possível a correspondência exata com um usuário, por `teacher_of`. Este model
-    não tem vínculo com `User` (D7). A importação só cadastra usuário a partir da aba opcional
-    de usuários, e o docente continua sem vínculo gravado com ele (Change
-    importar-usuarios-com-o-ensalamento).
-    """
+    """O nome tem o mesmo valor e normalização de `User.username`, sem vínculo gravado com o usuário."""
 
     class Meta(NamedRecord.Meta):
         verbose_name = 'docente'
@@ -538,11 +476,7 @@ class Teacher(NamedRecord):
 
 
 class CourseInUse(ValidationError):
-    """Recusa de alterar curso com turmas em uso no ensalamento ou de excluir curso com turmas.
-
-    A importação identifica o curso pelo nome: renomear um curso em uso faria a próxima
-    importação criar outro curso com o nome da planilha. A turma protege o curso (`PROTECT`).
-    """
+    """Renomear curso em uso faria a próxima importação criar outro curso com o nome da planilha."""
 
     def __init__(self, name, operation):
         if operation == 'alterar':
@@ -578,11 +512,7 @@ class CourseManager(NamedManager.from_queryset(CourseQuerySet)):
 
 
 class Course(NamedRecord):
-    """Curso a que pertencem as turmas de um grupo de colunas da planilha.
-
-    A importação reaproveita o curso pelo nome (`NamedManager.resolve`) e mantém a etapa
-    cadastrada, mesmo quando a aba da planilha indica outra.
-    """
+    """A importação reaproveita o curso pelo nome e mantém a etapa cadastrada."""
 
     stage = models.CharField('etapa de ensino', max_length=12, choices=Stage.choices)
 
@@ -637,12 +567,7 @@ class Course(NamedRecord):
 
 
 class AcademicRecordInUse(ValidationError):
-    """Recusa de renomear ou excluir disciplina ou turma que o ensalamento já usa.
-
-    Com oferta ou aula, a importação identifica o registro pelo nome ou pelo rótulo: renomear
-    faria a próxima importação criar outro registro com o nome da planilha, e excluir é barrado
-    pelo `PROTECT` das alocações e das ofertas (D8 e D9 da Change gerenciar-disciplinas-e-turmas).
-    """
+    """Renomear registro em uso faria a próxima importação criar outro com o nome da planilha."""
 
     def __init__(self, description, operation):
         if operation == 'renomear':
@@ -656,12 +581,7 @@ class AcademicRecordInUse(ValidationError):
 
 
 def teacher_scope(queryset, user):
-    """Registros do escopo do usuário, filtrados no banco (D1 e D2 da Change gerenciar-disciplinas-e-turmas).
-
-    O superadmin alcança todos. Os demais alcançam as disciplinas ou turmas das ofertas em que
-    o docente correspondente ao usuário (`teacher_of`) tem vínculo, atual ou histórico. Sem
-    docente correspondente, o escopo é vazio. Não há vínculo gravado entre usuário e registro.
-    """
+    """Disciplinas ou turmas das ofertas em que o docente do usuário tem vínculo; o superadmin alcança todas."""
     if user.is_active and user.is_superadmin:
         return queryset
     teacher = teacher_of(user)
@@ -690,11 +610,7 @@ class SubjectManager(NamedManager.from_queryset(SubjectQuerySet)):
 
 
 class Subject(NamedRecord):
-    """Disciplina, única pelo nome em todo o sistema.
-
-    Não é por curso porque a planilha mostra a mesma disciplina atendendo turmas de cursos
-    diferentes, na mesma sala e no mesmo horário (D12).
-    """
+    """Única pelo nome, e não por curso, porque a mesma disciplina atende turmas de cursos diferentes."""
 
     objects = SubjectManager()
 
@@ -841,11 +757,7 @@ class ClassGroup(models.Model):
         return type(self).objects.select_for_update().select_related('course').get(pk=self.pk)
 
     def update_details(self, label, course=None):
-        """Altera o rótulo; o curso é imutável e a turma com uso no ensalamento não é renomeada.
-
-        O curso chega do formulário mesmo sem poder mudar, para que um valor forjado seja
-        recusado com mensagem, e não ignorado.
-        """
+        """Altera o rótulo; o curso chega do formulário para que um valor forjado seja recusado."""
         with transaction.atomic():
             group = self.lock()
             if course is not None and course.pk != group.course_id:
@@ -934,27 +846,7 @@ def teacher_names(teachers):
 
 class AllocationManager(models.Manager):
     def apply(self, semester, class_group, subject, weekday, time_slot, space=None, teachers=(), versions=None):
-        """Cria a alocação ou atualiza o espaço e os docentes da que já existe.
-
-        `versions` são as alocações desta identidade já lidas por quem chama, na ordem de
-        `valid_from, pk` e com o espaço e os docentes carregados, como a importação as lê na
-        trava do semestre; sem elas, a identidade é consultada aqui. Na criação, a existência
-        das chaves estrangeiras e a unicidade da identidade não são consultadas de novo: os
-        registros vieram do banco na transação de quem chama, e a identidade acabou de ser
-        procurada sob a trava das alocações do semestre. As validações dos campos e o
-        `clean()` continuam. Só a gravação abre transação: a leitura e o `unchanged` não
-        abrem savepoint, e a atualização tem a transação própria de `update_details` (D3 e
-        D4 da Change otimizar-consultas-do-sistema).
-
-        Devolve a alocação, a ação (`create`, `update` ou `unchanged`) e as mudanças, com o
-        valor anterior e o novo de cada campo alterado, em valores canônicos. Nada é
-        excluído: uma alocação que deixou de constar na planilha é preservada (D13).
-
-        Quando a identidade pertence a uma recorrência alterada no sistema, com vigência
-        definida, nada muda e a alocação versionada é devolvida como `unchanged`: a planilha
-        não reescreve o histórico nem recria a regra encerrada (D7 da Change
-        alterar-recorrencia-do-ensalamento). A importação avisa isso na linha.
-        """
+        """Cria ou atualiza a alocação sem excluir nada; a versionada pelo sistema volta como `unchanged`."""
         teachers = list(teachers)
         names = teacher_names(teachers)
         if versions is None:
@@ -992,8 +884,7 @@ class AllocationManager(models.Manager):
         return allocation, 'create', changes
 
     def active_on(self, day):
-        """Alocações que ocorrem na data: o dia da semana dela, o período do semestre, a
-        vigência e sem exceção nesta data. É a mesma regra de `Allocation.occurs_on`, em consulta."""
+        """Alocações que ocorrem na data, pela mesma regra de `Allocation.occurs_on`."""
         if day.weekday() >= len(WEEKDAY_ORDER):
             return self.none()
         return self.filter(
@@ -1005,15 +896,7 @@ class AllocationManager(models.Manager):
         ).exclude(exceptions__date=day)
 
     def change_recurrence(self, allocation_ids, cut, executor, weekday, start_time, space, teachers, slot_count=None):
-        """Altera a recorrência das alocações de uma aula a partir da data de corte.
-
-        Cada alocação é encerrada na véspera do corte e uma nova versão começa nele, com os
-        dados informados e o resto copiado. As exceções do corte em diante passam para a
-        versão nova. Quando a duração aumenta, as faixas a mais ganham alocação nova com
-        cópia das ocorrências canceladas; quando diminui, as que sobram só são encerradas.
-        Tudo numa transação: uma recusa ou uma falha não deixa nada gravado. Devolve o
-        plano executado, com as versões novas gravadas.
-        """
+        """Encerra cada alocação na véspera do corte e cria a versão nova, numa transação, e devolve o plano."""
         with transaction.atomic():
             plan = self.plan_recurrence(allocation_ids, cut, executor, weekday, start_time, space, teachers, slot_count)
             for change in plan.changes:
@@ -1027,12 +910,7 @@ class AllocationManager(models.Manager):
             return plan
 
     def plan_recurrence(self, allocation_ids, cut, executor, weekday, start_time, space, teachers, slot_count=None):
-        """Confere a alteração da recorrência e devolve o plano, sem gravar nada.
-
-        As alocações são travadas quando há transação aberta, como no cancelamento. É a
-        mesma conferência da execução, usada para o resumo mostrado antes da confirmação.
-        Sem `slot_count`, a aula mantém a quantidade de faixas que tem.
-        """
+        """Confere a alteração e devolve o plano sem gravar, travando as alocações quando há transação."""
         allocation_ids = sorted(set(allocation_ids))
         with transaction.atomic():
             locked = list(
@@ -1103,12 +981,7 @@ class AllocationManager(models.Manager):
             return plan
 
     def create_recurrence(self, semester, class_group, subject, start, end, executor, start_time, slot_count, space, teachers):
-        """Cadastra uma aula recorrente, uma alocação por faixa do bloco.
-
-        Tudo numa transação: uma recusa ou uma falha não deixa alocação, oferta nem
-        registro de auditoria gravados. Devolve o plano executado, com as alocações
-        gravadas.
-        """
+        """Cadastra uma aula recorrente, uma alocação por faixa, numa transação, e devolve o plano."""
         with transaction.atomic():
             plan = self.plan_creation(
                 semester, class_group, subject, start, end, executor, start_time, slot_count, space, teachers,
@@ -1121,11 +994,7 @@ class AllocationManager(models.Manager):
             return plan
 
     def plan_creation(self, semester, class_group, subject, start, end, executor, start_time, slot_count, space, teachers):
-        """Confere o cadastro da aula e devolve o plano, sem gravar nada.
-
-        É a mesma conferência da execução, usada para o resumo mostrado antes da
-        confirmação. O dia da semana vem da data da primeira aula (D3).
-        """
+        """Confere o cadastro da aula e devolve o plano sem gravar."""
         if not executor.has_perm(permissions.SPACE_ALLOCATION_CREATE_RECURRENCE):
             raise ValidationError('Só quem tem permissão cadastra aula no ensalamento.', code='not_allowed')
         check_start(semester, start)
@@ -1174,21 +1043,14 @@ class AllocationManager(models.Manager):
         return plan
 
     def end_recurrence(self, allocation_ids, cut, executor):
-        """Encerra a aula a partir da data: cada alocação do bloco ganha o fim da vigência
-        na véspera, numa transação, com auditoria. Nada é excluído.
-        """
+        """Encerra a aula na véspera da data, numa transação, sem excluir nada."""
         with transaction.atomic():
             plan = self.plan_ending(allocation_ids, cut, executor)
             plan.execute()
             return plan
 
     def plan_ending(self, allocation_ids, cut, executor):
-        """Confere o encerramento e devolve o plano, sem gravar nada.
-
-        É a mesma conferência da execução, usada para a contagem mostrada na confirmação.
-        A data não precisa ser posterior ao início da vigência: encerrar uma aula que ainda
-        não começou deixa a recorrência sem nenhuma ocorrência (D2 e D3).
-        """
+        """Confere o encerramento e devolve o plano sem gravar; antes do início, a aula fica sem ocorrências."""
         allocation_ids = sorted(set(allocation_ids))
         with transaction.atomic():
             locked = list(
@@ -1236,8 +1098,7 @@ def shown_date(day):
 
 
 def check_start(semester, day):
-    """Confere a data em que uma recorrência passa a valer: hoje ou depois e no período do
-    semestre. É a parte comum à alteração e à criação da recorrência."""
+    """Confere que a recorrência começa hoje ou depois e dentro do período do semestre."""
     if day < timezone.localdate():
         raise ValidationError(
             {'data': ValidationError('Escolha uma data a partir de hoje. As ocorrências passadas não mudam.', code='past')},
@@ -1249,8 +1110,7 @@ def check_start(semester, day):
 
 
 def check_cut(allocations, cut):
-    """Confere a data de corte: a data de início da recorrência, mais a ocorrência da regra
-    atual e o início da vigência, para que a versão encerrada guarde alguma data."""
+    """Confere a data de corte, para que a versão encerrada guarde alguma data."""
     check_start(allocations[0].semester, cut)
     for allocation in allocations:
         if not allocation.occurs_on(cut):
@@ -1266,11 +1126,7 @@ def check_cut(allocations, cut):
 
 
 def consecutive_slots(semester, start_time, count):
-    """Faixas seguidas do semestre, `count` delas, a partir da que começa em `start_time`.
-
-    Cada faixa começa quando a anterior termina, como nos blocos da Grade. Devolve None
-    quando o semestre não tem essas faixas; nenhuma faixa é criada.
-    """
+    """`count` faixas seguidas a partir de `start_time`, ou None quando o semestre não as tem."""
     by_start = {slot.start_time: slot for slot in TimeSlot.objects.filter(semester=semester)}
     found, current = [], by_start.get(start_time)
     while current is not None and len(found) < count:
@@ -1280,12 +1136,7 @@ def consecutive_slots(semester, start_time, count):
 
 
 def check_duplicates(plan):
-    """Recusa uma alocação nova que repete a turma, a disciplina, o dia e a faixa de outra
-    alocação vigente no mesmo período, que a restrição de identidade não alcança.
-
-    Vale para a alteração e para a criação: na criação não há alocação atual, e nenhuma
-    alocação fica de fora da conferência.
-    """
+    """Recusa alocação que repete turma, disciplina, dia e faixa de outra vigente, que a restrição não alcança."""
     first = plan.changes[0].version
     locked = plan.locked_ids
     for change in plan.changes:
@@ -1311,15 +1162,7 @@ def check_duplicates(plan):
 
 
 def check_conflicts(plan):
-    """Recusa a alteração quando o espaço está ocupado em alguma ocorrência da versão nova.
-
-    Vale para a alteração e para a criação, que diferem só nas alocações deixadas de fora.
-    As ocupações vêm das mesmas fontes da Grade, a partir do início até o fim da vigência:
-    o ensalamento, já sem as ocorrências canceladas e com a vigência de cada alocação, e
-    os agendamentos aprovados da Agenda. Outra aula com a mesma disciplina e os mesmos
-    docentes é turma junta e não conflita; o resto é choque (D6). A importação é feita
-    aqui dentro porque o módulo da ocupação depende destes models.
-    """
+    """Recusa o choque com aulas e agendamentos; aula com a mesma disciplina e docentes é turma junta."""
     from schedule.occupancy import grid_sources
 
     first = plan.changes[0].version
@@ -1377,8 +1220,7 @@ def slot_text(start, end):
 
 @dataclass
 class RecurrenceChange:
-    """Uma alocação da aula, a versão nova que a substitui a partir do corte e as exceções
-    que passam para ela."""
+    """Alocação da aula, a versão que a substitui no corte e as exceções que passam a ela."""
 
     current: object
     version: object
@@ -1386,8 +1228,7 @@ class RecurrenceChange:
     moved: list = field(default_factory=list)
 
     def execute(self, cut):
-        """Encerra a alocação na véspera do corte, grava a versão nova, move as exceções e
-        registra a auditoria."""
+        """Encerra a alocação na véspera do corte, grava a versão nova e move as exceções."""
         current, version = self.current, self.version
         previous = current.audit_values()
         current.valid_until = cut - timedelta(days=1)
@@ -1490,11 +1331,7 @@ class RecurrenceCreation:
         ClassOffering.objects.record(version.semester, version.subject, version.class_group)
 
     def record(self, created_ids):
-        """Registra a criação na auditoria, com as demais alocações do bloco nos metadados.
-
-        Só acontece depois que todas estão gravadas, para que cada registro traga os
-        identificadores das outras.
-        """
+        """Registra a criação só depois de gravar o bloco, para cada registro citar os demais."""
         version = self.version
         values = version.audit_values()
         AuditLog.objects.record(
@@ -1514,11 +1351,7 @@ class RecurrenceCreation:
 
 @dataclass
 class RecurrenceAddition(RecurrenceCreation):
-    """Uma faixa a mais na alteração que aumenta a duração da aula.
-
-    Recebe as ocorrências canceladas da aula do corte em diante, para que o cancelamento
-    valha também na faixa nova.
-    """
+    """Faixa a mais na alteração, que herda as ocorrências canceladas a partir do corte."""
 
     copied: list = field(default_factory=list)
     executor: object = None
@@ -1540,7 +1373,7 @@ class RecurrenceAddition(RecurrenceCreation):
 
 @dataclass
 class RecurrenceRemoval:
-    """Uma faixa que deixa a aula na alteração que diminui a duração: só é encerrada."""
+    """Faixa que deixa a aula na alteração que diminui a duração: só é encerrada."""
 
     current: object
 
@@ -1602,12 +1435,7 @@ def summary_of(allocations, teachers):
 
 @dataclass
 class RecurrencePlan:
-    """Recorrência conferida de uma aula: a data em que ela passa a valer, cada alocação
-    nova e o resumo de antes e de depois.
-
-    Na alteração cada mudança traz a alocação atual que a versão nova substitui; na criação
-    não há alocação atual, e o resumo de antes fica vazio.
-    """
+    """Recorrência conferida; na criação não há alocação atual e o resumo de antes fica vazio."""
 
     cut: object
     changes: list
@@ -1627,8 +1455,7 @@ class RecurrencePlan:
 
     @property
     def locked_ids(self):
-        """Alocações que a conferência deixa de fora por serem as da própria aula. Na
-        criação não há nenhuma."""
+        """Alocações da própria aula, que a conferência deixa de fora; na criação não há nenhuma."""
         return [item.pk for item in self.currents]
 
     @property
@@ -1672,12 +1499,7 @@ class RecurrencePlan:
         return sorted({exception.date for change in self.changes for exception in change.moved})
 
     def load_exceptions(self):
-        """Separa as exceções do corte em diante, que passam para a versão nova.
-
-        Uma exceção cuja data não é ocorrência da versão nova recusa a alteração, para que
-        nenhum cancelamento seja perdido em silêncio (D5). Um plano de criação não tem
-        alocação atual nem exceção a transferir.
-        """
+        """Move as exceções a partir do corte e recusa a que não é ocorrência da versão nova."""
         if not self.locked_ids:
             return
         by_allocation = {}
@@ -1705,24 +1527,14 @@ class RecurrencePlan:
 
 
 def teacher_of(user):
-    """Docente do ensalamento que corresponde ao usuário, ou None.
-
-    É a mesma regra de `manages`: o nome do docente igual ao `username`, sem diferenciar
-    a caixa. Não há vínculo gravado entre docente e usuário (D7 da Change
-    importar-ensalamento-da-planilha).
-    """
+    """Docente com nome igual ao `username`, sem caixa, ou None."""
     if not user.is_active or not user.username:
         return None
     return Teacher.objects.filter(name__iexact=user.username).first()
 
 
 def teacher_users(semester):
-    """Usuários ativos que correspondem a um docente com vínculo atual no semestre, numa consulta.
-
-    Usa a mesma regra de `teacher_of`, o nome do docente igual ao `username` sem diferenciar a
-    caixa, e os mesmos vínculos atuais de `TeachingAssignment.available`. É a lista de quem pode
-    ter uma solicitação criada em seu nome (D5 da Change criar-agendamento-para-outro-usuario).
-    """
+    """Usuários ativos que correspondem a um docente com vínculo atual no semestre."""
     if semester is None:
         return get_user_model().objects.none()
     return get_user_model().objects.filter(is_active=True).filter(Exists(
@@ -1733,12 +1545,7 @@ def teacher_users(semester):
 
 
 def manages(user, teacher_names):
-    """Diz se o usuário pode cancelar ocorrências de uma aula com estes docentes.
-
-    Pode quem tem `ENSALAMENTO.CANCELAR_OCORRENCIA` (o superadmin tem todas) e o docente da
-    aula, reconhecido pelo nome do docente igual ao `username`, sem diferenciar a caixa. Não
-    há vínculo gravado entre docente e usuário (D7 da Change importar-ensalamento-da-planilha).
-    """
+    """Pode quem tem `ENSALAMENTO.CANCELAR_OCORRENCIA` e o docente da aula, pelo `username`."""
     if user.has_perm(permissions.SPACE_ALLOCATION_CANCEL_OCCURRENCE):
         return True
     if not user.is_active or not user.username:
@@ -1747,22 +1554,7 @@ def manages(user, teacher_names):
 
 
 class Allocation(models.Model):
-    """Ocupação recorrente de um espaço por uma turma, numa disciplina, num dia e numa faixa.
-
-    O espaço e os docentes podem faltar, porque a planilha traz atividade sem sala e
-    atividade sem docente reconhecido. Duas alocações do mesmo semestre podem ter o mesmo
-    espaço, dia e faixa: é a aula compartilhada por turmas diferentes, e não um conflito.
-    A importação não detecta conflito de espaço nem de docente (D8).
-
-    A vigência (`valid_from` e `valid_until`) fica vazia na alocação da planilha, que vale o
-    semestre inteiro. A alteração da recorrência encerra a alocação na véspera de uma data e
-    cria outra a partir dela: as ocorrências anteriores continuam na versão antiga, e a
-    versão nova só nasce sem choque com outra aula nem com agendamento (Change
-    alterar-recorrencia-do-ensalamento). O encerramento dá o fim da vigência sem criar
-    versão nova, e um fim anterior ao início é a recorrência encerrada sem nenhuma
-    ocorrência, da aula que ainda não tinha começado (D2 da Change
-    encerrar-recorrencia-do-ensalamento).
-    """
+    """Ocupação recorrente; alocações de mesmo espaço e horário são aula compartilhada, e não conflito."""
 
     semester = models.ForeignKey(
         Semester, on_delete=models.PROTECT, related_name='allocations', verbose_name='semestre',
@@ -1816,8 +1608,7 @@ class Allocation(models.Model):
             )
 
     def occurs_on(self, day):
-        """Diz se a regra semanal gera uma ocorrência na data: o dia da semana, o período do
-        semestre e a vigência da alocação."""
+        """Diz se a regra semanal ocorre na data, pelo dia, pelo período e pela vigência."""
         return (
             day.weekday() < len(WEEKDAY_ORDER)
             and WEEKDAY_ORDER[day.weekday()] == self.weekday
@@ -1842,11 +1633,7 @@ class Allocation(models.Model):
         return self.valid_until or self.semester.end_date
 
     def update_details(self, space, teachers):
-        """Atualiza o espaço e os docentes, devolvendo a ação e as mudanças.
-
-        Só estes dois campos mudam sem criar registro novo: os demais fazem parte da
-        identidade da alocação (D12).
-        """
+        """Atualiza o espaço e os docentes, os únicos campos fora da identidade."""
         names = teacher_names(teachers)
         current_names = teacher_names(self.teachers.all())
         changes = {}
@@ -1883,25 +1670,14 @@ class Allocation(models.Model):
 
 class ClassOfferingManager(models.Manager):
     def record(self, semester, subject, class_group):
-        """Devolve a oferta da disciplina para a turma no semestre, criando-a quando não
-        existir, e sincroniza os docentes dela com as alocações atuais.
-
-        É a operação que a importação e a alteração de recorrência chamam, na transação de
-        quem chama. Nada é excluído, e chamar de novo com os mesmos dados não muda nada
-        (D5 da Change relacionar-professor-disciplina-turma).
-        """
+        """Cria a oferta quando falta e sincroniza os docentes com as alocações atuais."""
         with transaction.atomic():
             offering, _ = self.get_or_create(semester=semester, subject=subject, class_group=class_group)
             offering.sync_assignments()
             return offering
 
     def record_many(self, semester, pairs):
-        """`record` de vários pares de disciplina e turma do semestre, com poucas consultas em conjunto.
-
-        Recebe as chaves da disciplina e da turma de cada par. O resultado de cada oferta é o de
-        `record`: a oferta que falta é criada e os vínculos dela são sincronizados com as
-        alocações atuais (D5 da Change otimizar-consultas-do-sistema).
-        """
+        """`record` de vários pares de disciplina e turma, com poucas consultas."""
         pairs = set(pairs)
         if not pairs:
             return []
@@ -1925,13 +1701,7 @@ class ClassOfferingManager(models.Manager):
 
 
 class ClassOffering(models.Model):
-    """Oferta de uma disciplina para uma turma num semestre (D2).
-
-    A disciplina e a turma valem para todos os semestres; é a oferta que as liga a um
-    semestre. Uma disciplina tem várias turmas e uma turma tem várias disciplinas, sempre por
-    oferta. A oferta é identificada pela mesma tripla de semestre, disciplina e turma das
-    alocações, sem FK entre elas (D4), e nunca é excluída automaticamente.
-    """
+    """Oferta de uma disciplina para uma turma num semestre, nunca excluída automaticamente."""
 
     semester = models.ForeignKey(
         Semester, on_delete=models.PROTECT, related_name='offerings', verbose_name='semestre',
@@ -1962,26 +1732,18 @@ class ClassOffering(models.Model):
         return f'{self.semester} {self.subject} {self.class_group}'
 
     def current_allocations(self):
-        """Alocações atuais da oferta: a mesma tripla e sem fim de vigência (D3)."""
+        """Alocações atuais da oferta: a mesma tripla e sem fim de vigência."""
         return Allocation.objects.filter(
             semester=self.semester_id, subject=self.subject_id, class_group=self.class_group_id, valid_until__isnull=True,
         )
 
     def sync_assignments(self):
-        """Marca como atuais os docentes das alocações atuais e como históricos os demais.
-
-        Cria o vínculo que falta e nunca exclui nenhum: o docente que saiu das alocações
-        atuais fica registrado com `is_current=False` e volta a `True` se reaparecer.
-        """
+        """Marca os docentes como atuais ou históricos, sem nunca excluir vínculo."""
         sync_offerings(self.semester_id, [self])
 
 
 def sync_offerings(semester_id, offerings):
-    """Sincroniza os vínculos de docente de várias ofertas do mesmo semestre em conjunto.
-
-    Os docentes atuais de cada oferta são os das alocações atuais da mesma tripla, sem fim de
-    vigência, como em `ClassOffering.current_allocations`.
-    """
+    """Sincroniza em conjunto os vínculos de docente de várias ofertas do semestre."""
     by_pair = {(offering.subject_id, offering.class_group_id): offering.pk for offering in offerings}
     if not by_pair:
         return
@@ -2015,11 +1777,7 @@ def sync_offerings(semester_id, offerings):
 
 class TeachingAssignmentQuerySet(models.QuerySet):
     def available(self, semester, teacher=None, subject=None, class_group=None):
-        """Combinações atuais de docente, disciplina e turma do semestre, numa consulta só.
-
-        Só os vínculos com `is_current=True` entram: o histórico fica fora, e combinação que
-        não existe como vínculo nunca é devolvida (D7). Os filtros são opcionais.
-        """
+        """Vínculos atuais de docente, disciplina e turma do semestre, numa consulta."""
         queryset = self.filter(is_current=True, offering__semester=semester)
         if teacher is not None:
             queryset = queryset.filter(teacher=teacher)
@@ -2035,14 +1793,7 @@ class TeachingAssignmentQuerySet(models.QuerySet):
 
 
 class TeachingAssignment(models.Model):
-    """Docente de uma oferta de disciplina (D3).
-
-    Histórico e disponibilidade atual são conceitos diferentes. O histórico são todos os
-    vínculos da oferta, que nunca são excluídos automaticamente. `is_current=True` indica
-    que o docente está presente em alguma alocação atual da oferta, e `is_current=False`
-    que o vínculo é preservado como histórico, sem o docente nas alocações atuais. Não
-    significa docente responsável pela disciplina. A Agenda oferece só os vínculos atuais.
-    """
+    """Vínculo de docente com a oferta; `is_current=False` é histórico, e não responsabilidade pela disciplina."""
 
     offering = models.ForeignKey(
         ClassOffering, on_delete=models.PROTECT, related_name='assignments', verbose_name='oferta',
@@ -2073,11 +1824,7 @@ class TeachingAssignment(models.Model):
 
 class AllocationExceptionManager(models.Manager):
     def cancelled(self, allocation_ids, start_date, end_date):
-        """Pares (alocação, data) cancelados no intervalo, numa consulta só.
-
-        É o filtro único que a ocupação do ensalamento aplica antes de montar a Grade, a
-        Agenda e o calendário público.
-        """
+        """Pares (alocação, data) cancelados no intervalo, o filtro único das telas de ocupação."""
         allocation_ids = list(allocation_ids)
         if not allocation_ids:
             return set()
@@ -2090,12 +1837,7 @@ class AllocationExceptionManager(models.Manager):
         )
 
     def cancel(self, allocation_ids, day, executor):
-        """Cancela a ocorrência das alocações na data, sem alterar as alocações.
-
-        Todas as alocações são travadas e conferidas antes de qualquer gravação: o executor
-        precisa administrar cada uma, a data precisa ser uma ocorrência dela e a ocorrência
-        não pode estar cancelada. Cada exceção criada gera um registro de auditoria.
-        """
+        """Cancela a ocorrência das alocações na data, conferindo todas antes de gravar."""
         allocation_ids = sorted(set(allocation_ids))
         with transaction.atomic():
             locked = list(
@@ -2137,12 +1879,7 @@ class AllocationExceptionManager(models.Manager):
 
 
 class AllocationException(models.Model):
-    """Alteração de uma ocorrência da alocação numa data, sem alterar a regra semanal.
-
-    Nesta versão o único tipo é o cancelamento. A exceção aponta para a alocação com
-    PROTECT, e a importação reaproveita a alocação pela identidade, sem excluir nem recriar,
-    por isso a exceção continua valendo depois de uma nova importação.
-    """
+    """Cancelamento de uma ocorrência; sobrevive à reimportação porque a alocação é reaproveitada."""
 
     class Kind(models.TextChoices):
         CANCELLED = 'CANCELADA', 'Cancelada'
@@ -2187,17 +1924,10 @@ def decision_values(decision):
 
 
 class SpaceDecisionManager(models.Manager):
-    """Decisões de espaço de uma importação (D9 da Change manipulacao-dos-espacos).
-
-    Gravar ou desfazer uma decisão trava a importação, confere a situação, o nome encontrado,
-    o tipo e a permissão de espaço do executor, e registra a auditoria no módulo da
-    importação. Nenhuma das duas operações toca no cadastro de espaços: a decisão só é
-    aplicada na confirmação. A classificação é importada aqui dentro porque o módulo dela
-    depende destes models.
-    """
+    """Decisões de espaço aplicadas só na confirmação, sem tocar o cadastro de espaços."""
 
     def locked_import(self, importation):
-        """Trava a importação sem esperar, recusando a que tem operação pendente (D5 da Change processar-importacao-em-segundo-plano)."""
+        """Trava a importação sem esperar, recusando a que tem operação pendente."""
         from imports.models import Import
 
         current = Import.objects.get(pk=importation.pk).lock_idle()
@@ -2276,13 +2006,7 @@ class SpaceDecisionManager(models.Manager):
 
 
 class SpaceDecision(models.Model):
-    """Decisão de um usuário sobre um nome de espaço encontrado numa importação (D9).
-
-    Fica guardada na importação e só é aplicada na confirmação: gravar ou desfazer uma
-    decisão não altera o cadastro de espaços. `space` é o espaço escolhido ou reativado, e
-    `target_name` é o nome encontrado da mesma importação, a ser cadastrado, que recebe este
-    nome como outro nome.
-    """
+    """Decisão sobre um nome encontrado, aplicada só na confirmação."""
 
     class Kind(models.TextChoices):
         NEW = 'NOVO', 'É um espaço novo'

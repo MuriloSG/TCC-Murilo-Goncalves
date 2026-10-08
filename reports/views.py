@@ -18,10 +18,7 @@ CELL_PAGE_SIZE = 10
 
 
 def heatmap_for(request):
-    """Filtros da URL e o mapa calculado, ou None quando o semestre não tem período.
-
-    Os dados são do ensalamento: sem `ENSALAMENTO.VISUALIZAR`, a resposta é 403 (D9).
-    """
+    """Filtros e mapa calculado; sem `ENSALAMENTO.VISUALIZAR`, responde 403."""
     if not request.user.has_perm(permissions.SPACE_ALLOCATION_VIEW):
         raise PermissionDenied
     semesters, semester = chosen_semester(request.GET.get('semestre'), now_local().date())
@@ -31,12 +28,7 @@ def heatmap_for(request):
 
 
 class HeatmapView(TemplateView):
-    """Mapa de calor dos espaços: faixa × dia na semana típica do semestre (Change
-    gerar-mapa-de-calor-dos-espacos).
-
-    Exige `RELATORIO.VISUALIZAR` pela rota e `ENSALAMENTO.VISUALIZAR` pelos dados, como os
-    blocos do painel (D9). Só lê os dados e não declara `audit_resource`.
-    """
+    """Exige `RELATORIO.VISUALIZAR` pela rota e `ENSALAMENTO.VISUALIZAR` pelos dados."""
 
     permission_required = permissions.REPORT_VIEW
     template_name = 'reports/heatmap.html'
@@ -51,10 +43,7 @@ class HeatmapView(TemplateView):
 
 
 class HeatmapCellView(ModalView, TemplateView):
-    """Espaços ocupados e disponíveis de uma célula do mapa, em modal pelo htmx e paginados (D7).
-
-    Os filtros do mapa chegam pela URL. Sem o htmx, a mesma URL mostra a página completa.
-    """
+    """Espaços de uma célula do mapa, paginados em modal pelo htmx ou na página completa."""
 
     permission_required = permissions.REPORT_VIEW
     template_name = 'reports/cell_page.html'
@@ -95,11 +84,7 @@ class HeatmapCellView(ModalView, TemplateView):
 
 
 class RequestsReportView(TemplateView):
-    """Relatório de solicitações de agendamento do semestre (Change gerar-relatorio-de-solicitacoes).
-
-    Exige `RELATORIO.VISUALIZAR` pela rota e `AGENDA.ANALISAR` pelos dados, porque mostra as
-    solicitações de todos os usuários (D10). Só lê os dados e não declara `audit_resource`.
-    """
+    """Exige também `AGENDA.ANALISAR`, porque mostra as solicitações de todos os usuários."""
 
     permission_required = permissions.REPORT_VIEW
     template_name = 'reports/requests.html'
@@ -123,8 +108,7 @@ class RequestsReportView(TemplateView):
         )
 
     def outcomes(self, report):
-        """Desfechos das alternativas sugeridas, com o tom e o ícone de cada um e o percentual
-        sobre as sugeridas."""
+        """Desfechos das alternativas, com tom, ícone e percentual sobre as sugeridas."""
         if report is None:
             return []
         return [

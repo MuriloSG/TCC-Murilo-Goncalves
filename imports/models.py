@@ -72,11 +72,7 @@ class ImportNotDeletable(ValidationError):
 
 class ImportManager(models.Manager):
     def request_preview(self, definition, rows, file_name, executor):
-        """Grava a importação `RECEBIDA`, com a prévia pendente e as linhas com os valores lidos (D3).
-
-        Os erros da leitura de cada linha são gravados junto, para que a prévia os receba como
-        na leitura. Nada é executado na requisição: o worker executa a prévia depois do commit.
-        """
+        """Grava a importação `RECEBIDA` com as linhas lidas; o worker executa a prévia depois do commit."""
         now = timezone.now()
         with transaction.atomic():
             importation = self.create(
@@ -121,11 +117,7 @@ def plan_fields(row_plan):
 
 
 class Import(models.Model):
-    """Arquivo que chegou à prévia, com a situação e os dados de auditoria (D6).
-
-    O arquivo não é guardado: os valores lidos de cada linha fazem as vezes dele na
-    reexecução da confirmação.
-    """
+    """O arquivo não é guardado: os valores lidos de cada linha o substituem na reexecução."""
 
     class Status(models.TextChoices):
         RECEIVED = 'RECEBIDA', 'Recebida'
@@ -212,7 +204,7 @@ class Import(models.Model):
 
     @property
     def is_busy(self):
-        """Há operação pendente: a importação não aceita outra ação até ela terminar (D5)."""
+        """Há operação pendente: a importação não aceita outra ação até ela terminar."""
         return self.operation is not None
 
     @property
@@ -221,14 +213,14 @@ class Import(models.Model):
 
     @property
     def is_stale(self):
-        """O pedido passou de `IMPORT_STALE_AFTER`; só alimenta o aviso da tela, sem estado gravado (D13)."""
+        """O pedido passou de `IMPORT_STALE_AFTER`; só alimenta o aviso da tela."""
         if not self.is_busy or self.requested_at is None:
             return False
         return timezone.now() - self.requested_at > timedelta(seconds=settings.IMPORT_STALE_AFTER)
 
     @classmethod
     def status_of(cls, plan):
-        """Situação dada pelo plano: o erro prevalece sobre a pendência (D10)."""
+        """Situação dada pelo plano: o erro prevalece sobre a pendência."""
         if plan.has_errors:
             return cls.Status.WITH_ERRORS
         if plan.has_pending:
@@ -248,11 +240,7 @@ class Import(models.Model):
         return counts
 
     def lock_idle(self):
-        """Trava a importação sem esperar e recusa a que tem operação pendente ou está travada (D5).
-
-        A trava ocupada é a do worker executando a operação. A consulta roda num savepoint
-        próprio, para que a recusa do banco não invalide a transação de quem chama.
-        """
+        """Trava sem esperar, num savepoint, para que a recusa do banco não invalide a transação de quem chama."""
         try:
             with transaction.atomic():
                 current = type(self).objects.select_for_update(nowait=True).get(pk=self.pk)
@@ -300,21 +288,14 @@ class Import(models.Model):
         self.outcome_message = message
 
     def request_refresh(self, executor):
-        """Pede a atualização da prévia de uma importação pendente ou validada (D3).
-
-        A situação não muda, e nenhuma linha é executada na requisição.
-        """
+        """Pede a atualização da prévia sem mudar a situação nem executar linhas na requisição."""
         with transaction.atomic():
             current = self.lock_pending((self.Status.VALIDATED, self.Status.PENDING))
             current.start(self.Operation.REFRESH, executor)
         self.refresh_from_db()
 
     def request_confirmation(self, definition, executor):
-        """Pede a confirmação, com a verificação própria da importação já na tela (D3).
-
-        A importação que precisa de decisão e a recusa da verificação não deixam operação
-        pendente nem alteram nada. Aceito o pedido, a importação continua `VALIDADA`.
-        """
+        """Pede a confirmação; a recusa da verificação própria não deixa operação pendente."""
         with transaction.atomic():
             current = self.lock_pending((self.Status.VALIDATED, self.Status.PENDING))
             if current.status == self.Status.PENDING:
@@ -324,13 +305,7 @@ class Import(models.Model):
         self.refresh_from_db()
 
     def execute_pending(self, definition):
-        """Executa a operação pendente, com a pré-condição conferida sob a trava (D3).
-
-        Devolve False quando outra instância tem a trava ou a operação já terminou. Quem
-        pediu e foi desativado depois tem a operação recusada sem executar nenhuma linha.
-        O resultado de negócio e o fim da operação são gravados no mesmo commit. Um erro
-        inesperado desfaz tudo e sobe para o worker.
-        """
+        """Executa a operação pendente sob trava, gravando resultado e fim no mesmo commit; devolve False se não pôde."""
         with transaction.atomic():
             current = (
                 type(self).objects.select_for_update(skip_locked=True)
@@ -371,7 +346,7 @@ class Import(models.Model):
         return rows, run(definition, [row.as_source(with_reader_errors) for row in rows], executor, self)
 
     def run_preview(self, definition, executor):
-        """Executa e desfaz as linhas gravadas no envio e grava o plano e a situação dada por ele (D7)."""
+        """Executa e desfaz as linhas gravadas e grava o plano e a situação dada por ele."""
         with transaction.atomic():
             rows, plan = self.execute_rows(definition, executor, with_reader_errors=True)
             transaction.set_rollback(True)
@@ -391,13 +366,7 @@ class Import(models.Model):
         )
 
     def run_refresh(self, definition, executor):
-        """Refaz a prévia sem aplicar nada (D10 da Change manipulacao-dos-espacos).
-
-        Reexecuta as linhas gravadas num savepoint desfeito, com a importação em curso, e
-        substitui o plano e a situação. Não conta como prévia refeita, que conta só as
-        divergências da confirmação, e não grava auditoria, como a substituição do plano
-        numa divergência.
-        """
+        """Refaz a prévia num savepoint desfeito, sem contar como prévia refeita nem gravar auditoria."""
         with transaction.atomic():
             rows, plan = self.execute_rows(definition, executor)
             transaction.set_rollback(True)
@@ -406,12 +375,7 @@ class Import(models.Model):
         self.save(update_fields=['status', 'file_errors'] + OPERATION_FIELDS)
 
     def run_confirmation(self, definition, executor):
-        """Reexecuta com quem pediu e aplica só se o plano for idêntico ao gravado (D9).
-
-        A verificação própria é repetida antes da reexecução, e a recusa encerra a operação
-        sem alterar a situação. Com o plano diferente, as alterações de domínio são
-        desfeitas e o novo plano substitui o anterior.
-        """
+        """Reexecuta com quem pediu e aplica só se o plano for idêntico ao gravado."""
         try:
             definition.check_confirmation(self, executor)
         except ValidationError as error:
@@ -456,7 +420,7 @@ class Import(models.Model):
             self.save(update_fields=['status', 'revalidation_count', 'file_errors'] + OPERATION_FIELDS)
 
     def reserve(self):
-        """Conta a tentativa e adia a próxima antes de executar, numa transação própria do worker (D4)."""
+        """Conta a tentativa e adia a próxima antes de executar, numa transação própria do worker."""
         self.attempts += 1
         self.next_attempt_at = timezone.now() + retry_delay(self.attempts)
         self.save(update_fields=['attempts', 'next_attempt_at'])
@@ -466,17 +430,12 @@ class Import(models.Model):
         return self.attempts >= settings.IMPORT_MAX_ATTEMPTS
 
     def register_failure(self, error):
-        """Guarda o erro da tentativa; a próxima já está agendada desde a reserva (D6)."""
+        """Guarda o erro da tentativa; a próxima já está agendada desde a reserva."""
         self.last_error = describe_error(error)
         self.save(update_fields=['last_error'])
 
     def exhaust(self, definition):
-        """Encerra a operação que esgotou as tentativas (D6).
-
-        A prévia que nunca foi gerada leva a importação a `FALHOU`; a atualização e a
-        confirmação mantêm a situação e o plano anteriores, com o resultado da falha. Sem
-        definição registrada para o tipo, não há módulo de auditoria, e só o log registra.
-        """
+        """Encerra a operação que esgotou as tentativas; só a prévia nunca gerada leva a `FALHOU`."""
         if self.operation == self.Operation.PREVIEW:
             self.status = self.Status.FAILED
             self.finish(message=PREVIEW_FAILED_MESSAGE)
@@ -515,11 +474,7 @@ class Import(models.Model):
         return self.status in (self.Status.DISCARDED, self.Status.WITH_ERRORS, self.Status.FAILED)
 
     def remove(self, definition, executor):
-        """Exclui a importação e as linhas dela, só quando descartada ou com erros.
-
-        Nenhuma delas alterou o domínio, por isso nada além do histórico some. O registro
-        de auditoria guarda o arquivo e a situação, já que a importação deixa de existir.
-        """
+        """Exclui a importação descartada ou com erros, que não alteraram o domínio, registrando-a na auditoria."""
         with transaction.atomic():
             current = self.lock_idle()
             if not current.is_deletable:

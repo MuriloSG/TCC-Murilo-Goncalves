@@ -1,4 +1,4 @@
-"""Alteração da recorrência de uma aula a partir de uma data (Change alterar-recorrencia-do-ensalamento)."""
+"""Alteração da recorrência de uma aula a partir de uma data."""
 
 import re
 from datetime import date, datetime, time
@@ -32,8 +32,7 @@ PUBLIC = reverse('public_calendar')
 
 
 class RecurrenceTestCase(TestCase):
-    """Cálculo III às segundas, das 10:00 às 12:00 em duas faixas na Sala 5, e Química às
-    segundas, das 08:00 às 10:00 na Sala 7. A Sala 9 está disponível."""
+    """Cálculo III às segundas na Sala 5 em duas faixas, Química às segundas na Sala 7 e a Sala 9 livre."""
 
     @classmethod
     def setUpTestData(cls):
@@ -496,8 +495,7 @@ class ReimportTests(RecurrenceTestCase):
 
 
 class AcademicLinkTests(RecurrenceTestCase):
-    """A alteração da recorrência preserva os docentes da oferta (Change
-    relacionar-professor-disciplina-turma)."""
+    """A alteração da recorrência preserva os docentes da oferta."""
 
     def setUp(self):
         super().setUp()
@@ -523,8 +521,7 @@ class AcademicLinkTests(RecurrenceTestCase):
 
 
 class DurationTests(RecurrenceTestCase):
-    """A alteração aumenta ou diminui a quantidade de faixas seguidas da aula (Change
-    alterar-duracao-da-recorrencia)."""
+    """A alteração aumenta ou diminui a quantidade de faixas seguidas da aula."""
 
     def active_slots(self, day):
         return sorted(

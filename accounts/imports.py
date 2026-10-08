@@ -1,10 +1,4 @@
-"""Importação de usuários por planilha (D4, D11, D13 e D14 da Change importar-usuarios-por-planilha).
-
-Traduz cada linha em chamadas das mesmas operações do model usadas pelas telas de
-cadastro, edição e troca de perfil, e as recusas delas em erros da linha. Nome e
-e-mail são validados pelos mesmos campos dos formulários, para que as mensagens
-sejam as da tela.
-"""
+"""Importação de usuários por planilha, com as mesmas operações e validações das telas."""
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -52,7 +46,7 @@ class UserImport(ImportDefinition):
         return deferred_administrative_continuity()
 
     def lock(self, rows, executor):
-        """Trava os usuários ativos, pela continuidade, e os usuários com os e-mails do arquivo."""
+        """Trava os usuários ativos, pela continuidade administrativa, e os do arquivo."""
         lock_active_users()
         emails = [self.normalize_identifier(row.values['E-mail']) for row in rows]
         list(User.objects.filter(email__in=emails).order_by('pk').select_for_update().values_list('pk', flat=True))
@@ -95,11 +89,7 @@ class UserImport(ImportDefinition):
         return self.update(user, cleaned, errors, executor)
 
     def create(self, cleaned, errors, executor):
-        """Planeja o cadastro da linha.
-
-        O domínio institucional só é exigido no cadastro, para que a linha de um
-        usuário já existente com outro domínio continue podendo ser atualizada.
-        """
+        """Planeja o cadastro; o domínio institucional só é exigido aqui, e não na atualização."""
         if not any(error.column == 'E-mail' for error in errors):
             try:
                 validate_institutional_email(cleaned['email'])
@@ -133,11 +123,7 @@ class UserImport(ImportDefinition):
         return plan
 
     def update(self, user, cleaned, errors, executor):
-        """Planeja a atualização da linha.
-
-        A coluna do nome de usuário vazia significa ausência de informação, e o valor
-        atual do usuário fica como está. Excluir o valor é feito pela tela (D8).
-        """
+        """Planeja a atualização; nome de usuário vazio mantém o valor atual."""
         plan = RowPlan(target=user.pk, errors=errors)
         if not user.is_active:
             plan.warnings.append(INACTIVE_USER)
@@ -181,7 +167,6 @@ class UserImport(ImportDefinition):
 
 
 def concluded_message(summary, importation=None):
-    """Mensagem da importação de usuários concluída, com os totais e o aviso do link."""
     created, updated = summary['create'], summary['update']
     parts = []
     if created:

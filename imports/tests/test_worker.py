@@ -1,4 +1,4 @@
-"""Worker das importações: reserva, execução, novas tentativas, recusas e concorrência (D4, D5, D6)."""
+"""Worker das importações: reserva, execução, novas tentativas, recusas e concorrência."""
 
 import threading
 from datetime import timedelta

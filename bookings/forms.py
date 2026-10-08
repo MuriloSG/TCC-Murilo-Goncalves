@@ -1,11 +1,4 @@
-"""Formulários da Agenda: a solicitação, a rejeição, a alternativa sugerida e o cancelamento.
-
-Os campos têm os nomes dos campos do model, para que a recusa de uma operação volte ao
-campo certo pelo `add_operation_error`. A faixa da Grade preenche o espaço, a data e o
-horário da solicitação, que podem ser trocados; qualquer valor chega ao model e passa pelas
-mesmas regras (D8 da Change agendar-uso-eventual-dos-espacos e D3 da Change
-solicitar-agendamento-com-vinculo-academico).
-"""
+"""Formulários da Agenda, com os nomes dos campos do model para o `add_operation_error`."""
 
 from django import forms
 
@@ -81,17 +74,7 @@ class AssignmentChoiceField(forms.ModelChoiceField):
 
 
 class BookingRequestForm(forms.Form):
-    """Disciplina, turma, espaço, data, horário e descrição da solicitação.
-
-    Quem solicita é o docente, reconhecido pelo `username` do usuário (`teacher_of`). O
-    semestre não é escolhido: é o da Agenda, o que tem a data no período, calculado aqui a
-    cada envio. A disciplina oferece as disciplinas dos vínculos atuais do docente nesse
-    semestre, e a turma só as turmas da disciplina escolhida, tudo de uma consulta só
-    (`TeachingAssignment.objects.available`). A troca da data ou da disciplina recarrega as
-    opções seguintes pelo htmx, na mesma rota. As opções só orientam: um ID fora delas é
-    recusado aqui, e a operação do model confere de novo que a turma é do próprio docente
-    (Change solicitar-agendamento-com-vinculo-academico).
-    """
+    """Solicitação do docente; as opções só orientam, e o model confere a turma de novo."""
 
     subject = forms.ModelChoiceField(
         label='Disciplina',
@@ -168,12 +151,7 @@ class BookingRequestForm(forms.Form):
         self.fields['start_time'].help_text = 'Os horários das aulas do semestre aparecem como sugestão.' if slots else ''
 
     def clear_after(self, trigger):
-        """Descarta a escolha dos campos que dependem do campo trocado, para recarregá-los vazios.
-
-        O htmx informa o campo trocado no cabeçalho `HX-Trigger-Name`. O valor anterior poderia
-        continuar entre as opções novas e ficaria escolhido sem ter sido conferido de novo
-        (D6 da Change criar-agendamento-para-outro-usuario).
-        """
+        """Limpa os campos dependentes do trocado (`HX-Trigger-Name`) para não manter valor não conferido."""
         names = self.DEPENDENTS.get(trigger, ())
         if not names:
             return
@@ -231,16 +209,7 @@ class UserChoiceField(forms.ModelChoiceField):
 
 
 class BookingOnBehalfForm(BookingRequestForm):
-    """Usuário, curso, disciplina, turma, espaço, data, horário e descrição, nesta ordem.
-
-    Quem cria tem `AGENDA.CRIAR` e escolhe o usuário em nome de quem a solicitação é feita. A
-    cadeia vem dos vínculos atuais do docente desse usuário no semestre da data
-    (`TeachingAssignment.objects.available`), numa consulta só: o curso lista os cursos das
-    turmas dos vínculos, a disciplina, as dos vínculos no curso escolhido, e a turma, os
-    vínculos na disciplina e no curso escolhidos. A troca de um campo limpa os seguintes
-    (`DEPENDENTS`). As opções só orientam: um ID fora delas é recusado aqui, e a operação do
-    model confere a cadeia de novo (Change criar-agendamento-para-outro-usuario).
-    """
+    """Solicitação em nome de outro usuário; o model confere de novo a cadeia curso, disciplina e turma."""
 
     DEPENDENTS = {
         'requested_for': ('course', 'subject', 'teaching_assignment'),

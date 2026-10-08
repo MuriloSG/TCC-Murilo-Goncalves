@@ -1,8 +1,4 @@
-"""Sino e painel de notificações do usuário autenticado.
-
-O componente visual fica no app `ui`; os dados vêm daqui, do app dono deles, como
-as rotas de opções dos campos de escolha.
-"""
+"""Sino e painel de notificações; o componente visual fica no app `ui`."""
 
 from django import template
 

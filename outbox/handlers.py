@@ -1,9 +1,4 @@
-"""Registro dos tratadores de cada tipo de envio (D3).
-
-O worker só conhece o tipo gravado no envio, por isso cada app registra, no
-AppConfig.ready, a função que monta o e-mail daquele tipo. A função recebe a
-referência e devolve a mensagem pronta, ou None quando o envio não faz mais sentido.
-"""
+"""Registro dos tratadores de envio por tipo, que montam o e-mail ou devolvem None."""
 
 from django.core.exceptions import ImproperlyConfigured
 

@@ -1,4 +1,4 @@
-"""Solicitação pela tela, "Minhas solicitações", a resposta à alternativa e o cancelamento (D1, D8)."""
+"""Solicitação pela tela, "Minhas solicitações", a resposta à alternativa e o cancelamento."""
 
 from datetime import date, time
 

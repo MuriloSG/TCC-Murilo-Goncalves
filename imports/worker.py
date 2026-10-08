@@ -1,20 +1,4 @@
-"""Execução das operações pendentes das importações pelo worker (D4, D6).
-
-Cada operação passa por duas transações. A reserva conta a tentativa e adia a próxima,
-para que uma queda do processo também consuma tentativa e para que outro worker não pegue
-a mesma importação até a execução. A execução trava a importação com skip_locked, espera
-por trava no máximo `IMPORT_LOCK_TIMEOUT` segundos e chama a operação do model, que grava o
-resultado de negócio e o fim da operação no mesmo commit. O limite vale só para a espera
-por trava: uma execução que já tem as travas roda o tempo que precisar.
-
-Um erro inesperado desfaz a execução e fica em `last_error`; a operação continua pendente
-até esgotar as tentativas. Uma recusa de regra que escape da execução encerra a operação
-sem nova tentativa. O worker nunca grava a situação diretamente.
-
-O log leva o número da importação, o tipo, a operação e a classe da exceção, nunca o texto
-dela: a mensagem pode trazer valores das linhas. O texto completo fica em `last_error`,
-visível na tela da importação, e o traceback sai só no nível DEBUG.
-"""
+"""Worker das importações; o log leva só a classe da exceção, que pode conter valores das linhas."""
 
 import logging
 
@@ -35,11 +19,7 @@ def locked_pending(pk):
 
 
 def reserve():
-    """Reserva a próxima operação vencida e devolve a importação e a definição, ou None sem nenhuma.
-
-    A importação que já esgotou as tentativas, como depois de quedas seguidas do processo, é
-    encerrada aqui sem executar, e a importação de tipo sem definição registrada também.
-    """
+    """Reserva a próxima operação vencida, encerrando sem executar as esgotadas e as sem definição."""
     with transaction.atomic():
         importation = Import.objects.due().select_for_update(skip_locked=True).first()
         if importation is None:
@@ -110,7 +90,7 @@ def execute(importation, definition):
 
 
 def process_next():
-    """Processa a próxima operação vencida. Devolve False quando não há nenhuma."""
+    """Processa a próxima operação vencida; devolve False quando não há nenhuma."""
     reserved = reserve()
     if reserved is None:
         return False

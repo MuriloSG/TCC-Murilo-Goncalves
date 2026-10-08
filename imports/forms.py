@@ -4,13 +4,7 @@ from imports.reader import FileRejected
 
 
 class ImportUploadForm(forms.Form):
-    """Envio do arquivo. A leitura e a conferência da estrutura acontecem na validação.
-
-    As recusas do arquivo inteiro viram erro do campo, e nenhuma importação é criada. Os
-    campos próprios da importação específica entram ao lado do arquivo, e o valor de cada
-    um é gravado como coluna lógica nos valores de todas as linhas, para que a confirmação
-    reexecute com o valor que foi visto na prévia.
-    """
+    """Os campos próprios viram coluna lógica de todas as linhas, para a confirmação usar o valor da prévia."""
 
     file = forms.FileField()
 

@@ -38,11 +38,7 @@ from accounts.models import Role, User
 from accounts.utils import add_operation_error
 
 class LogoutView(allauth_views.LogoutView):
-    """Saída do sistema, com a confirmação em modal quando pedida pelo htmx.
-
-    O POST continua sendo o envio comum do formulário, e o allauth redireciona
-    para a página de login.
-    """
+    """Saída com a confirmação em modal quando pedida pelo htmx."""
 
     modal_template_name = 'account/logout_modal.html'
 
@@ -53,10 +49,7 @@ class LogoutView(allauth_views.LogoutView):
 
 
 class HomeView(TemplateView):
-    """Ponto de entrada depois do login: abre o primeiro módulo do menu liberado ao usuário.
-
-    Quando o perfil não libera nenhum módulo, mostra o aviso de acesso restrito.
-    """
+    """Abre o primeiro módulo liberado ao usuário ou o aviso de acesso restrito."""
 
     template_name = 'accounts/without_modules.html'
 
@@ -68,11 +61,7 @@ class HomeView(TemplateView):
 
 
 class OperationFormView(ModalView, FormView):
-    """Formulário que executa uma operação do model, aberto em modal (D16).
-
-    Quando a rota tem `pk`, carrega o objeto alvo de `model`. As recusas das regras
-    de negócio (ValidationError) voltam como erros do próprio formulário.
-    """
+    """Formulário em modal que executa uma operação do model e mostra as recusas como erros."""
 
     model = None
     target = None
@@ -103,11 +92,7 @@ class OperationFormView(ModalView, FormView):
 
 
 class ConfirmedActionView(ModalView, TemplateView):
-    """Mostra a confirmação no GET e executa a operação só no POST (D13, D22).
-
-    As recusas das regras de negócio viram mensagens de erro, sem alterar dados.
-    A confirmação abre em modal (D16).
-    """
+    """Confirma no GET e executa só no POST, com as recusas como mensagens de erro."""
 
     model = None
     success_url = None
@@ -140,11 +125,7 @@ class ConfirmedActionView(ModalView, TemplateView):
 
 
 class UserListView(ListView):
-    """Lista de usuários com busca e filtro pela URL.
-
-    Quando o formulário de filtros pede pelo htmx, responde só com a tabela e o
-    rodapé, o alvo da troca.
-    """
+    """Com htmx, responde só com a tabela e o rodapé."""
 
     permission_required = permissions.USER_VIEW
     audit_resource = catalog.USER
@@ -309,7 +290,7 @@ class RoleFormView(OperationFormView):
 
 
 class RoleCreateView(RoleFormView):
-    """Primeira etapa da criação. Depois dela, as permissões do perfil criado."""
+    """Primeira etapa da criação; depois vêm as permissões do perfil."""
 
     permission_required = permissions.ROLE_CREATE
     form_class = RoleCreateForm

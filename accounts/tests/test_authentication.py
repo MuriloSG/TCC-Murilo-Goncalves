@@ -36,7 +36,7 @@ class AuthenticationTestCase(TestCase):
 
 
 class UsernameIsNotACredentialTests(AuthenticationTestCase):
-    """O nome de usuário é identificador de domínio, e não credencial (D2)."""
+    """O nome de usuário é identificador de domínio, e não credencial."""
 
     def test_username_does_not_authenticate(self):
         self.user.username = 'Aldo Gomes'

@@ -121,11 +121,7 @@ class PythonExtractionTests(SimpleTestCase):
 
 
 class RenderedPagesTextTests(TestCase):
-    """Percorre as telas renderizadas, com os textos do Django e do allauth.
-
-    A regra de maiúsculas não é aplicada aqui, porque as telas trazem nomes de
-    pessoas e perfis. Ela é verificada nos templates.
-    """
+    """Textos das telas renderizadas, sem a regra de maiúsculas, que vale só nos templates."""
 
     @classmethod
     def setUpTestData(cls):

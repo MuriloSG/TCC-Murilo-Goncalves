@@ -1,4 +1,4 @@
-"""Cadastro de uma aula recorrente pela interface (Change criar-recorrencia-do-ensalamento)."""
+"""Cadastro de uma aula recorrente pela interface."""
 
 from datetime import date, datetime, time
 from unittest import mock
@@ -27,8 +27,7 @@ KEEP = object()
 
 
 class CreateTestCase(TestCase):
-    """Semestre 2026/2 com quatro faixas seguidas, a Sala 5 com Cálculo às terças das 10:00
-    às 12:00 e a Sala 9 disponível."""
+    """Quatro faixas seguidas, Cálculo às terças das 10:00 às 12:00 na Sala 5 e a Sala 9 livre."""
 
     @classmethod
     def setUpTestData(cls):

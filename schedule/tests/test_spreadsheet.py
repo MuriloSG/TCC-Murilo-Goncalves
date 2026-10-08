@@ -1,9 +1,4 @@
-"""Leitura de `sources/planilha_example.xlsx`, a planilha real do campus.
-
-A planilha não é alterada por estes testes. Os números conferidos aqui são os da análise
-registrada no `design.md` da Change, e servem para acusar qualquer mudança de comportamento
-da leitura diante do arquivo real.
-"""
+"""Leitura de `sources/planilha_example.xlsx`, com números que acusam mudança de comportamento diante do arquivo real."""
 
 import collections
 from unittest.mock import patch
@@ -287,7 +282,7 @@ class RealFileProblemTests(SpreadsheetTestCase):
 
 
 class UserSheetReadingTests(SimpleTestCase):
-    """Leitura da aba opcional `usuários - sistema` (D4 e D5 da Change importar-usuarios-com-o-ensalamento)."""
+    """Leitura da aba opcional `usuários - sistema`."""
 
     def book(self, rows=None, title=USERS_SHEET):
         book = Workbook()

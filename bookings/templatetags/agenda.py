@@ -14,12 +14,7 @@ register = template.Library()
 
 @register.simple_tag
 def request_url(space, day, start, end, busy=(), route='agenda_request_create'):
-    """Endereço do modal "Solicitar agendamento" com a faixa, ou vazio quando ela já começou.
-
-    A semana típica, sem data, não oferece a ação, nem a faixa que cruza um horário de
-    `busy`, ocupado por outra pessoa e escondido em "Minha agenda". `route` escolhe o modal:
-    o da solicitação ou o da criação para outro usuário.
-    """
+    """Modal de solicitação da faixa, ou vazio quando ela já começou, não tem data ou cruza `busy`."""
     if space is None or day is None or moment(day, start) <= timezone.now() or is_busy(busy, day, start, end):
         return ''
     query = {'espaco': space.pk, 'data': day.isoformat(), 'inicio': f'{start:%H:%M}', 'fim': f'{end:%H:%M}'}

@@ -1,12 +1,4 @@
-"""Sugestão de nomes de espaço parecidos (D6 da Change manipulacao-dos-espacos).
-
-A semelhança serve só para montar as perguntas da importação e nunca associa, cria,
-renomeia ou une espaços. A regra é heurística e pode ser ajustada, desde que os casos reais
-dos testes continuem valendo: a regra forte junta os nomes que ficam iguais sem espaços,
-pontos, hífens, acentos, caixa e zeros à esquerda (`HV5` e `HV 5`, `Sala 01` e `Sala 1`), e a
-regra fraca junta o nome que é outro acrescido de um número ou de um romano no fim
-(`Lab. Química` e `Lab. Química I`).
-"""
+"""Nomes de espaço parecidos, só para sugerir decisões; nunca associa, cria ou une espaços."""
 
 import re
 import unicodedata

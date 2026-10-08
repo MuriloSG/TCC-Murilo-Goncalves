@@ -1,18 +1,4 @@
-"""Classificação dos espaços de uma importação de ensalamento (D5 e D8 da Change manipulacao-dos-espacos).
-
-A classificação reúne os nomes de espaço encontrados na planilha, agrupados sem diferenciar
-a caixa, e dá a cada um exatamente uma classificação, nesta precedência: reconhecido (o nome
-identifica um espaço ativo), decidido (há decisão válida), novo proposto (vem da lista de
-salas, não identifica espaço e não tem parecido) e precisa de decisão. Ela é calculada das
-linhas gravadas, do cadastro e das decisões, sem executar as linhas nem abrir o arquivo, e é
-a mesma usada pela execução, pela verificação da confirmação e pelo quadro da prévia.
-
-A lista de salas é a referência que o campus mantém: um nome citado só nas células nunca é
-proposto como novo e não torna ambíguo um nome da lista. Um nome da lista sem aula também é
-nome encontrado, com o uso zerado, para que a sala seja cadastrada e apareça com a grade vazia
-nos calendários; só o que identifica um espaço inativo fica de fora, porque a desativação é
-decisão do cadastro (Change importar-salas-sem-aula).
-"""
+"""Classificação dos nomes de espaço pelas linhas, cadastro e decisões; nome só das células nunca é proposto como novo."""
 
 from dataclasses import dataclass, field
 
@@ -169,7 +155,7 @@ class Resolution:
         return bool(self.to_create or self.to_associate or self.to_reactivate)
 
     def required_permissions(self):
-        """Permissões de espaço exigidas de quem confirma, pelo que a confirmação alterará (D11)."""
+        """Permissões de espaço exigidas de quem confirma, pelo que a confirmação alterará."""
         required = set()
         for entry in self.found.values():
             required |= effect_permissions(entry.outcome, entry.target, entry.target_key, entry.moves_from)
@@ -191,23 +177,14 @@ def effect_permissions(outcome, target=None, target_key=None, moves_from=None):
 
 
 def registry():
-    """Nomes do cadastro, cada um com o seu espaço, e a lista de todos os nomes.
-
-    Os outros nomes de cada espaço vêm numa consulta só, para que `other_names` não consulte
-    o banco por espaço (A7 da Change otimizar-consultas-do-sistema). Cada nome continua com o
-    seu próprio objeto de espaço, como antes.
-    """
+    """Nomes do cadastro com os outros nomes numa só consulta."""
     items = list(SpaceName.objects.select_related('space'))
     prefetch_related_objects([item.space for item in items], 'names')
     return {key_of(item.name): (item.name, item.space) for item in items}
 
 
 def read_found(values_list, registry_names):
-    """Nomes encontrados na planilha, com a origem e o uso.
-
-    Os nomes da lista sem aula entram depois dos usados, com o uso zerado, salvo os que
-    identificam um espaço inativo, que ficam como estão.
-    """
+    """Nomes encontrados com a origem e o uso; os da lista sem aula entram depois, com uso zerado."""
     listed = {}
     teachers = []
     for values in values_list:
@@ -245,11 +222,7 @@ def read_found(values_list, registry_names):
 
 
 def candidates_of(entry, found, registry_names):
-    """Parecidos de um nome encontrado: no cadastro e, conforme a origem, nos demais nomes encontrados.
-
-    Um nome da lista sem aula não torna ambíguo um nome usado por aula, mas os usados contam
-    como parecidos dele.
-    """
+    """Parecidos no cadastro e nos demais nomes; nome da lista sem aula não torna ambíguo um usado."""
     known_spaces = {}
     for name, space in registry_names.values():
         known_spaces.setdefault(name, space)
@@ -350,11 +323,7 @@ def classify_import(importation):
 
 @dataclass
 class Applied:
-    """O que a execução aplicou ao cadastro: o espaço de cada nome e os valores anteriores.
-
-    `altered` são os espaços existentes que a execução alterou: os que perderam ou ganharam
-    um outro nome e os reativados.
-    """
+    """O que a execução aplicou ao cadastro; `altered` são os espaços existentes alterados."""
 
     spaces: dict = field(default_factory=dict)
     created: set = field(default_factory=set)
@@ -373,13 +342,7 @@ def metadata_of(entry, importation):
 
 
 def apply(resolution, importation=None):
-    """Aplica a classificação ao cadastro, pelas operações de `Space`, antes das linhas (D8).
-
-    A ordem garante que uma grafia fique livre antes de ser usada: primeiro saem os outros
-    nomes movidos de espaços inativos, depois vêm as reativações, os cadastros e os outros
-    nomes acrescentados a espaços existentes. Na prévia e na atualização, tudo é desfeito com
-    o resto da execução.
-    """
+    """Aplica a classificação ao cadastro numa ordem que libera cada grafia antes de reusá-la."""
     applied = Applied()
     entries = list(resolution.found.values())
     for entry in entries:
@@ -432,7 +395,7 @@ def options_of(entry):
 
 
 def decision_permissions(entry, kind, space=None, target_name=''):
-    """Permissões de espaço exigidas para tomar uma decisão sobre o nome (D11)."""
+    """Permissões de espaço exigidas para tomar uma decisão sobre o nome."""
     moves = entry.identifies_inactive and not entry.is_current_name_of_inactive
     if kind == SpaceDecision.Kind.REACTIVATE:
         return {permissions.SPACE_CHANGE_STATUS}

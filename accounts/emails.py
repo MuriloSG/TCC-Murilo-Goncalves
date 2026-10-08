@@ -1,4 +1,4 @@
-"""E-mails de accounts enviados pelo outbox (D6 da Change enviar-emails-por-outbox)."""
+"""E-mails de accounts enviados pelo outbox."""
 
 from allauth.account import app_settings
 from allauth.account.adapter import get_adapter
@@ -11,13 +11,7 @@ PASSWORD_LINK = 'LINK_SENHA'
 
 
 def password_link(reference):
-    """Monta o e-mail com o link de definição de senha do usuário `reference`.
-
-    O token é gerado aqui, no envio, pelo mesmo gerador e para a mesma rota da
-    recuperação de senha, e nunca é gravado. O link usa a URL base configurada,
-    porque o worker não tem requisição. Devolve None quando o usuário não existe
-    mais, está inativo ou já definiu a senha, e o envio é descartado.
-    """
+    """Gera o token no envio e devolve None quando o link não se aplica mais."""
     user = get_user_model().objects.filter(pk=reference).first()
     if user is None or not user.is_active or user.has_usable_password():
         return None

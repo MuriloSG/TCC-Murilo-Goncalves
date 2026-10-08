@@ -1,10 +1,4 @@
-"""Canal de tempo real das notificações (D11).
-
-A conexão é autenticada pela mesma sessão da interface, e cada usuário escuta só o
-destino dele: a separação é do servidor, e não do navegador. O evento não carrega
-a notificação, apenas avisa que as notificações daquele usuário mudaram, e a
-interface busca a contagem e a lista numa requisição autenticada.
-"""
+"""Canal de tempo real das notificações; o evento só avisa a mudança, e a interface busca o conteúdo."""
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer

@@ -1,17 +1,4 @@
-"""Views públicas do ensalamento: o calendário e o horário original, as únicas rotas do sistema
-abertas sem autenticação além do login.
-
-Não declaram `permission_required` nem `audit_resource`, não herdam de view autenticada e não
-leem `request.user`: o PermissionMiddleware e o AuditMiddleware deixam a requisição passar sem
-exigir login nem gravar acesso (D1 e D2 da Change calendario-publico). Só aceitam GET e HEAD.
-As rotas são isentas de CSRF só para que um POST receba 405, e não 403: as views não gravam
-nada, não usam sessão e não têm formulário que altere dados.
-
-As opções dos filtros e o HTML da Grade vêm do cache público (`schedule.public_cache`). A
-resposta informa o uso do cache em `X-Public-Cache` e pede `Cache-Control: no-cache`, para que
-um cache intermediário que respeite o cabeçalho revalide a página; a consistência não depende
-dele, e sim da invalidação por geração (Change cachear-telas-publicas-com-redis).
-"""
+"""Views públicas sem login; isentas de CSRF só para um POST receber 405, e não 403."""
 
 from django.template.loader import render_to_string
 from django.urls import reverse

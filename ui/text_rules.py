@@ -1,15 +1,4 @@
-"""Regras do texto exibido pela interface e extração desse texto.
-
-As listas deste módulo são a fonte usada pela verificação automática das regras
-da seção 9 do docs/desenvolvimento/convencoes.md (tom, expressões proibidas, glossário e
-maiúsculas). A seção 9 é a referência de leitura: uma mudança numa das duas exige
-a mudança da outra no mesmo commit (D4 da Change definir-texto-da-interface).
-
-A comparação ignora maiúsculas e acentos e respeita limites de palavra Unicode.
-A exceção são os EXACT_PATTERNS, comparados ao texto original porque a forma sem
-acento é outra palavra ("nós" e a contração "nos"). Códigos de permissão no
-formato RECURSO.ACAO são dado, e não texto, e ficam fora da comparação.
-"""
+"""Regras de texto da interface, espelhadas na seção 9 de docs/desenvolvimento/convencoes.md."""
 
 import ast
 import re
@@ -110,11 +99,7 @@ SENTENCE_BREAK = re.compile(r'(?<=[.?!:;·|(])\s*')
 
 
 def fold(text):
-    """Remove acentos e maiúsculas mantendo um caractere para cada caractere original.
-
-    Com o mesmo comprimento, as posições de uma busca no texto dobrado valem no
-    texto original, e o trecho da violação é mostrado como foi escrito.
-    """
+    """Remove acentos e caixa mantendo o comprimento, para as posições valerem no texto original."""
     folded = []
     for char in text:
         base = ''.join(c for c in unicodedata.normalize('NFD', char) if not unicodedata.combining(c))
@@ -138,11 +123,7 @@ def is_emoji(char):
 
 
 def capitalization_violations(text):
-    """Aponta palavras com inicial maiúscula fora do início da frase.
-
-    Nomes próprios de PROPER_NOUNS e palavras só com maiúsculas, com duas letras
-    ou mais (siglas e o marcador de variável), são permitidos.
-    """
+    """Palavras com inicial maiúscula fora do início da frase, exceto nomes próprios e siglas."""
     for noun in PROPER_NOUNS:
         text = text.replace(noun, VARIABLE_MARKER)
     violations = []
@@ -157,11 +138,7 @@ def capitalization_violations(text):
 
 
 def find_violations(text, element=None):
-    """Devolve as violações das regras de texto encontradas em um trecho exibido.
-
-    A regra de maiúsculas vale só quando `element` está em CAPITALIZED_ELEMENTS, e
-    a de dois-pontos só em títulos.
-    """
+    """Violações das regras de texto num trecho exibido."""
     violations = []
     folded = mask_codes(fold(text), text)
     for pattern, guidance in FORBIDDEN_PATTERNS:
@@ -187,12 +164,7 @@ def find_violations(text, element=None):
 
 
 def visible_template_source(source):
-    """Reescreve o template só com o que chega ao usuário, preservando as linhas.
-
-    Tags de bloco, comentários e o conteúdo de {% comment %} somem, e cada variável
-    vira VARIABLE_MARKER. Num template que estende outro, o {% block title %} fica
-    entre <title> e </title>, para que a regra de títulos valha para ele.
-    """
+    """Template só com o que chega ao usuário, preservando as linhas."""
     tokens = Lexer(source).tokenize()
     extends = any(
         token.token_type == TokenType.BLOCK and token.contents.split()[:1] == ['extends']
@@ -225,16 +197,7 @@ def visible_template_source(source):
 
 
 class VisibleTextParser(HTMLParser):
-    """Coleta o texto visível de um HTML como Fragment(text, line, element).
-
-    Além do conteúdo, coleta os atributos placeholder, title, alt, aria-label e
-    data-label, e o value de <input type="submit|button">. O data-label repete o
-    cabeçalho da coluna na tabela empilhada e segue a regra de maiúsculas de th. O texto de um elemento de
-    CAPITALIZED_ELEMENTS é reunido num único trecho, mesmo com tags dentro dele, e
-    o trecho leva o nome desse elemento. Fora deles, cada trecho leva a tag em que
-    está. A declaração <!DOCTYPE>, os comentários HTML, <script> e <style> são
-    ignorados.
-    """
+    """Coleta o texto visível e os atributos exibidos como Fragment(text, line, element)."""
 
     VOID_ELEMENTS = frozenset({
         'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source',
@@ -338,12 +301,7 @@ def is_logger_call(node):
 
 
 def python_fragments(source):
-    """Frases literais de um módulo Python: strings e f-strings com pelo menos um espaço.
-
-    Docstrings e argumentos de logger.* ficam de fora. Numa f-string, cada
-    expressão vira VARIABLE_MARKER. A regra de maiúsculas não se aplica, porque o
-    elemento em que a frase aparece não é conhecido (D3).
-    """
+    """Strings literais com espaço, sem docstrings nem argumentos de logger."""
     tree = ast.parse(source)
     skipped = set()
     for node in ast.walk(tree):

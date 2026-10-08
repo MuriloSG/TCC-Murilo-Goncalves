@@ -1,9 +1,4 @@
-"""Capacidades do motor usadas pela importação de ensalamento, testadas sobre auth.Group.
-
-A fonte de planilha em grade, os limites declarados pela importação, os campos próprios
-do envio, os metadados da auditoria e a ausência de modelo são do motor, e por isso são
-testados aqui, sem depender de nenhum app de domínio.
-"""
+"""Capacidades do motor usadas pelo ensalamento, testadas sem depender de app de domínio."""
 
 import io
 

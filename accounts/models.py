@@ -31,11 +31,7 @@ UNCHANGED = object()
 
 
 def normalize_username(value):
-    """Apara as bordas e reduz espaços internos repetidos, devolvendo None quando não sobra nada.
-
-    A caixa e os acentos são preservados: o valor precisa voltar idêntico ao que foi
-    informado para casar com o identificador usado fora da aplicação (D3).
-    """
+    """Apara e reduz espaços sem mudar caixa nem acentos, que precisam casar com dados externos."""
     return ' '.join((value or '').split()) or None
 
 
@@ -116,13 +112,7 @@ _continuity_deferred = ContextVar('continuity_deferred', default=False)
 
 @contextmanager
 def deferred_administrative_continuity():
-    """Adia a verificação da continuidade administrativa das operações executadas dentro do bloco.
-
-    As operações continuam travando os usuários ativos, mas não verificam a continuidade
-    ao terminar. Quem abre o bloco verifica uma vez, no fim, com
-    ensure_administrative_continuity. Serve à importação de usuários, em que o estado
-    entre uma linha e outra não conta (D11 da Change importar-usuarios-por-planilha).
-    """
+    """Adia a verificação da continuidade administrativa para quem abriu o bloco, como na importação."""
     token = _continuity_deferred.set(True)
     try:
         yield
@@ -162,11 +152,7 @@ USER_STATUS_FILTERS = {'ativos': True, 'inativos': False}
 
 class UserQuerySet(models.QuerySet):
     def search(self, term='', status=''):
-        """Filtra por trecho do nome, do e-mail ou do nome de usuário e pela situação.
-
-        A comparação do termo ignora maiúsculas. A situação é "ativos" ou
-        "inativos", e qualquer outro valor mantém todos os usuários.
-        """
+        """Filtra pelo termo, sem diferenciar caixa, e pela situação ativos ou inativos."""
         queryset = self
         if term:
             queryset = queryset.filter(
@@ -179,11 +165,7 @@ class UserQuerySet(models.QuerySet):
         return queryset
 
     def with_permission(self, code):
-        """Usuários ativos que têm a permissão, pelo perfil ou por serem superadmin.
-
-        Segue a mesma regra de `User.has_perm`, numa única consulta: uma permissão
-        reservada ao superadmin não é alcançada pelo perfil.
-        """
+        """Usuários ativos com a permissão, pela mesma regra de `User.has_perm`."""
         by_role = models.Q(roles__permissions__code=code)
         if code in SUPERADMIN_RESERVED_PERMISSIONS:
             by_role = models.Q(pk__in=[])
@@ -212,12 +194,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         return (email or '').strip().lower()
 
     def register(self, email, name, role, username=None):
-        """Cadastra o usuário sem senha e registra no outbox o envio do link para defini-la.
-
-        O envio fica na mesma transação do cadastro: se o cadastro for desfeito, inclusive
-        na prévia de uma importação, o envio também é (D7 da Change enviar-emails-por-outbox).
-        Só são aceitos e-mails do domínio institucional.
-        """
+        """Cadastra sem senha e enfileira o link no outbox na mesma transação."""
         if role is None:
             raise role_required_error()
         try:
@@ -273,12 +250,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
 
 
 class User(AbstractBaseUser):
-    """Usuário do sistema, autenticado pelo e-mail.
-
-    O campo `username` é um identificador de domínio, usado para reconhecer o usuário
-    em dados vindos de fora da aplicação, e não uma credencial: quem autentica é o
-    e-mail, apontado por USERNAME_FIELD (D2 da Change identificar-usuario-por-username).
-    """
+    """Usuário autenticado pelo e-mail; `username` é identificador de domínio, e não credencial."""
 
     email = models.EmailField('e-mail', max_length=254, unique=True)
     name = models.CharField('nome', max_length=150)
@@ -319,13 +291,7 @@ class User(AbstractBaseUser):
         return self.email
 
     def clean(self):
-        """Normaliza o e-mail e o nome de usuário e recusa um nome de usuário já em uso.
-
-        A unicidade do nome de usuário é conferida aqui, e não pelo `unique=True` do
-        campo, porque o valor é gravado como foi informado: sem baixar a caixa, a
-        conferência do campo não alcançaria dois valores que diferem só nela. A
-        UniqueConstraint continua como garantia do banco (D4).
-        """
+        """Confere a unicidade do nome de usuário sem caixa, que o `unique=True` não alcança."""
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email)
         self.username = normalize_username(self.username)
@@ -395,13 +361,7 @@ class User(AbstractBaseUser):
         self.__dict__.pop('_effective_permissions_cache', None)
 
     def update_details(self, executor, name, email, username=UNCHANGED):
-        """Altera nome, e-mail e nome de usuário.
-
-        O nome de usuário omitido fica como está. Informado vazio, ele é excluído: a
-        distinção entre não informar e excluir é o que permite à importação manter o
-        valor atual de uma célula vazia (D8). A proteção do e-mail de superadmin não
-        alcança o nome de usuário.
-        """
+        """Nome de usuário omitido fica como está; vazio, é excluído."""
         name = (name or '').strip()
         email = type(self).objects.normalize_email(email)
         with transaction.atomic():

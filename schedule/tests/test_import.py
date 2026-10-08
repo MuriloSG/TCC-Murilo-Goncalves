@@ -1,10 +1,4 @@
-"""Fluxo da importação de ensalamento pela máquina de estados do app `imports`.
-
-A planilha destes testes é montada com a mesma estrutura da planilha real: linha de título
-do curso, linha de cabeçalho por bloco de dia, coluna do dia, coluna do horário com as
-linhas de intervalo e de almoço, colunas de turma e a aba de validação de dados com as duas
-listas. O arquivo real é usado nos testes que conferem o comportamento diante dele.
-"""
+"""Fluxo da importação de ensalamento, com planilhas montadas na estrutura da planilha real."""
 
 import io
 from datetime import date, time
@@ -758,8 +752,7 @@ def chemistry_by(teacher):
 
 
 class AcademicLinkTests(ImportTestCase):
-    """Ofertas e docentes das ofertas estabelecidos pela importação (Change
-    relacionar-professor-disciplina-turma)."""
+    """Ofertas e docentes das ofertas estabelecidos pela importação."""
 
     def test_confirmation_records_offerings_and_teachers(self):
         self.conclude()
@@ -808,7 +801,7 @@ ERICA = ('erica@ifnmg.edu.br', 'Érica Alves', 'DOCENTE', 'Érica')
 
 
 class UserSheetTests(ImportTestCase):
-    """Aba opcional `usuários - sistema` (Change importar-usuarios-com-o-ensalamento)."""
+    """Aba opcional `usuários - sistema`."""
 
     def setUp(self):
         self.executor = space_manager(extra_permissions=[permissions.USER_CREATE])
@@ -1029,7 +1022,7 @@ class UserSheetTests(ImportTestCase):
 
 
 class SuggestedSpreadsheetTests(ImportTestCase):
-    """Planilha sugerida, com a aba `usuários - sistema` (Change importar-usuarios-com-o-ensalamento)."""
+    """Planilha sugerida, com a aba `usuários - sistema`."""
 
     def setUp(self):
         self.executor = space_manager(extra_permissions=[permissions.USER_CREATE])

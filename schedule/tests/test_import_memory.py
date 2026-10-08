@@ -1,9 +1,4 @@
-"""Memória da execução da importação do ensalamento e etapa final (Change otimizar-consultas-do-sistema).
-
-A memória guarda os registros resolvidos só durante a execução, e o que uma linha desfeita
-criou deixa de valer para as linhas seguintes. As ofertas são sincronizadas depois das
-linhas, só para as mantidas, e a trava das alocações não alcança outras tabelas.
-"""
+"""Memória da execução da importação do ensalamento e etapa final."""
 
 from unittest.mock import patch
 
@@ -37,8 +32,7 @@ class ImportMemoryTests(ImportTestCase):
         return form.cleaned_data['rows']
 
     def test_record_created_by_a_refused_row_is_created_again(self):
-        """A chave estrangeira do PostgreSQL só é conferida no commit, por isso a alocação da
-        segunda linha é conferida dentro da execução, antes do rollback."""
+        """A chave estrangeira só é conferida no commit, por isso a alocação é conferida antes do rollback."""
         rows = self.rows(workbook_file(
             undergraduate={
                 ('SEGUNDA ', '07:20 - 08:10', 0): 'Física Nova (Elza) (1/13)',

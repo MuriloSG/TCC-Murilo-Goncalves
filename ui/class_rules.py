@@ -1,10 +1,4 @@
-"""Verificação das classes dos templates contra a escala de tokens (D13).
-
-Os valores aceitos vêm do ui/styles/app.css: tokens de cor, espaçamento, tamanho
-de fonte, raio, sombra e largura, e os nomes das classes de componente. As
-partes {{ }} e {% %} de um atributo class são descartadas, e os prefixos de
-variante (sm:, hover:, focus-visible: e outros) são removidos antes da análise.
-"""
+"""Verificação das classes dos templates contra os tokens do ui/styles/app.css."""
 
 import re
 from html.parser import HTMLParser

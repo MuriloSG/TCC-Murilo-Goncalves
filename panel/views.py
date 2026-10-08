@@ -13,13 +13,7 @@ from ui.views import ModalView
 
 
 class PanelView(TemplateView):
-    """Painel administrativo: o que pede ação e a ocupação dos espaços, numa tela (Change
-    exibir-painel-administrativo).
-
-    A rota exige `PAINEL.VISUALIZAR`, e cada bloco exige também a permissão do módulo dono dos
-    dados; o bloco não liberado nem é calculado (D1). O painel só lê: os links levam às telas
-    que executam cada ação. Não declara `audit_resource` (D9).
-    """
+    """Painel somente leitura; cada bloco só é calculado com a permissão do módulo dono dos dados."""
 
     permission_required = permissions.PANEL_VIEW
     template_name = 'panel/panel.html'
@@ -63,12 +57,7 @@ ISSUE_KEYS = ('sem-espaco', 'sem-docente', 'conflito', 'choque', 'sem-ocupacao')
 
 
 class PanelIssueView(ModalView, TemplateView):
-    """Itens de um bloco das pendências da grade, em modal pelo htmx e paginados.
-
-    Os filtros do painel chegam pela URL. Além de `PAINEL.VISUALIZAR`, exige
-    `ENSALAMENTO.VISUALIZAR` e, para os agendamentos em choque, `AGENDA.VISUALIZAR` (D1).
-    Sem o htmx, a mesma URL mostra a página completa.
-    """
+    """Itens de um bloco das pendências, paginados em modal pelo htmx ou na página completa."""
 
     permission_required = permissions.PANEL_VIEW
     template_name = 'panel/issue_page.html'

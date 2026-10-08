@@ -5,11 +5,7 @@ from accounts.models import Role, User
 
 
 class EditFormsShowCurrentValuesTests(TestCase):
-    """Os formulários de edição abrem com os dados atuais do alvo.
-
-    O FormView sempre passa `initial`, mesmo vazio, e os formulários precisam
-    combinar os dados atuais com ele, e não só usá-los quando `initial` falta.
-    """
+    """O FormView sempre passa `initial`, e os formulários precisam combinar os dados atuais com ele."""
 
     @classmethod
     def setUpTestData(cls):

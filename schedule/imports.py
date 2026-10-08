@@ -1,31 +1,4 @@
-"""Importação do ensalamento pela planilha institucional.
-
-A leitura produz uma linha por valor dos catálogos da aba de validação de dados e uma linha
-por atividade lida das células das duas abas de horário (D2 e D4). As linhas dos catálogos
-vêm primeiro, porque são elas que criam os espaços e os docentes que as atividades
-referenciam, e porque é delas que a execução monta o catálogo do arquivo.
-
-A execução de uma linha só usa os valores gravados dela, e nunca o arquivo: é isso que
-permite à confirmação reexecutar tudo depois, sem a planilha, e chegar ao mesmo plano. O
-código do semestre vem do campo próprio do envio e está nos valores de todas as linhas
-(D16). O início e o fim do semestre também são campos próprios do envio, gravados nas linhas,
-e o período é aplicado ao semestre na execução, em `lock()` (D3 da Change
-visualizar-ocupacao-por-semana-e-mes).
-
-Nada é excluído por uma importação, e nenhuma operação de domínio grava auditoria própria,
-salvo as do cadastro de espaços: o registro é o resumo da importação (D13 e D15). Os espaços
-seguem a classificação de `schedule.spaces`, aplicada ao cadastro em `lock()`, antes das
-linhas; toda sala da lista entra na classificação, com ou sem aula, e o nome que precisa de
-decisão vira pendência (D5 e D8 da Change manipulacao-dos-espacos e Change
-importar-salas-sem-aula).
-
-A aba opcional `usuários - sistema`, quando existe, produz uma linha por usuário, lida antes
-dos catálogos: a execução cadastra os usuários que ainda não existem, pelas operações da
-importação de usuários, e não altera os existentes. Sem a aba não há linha de usuário, e a
-execução vai direto aos catálogos. Os usuários ficam na mesma transação e no mesmo savepoint
-do ensalamento, para que a prévia os desfaça e a confirmação só os grave junto com ele (D1,
-D2 e D6 da Change importar-usuarios-com-o-ensalamento).
-"""
+"""Importação do ensalamento; cada linha usa só os próprios valores, para a confirmação reexecutar sem a planilha."""
 
 import contextvars
 from contextlib import contextmanager
@@ -130,36 +103,7 @@ PERIOD_CHANGE = contextvars.ContextVar('schedule_import_period_change', default=
 
 
 class RunState:
-    """Estado de uma execução: o catálogo do arquivo, o semestre e o que a execução criou.
-
-    Fica num contextvar, e não na definição, porque a definição é um objeto único
-    compartilhado pelas telas e não pode guardar dados de uma execução.
-
-    `created` guarda as chaves criadas pelas linhas desta execução. Uma linha que encontra
-    um registro criado por uma linha anterior da mesma execução não pode usar a chave como
-    alvo do plano: a chave da prévia desaparece no rollback, e a da confirmação é outra, o
-    que faria o plano divergir sempre. Nesse caso a linha fica sem alvo, e a decisão
-    continua determinística, porque a relação entre as duas linhas é a mesma nas duas
-    execuções.
-
-    `duplicates` guarda as células que descrevem a mesma alocação, para que todas recebam o
-    erro de duplicidade em vez de a segunda atualizar o que a primeira criou.
-
-    `resolution` é a classificação dos espaços, `applied` o que ela aplicou ao cadastro e
-    `reported` os nomes da lista de salas cuja linha já recebeu a ação.
-
-    `user_duplicates` guarda, pela célula de origem, os erros de e-mail ou de nome de usuário
-    repetido na aba de usuários (D8 da Change importar-usuarios-com-o-ensalamento).
-
-    `records` guarda os cursos, turmas, disciplinas, faixas e docentes já resolvidos, pela
-    grafia exata da busca, para que a mesma grafia não volte ao banco na mesma execução;
-    `users` guarda os usuários da aba lidos na trava, pelo e-mail gravado; `allocations`
-    guarda as alocações do semestre lidas na trava, pela identidade; e
-    `offerings` os pares de disciplina e turma das linhas mantidas, sincronizados em
-    `finish()`. O que uma linha acrescenta a eles fica em `row` e só passa a valer quando a
-    linha é mantida: o registro criado por uma linha desfeita deixa de existir no banco
-    (D1, D2, D3 e D5 da Change otimizar-consultas-do-sistema).
-    """
+    """Estado da execução num contextvar, porque a definição é compartilhada; o acréscimo de cada linha só vale se ela for mantida."""
 
     def __init__(self, importation=None):
         self.importation = importation
@@ -231,9 +175,7 @@ def semester_field():
 
 
 def period_field(label, help_text):
-    """Data do período no envio. A obrigatoriedade depende do semestre e é conferida em
-    `clean_upload`; por isso o campo é `conditional`, e o rótulo não diz "(opcional)".
-    """
+    """Campo `conditional`, porque a obrigatoriedade depende do semestre e é conferida em `clean_upload`."""
     field = forms.DateField(
         label=label,
         required=False,
@@ -250,11 +192,7 @@ def period_of(values):
 
 
 def activity_identity(values, file_catalog):
-    """Identidade da alocação que a linha descreve, ou None quando a atividade tem problema.
-
-    É a identidade do model: turma, dia da semana, faixa de horário e disciplina. O semestre
-    fica de fora porque é o mesmo em toda a importação.
-    """
+    """Identidade do model sem o semestre, que é o mesmo em toda a importação; None quando há problema."""
     activity = resolve(sheet_text(values.get(ACTIVITY_COLUMN)), file_catalog)
     if activity.problems:
         return None
@@ -341,12 +279,7 @@ def user_row(entry):
 
 
 def repeated_users(rows):
-    """Erros de duplicidade da aba de usuários, pela célula de origem (D8).
-
-    O e-mail é comparado normalizado e o nome de usuário sem diferenciar a caixa. Todas as
-    linhas envolvidas recebem o erro, calculado das linhas, e não do arquivo, para que a
-    confirmação chegue ao mesmo resultado da prévia.
-    """
+    """Erros de e-mail ou nome de usuário repetidos, calculados das linhas para a confirmação repetir a prévia."""
     user_rows = [row for row in rows if row.values.get(KIND_COLUMN) == USER_KIND]
     keys = (
         (USER_EMAIL_COLUMN, lambda value: User.objects.normalize_email(value),
@@ -373,8 +306,6 @@ def repeated_users(rows):
 
 
 class SpaceAllocationImport(ImportDefinition):
-    """Importação do ensalamento de um semestre."""
-
     kind = 'ENSALAMENTO'
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
     columns = (
@@ -470,11 +401,7 @@ class SpaceAllocationImport(ImportDefinition):
         return WorkbookSource()
 
     def clean_upload(self, values):
-        """Datas do período conferidas pelo model, antes de ler o arquivo (D3).
-
-        As recusas voltam pelo rótulo da coluna lógica, para que o formulário as ponha no
-        campo certo.
-        """
+        """Datas do período conferidas pelo model, com a recusa no rótulo da coluna lógica."""
         try:
             Semester.objects.check_period(values.get(SEMESTER_COLUMN), values.get(START_COLUMN), values.get(END_COLUMN))
         except ValidationError as error:
@@ -488,7 +415,7 @@ class SpaceAllocationImport(ImportDefinition):
         return value
 
     def read_cells(self, workbook):
-        """Linhas da importação: os usuários da aba opcional, os catálogos e as atividades (D1)."""
+        """Linhas da importação: os usuários da aba opcional, os catálogos e as atividades."""
         for entry in user_entries(workbook):
             yield user_row(entry)
         for entry in catalog_entries(workbook):
@@ -509,14 +436,7 @@ class SpaceAllocationImport(ImportDefinition):
             RUN.reset(token)
 
     def lock(self, rows, executor):
-        """Classifica e aplica os espaços, resolve o semestre e trava as alocações dele.
-
-        A classificação sai das próprias linhas, e não do arquivo, porque a confirmação não tem
-        o arquivo, e o catálogo da leitura das células é o dela: a lista da planilha somada
-        aos nomes do cadastro. As alterações do cadastro acontecem aqui, antes das linhas,
-        pelas operações de `Space`. A trava das alocações do semestre serializa duas
-        importações concorrentes.
-        """
+        """Classifica e aplica os espaços pelas linhas, que a confirmação tem sem o arquivo, e trava as alocações do semestre."""
         state = RUN.get()
         state.resolution = classify([row.values for row in rows], state.importation)
         state.catalog = state.resolution.catalog
@@ -531,11 +451,7 @@ class SpaceAllocationImport(ImportDefinition):
         self.lock_allocations(state)
 
     def lock_allocations(self, state):
-        """Trava as alocações do semestre e as guarda pela identidade, com o espaço e os docentes.
-
-        A trava continua só nas linhas de alocação: o espaço e os docentes vêm de consultas
-        próprias do `prefetch_related`, sem `FOR UPDATE` (D3).
-        """
+        """Trava só as alocações do semestre; espaço e docentes vêm do `prefetch_related`, sem `FOR UPDATE`."""
         allocations = (
             Allocation.objects.filter(semester=state.semester)
             .order_by('pk')
@@ -549,11 +465,7 @@ class SpaceAllocationImport(ImportDefinition):
             versions.sort(key=version_order)
 
     def lock_users(self, rows):
-        """Trava os usuários com os e-mails da aba, e nada consulta quando ela não existe (D12).
-
-        Os usuários travados ficam na execução pelo e-mail gravado, com o perfil, e a trava
-        continua só nas linhas de usuário (A8 da Change otimizar-consultas-do-sistema).
-        """
+        """Trava os usuários com os e-mails da aba, sem consulta quando ela não existe."""
         emails = [
             User.objects.normalize_email(row.values.get(USER_EMAIL_COLUMN))
             for row in rows
@@ -565,13 +477,7 @@ class SpaceAllocationImport(ImportDefinition):
         RUN.get().users = {user.email: user for user in users}
 
     def apply_period(self, semester, rows):
-        """Aplica ao semestre o período gravado nas linhas, e guarda a mudança para a auditoria.
-
-        Roda dentro da transação da execução: a prévia desfaz, a confirmação grava com as
-        alocações. Em branco, o período atual é preservado. A mudança fica num contextvar
-        próprio, e não no estado da execução, porque o resumo auditado é montado depois
-        que a execução termina.
-        """
+        """Aplica o período das linhas, guardando a mudança num contextvar próprio para o resumo auditado."""
         start, end = period_of(rows[0].values) if rows else (None, None)
         previous = (semester.start_date, semester.end_date)
         changed = start is not None and semester.define_period(start, end)
@@ -586,11 +492,7 @@ class SpaceAllocationImport(ImportDefinition):
         return name
 
     def execute_row(self, values, executor):
-        """Executa a linha e incorpora à memória da execução o que ela acrescentou, se for mantida.
-
-        O motor desfaz a linha com erro ou pendência; a linha que lança exceção também é desfeita,
-        e o que ela acrescentou é descartado quando a próxima começa.
-        """
+        """Executa a linha e guarda o que ela acrescentou para incorporar se for mantida."""
         state = RUN.get()
         state.row = RowMemory()
         plan = self.plan_row(values, executor)
@@ -609,11 +511,7 @@ class SpaceAllocationImport(ImportDefinition):
         return self.execute_activity(values)
 
     def execute_user(self, values, executor):
-        """Cadastra o usuário que ainda não existe, e deixa o existente como está (D3, D6 e D7).
-
-        A validação e o cadastro são os da importação de usuários. O usuário é reconhecido pelo
-        e-mail. A célula obrigatória é conferida aqui porque a fonte em grade não a confere.
-        """
+        """Cadastra o usuário que ainda não existe; a célula obrigatória é conferida aqui porque a grade não confere."""
         errors = [
             RowError(column, 'required', f'Preencha a coluna {column}.')
             for column in REQUIRED_USER_COLUMNS
@@ -631,11 +529,7 @@ class SpaceAllocationImport(ImportDefinition):
         return RowPlan(action='unchanged', target=user.pk, warnings=self.user_warnings(user, cleaned))
 
     def user_warnings(self, user, cleaned):
-        """Avisos do usuário existente: outros dados no cadastro e situação inativa (D7).
-
-        O perfil é lido dos perfis carregados com o usuário, sem nova consulta: o usuário tem um
-        perfil só, pela restrição `user_role_one_per_user`.
-        """
+        """Avisos do usuário existente: outros dados no cadastro e situação inativa."""
         warnings = []
         role = next(iter(user.roles.all()), None)
         differs = (
@@ -650,10 +544,7 @@ class SpaceAllocationImport(ImportDefinition):
         return warnings
 
     def execute_space(self, name):
-        """Plano da linha da lista de salas, pelo que a classificação decidiu para o nome.
-
-        O nome fora da classificação identifica um espaço inativo sem aula e fica sem ação.
-        """
+        """Plano da linha da lista de salas; nome fora da classificação é espaço inativo sem aula."""
         state = RUN.get()
         key = key_of(name)
         entry = state.resolution.found.get(key)
@@ -678,11 +569,7 @@ class SpaceAllocationImport(ImportDefinition):
         return RowPlan(action='unchanged', target=space.pk)
 
     def space_changes(self, space, applied):
-        """Outros nomes e situação do espaço existente antes e depois desta execução.
-
-        O espaço que a execução não alterou não tem mudança, e não é lido de novo (A7 da
-        Change otimizar-consultas-do-sistema).
-        """
+        """Outros nomes e situação antes e depois, só dos espaços que a execução alterou."""
         if space.pk not in applied.altered:
             return {}
         previous_names, was_active = applied.previous_names.get(space.pk, (space.other_names, space.is_active))
@@ -775,23 +662,18 @@ class SpaceAllocationImport(ImportDefinition):
         return plan
 
     def finish(self, executor):
-        """Sincroniza uma vez as ofertas e os vínculos de docente das linhas mantidas (D5)."""
+        """Sincroniza uma vez as ofertas e os vínculos de docente das linhas mantidas."""
         state = RUN.get()
         ClassOffering.objects.record_many(state.semester, state.offerings)
 
     def check_confirmation(self, importation, executor):
-        """Permissões de espaço de quem confirma, pelo que a confirmação alterará no cadastro (D11)."""
+        """Permissões de espaço de quem confirma, pelo que a confirmação alterará no cadastro."""
         required = classify_import(importation).required_permissions()
         if any(not executor.has_perm(code) for code in required):
             raise ValidationError(SPACE_PERMISSION_MESSAGE, code='space_permission')
 
     def new_space_change(self, entry, space):
-        """Cadastro do espaço citado só nas células, no plano da primeira aula que o usa.
-
-        O nome da lista tem a linha de sala para mostrar o cadastro; o nome só das células não
-        tem, e sem esta mudança o plano não mudaria quando o espaço passasse a existir por
-        outro caminho entre a prévia e a confirmação.
-        """
+        """Mudança que faz o plano divergir se o espaço citado só nas células passar a existir antes da confirmação."""
         state = RUN.get()
         if entry is None or entry.from_list or space is None or space.pk not in state.applied.created:
             return {}
@@ -801,12 +683,7 @@ class SpaceAllocationImport(ImportDefinition):
         return {'novo_espaco': [None, space.name]}
 
     def audit_metadata(self, rows):
-        """Semestre e período da importação, para o resumo auditado (D15 e D3).
-
-        O período anterior entra quando a execução que acabou de rodar o substituiu. A
-        mudança é conferida pelo semestre e pelas datas, e consumida na leitura, para que
-        um valor de outra execução da mesma thread não apareça no descarte ou na exclusão.
-        """
+        """Semestre e período para o resumo auditado, consumindo a mudança para não vazar a outra execução."""
         codes = {values.get(SEMESTER_COLUMN) for values in (row.values for row in rows)}
         codes.discard('')
         codes.discard(None)
@@ -838,11 +715,7 @@ def created_users(importation_pk):
 
 
 def space_totals(importation_pk):
-    """Totais de espaços da confirmação, contados dos registros de espaço que ela gravou (D13).
-
-    Ficam fora dos campos da importação: vêm das alterações do cadastro aplicadas pela
-    confirmação, que registram a chave da importação nas informações adicionais.
-    """
+    """Totais de espaços contados dos registros de auditoria que a confirmação gravou."""
     records = AuditLog.objects.filter(resource=catalog.SPACE, metadata__importacao=importation_pk)
     associated = sum(
         1 for record in records.filter(action=catalog.UPDATE)
@@ -875,7 +748,6 @@ def space_totals_text(importation):
 
 
 def concluded_message(summary, importation=None):
-    """Mensagem da importação de ensalamento concluída, com os totais e os espaços alterados."""
     created, updated, unchanged = summary['create'], summary['update'], summary['unchanged']
     parts = []
     if created:

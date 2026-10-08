@@ -4,7 +4,7 @@ from system_settings.models import Security
 
 
 class SmtpForm(forms.Form):
-    """Dados do servidor de e-mail. A senha nunca volta para a tela (D9)."""
+    """Dados do servidor de e-mail; a senha nunca volta para a tela."""
 
     host = forms.CharField(label='Servidor', max_length=255, error_messages={'required': 'Informe o servidor de e-mail.'})
     port = forms.IntegerField(

@@ -1,4 +1,4 @@
-"""Tags e filtros dos componentes da interface (D10, D12)."""
+"""Tags e filtros dos componentes da interface."""
 
 from django import template
 from django.template.loader import get_template
@@ -55,11 +55,7 @@ def first_name(name):
 
 @register.simple_tag
 def row_action(url_name, pk, label, icon_name, when=True, danger=False):
-    """Ação de uma linha de tabela para ui/components/row_actions.html.
-
-    Devolve None quando `when` é falso, para que a ação sem permissão seja
-    descartada por `action_list`.
-    """
+    """Ação de linha, ou None quando `when` é falso, para `action_list` a descartar."""
     if not when:
         return None
     return {'url': reverse(url_name, args=[pk]), 'label': label, 'icon': icon_name, 'danger': danger}
@@ -72,10 +68,7 @@ def action_list(*actions):
 
 @register.simple_tag(takes_context=True)
 def page_url(context, number):
-    """Endereço da página `number` da lista atual, com os demais parâmetros da URL.
-
-    A página 1 omite o parâmetro, para coincidir com o endereço sem paginação.
-    """
+    """Página `number` da lista atual; a página 1 omite o parâmetro."""
     request = context['request']
     query = request.GET.copy()
     query.pop(PAGE_PARAMETER, None)

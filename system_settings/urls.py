@@ -1,9 +1,3 @@
-"""Rotas das configurações do sistema.
-
-A autenticação é exigida aqui, com login_required, e a permissão é declarada em
-cada view e verificada pelo PermissionMiddleware.
-"""
-
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 

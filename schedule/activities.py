@@ -1,17 +1,4 @@
-"""Leitura da disciplina, dos docentes e da sala do texto de uma célula de atividade.
-
-O texto da célula não tem separador confiável entre as três informações: o nome da
-disciplina pode ter parênteses próprios e a sala pode faltar. Por isso a leitura acontece
-do fim para o começo, comparando o que está entre parênteses com os catálogos da aba de
-validação de dados (D3 da Change importar-ensalamento-da-planilha).
-
-A correspondência é exata, ignorando somente a diferença entre maiúsculas e minúsculas e a
-normalização de espaços. Os acentos são preservados, e não há similaridade, prefixo nem
-correspondência parcial em nenhum ponto. Um docente fora do catálogo é erro da linha. Uma
-sala fora do catálogo, depois de uma lista de docentes conhecidos, é um nome citado só nas
-células: a classificação dos espaços decide o que fazer com ele, e nada é criado a partir do
-texto da célula (D7 da Change manipulacao-dos-espacos).
-"""
+"""Lê a célula do fim para o começo, com correspondência exata aos catálogos, ignorando só caixa e espaços."""
 
 import re
 from dataclasses import dataclass, field
@@ -52,11 +39,7 @@ class Catalog:
 
 @dataclass
 class Activity:
-    """Uma atividade lida de uma célula: disciplina, docentes, sala e os problemas dela.
-
-    `cell_space_name` é a sala que não está no catálogo, lida no lugar da sala porque o grupo
-    anterior é uma lista de docentes conhecidos.
-    """
+    """Atividade lida de uma célula; `cell_space_name` é a sala fora do catálogo após docentes conhecidos."""
 
     subject_name: str | None = None
     teacher_names: list = field(default_factory=list)
@@ -71,12 +54,7 @@ def normalized_text(content):
 
 
 def split_activities(content):
-    """Separa a célula pelas barras que estiverem fora de parênteses.
-
-    A separação só vale quando cada trecho tem pelo menos um nome entre parênteses: sem
-    isso, a barra faz parte do texto e a célula é uma atividade só. Por isso uma célula
-    como `UCE 2 (Eduardo Garrido/ Thaís/ Antônio )(HV 3)` não é separada (D2, D3).
-    """
+    """Separa pelas barras fora de parênteses, só quando cada trecho tem um nome entre parênteses."""
     parts, depth, current = [], 0, ''
     for char in content:
         if char == '(':
@@ -103,11 +81,7 @@ def teacher_names_of(group):
 
 
 def subject_name_of(text, cut):
-    """Nome da disciplina: o texto antes do trecho entre parênteses do docente ou da sala.
-
-    Os parênteses internos do nome da disciplina são preservados, e só os separadores das
-    bordas são retirados.
-    """
+    """Nome da disciplina antes dos parênteses do docente ou da sala, preservando os parênteses internos."""
     return normalize_name(text[:cut].strip(SUBJECT_BORDERS))
 
 

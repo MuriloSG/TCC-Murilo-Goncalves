@@ -1,11 +1,4 @@
-"""Trava de `flush`, `clear_data`, `delete_users` e `set_passwords` contra o banco errado.
-
-Nenhum teste toca um banco real: o banco local é simulado no próprio banco de teste, com a
-identidade da conexão declarada em `LOCAL_DATABASE` e a marca gravada só na sessão
-(`SET LOCAL`, desfeito com a transação do teste). O `handle` nativo do `flush` é substituído
-nos testes que não usam `TransactionTestCase`. A recusa por ambiente ou identidade é
-conferida com `assertNumQueries(0)`; a recusa pela marca faz só a consulta de leitura.
-"""
+"""Trava dos comandos destrutivos, com o banco local simulado no próprio banco de teste."""
 
 import os
 from contextlib import contextmanager

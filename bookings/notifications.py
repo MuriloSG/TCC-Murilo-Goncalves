@@ -1,13 +1,4 @@
-"""Notificações geradas pelas transições da Agenda (D10).
-
-Cada gerador recebe a solicitação já com o novo estado e devolve as entregas; as
-operações do model as anunciam dentro da própria transação, de modo que uma
-transição desfeita ou recusada não notifique. O destino leva à tela da solicitação
-de quem recebe, e a permissão da rota continua sendo verificada ao abrir.
-
-O texto não repete o motivo nem a mensagem da análise, que aparecem no destino, e é
-cortado no limite da notificação, para que um nome longo não desfaça a transição.
-"""
+"""Notificações das transições da Agenda, anunciadas dentro da transação e cortadas no limite do texto."""
 
 from django.urls import reverse
 from django.utils.text import Truncator
@@ -129,8 +120,7 @@ def declined(request):
 
 
 def cancelled(request):
-    """Avisa a outra parte: quem aprovou, quando quem solicitou cancela, e quem solicitou, quando
-    quem analisa cancela (D5 da Change cancelar-agendamento-aprovado)."""
+    """Avisa a outra parte do cancelamento."""
     title = 'Agendamento cancelado'
     booked = f'{request.booked_space.name} em {request.booked_schedule_text()}'
     if request.cancelled_by_id == request.requested_by_id:

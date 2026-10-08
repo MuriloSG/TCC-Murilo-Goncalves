@@ -1,27 +1,4 @@
-"""Consulta e montagem do calendário público do ensalamento (Change calendario-publico).
-
-Tudo o que a página pública expõe sai deste módulo. Ele lê as alocações do ensalamento
-acadêmico e nunca chama `occupancy()` nem `grid_sources()`: além das aulas, só entram as
-fontes registradas como públicas, hoje os agendamentos aprovados da Agenda, e só na consulta
-por sala ou por docente, com a sala, a disciplina, o curso, a turma e o nome do docente do
-vínculo ou de quem solicitou, sem a descrição e sem e-mail (Change agendar-uso-eventual-dos-espacos
-e commit `bbf8044`, que retirou os e-mails dos cards). Os
-templates recebem só `PublicEntry`, `PublicBooking` e a estrutura da Grade, sem referência a
-model e sem IDs (D5).
-
-A quantidade de consultas é fixa: no máximo dez, qualquer que seja o intervalo (D10), com a das
-turmas do curso escolhido e a das ocorrências canceladas, que somem da Grade datada sem expor
-a exceção (Change cancelar-ocorrencia-do-ensalamento).
-
-O horário original (Change ver-horario-original-no-calendario-publico) usa os mesmos filtros e
-mostra a semana típica só com as alocações importadas, sem as versões das alterações de
-recorrência, sem as ocorrências canceladas e sem os agendamentos.
-
-As opções do semestre vêm do cache público (`schedule.public_cache`) como tuplas, e voltam a
-ser instâncias dos models só com os campos guardados. Com `deferred`, a Grade não é montada
-aqui: a view a pede pelo cache, com os parâmetros normalizados em `grid_params` (Change
-cachear-telas-publicas-com-redis).
-"""
+"""Calendário público; expõe só `PublicEntry`, `PublicBooking` e a Grade, sem IDs, em no máximo dez consultas."""
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -91,11 +68,7 @@ class PublicEntry:
 
 @dataclass(frozen=True)
 class PublicBooking:
-    """Agendamento aprovado no calendário público: horário, sala, disciplina, curso, turma e docente.
-
-    A descrição fica fora da página. Os campos `group_label` e `teachers` existem só para a
-    ordenação da célula.
-    """
+    """Agendamento no calendário público, sem a descrição; `group_label` e `teachers` servem à ordenação."""
 
     start: object
     end: object
@@ -132,8 +105,7 @@ class Cluster:
 
 @dataclass
 class PublicCell:
-    """Bloco de faixas seguidas com as mesmas aulas, agrupadas em `Cluster`, sem a marca de choque,
-    e os agendamentos aprovados da faixa."""
+    """Bloco de faixas seguidas com as mesmas aulas e os agendamentos, sem a marca de choque."""
 
     clusters: list
     start: object
@@ -185,12 +157,7 @@ def cached_semester_options(semester, lookup):
 
 
 def semester_options(semester):
-    """Salas, docentes e cursos do semestre, em três consultas (D6).
-
-    As salas ativas entram todas, com ou sem aula; as inativas, só quando têm alocação no
-    semestre. Os docentes vêm de `Teacher`,
-    nunca da tabela de usuários (D4).
-    """
+    """Salas, docentes e cursos do semestre; as salas inativas só quando têm alocação."""
     if semester is None:
         return [], [], []
     spaces = sorted(listed_spaces(semester).only('name'), key=natural_key)
@@ -230,11 +197,7 @@ def chosen(value, records):
 
 
 def public_allocations(semester, space=None, teacher=None, course=None, stage=None, group=None, original=False):
-    """Alocações do semestre com os filtros aplicados no banco, só com as colunas do card.
-
-    Com `original`, só as importadas, que continuam valendo como horário original mesmo
-    quando uma alteração de recorrência as encerrou.
-    """
+    """Alocações do semestre filtradas no banco; com `original`, só as importadas."""
     queryset = Allocation.objects.filter(semester=semester)
     if original:
         queryset = queryset.filter(origin=Origin.IMPORTED)
@@ -287,7 +250,7 @@ def entry_order(entry):
 
 
 def clusters_of(entries):
-    """Agrupa as aulas da célula pela mesma sala, disciplina e docentes (D9)."""
+    """Agrupa as aulas da célula pela mesma sala, disciplina e docentes."""
     groups = {}
     for entry in sorted(entries, key=entry_order):
         key = (entry.space.casefold(), entry.subject.casefold(), frozenset(teacher.name.casefold() for teacher in entry.teachers))
@@ -315,12 +278,7 @@ def publish(week):
 
 
 def result_slots(semester, placed, every_slot=None):
-    """Todas as faixas do semestre, com ou sem aula no resultado.
-
-    A Grade aparece sempre completa, como na área autenticada, mesmo quando a consulta não
-    tem aula no intervalo; as células vazias indicam os horários sem aula. `placed` fica na
-    assinatura para as chamadas existentes e não recorta as linhas.
-    """
+    """Todas as faixas do semestre; `placed` fica só por compatibilidade e não recorta as linhas."""
     return semester_slots(semester) if every_slot is None else every_slot
 
 
@@ -357,11 +315,7 @@ def public_bookings(dates, space=None, teacher=None):
 
 
 def dated_week(semester, allocations, dates, today, bookings=()):
-    """Grade datada: cada alocação em cada data do seu dia da semana dentro do período.
-
-    Os agendamentos aprovados entram em todas as faixas que cruzam; o que não cruza nenhuma
-    faixa ganha uma linha própria, como na Grade autenticada.
-    """
+    """Grade datada; agendamento que não cruza faixa ganha linha própria."""
     by_weekday = {}
     for allocation, entry in entries_of(allocations):
         allocation.semester = semester
@@ -401,7 +355,7 @@ def weekdays_between(start, end):
 
 
 def default_range(semester, today):
-    """Segunda e sexta da semana de hoje, levada para dentro do período do semestre (D7)."""
+    """Segunda e sexta da semana de hoje, levada para dentro do período do semestre."""
     start = monday_of(clamp(semester, today, today))
     dates = week_dates(start)
     return dates[0], dates[-1]
@@ -533,7 +487,7 @@ def defer(calendar, assemble, params, deferred):
 
 
 def public_calendar(params, today, lookup=None, deferred=False):
-    """Lê os filtros da URL e monta o calendário público, consultando as aulas só quando pode (D7, D8)."""
+    """Lê os filtros da URL e monta o calendário público, consultando as aulas só quando pode."""
     calendar, semester = read_filters(params, today, lookup)
     code = calendar.semester_code
     if semester is None:

@@ -1,10 +1,4 @@
-"""Consultas da importação do ensalamento limitadas pelos registros distintos, e não pelas linhas.
-
-As duas planilhas têm os mesmos cursos, turmas, disciplinas, faixas, docentes e espaços; a
-segunda tem o dobro de linhas de atividade. O custo de cada linha a mais é a diferença de
-consultas dividida pelas linhas acrescentadas, o que deixa de fora o custo fixo da execução
-(Change otimizar-consultas-do-sistema).
-"""
+"""Consultas da importação limitadas pelos registros distintos, e não pelas linhas."""
 
 from django.db import connection, transaction
 from django.test.utils import CaptureQueriesContext

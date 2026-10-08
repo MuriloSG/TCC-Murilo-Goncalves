@@ -1,9 +1,3 @@
-"""Rotas da app accounts.
-
-A autenticação é exigida aqui, com login_required. A permissão de cada view é
-declarada nela, em permission_required, e aplicada pelo PermissionMiddleware (D14).
-"""
-
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 

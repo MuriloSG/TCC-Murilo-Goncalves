@@ -1,10 +1,4 @@
-"""Registro centralizado das ações do sistema (D1, D2, D8, D9, D10).
-
-Toda ação auditável de qualquer módulo vira uma linha desta tabela, gravada por
-`AuditLog.objects.record`. A gravação acontece na transação de quem chama, de
-modo que uma operação desfeita leve o registro junto e uma operação aplicada
-nunca fique sem registro.
-"""
+"""Registro centralizado das ações, gravado na transação de quem chama."""
 
 from django.conf import settings
 from django.db import models
@@ -33,11 +27,7 @@ class UnknownAuditCode(Exception):
 
 
 def sanitize(values):
-    """Copia os valores sem os campos cujo nome indica senha, token ou segredo.
-
-    É a rede de proteção do ponto único de gravação: quem registra a ação já monta
-    os valores campo a campo, sem dados sensíveis.
-    """
+    """Remove campos de senha, token ou segredo, como rede de proteção do ponto único de gravação."""
     return {
         name: value
         for name, value in (values or {}).items()
@@ -159,7 +149,7 @@ class AuditLog(models.Model):
         return f'{self.action} {self.resource} {self.resource_id}'.strip()
 
     def save(self, *args, **values):
-        """Só aceita a inserção: um registro gravado nunca muda (D10)."""
+        """Só aceita a inserção: um registro gravado nunca muda."""
         if self.pk is not None:
             raise AuditLogProtected()
         super().save(*args, **values)

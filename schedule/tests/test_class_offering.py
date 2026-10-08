@@ -1,5 +1,4 @@
-"""Ofertas de disciplina, docentes das ofertas e a consulta das combinações atuais
-(Change relacionar-professor-disciplina-turma)."""
+"""Ofertas de disciplina, docentes das ofertas e a consulta das combinações atuais."""
 
 from datetime import date, time
 
@@ -28,8 +27,7 @@ def current_of(offering):
 
 
 class OfferingTestCase(TestCase):
-    """Em 2026/2, João dá Matemática para o 1º Período A e o 2º Período, e Maria dá
-    Matemática para o 1º Período B."""
+    """Em 2026/2, João dá Matemática ao 1º Período A e ao 2º, e Maria ao 1º Período B."""
 
     @classmethod
     def setUpTestData(cls):

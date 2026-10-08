@@ -18,14 +18,7 @@ def references(model):
 
 
 def purge(model, pks, excluded):
-    """Exclui as linhas `pks` de `model` e, antes, o que depende delas.
-
-    A referência que aceita nulo passa a nulo, e o registro que a tem fica. A referência
-    obrigatória leva junto o registro que a tem, pelo mesmo caminho. A exclusão usa o
-    gerenciador base e a exclusão direta do Django, sem o coletor: o `PROTECT` das chaves e
-    a proteção do registro de auditoria ficam no coletor e no gerenciador próprio, e é isso
-    que permite desfazer os vínculos sem abrir exceção nos models.
-    """
+    """Exclui `pks` e dependentes sem o coletor, anulando referências opcionais, para contornar o PROTECT e a auditoria."""
     pks = [pk for pk in pks if pk not in excluded.setdefault(model, set())]
     if not pks:
         return 0
@@ -40,16 +33,7 @@ def purge(model, pks, excluded):
 
 
 class Command(BaseCommand):
-    """Exclui todos os usuários que não são superadmin e os registros vinculados a eles.
-
-    Os perfis e as permissões ficam, e os superadmins também, com o que lhes pertence. O que
-    aponta para um usuário excluído por uma referência que aceita nulo, como o usuário de um
-    registro de auditoria ou quem decidiu uma solicitação, fica com a referência vazia. O
-    que depende dele obrigatoriamente, como o vínculo com o perfil, os e-mails do allauth, as
-    solicitações e as importações que ele enviou, é excluído junto. Só roda com um
-    superadmin ativo, para que o sistema não fique sem acesso administrativo, e só com
-    o banco local comprovado (`require_safe_database`), verificado antes de tudo.
-    """
+    """Exclui os usuários não superadmin e seus vínculos; exige um superadmin ativo e o banco local."""
 
     help = 'Exclui os usuários que não são superadmin e os vínculos deles, mantendo perfis e superadmins.'
 

@@ -1,8 +1,4 @@
-"""Tela do servidor de e-mail (D9 da Change configurar-servidor-de-email).
-
-A página e o formulário exigem CONFIGURACAO.EDITAR. A senha gravada nunca entra
-no contexto: a tela só sabe se ela existe.
-"""
+"""Tela do servidor de e-mail; a senha gravada nunca entra no contexto."""
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -76,7 +72,7 @@ class SmtpUpdateView(OperationFormView):
 
 
 class SmtpClearView(ConfirmedActionView):
-    """Exclui a configuração SMTP. A rota não tem `pk`: o alvo é a única configuração do tipo."""
+    """Exclui a configuração SMTP; sem `pk`, porque ela é única."""
 
     permission_required = permissions.SETTINGS_EDIT
     audit_resource = catalog.SETTINGS

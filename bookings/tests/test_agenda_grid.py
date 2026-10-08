@@ -1,4 +1,4 @@
-"""Grade da Agenda: acesso, ensalamento e agendamentos aprovados, isolamento e consultas (D7)."""
+"""Grade da Agenda: acesso, ensalamento, agendamentos, isolamento e consultas."""
 
 from datetime import date, time, timedelta
 

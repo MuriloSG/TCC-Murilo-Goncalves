@@ -1,16 +1,4 @@
-"""Solicitação de agendamento e agendamento, o uso eventual dos espaços.
-
-A solicitação é o pedido do usuário e passa pela máquina de estados da D4 da Change
-agendar-uso-eventual-dos-espacos. O agendamento é o uso aprovado, avulso e numa única data,
-ligado à solicitação que o originou. A alocação do ensalamento não é tocada: são três
-conceitos em três tabelas (D3).
-
-Toda transição é uma operação do model, numa transação, com a solicitação relida e travada
-por `select_for_update`; a aprovação e o aceite travam também o espaço, para que a
-verificação dos conflitos e a criação do agendamento aconteçam sem outra decisão do mesmo
-espaço no meio (D6). A ausência de sobreposição entre agendamentos é garantida pela
-`ExclusionConstraint` do banco (D5).
-"""
+"""Solicitação e agendamento; as transições travam a solicitação e o espaço, e a ExclusionConstraint barra a sobreposição."""
 
 from datetime import datetime, timedelta
 
@@ -80,7 +68,7 @@ def inactive_message(space):
 
 
 class InvalidTransition(ValidationError):
-    """Recusa de uma ação que o estado atual da solicitação não admite (D4)."""
+    """Recusa de uma ação que o estado atual da solicitação não admite."""
 
     def __init__(self, status):
         label = BookingRequest.Status(status).label.lower()
@@ -88,7 +76,7 @@ class InvalidTransition(ValidationError):
 
 
 class SlotUnavailable(ValidationError):
-    """Recusa por conflito com o ensalamento ou com outro agendamento aprovado (D5)."""
+    """Recusa por conflito com o ensalamento ou com outro agendamento aprovado."""
 
     def __init__(self, message):
         super().__init__(message, code='unavailable')
@@ -99,7 +87,7 @@ def hours(start, end):
 
 
 def record_transition(action, request, previous, **values):
-    """Registra a mudança de estado da solicitação, com o estado anterior e o posterior (D9)."""
+    """Registra a mudança de estado da solicitação, com o estado anterior e o posterior."""
     AuditLog.objects.record(
         action,
         catalog.BOOKING_REQUEST,
@@ -115,11 +103,7 @@ def require(user, code):
 
 
 def check_slot(space, day, start, end, prefix='', exclude_request=None):
-    """Valida o espaço, a data e o horário de uma solicitação ou alternativa.
-
-    As mesmas regras valem na criação, na sugestão, na aprovação e no aceite. O conflito
-    é verificado por último, só com os dados válidos.
-    """
+    """Valida espaço, data e horário, deixando o conflito por último."""
     errors = {}
     if space is not None and not space.is_active:
         errors[f'{prefix}space'] = ValidationError(inactive_message(space), code='inactive')
@@ -135,17 +119,7 @@ def check_slot(space, day, start, end, prefix='', exclude_request=None):
 
 
 def check_assignment(requester, semester, assignment, course=None, subject=None, on_behalf=False):
-    """Recusa a turma que não é um vínculo atual do docente do solicitante no semestre.
-
-    É a única conferência da cadeia usuário, curso, disciplina e turma, usada pelos dois fluxos
-    de criação. O solicitante é reconhecido como docente pelo `username` (`teacher_of`), e a
-    turma escolhida precisa ser um vínculo atual dele, criado pela importação do ensalamento
-    (Change relacionar-professor-disciplina-turma). Quando informados, a disciplina precisa ser
-    a da oferta do vínculo e o curso, o da turma dela: o vínculo é a fonte de verdade, e o curso
-    e a disciplina são conferidos a partir dele (D1 e D3 da Change
-    criar-agendamento-para-outro-usuario). Um ID de outro docente, de outro semestre, de outra
-    disciplina, de outro curso ou de um vínculo histórico é recusado, venha de onde vier.
-    """
+    """Recusa a turma que não é vínculo atual do docente do solicitante, conferindo curso e disciplina a partir dele."""
     teacher = teacher_of(requester)
     if teacher is None:
         if on_behalf:
@@ -191,11 +165,7 @@ def check_period(semester, day):
 
 
 def check_weekday(day, field='date'):
-    """Recusa sábado e domingo: a Agenda só aceita datas de segunda a sexta.
-
-    Vale para a data pedida e para a sugerida. A aprovação e o aceite de uma
-    alternativa não conferem de novo, para não travar solicitações anteriores à regra.
-    """
+    """Recusa fim de semana; aprovação e aceite não conferem de novo, para não travar solicitações antigas."""
     if day is not None and day.weekday() >= 5:
         raise ValidationError({field: ValidationError(WEEKEND_MESSAGE, code='weekend')})
 
@@ -205,17 +175,7 @@ class BookingRequestManager(models.Manager):
         self, user, space, day, start, end, description, student_count=None, semester=None, assignment=None,
         requester=None, course=None, subject=None,
     ):
-        """Confere a solicitação e a devolve sem gravar.
-
-        Confere a permissão, a cadeia do vínculo, o período do semestre, o dia útil, os campos, o espaço,
-        o horário e os conflitos, nesta ordem. É a mesma conferência do envio, usada para a
-        revisão mostrada antes da confirmação. O ID da turma vale só como vínculo atual do
-        docente que é o solicitante, no semestre.
-
-        O solicitante é o próprio usuário, com `AGENDA.SOLICITAR`, ou outro usuário ativo,
-        escolhido por quem tem `AGENDA.CRIAR`; nesse caso `created_by` guarda quem criou
-        (D3 e D7 da Change criar-agendamento-para-outro-usuario).
-        """
+        """Faz a conferência do envio sem gravar, para a revisão antes da confirmação."""
         requester = requester or user
         on_behalf = requester.pk != user.pk
         require(user, permissions.BOOKING_CREATE if on_behalf else permissions.BOOKING_REQUEST)
@@ -239,11 +199,7 @@ class BookingRequestManager(models.Manager):
         self, user, space, day, start, end, description, student_count=None, semester=None, assignment=None,
         requester=None, course=None, subject=None,
     ):
-        """Cria a solicitação `PENDENTE`, sem criar agendamento nem ocupar o horário.
-
-        Tudo numa transação: uma recusa ou uma falha não deixa solicitação, auditoria nem
-        notificação gravadas. O ensalamento não é tocado.
-        """
+        """Cria a solicitação `PENDENTE` sem ocupar o horário."""
         with transaction.atomic():
             request = self.prepare(
                 user, space, day, start, end, description, student_count, semester, assignment, requester, course, subject,
@@ -271,19 +227,7 @@ class BookingRequestManager(models.Manager):
 
 
 class BookingRequest(models.Model):
-    """Pedido de uso eventual de um espaço, com a decisão e a alternativa sugerida.
-
-    Os campos originais nunca mudam depois da criação: a alternativa fica nos campos
-    `suggested_*`, para que o original e o sugerido apareçam lado a lado (D3).
-
-    `teaching_assignment` é o vínculo do docente com a disciplina e a turma no semestre, de
-    onde vêm os quatro dados acadêmicos, sem cópia deles na solicitação. Fica vazio só nas
-    solicitações criadas antes da Change solicitar-agendamento-com-vinculo-academico.
-
-    `requested_by` é o dono da solicitação em todas as regras. `created_by` fica preenchido só
-    quando outro usuário, com `AGENDA.CRIAR`, a criou em nome dele (Change
-    criar-agendamento-para-outro-usuario).
-    """
+    """Os campos originais nunca mudam; a alternativa fica em `suggested_*`, e `created_by` só no pedido em nome de outro."""
 
     class Status(models.TextChoices):
         PENDING = 'PENDENTE', 'Pendente'
@@ -434,10 +378,7 @@ class BookingRequest(models.Model):
         self.refresh_from_db()
 
     def suggest(self, user, space, day, start, end, message=''):
-        """Devolve a solicitação com outra combinação de espaço, data e horário, disponível agora.
-
-        A alternativa não ocupa o horário: o aceite verifica de novo (D4).
-        """
+        """Devolve a solicitação com outra combinação disponível; o aceite verifica de novo."""
         require(user, permissions.BOOKING_REVIEW)
         with transaction.atomic():
             current = self.locked()
@@ -518,12 +459,7 @@ class BookingRequest(models.Model):
         return self.status == self.Status.APPROVED and self.may_cancel(user) and self.within_cancel_deadline()
 
     def cancel(self, user, reason=''):
-        """Cancela a solicitação aprovada até 1 hora antes do início e exclui o agendamento.
-
-        Cancelam quem solicitou e quem analisa. Excluir o agendamento libera o espaço em todas
-        as leituras de ocupação sem filtro novo; o histórico fica na solicitação e na auditoria
-        (D1 a D3 da Change cancelar-agendamento-aprovado).
-        """
+        """Cancela até 1 hora antes do início, excluindo o agendamento para liberar o espaço."""
         with transaction.atomic():
             current = self.locked()
             if not current.may_cancel(user):

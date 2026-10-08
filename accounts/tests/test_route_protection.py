@@ -138,11 +138,7 @@ def accepted_methods(pattern):
 
 
 class RouteProtectionTests(TestCase):
-    """Proteção de todas as rotas num só lugar (§7 das convenções).
-
-    Cada app testa só a execução com a permissão; o anônimo, a falta da permissão
-    e o POST sem CSRF são verificados aqui para toda rota do projeto.
-    """
+    """Anônimo, falta de permissão e POST sem CSRF verificados para toda rota do projeto."""
 
     @classmethod
     def setUpTestData(cls):

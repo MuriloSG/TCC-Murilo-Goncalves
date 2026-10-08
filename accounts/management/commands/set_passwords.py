@@ -8,12 +8,7 @@ DEFAULT_PASSWORD = 'senha123#'
 
 
 class Command(BaseCommand):
-    """Define a mesma senha para todos os usuários, inclusive os superadmins e os inativos.
-
-    Serve ao ambiente de desenvolvimento, para entrar com qualquer usuário. A senha é gravada
-    com o hash do Django, e não em texto puro, e não passa pelas regras de força da senha. Só
-    roda com o banco local comprovado (`require_safe_database`), verificado antes de tudo.
-    """
+    """Define a mesma senha para todos os usuários, sem as regras de força; só roda no banco local."""
 
     help = 'Define a mesma senha para todos os usuários (padrão: senha123#).'
 

@@ -1,15 +1,4 @@
-"""Catálogo dos tipos de notificação e das formas de destinar (D4).
-
-O tipo é gravado como código em português, e o rótulo, a descrição, o ícone e o
-tom existem só para a interface. Acrescentar um tipo é acrescentar a entrada deste
-catálogo, sem migration de esquema e sem alteração nas telas. A criação de uma
-notificação de tipo fora daqui é recusada.
-
-O tom vem do tipo, e não de uma escolha própria de quem publica: assim a cor
-continua com função definida e um comunicado nunca sai com a cor de outro estado.
-`manual` marca os tipos oferecidos na publicação manual; um tipo gerado por evento
-não aparece na escolha nem é aceito no envio.
-"""
+"""Catálogo dos tipos de notificação; o tom vem do tipo, e `manual` marca os publicáveis manualmente."""
 
 INFORMATION = 'INFORMACAO'
 SUCCESS = 'SUCESSO'

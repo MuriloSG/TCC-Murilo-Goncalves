@@ -1,8 +1,4 @@
-"""Auxiliares que pedem uma operação e rodam o worker em seguida, como a tela e o worker fazem juntos.
-
-A definição usada pelo teste é a registrada durante a execução, para que o estado que o
-teste guarda nela, como a recusa da confirmação, chegue ao worker.
-"""
+"""Auxiliares que pedem uma operação e rodam o worker em seguida, com a definição registrada no teste."""
 
 from unittest import mock
 from urllib.parse import urlsplit

@@ -11,11 +11,7 @@ from ui.forms import DateInput
 
 
 class GridFilterForm(forms.Form):
-    """Semestre, sala, visualização, semana e mês escolhidos na Grade do ensalamento, recebidos pela URL (D15).
-
-    A semana ou o mês mostrados acompanham a troca de semestre, de sala e de visualização,
-    e caem no padrão quando não servem (D8 da Change visualizar-ocupacao-por-semana-e-mes).
-    """
+    """Filtros da Grade pela URL; semana e mês caem no padrão quando não servem."""
 
     VIEWS = [('semana', 'Semana'), ('mes', 'Mês')]
 
@@ -33,10 +29,7 @@ class GridFilterForm(forms.Form):
 
 
 class SpaceFilterForm(forms.Form):
-    """Busca e filtros da lista de espaços, recebidos pela URL, como na lista de usuários.
-
-    Um valor inválido é descartado sem mensagem, e a lista trata o campo como todos.
-    """
+    """Filtros da lista de espaços pela URL; valor inválido é descartado sem mensagem."""
 
     busca = forms.CharField(
         label='Buscar pelo nome ou por outro nome',
@@ -65,10 +58,7 @@ class SpaceFilterForm(forms.Form):
 
 
 class CourseFilterForm(forms.Form):
-    """Busca e filtro de etapa da lista de cursos, recebidos pela URL.
-
-    Uma etapa inválida é descartada sem mensagem, e a lista trata o campo como todas.
-    """
+    """Filtros da lista de cursos pela URL; etapa inválida é descartada sem mensagem."""
 
     busca = forms.CharField(
         label='Buscar pelo nome',
@@ -90,11 +80,7 @@ class CourseFilterForm(forms.Form):
 
 
 class CourseForm(forms.Form):
-    """Nome e etapa do curso, no cadastro e na edição pela tela de Cursos.
-
-    A importação reaproveita o curso só pelo nome igual ao do título da planilha, sem
-    diferenciar a caixa e os espaços repetidos; acentos diferentes dão outro curso.
-    """
+    """A importação reaproveita o curso pelo nome sem caixa nem espaços repetidos; acento diferente é outro curso."""
 
     name = forms.CharField(
         label='Nome',
@@ -141,10 +127,7 @@ class SubjectForm(forms.Form):
 
 
 class ClassGroupFilterForm(forms.Form):
-    """Busca e filtro de curso da lista de turmas, recebidos pela URL.
-
-    Um curso inválido é descartado sem mensagem, e a lista trata o campo como todos.
-    """
+    """Filtros da lista de turmas pela URL; curso inválido é descartado sem mensagem."""
 
     busca = forms.CharField(
         label='Buscar pelo rótulo ou pelo curso',
@@ -167,11 +150,7 @@ class ClassGroupFilterForm(forms.Form):
 
 
 class ClassGroupForm(forms.Form):
-    """Curso e rótulo da turma, no cadastro e na edição pela tela de Turmas.
-
-    Na edição o curso é `readonly`, e não `disabled`, para que um curso forjado chegue ao
-    model e seja recusado com mensagem.
-    """
+    """Na edição o curso é `readonly`, e não `disabled`, para que um valor forjado seja recusado pelo model."""
 
     course = forms.ModelChoiceField(
         label='Curso', queryset=Course.objects.all(), empty_label='Selecione o curso', widget=forms.Select(attrs={'class': 'input'}),
@@ -187,10 +166,7 @@ class ClassGroupForm(forms.Form):
 
 
 class SpaceForm(forms.Form):
-    """Nome e outros nomes do espaço, no cadastro e na edição pela tela de Espaços.
-
-    A origem não é campo do formulário: ela é definida pela operação e nunca muda.
-    """
+    """A origem não é campo: ela é definida pela operação e nunca muda."""
 
     name = forms.CharField(
         label='Nome',
@@ -220,11 +196,7 @@ class SpaceChoiceField(forms.ModelChoiceField):
 
 
 class SpaceAssociateForm(forms.Form):
-    """Espaço do cadastro que é o mesmo que o nome encontrado na planilha.
-
-    O campo é obrigatório, e por isso lista todos os espaços, sem fonte paginada, na ordem
-    natural do nome; a busca é a do componente de seleção.
-    """
+    """Campo obrigatório, por isso lista todos os espaços sem fonte paginada."""
 
     espaco = SpaceChoiceField(
         label='Espaço cadastrado',
@@ -243,11 +215,7 @@ class SpaceAssociateForm(forms.Form):
 
 
 class PublicCalendarFilterForm(forms.Form):
-    """Filtros do calendário público, só para exibir os valores já normalizados (D6 e D13).
-
-    A leitura e a validação dos parâmetros ficam em `schedule.public`, que descarta sem
-    mensagem o valor fora das opções. As opções são nomes e códigos, nunca IDs.
-    """
+    """Só exibe os filtros já normalizados por `schedule.public`; as opções nunca são IDs."""
 
     semestre = forms.ChoiceField(label='Semestre', required=False, widget=forms.Select(attrs={'class': 'input'}))
     sala = forms.ChoiceField(label='Sala', required=False, widget=forms.Select(attrs={'class': 'input'}))
@@ -291,14 +259,7 @@ class PublicCalendarFilterForm(forms.Form):
 
 
 class RecurrenceChangeForm(forms.Form):
-    """Data de corte e dados novos da recorrência de uma aula, iniciados com os atuais.
-
-    Só dia, horário, duração, espaço e docentes são campos: turma, disciplina e semestre
-    são a própria aula. O horário e a duração seguem o cadastro da aula, e a duração pode
-    aumentar ou diminuir a quantidade de faixas seguidas (D1 da Change
-    alterar-duracao-da-recorrencia). O espaço é um dos ativos ou o atual (D3 da Change
-    alterar-recorrencia-do-ensalamento). A conferência das regras fica no model.
-    """
+    """Só dia, horário, duração, espaço e docentes mudam; as regras ficam no model."""
 
     data = forms.DateField(
         label='A partir de',
@@ -344,12 +305,7 @@ class RecurrenceChangeForm(forms.Form):
 
 
 class RecurrenceCreateForm(forms.Form):
-    """Dados de uma aula recorrente cadastrada na Grade, dentro de um semestre.
-
-    O semestre não é campo: ele vem da Grade de onde o cadastro foi aberto. O dia da semana
-    também não é campo, porque vem da data da primeira aula (D3 da Change
-    criar-recorrencia-do-ensalamento). A conferência das regras fica no model.
-    """
+    """Semestre e dia da semana não são campos: vêm da Grade e da data da primeira aula."""
 
     turma = forms.ModelChoiceField(
         label='Turma',

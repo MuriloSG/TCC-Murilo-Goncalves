@@ -1,13 +1,4 @@
-"""Catálogo das ações, dos módulos e das origens da auditoria (D4).
-
-Ação, módulo e origem são gravados como código e só ganham rótulo na interface.
-Incluir uma ação é acrescentar a constante e o rótulo dela aqui, sem migration de
-esquema e sem estrutura de log própria. O ponto único de gravação recusa um
-código que não esteja neste catálogo.
-
-O termo exibido para o campo `resource` é "módulo", e não "recurso", porque o
-glossário da seção 9.4 das convenções reserva "recurso" ao espaço reservável.
-"""
+"""Catálogo de ações, módulos e origens; `resource` aparece como "módulo" porque "recurso" designa o espaço."""
 
 LOGIN = 'LOGIN'
 LOGIN_REFUSED = 'LOGIN_RECUSADO'

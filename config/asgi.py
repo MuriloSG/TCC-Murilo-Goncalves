@@ -1,8 +1,4 @@
-"""Aplicação ASGI do projeto, com o HTTP do Django e o canal das notificações (D11).
-
-O `get_asgi_application` é chamado antes de as rotas do WebSocket serem importadas,
-porque elas dependem dos apps carregados.
-"""
+"""ASGI com HTTP e WebSocket; `get_asgi_application` vem antes das rotas, que exigem os apps carregados."""
 
 import os
 
@@ -19,13 +15,7 @@ from notices.routing import websocket_urlpatterns
 
 
 def websocket_application():
-    """Canal das notificações: origem conferida antes da sessão, e a sessão no consumer.
-
-    O `AllowedHostsOriginValidator` recusa o handshake cujo cabeçalho `Origin` não esteja em
-    `ALLOWED_HOSTS`, e também o handshake sem `Origin`, que todo navegador envia. Ele lê
-    `ALLOWED_HOSTS` uma vez, na montagem; com `DEBUG` e a lista vazia, aceita só localhost,
-    127.0.0.1 e [::1]. A autenticação continua no `NotificationsConsumer`.
-    """
+    """Confere a origem no handshake; a autenticação fica no `NotificationsConsumer`."""
     return AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(websocket_urlpatterns)))
 
 

@@ -26,10 +26,7 @@ def template_files(suffixes=('.html', '.txt')):
 
 
 def python_files():
-    """Módulos do projeto, exceto testes, migrations e o text_rules.
-
-    O text_rules fica de fora porque guarda as expressões proibidas como dado.
-    """
+    """Módulos do projeto, exceto testes, migrations e o text_rules, que guarda as expressões proibidas."""
     rules = Path(text_rules.__file__).resolve()
     for root in project_roots():
         for path in sorted(root.rglob('*.py')):

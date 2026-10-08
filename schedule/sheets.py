@@ -1,17 +1,4 @@
-"""Leitura da estrutura das abas de horário da planilha institucional.
-
-A grade de cada aba de horário tem blocos de dia empilhados: a coluna do dia traz o nome
-mesclado no bloco, a coluna do horário traz a faixa ou as linhas de intervalo e de almoço,
-e cada coluna de turma traz o texto da atividade. A linha 1 traz o nome do curso sobre o
-grupo de colunas de uma mesma turma, e a primeira linha de cabeçalho traz o rótulo de cada
-turma (D2, D5 e D6 da Change importar-ensalamento-da-planilha).
-
-As abas calculadas da planilha, que repetem por fórmula o que está nestas, não são lidas:
-`Ensalamento - Geral`, as abas de horário por docente e as abas por curso (D1).
-
-O que impede a leitura da grade recusa o arquivo inteiro, com FileRejected. O que é do
-conteúdo de uma célula vira erro da linha, em `schedule.activities`.
-"""
+"""Estrutura das abas de horário; problema da grade recusa o arquivo, e o de uma célula vira erro da linha."""
 
 import re
 from dataclasses import dataclass
@@ -75,12 +62,7 @@ SHEET_LAYOUTS = (
 
 @dataclass(frozen=True)
 class GroupColumn:
-    """Coluna de turma, com os textos crus do cabeçalho e do título do curso.
-
-    Os textos ficam como estão na planilha porque são eles que vão para os valores da linha:
-    a confirmação reexecuta a linha a partir deles, sem o arquivo, e precisa chegar ao mesmo
-    rótulo, ao mesmo curso e ao mesmo aviso que a prévia (D2, D5, D16).
-    """
+    """Textos crus do cabeçalho, para a confirmação chegar ao mesmo rótulo e curso da prévia."""
 
     index: int
     header_text: str
@@ -139,11 +121,7 @@ def banner_names(sheet, last_column):
 
 
 def split_header(value):
-    """Rótulo da turma e nome curto do curso, a partir do cabeçalho da coluna.
-
-    O cabeçalho tem duas linhas nas colunas em que o campus as usou, e uma só nas demais.
-    Com uma linha, o rótulo é o cabeçalho inteiro e não há nome curto (D6).
-    """
+    """Rótulo da turma e nome curto do curso; com cabeçalho de uma linha, não há nome curto."""
     lines = [normalize_name(line) for line in str(value or '').splitlines()]
     lines = [line for line in lines if line is not None]
     if not lines:
@@ -155,12 +133,7 @@ def split_header(value):
 
 
 def group_columns(sheet, layout, first_header):
-    """Colunas de turma da aba, com o rótulo e o curso de cada uma.
-
-    O cabeçalho vem da primeira linha de cabeçalho, e não do cabeçalho repetido em cada
-    bloco de dia, porque a planilha real tem coluna sem cabeçalho num bloco e grafias
-    diferentes entre os blocos (D6).
-    """
+    """Usa a primeira linha de cabeçalho, porque os blocos de dia têm colunas sem cabeçalho e grafias diferentes."""
     last_column = sheet.max_column
     banners = banner_names(sheet, last_column)
     columns = {}
@@ -257,14 +230,7 @@ def sheet_cells(sheet, layout):
 
 
 def catalog_entries(workbook):
-    """Valores das listas de salas e de docentes, cada um com a célula de origem (D4).
-
-    O valor vai cru para os valores da linha, e a retirada dos parênteses do nome da sala
-    acontece na execução da linha, para que a confirmação chegue ao mesmo nome que a prévia.
-
-    As salas vêm primeiro e os docentes depois, agrupados, para que a prévia mostre cada
-    lista inteira de uma vez em vez de intercalar as duas.
-    """
+    """Salas e depois docentes, com o valor cru para a confirmação chegar ao mesmo nome que a prévia."""
     sheet = workbook[CATALOG_SHEET]
     entries = []
     counts = {TEACHER_KIND: 0, SPACE_KIND: 0}
@@ -292,31 +258,20 @@ def catalog_entries(workbook):
 
 
 def strip_parentheses(value):
-    """Retira os parênteses que envolvem o nome da sala na lista de salas.
-
-    A lista real mistura `(1/10)` com `Lab. de Madeira`, e o nome da sala é o conteúdo (D4).
-    """
+    """Retira os parênteses que envolvem o nome da sala, como em `(1/10)`."""
     if value.startswith('(') and value.endswith(')'):
         return normalize_name(value[1:-1]) or value
     return value
 
 
 def find_sheet(workbook, title):
-    """Aba cujo nome é igual a `title` sem diferenciar caixa, acentos e bordas, ou None.
-
-    Serve à aba opcional de usuários: como a ausência dela não gera aviso, um nome com
-    outra caixa ou sem acento não pode passar por ausente (D4 da Change
-    importar-usuarios-com-o-ensalamento).
-    """
+    """Aba cujo nome é igual a `title` sem caixa, acentos e bordas, para a aba opcional não passar por ausente."""
     wanted = normalize_header(title)
     return next((workbook[name] for name in workbook.sheetnames if normalize_header(name) == wanted), None)
 
 
 def user_header_positions(sheet):
-    """Coluna de cada rótulo do cabeçalho da aba de usuários, recusando coluna faltando ou repetida (D5).
-
-    Coluna a mais é ignorada, como nas demais abas da grade.
-    """
+    """Coluna de cada rótulo do cabeçalho, recusando coluna faltando ou repetida e ignorando as a mais."""
     labels = {normalize_header(label): label for label in USER_COLUMNS}
     positions, repeated = {}, []
     for column in range(1, sheet.max_column + 1):
@@ -342,12 +297,7 @@ def user_header_positions(sheet):
 
 
 def user_entries(workbook):
-    """Usuários da aba opcional, um por linha de dado, com a célula de origem (D4 e D5).
-
-    Sem a aba, ou com a aba sem nenhuma célula preenchida, não há usuário e nada é
-    recusado. A primeira linha é o cabeçalho, e as linhas vazias são ignoradas. Os valores
-    vão crus, para que a confirmação normalize igual à prévia.
-    """
+    """Usuários da aba opcional, com os valores crus para a confirmação normalizar igual à prévia."""
     sheet = find_sheet(workbook, USERS_SHEET)
     if sheet is None:
         return []

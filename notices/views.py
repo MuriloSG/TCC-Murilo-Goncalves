@@ -1,13 +1,4 @@
-"""Telas das notificações.
-
-Abrir e marcar como lida alteram dados, por isso são POST com CSRF, como as ações
-de situação do usuário. Sem JavaScript, o painel continua funcionando: cada item é
-um formulário comum, que recarrega a tela de origem.
-
-A publicação manual são duas páginas completas, e não um modal (D13): a etapa de
-revisão recebe de volta o que foi preenchido, sem nada guardado no servidor, e só
-a publicação grava.
-"""
+"""Telas das notificações; abrir e marcar como lida são POST com CSRF e funcionam sem JavaScript."""
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -52,11 +43,7 @@ class NotificationsReadAllView(View):
 
 
 class NotificationsPanelView(TemplateView):
-    """Fragmento do sino com o estado gravado do usuário autenticado (D11).
-
-    É o que a interface busca depois de um aviso do canal de tempo real e ao
-    reconectar: o evento diz que as notificações mudaram, e o conteúdo vem daqui.
-    """
+    """Fragmento do sino que a interface busca após um aviso do canal e ao reconectar."""
 
     template_name = 'ui/components/notifications.html'
 
@@ -65,12 +52,7 @@ class NotificationsPanelView(TemplateView):
 
 
 class NoticeListView(TemplateView):
-    """Notificações publicadas para todos os usuários (D14).
-
-    Só as publicações globais entram na lista: são os comunicados do sistema. As
-    publicações direcionadas a um perfil ou a usuários específicos ficam na
-    consulta da auditoria, com quem publicou e quantas pessoas alcançou.
-    """
+    """Só as publicações globais; as direcionadas ficam na consulta da auditoria."""
 
     permission_required = permissions.NOTICE_PUBLISH
     audit_resource = audit_catalog.NOTICE
@@ -84,11 +66,7 @@ class NoticeListView(TemplateView):
 
 
 class NoticeUserOptionsView(OptionsView):
-    """Opções de usuários da escolha de destinatários, buscadas no servidor (D10).
-
-    A lista de usuários não chega inteira à página: o componente de seleção pede
-    10 por vez a esta rota, que aplica a busca sobre a base toda.
-    """
+    """Opções de destinatários paginadas no servidor."""
 
     permission_required = permissions.NOTICE_PUBLISH
 

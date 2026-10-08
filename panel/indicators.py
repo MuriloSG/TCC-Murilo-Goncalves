@@ -1,10 +1,4 @@
-"""Indicadores do painel administrativo, calculados a cada requisição e nunca gravados.
-
-Cada função atende um bloco do painel e só é chamada quando o usuário tem a permissão do
-módulo dono dos dados (D1 da Change exibir-painel-administrativo). As contagens que o ORM
-resolve ficam no banco; a união dos intervalos e o conflito de docente são feitos em Python
-sobre as alocações de um semestre (D10).
-"""
+"""Indicadores do painel, calculados por bloco só quando o usuário tem a permissão dos dados."""
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -53,7 +47,7 @@ def waiting_text(created_at, today):
 
 
 def requests_summary(moment):
-    """Contagens das solicitações e as cinco pendentes pedidas por último, na ordem da data de uso (A1 a A5)."""
+    """Contagens das solicitações e as cinco pendentes pedidas por último, na ordem da data de uso."""
     today, at = moment.date(), moment.time()
     passed = Q(date__lt=today) | Q(date=today, start_time__lte=at)
     pending = Q(status=BookingRequest.Status.PENDING)
@@ -166,12 +160,7 @@ def bookings_between(start, end):
 
 
 def occupancy(view, today):
-    """Ocupação de hoje ou da semana atual por espaço e por dia, pela união dos intervalos (D4).
-
-    Aula compartilhada, faixas sobrepostas e agendamento sobre aula contam uma vez, e o trecho
-    de agendamento sobreposto a aula entra na parte das aulas. As contagens são de ocorrências:
-    a aula conta uma vez por espaço, data e faixa. Sem percentual (D5).
-    """
+    """Ocupação por espaço e por dia pela união dos intervalos, contando cada sobreposição uma vez."""
     start, end = (today, today) if view == TODAY else (monday_of(today), monday_of(today) + timedelta(days=6))
     lessons, bookings = {}, {}
     for occurrence in occurrences_of_all_spaces(start, end):
@@ -229,7 +218,7 @@ def occupancy(view, today):
 
 
 def current_allocations(semester, today):
-    """Alocações vigentes do semestre: a vigência não terminou antes de hoje e não termina antes de começar (D6)."""
+    """Alocações vigentes do semestre."""
     return (
         Allocation.objects.filter(semester=semester)
         .filter(Q(valid_until__isnull=True) | Q(valid_until__gte=today))
@@ -272,8 +261,7 @@ def validity_crosses(first, second):
 
 
 def teacher_conflicts(allocations):
-    """Pares de aulas do mesmo docente no mesmo dia, em faixas sobrepostas, com vigências que se
-    cruzam e em espaços diferentes ou sem espaço. Aula no mesmo espaço é a compartilhada (D7)."""
+    """Aulas do mesmo docente sobrepostas em espaços diferentes; no mesmo espaço, é aula compartilhada."""
     by_teacher = {}
     for allocation in allocations:
         for teacher in allocation.teachers.all():
@@ -300,7 +288,7 @@ def teacher_conflicts(allocations):
 
 
 def booking_clashes(semester, moment):
-    """Agendamentos futuros, até o fim do semestre, sobrepostos a uma aula ativa do mesmo espaço (D8)."""
+    """Agendamentos futuros, até o fim do semestre, sobrepostos a uma aula ativa do mesmo espaço."""
     if semester is None or not semester.has_period or semester.end_date < moment.date():
         return []
     start, end = moment.date(), semester.end_date
@@ -341,7 +329,7 @@ class IssueGroup:
 
 
 def grid_issues(semester, moment, with_bookings):
-    """Aulas sem espaço, sem docente, possíveis conflitos de docente e agendamentos em choque (C1, C2, C5 e C7)."""
+    """Aulas sem espaço ou docente, conflitos de docente e agendamentos em choque."""
     allocations = list(current_allocations(semester, moment.date()))
     without_space, without_teacher = {}, {}
     for allocation in sorted(allocations, key=lesson_order):
@@ -370,6 +358,6 @@ def idle_group(occupancy):
 
 
 def open_imports():
-    """Importações do ensalamento que não foram confirmadas nem descartadas (D1 da avaliação)."""
+    """Importações do ensalamento que não foram confirmadas nem descartadas."""
     queryset = Import.objects.filter(kind=SPACE_ALLOCATION_IMPORT, status__in=OPEN_IMPORT_STATUSES).order_by('created_at', 'pk')
     return queryset.count(), list(queryset[:LIST_SIZE])

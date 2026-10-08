@@ -1,9 +1,3 @@
-"""Rotas das notificações.
-
-A autenticação é exigida aqui, com login_required. As notificações são sempre as do
-próprio usuário, por isso nenhuma destas rotas declara permissão.
-"""
-
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 

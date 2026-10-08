@@ -1,7 +1,4 @@
-"""Consulta dos registros de auditoria (D12).
-
-A lista é somente leitura: não existe rota que altere ou exclua um registro.
-"""
+"""Consulta somente leitura dos registros de auditoria."""
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -52,7 +49,7 @@ class AuditLogDetailView(ModalView, DetailView):
 
 
 class UserOptionsView(OptionsView):
-    """Opções do filtro por usuário, paginadas no servidor (D5)."""
+    """Opções do filtro por usuário, paginadas no servidor."""
 
     permission_required = permissions.AUDIT_VIEW
 

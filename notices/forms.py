@@ -1,9 +1,4 @@
-"""Formulário da publicação manual de notificações.
-
-O formulário só declara e valida os campos da publicação; quem grava é a operação
-do model. Ele também devolve os pares que a etapa de revisão reenvia, para que a
-revisão não guarde nada no servidor.
-"""
+"""Formulário da publicação manual; a revisão reenvia os campos, sem guardar nada no servidor."""
 
 from django import forms
 from django.urls import reverse_lazy

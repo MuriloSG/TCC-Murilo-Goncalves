@@ -18,25 +18,7 @@ def add_operation_error(form, error):
 
 
 def require_safe_database(command, alias=DEFAULT_DB_ALIAS):
-    """Recusa o comando destrutivo se o banco de destino não for comprovadamente o banco local.
-
-    Um banco de teste criado pelo runner deste processo (`config.test_runner`) é liberado: o
-    registro só existe entre a criação e a remoção dos bancos de teste, e um comando digitado
-    à mão nunca o preenche, mesmo num banco com nome de teste.
-
-    Fora disso, as três condições valem juntas, nesta ordem:
-
-    1. `settings.ENVIRONMENT` é exatamente `local` (`DJANGO_ENVIRONMENT`). `DEBUG` não conta.
-    2. A identidade configurada da conexão, `host:porta/nome`, é exatamente a declarada em
-       `settings.LOCAL_DATABASE` (`DJANGO_LOCAL_DATABASE`). Ausente ou vazia, recusa.
-    3. O banco conectado confirma: `current_database()` é o nome configurado e o próprio banco
-       carrega a marca `ifagenda.environment = 'local'`, gravada uma vez com `make mark-local-db`.
-       Um banco operacional não tem a marca, seja qual for o nome dele.
-
-    As duas primeiras não consultam o banco; a terceira faz uma única consulta de leitura.
-    Todas acontecem antes de qualquer pergunta ou escrita. A mensagem não repete valores
-    configurados nem credenciais.
-    """
+    """Recusa o comando se o banco não for comprovadamente o local ou um banco de teste deste runner."""
     connection = connections[alias]
     config = connection.settings_dict
     if (alias, config['NAME']) in test_runner.created_test_databases:

@@ -1,16 +1,4 @@
-"""Grade do ensalamento confirmado, telas da importação e cadastro de espaços.
-
-A grade, o cancelamento de ocorrência e a lista de exceções exigem `ENSALAMENTO.VISUALIZAR`;
-quem cancela é conferido por aula no model. A alteração da recorrência exige
-`ENSALAMENTO.ALTERAR_RECORRENCIA` e o cadastro de aula exige `ENSALAMENTO.CRIAR_RECORRENCIA`,
-conferidas de novo no model. As telas da importação exigem
-`ENSALAMENTO.IMPORTAR` e a exclusão de importação exige `ENSALAMENTO.EXCLUIR_IMPORTACAO`.
-O cadastro de espaços exige a permissão de cada operação do recurso `ESPACO` (D15 da Change
-manipulacao-dos-espacos). A autenticação vem do `login_required` no `urls.py` e a
-permissão é declarada aqui como dado, verificada pelo PermissionMiddleware.
-A importação não tem modelo para baixar, porque a planilha é a do campus e não é alterada
-pelo sistema.
-"""
+"""Grade, importação e cadastro de espaços do ensalamento; as permissões são conferidas de novo no model."""
 
 from dataclasses import replace
 from datetime import timedelta
@@ -128,19 +116,7 @@ class SpaceAllocationImportUploadView(ImportUploadView):
 
 
 class SpaceAllocationGridView(TemplateView):
-    """Grade da semana de uma sala no ensalamento confirmado, a tela de entrada do módulo (D15).
-
-    O semestre padrão é o atual, calculado pela data, e as opções são ele e os semestres
-    com alocação confirmada. A sala padrão é a primeira do semestre, pelo nome, e um valor que não
-    existe na lista cai no padrão, sem erro. Com o período do semestre, a semana é datada e
-    navegável pelo parâmetro `semana`; sem ele, é a semana típica com o aviso (D3 e D7 da
-    Change visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda chegam
-    como mais uma fonte e aparecem em todas as faixas que cruzam, sem ação de solicitar
-    (Change agendar-uso-eventual-dos-espacos). As ações da Grade são cancelar a ocorrência
-    de uma aula datada, oferecida a quem administra a aula (Change
-    cancelar-ocorrencia-do-ensalamento), e alterar a recorrência a partir de uma data de
-    hoje em diante, oferecida a quem tem a permissão (Change alterar-recorrencia-do-ensalamento).
-    """
+    """Grade da semana de uma sala, com semestre e sala padrão quando a URL não serve."""
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
     template_name = 'schedule/grid.html'
@@ -227,12 +203,7 @@ def cancel_url(entry, day, url_name):
 
 
 def with_cancel_actions(week, user, url_name='space_allocation_occurrence_cancel'):
-    """Dá a ação de cancelar a cada aula datada que o usuário administra.
-
-    A decisão usa os docentes já carregados no card, pela mesma regra de `manages`, sem
-    consulta por aula. Esconder a ação não é a proteção: a view do cancelamento carrega só
-    as aulas que o usuário administra e o model confere tudo de novo no POST.
-    """
+    """Dá a ação de cancelar às aulas que o usuário administra; esconder a ação não é a proteção."""
     for day in week.days:
         if day.date is None or not day.in_period:
             continue
@@ -247,11 +218,7 @@ def with_cancel_actions(week, user, url_name='space_allocation_occurrence_cancel
 
 
 def with_end_actions(week, user, today):
-    """Dá a ação de encerrar a cada aula datada de hoje em diante.
-
-    A permissão é conferida uma vez por requisição. A view do encerramento e o model
-    conferem tudo de novo, e esconder a ação não é a proteção.
-    """
+    """Dá a ação de encerrar às aulas datadas de hoje em diante; esconder a ação não é a proteção."""
     if not user.has_perm(permissions.SPACE_ALLOCATION_END_RECURRENCE):
         return
     url = reverse('space_allocation_recurrence_end')
@@ -269,11 +236,7 @@ def with_end_actions(week, user, today):
 
 
 def with_change_actions(week, user, today):
-    """Dá a ação de alterar a recorrência a cada aula datada de hoje em diante.
-
-    A permissão é conferida uma vez por requisição. A view da alteração e o model conferem
-    tudo de novo, e esconder a ação não é a proteção.
-    """
+    """Dá a ação de alterar às aulas datadas de hoje em diante; esconder a ação não é a proteção."""
     if not user.has_perm(permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE):
         return
     url = reverse('space_allocation_recurrence_change')
@@ -291,10 +254,7 @@ def with_change_actions(week, user, today):
 
 
 def create_url(user, code, space):
-    """Endereço do cadastro de aula já com o semestre e a sala da Grade, ou None sem a permissão.
-
-    A data e o horário da célula são acrescentados pelo template, em cada faixa disponível.
-    """
+    """Cadastro de aula com o semestre e a sala da Grade, ou None sem a permissão."""
     if not user.has_perm(permissions.SPACE_ALLOCATION_CREATE_RECURRENCE):
         return None
     query = {'semestre': code}
@@ -304,11 +264,7 @@ def create_url(user, code, space):
 
 
 def with_create_actions(week, user, today):
-    """Marca os dias datados de hoje em diante, em que a faixa disponível oferece o cadastro.
-
-    A permissão é conferida uma vez por requisição. A view do cadastro e o model conferem
-    tudo de novo, e esconder a ação não é a proteção.
-    """
+    """Marca os dias de hoje em diante que oferecem o cadastro; esconder a ação não é a proteção."""
     if not user.has_perm(permissions.SPACE_ALLOCATION_CREATE_RECURRENCE):
         return
     for day in week.days:
@@ -316,12 +272,7 @@ def with_create_actions(week, user, today):
 
 
 class PlannedOperationView(OperationFormView):
-    """Operação do ensalamento conferida antes de gravar, em duas etapas no mesmo modal.
-
-    O primeiro envio confere tudo e mostra o resumo, sem gravar; o envio seguinte traz a
-    confirmação e executa, conferindo de novo. Os dados informados viajam em campos
-    ocultos entre as duas etapas.
-    """
+    """Confere e mostra o resumo no primeiro envio e executa no envio de confirmação, conferindo de novo."""
 
     summary_template_name = None
 
@@ -345,15 +296,7 @@ class PlannedOperationView(OperationFormView):
 
 
 class RecurrenceChangeView(PlannedOperationView):
-    """Altera a recorrência de uma aula a partir de uma data, em duas etapas no mesmo modal.
-
-    A aula é identificada pelas alocações do bloco da Grade e pela data em que a ação foi
-    aberta; alocação inexistente ou data que não é ocorrência dela respondem 404. O primeiro
-    envio confere tudo em `Allocation.objects.plan_recurrence` e mostra o resumo de antes e
-    de depois, sem gravar; o envio com `confirmar` executa `change_recurrence`, que confere
-    de novo. Recusas voltam como erros do formulário. No sucesso, a Grade abre na semana
-    da data e na sala nova, e não na tela de origem, onde a aula deixou de estar.
-    """
+    """Altera a recorrência; no sucesso, a Grade abre na semana da data e na sala nova."""
 
     permission_required = permissions.SPACE_ALLOCATION_CHANGE_RECURRENCE
     template_name = 'schedule/recurrence_change.html'
@@ -452,12 +395,7 @@ class RecurrenceChangeView(PlannedOperationView):
         return self.redirect_to(self.get_success_url())
 
 class RecurrenceCreateView(PlannedOperationView):
-    """Cadastra uma aula recorrente na Grade, em duas etapas no mesmo modal.
-
-    O semestre vem da Grade de onde o cadastro foi aberto, e um semestre inexistente ou sem
-    período responde 404. A data, o horário e a sala da célula acionada chegam pela URL e
-    só preenchem o formulário. O model confere tudo de novo no envio com a confirmação.
-    """
+    """Cadastra uma aula recorrente; semestre inexistente ou sem período responde 404."""
 
     permission_required = permissions.SPACE_ALLOCATION_CREATE_RECURRENCE
     template_name = 'schedule/recurrence_create.html'
@@ -544,13 +482,7 @@ class RecurrenceCreateView(PlannedOperationView):
 
 
 class OccurrenceCancelView(ConfirmedActionView):
-    """Cancela a ocorrência de uma aula numa data, sem alterar a regra semanal.
-
-    A aula é identificada pelas alocações do bloco da Grade e pela data. Alocação
-    inexistente, de outro docente ou data que não é ocorrência dela respondem 404, sem
-    revelar a aula, como o detalhe de solicitação de outro usuário na Agenda. O POST confere
-    tudo de novo em `AllocationException.objects.cancel`.
-    """
+    """Cancela uma ocorrência; aula de outro docente responde 404, sem revelar a aula."""
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
     template_name = 'schedule/occurrence_cancel.html'
@@ -593,13 +525,7 @@ class OccurrenceCancelView(ConfirmedActionView):
 
 
 class RecurrenceEndView(ConfirmedActionView):
-    """Encerra uma aula a partir de uma data, dando fim à vigência das alocações do bloco.
-
-    A aula é identificada pelas alocações do bloco da Grade e pela data em que a ação foi
-    aberta; alocação inexistente ou data que não é ocorrência dela respondem 404. O GET
-    mostra a confirmação, com a quantidade de aulas que deixam de existir, calculada por
-    `plan_ending` sem gravar nada. O POST confere tudo de novo em `end_recurrence`.
-    """
+    """Encerra a aula, com o GET mostrando quantas aulas deixam de existir."""
 
     permission_required = permissions.SPACE_ALLOCATION_END_RECURRENCE
     template_name = 'schedule/recurrence_end.html'
@@ -660,11 +586,7 @@ class RecurrenceEndView(ConfirmedActionView):
 
 
 class AllocationExceptionListView(ListView):
-    """Exceções do ensalamento, das mais recentes para as mais antigas.
-
-    Quem tem `ENSALAMENTO.CANCELAR_OCORRENCIA` vê todas; o docente vê as das aulas dele,
-    pela mesma regra de `Allocation.objects.managed_by`.
-    """
+    """Exceções do ensalamento; o docente vê só as das aulas dele."""
 
     permission_required = permissions.SPACE_ALLOCATION_VIEW
     audit_resource = catalog.SPACE_ALLOCATION_EXCEPTION
@@ -693,7 +615,7 @@ class AllocationExceptionListView(ListView):
 
 
 class SpaceAllocationImportDetailView(ImportDetailView):
-    """Detalhe da importação com o quadro "Espaços desta importação" antes das linhas (D14)."""
+    """Detalhe da importação com o quadro "Espaços desta importação" antes das linhas."""
 
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
@@ -728,11 +650,7 @@ class SpaceAllocationImportDeleteView(ImportDeleteView):
 
 
 class SpaceListView(ListView):
-    """Lista de espaços com busca e filtros pela URL, como a lista de usuários.
-
-    Quando o formulário de filtros pede pelo htmx, responde só com a tabela e o rodapé. A
-    ordem é a natural do nome, a mesma da Grade: `1/4` vem antes de `1/10`.
-    """
+    """Lista de espaços pela URL, na ordem natural do nome: `1/4` antes de `1/10`."""
 
     permission_required = permissions.SPACE_VIEW
     audit_resource = catalog.SPACE
@@ -856,11 +774,7 @@ def audit_history_action(resource, pk):
 
 
 class CourseListView(ListView):
-    """Lista de cursos com busca e filtro de etapa pela URL, sem escopo de docente.
-
-    Quando o formulário de filtros pede pelo htmx, responde só com a tabela e o rodapé. Só o
-    curso sem turmas pode ser excluído.
-    """
+    """Lista de cursos pela URL, sem escopo de docente."""
 
     permission_required = permissions.COURSE_VIEW
     audit_resource = catalog.COURSE
@@ -969,12 +883,7 @@ class CourseDeleteView(ConfirmedActionView):
 
 
 class AcademicListView(ListView):
-    """Lista de disciplinas ou de turmas do escopo do usuário, com busca pela URL.
-
-    O escopo é aplicado na consulta (`visible_to`), e o superadmin alcança todos os registros
-    (D1, D2 e D5 da Change gerenciar-disciplinas-e-turmas). Quando o formulário de filtros pede
-    pelo htmx, responde só com a tabela e o rodapé.
-    """
+    """Disciplinas ou turmas do escopo do usuário, aplicado na consulta."""
 
     model = None
     filter_form_class = None
@@ -1052,10 +961,7 @@ class ClassGroupListView(AcademicListView):
 
 
 class AcademicDetailView(TemplateView):
-    """Detalhe de disciplina ou turma do escopo do usuário, com as ofertas por semestre.
-
-    O alvo é procurado só no escopo, e fora dele a resposta é 404 (D4 e D6).
-    """
+    """Detalhe no escopo do usuário; fora dele, 404."""
 
     model = None
     offering_field = ''
@@ -1235,7 +1141,7 @@ def effect_text(entry, resolution):
 
 
 def decision_actions(entry, user):
-    """Botões de decisão que o nome aceita e que o usuário pode usar (D11 e D14)."""
+    """Botões de decisão que o nome aceita e que o usuário pode usar."""
     allowed = options_of(entry)
     actions = []
 
@@ -1263,15 +1169,7 @@ def can_choose(entry, user):
 
 
 def space_panel(importation, user):
-    """Contexto do quadro "Espaços desta importação", calculado pela classificação (D14).
-
-    Enquanto a importação está aberta, tudo é descrito no futuro, porque nada foi gravado no
-    cadastro. Na importação com erros, só os nomes que vão precisar de decisão aparecem, sem
-    controles. Na concluída, aparecem os espaços que ela cadastrou.
-
-    O quadro vem aberto só quando pede atenção: nome a decidir, falta de permissão, falha na
-    atualização ou erros na planilha. No restante, vem recolhido, com o resumo no cabeçalho.
-    """
+    """Quadro "Espaços desta importação", aberto só quando pede atenção."""
     status = importation.status
     if status in (Import.Status.DISCARDED, Import.Status.RECEIVED, Import.Status.FAILED) or importation.is_busy:
         return None
@@ -1384,12 +1282,7 @@ def ready_summary(resolution):
 
 
 def refresh_after_decision(request, importation):
-    """Pede a atualização da prévia quando não resta pendência ou quando a importação estava pronta (D12).
-
-    A decisão já está gravada, numa transação própria. A atualização é executada pelo worker
-    (Change processar-importacao-em-segundo-plano), e a falha dela fica no resultado da
-    importação, que o quadro mostra com a recuperação.
-    """
+    """Pede a atualização da prévia quando não resta pendência ou ela estava pronta."""
     current = Import.objects.get(pk=importation.pk)
     if classify_import(current).pending and current.status != Import.Status.VALIDATED:
         return
@@ -1405,7 +1298,7 @@ def panel_url(importation):
 
 
 class SpaceDecisionView(View):
-    """Grava a decisão de um nome encontrado e atualiza a prévia, sem formulário de cadastro (D12)."""
+    """Grava a decisão de um nome encontrado e atualiza a prévia, sem formulário de cadastro."""
 
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     http_method_names = ['post']
@@ -1465,12 +1358,7 @@ class SpaceRefreshView(View):
 
 
 class SpaceAssociateView(ModalView, FormView):
-    """Escolha, entre os espaços do cadastro, do que é o mesmo que um nome encontrado.
-
-    Serve à pendência ("É o mesmo que…") e ao novo proposto ("Não é um espaço novo"). O
-    campo é obrigatório e por isso não usa fonte paginada: o select mostra todos os espaços,
-    com a busca do componente.
-    """
+    """Escolha do espaço do cadastro que é o mesmo que o nome encontrado."""
 
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     template_name = 'schedule/space_associate.html'

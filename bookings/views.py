@@ -1,10 +1,4 @@
-"""Telas da Agenda: a Grade, a solicitação, as solicitações do usuário e a análise.
-
-Cada rota tem `login_required` no `urls.py` e declara a sua permissão, verificada pelo
-PermissionMiddleware (D1 e D2 da Change agendar-uso-eventual-dos-espacos). As rotas de
-"Minhas solicitações" carregam só as solicitações do próprio usuário, e o ID de outro
-usuário responde 404. As regras ficam nas operações do model; as views só as chamam.
-"""
+"""Telas da Agenda; as regras ficam nas operações do model."""
 
 from datetime import timedelta
 from urllib.parse import urlencode
@@ -53,21 +47,12 @@ def bookable_spaces():
 
 
 def next_school_day(today):
-    """Hoje, de segunda a sexta; no sábado e no domingo, a segunda-feira seguinte.
-
-    A Agenda serve para solicitar horários futuros: no fim de semana, a semana atual já
-    passou inteira e não teria nenhuma faixa para solicitar.
-    """
+    """Hoje em dia útil; no fim de semana, a segunda seguinte, que ainda tem faixas a solicitar."""
     return today + timedelta(days=7 - today.weekday()) if today.weekday() >= 5 else today
 
 
 class AgendaGridView(TemplateView):
-    """Grade da Agenda: a mesma Grade do Ensalamento, com o ensalamento e os agendamentos.
-
-    Reúne as fontes de `agenda_sources()` pela mesma `occupancy()` e monta a semana ou o mês
-    pelas funções de `schedule.timetable`, com os agendamentos postos em todas as faixas que
-    cruzam (D7). Não usa a view do Ensalamento.
-    """
+    """Grade do Ensalamento com os agendamentos, montada sem usar a view do Ensalamento."""
 
     permission_required = permissions.BOOKING_VIEW
     template_name = 'bookings/agenda.html'
@@ -164,12 +149,7 @@ class AgendaGridView(TemplateView):
 
 
 def creates_directly(user):
-    """Diz se a faixa da Grade abre direto o modal de criar para outro usuário.
-
-    Abre para o superadmin e para quem tem `AGENDA.CRIAR` sem `AGENDA.SOLICITAR`. Quem tem as
-    duas abre "Solicitar agendamento", com o atalho para criar para outro usuário. É só a escolha
-    do modal: o acesso de cada rota continua decidido pela permissão dela.
-    """
+    """Abre direto a criação para outro usuário a quem tem `AGENDA.CRIAR` sem `AGENDA.SOLICITAR`."""
     return user.has_perm(permissions.BOOKING_CREATE) and (user.is_superadmin or not user.has_perm(permissions.BOOKING_REQUEST))
 
 
@@ -179,8 +159,7 @@ def agenda_link(space, day):
 
 
 def request_related(queryset):
-    """Solicitações com o espaço, o espaço sugerido, as pessoas e o vínculo acadêmico, sem
-    consulta por linha."""
+    """Solicitações com espaços, pessoas e vínculo acadêmico, sem consulta por linha."""
     return queryset.select_related(
         'space', 'suggested_space', 'requested_by', 'decided_by', 'created_by',
         'teaching_assignment__teacher', 'teaching_assignment__offering__semester',
@@ -192,18 +171,7 @@ REQUEST_FIELDS = ('subject', 'teaching_assignment', 'space', 'date', 'start_time
 
 
 class BookingRequestCreateView(OperationFormView):
-    """Modal "Solicitar agendamento", em duas etapas: o formulário e a revisão.
-
-    Quem solicita é o docente que é o usuário: a disciplina lista as dele no semestre, e a
-    turma, as turmas dele na disciplina escolhida. A faixa da
-    Grade preenche o espaço, a data e o horário, e o semestre é o da Agenda, o que tem a
-    data no período. A troca da data ou da disciplina recarrega as opções seguintes pelo
-    GET desta mesma rota. O primeiro envio confere tudo
-    em `BookingRequest.objects.prepare` e mostra a revisão, sem gravar; o envio com
-    `confirmar` executa `submit`, que confere de novo. A solicitação fica pendente, sem
-    agendamento, e volta para a semana da data (Change
-    solicitar-agendamento-com-vinculo-academico).
-    """
+    """Solicitação em duas etapas: `prepare` mostra a revisão e o envio com `confirmar` grava."""
 
     permission_required = permissions.BOOKING_REQUEST
     audit_resource = catalog.BOOKING_REQUEST
@@ -271,14 +239,7 @@ ON_BEHALF_FIELDS = ('requested_for', 'course', *REQUEST_FIELDS)
 
 
 class BookingOnBehalfCreateView(BookingRequestCreateView):
-    """Modal "Criar solicitação para outro usuário", com as mesmas duas etapas da solicitação.
-
-    Quem tem `AGENDA.CRIAR` escolhe o usuário, o curso, a disciplina e a turma, nesta ordem, e
-    segue com espaço, data, horário e descrição. A troca de cada campo recarrega os seguintes
-    pelo GET desta mesma rota, e o formulário limpa os que dependem dele. A operação do model
-    confere a permissão e a cadeia de novo, e a solicitação fica pendente em nome do usuário
-    escolhido, com quem a criou em `created_by` (Change criar-agendamento-para-outro-usuario).
-    """
+    """Criação em nome de outro usuário, nas mesmas duas etapas da solicitação."""
 
     permission_required = permissions.BOOKING_CREATE
     template_name = 'bookings/on_behalf_form.html'
@@ -288,8 +249,7 @@ class BookingOnBehalfCreateView(BookingRequestCreateView):
     refresh_route = 'agenda_create'
 
     def get_initial(self):
-        """Sem faixa da Grade, a data começa no próximo dia letivo, para que a lista de usuários
-        já venha do semestre dela e a escolha comece pelo usuário."""
+        """Sem faixa, a data começa no próximo dia letivo, para a lista de usuários vir do semestre dela."""
         initial = super().get_initial()
         if not initial.get('date'):
             initial['date'] = next_school_day(timezone.localdate()).isoformat()
@@ -325,7 +285,7 @@ def event(title, icon, tone, who, moment):
 
 
 def history_of(request):
-    """Linha do tempo da solicitação montada dos campos dela, sem tabela de eventos (D3)."""
+    """Linha do tempo da solicitação montada dos campos dela, sem tabela de eventos."""
     Status = BookingRequest.Status
     events = [event('Solicitação criada', 'calendar-plus', 'success', request.created_by or request.requested_by, request.created_at)]
     if request.decided_by_id:
@@ -383,10 +343,7 @@ class MyBookingRequestListView(ListView):
 
 
 class MyBookingRequestDetailView(TemplateView):
-    """Detalhe de uma solicitação do usuário, com o original e a alternativa lado a lado.
-
-    O ID de uma solicitação de outro usuário responde 404, sem revelar que ela existe.
-    """
+    """Detalhe de uma solicitação do usuário; a de outro responde 404."""
 
     permission_required = permissions.BOOKING_REQUEST
     audit_resource = catalog.BOOKING_REQUEST
@@ -442,8 +399,7 @@ class DeclineSuggestionView(OwnRequestActionView):
 
 
 class BookingRequestReviewListView(ListView):
-    """Solicitações de todos para quem analisa: por padrão, as que precisam de decisão,
-    das mais antigas para as mais recentes."""
+    """Solicitações de todos para análise, por padrão as pendentes de decisão, das mais antigas."""
 
     permission_required = permissions.BOOKING_REVIEW
     audit_resource = catalog.BOOKING_REQUEST
@@ -489,7 +445,7 @@ def review_detail_url(target):
 
 
 class ApproveView(ConfirmedActionView):
-    """Aprovação, com a disponibilidade verificada de novo no momento do POST (D4)."""
+    """Aprovação, com a disponibilidade verificada de novo no POST."""
 
     permission_required = permissions.BOOKING_REVIEW
     audit_resource = catalog.BOOKING_REQUEST
@@ -548,8 +504,7 @@ class SuggestView(ReviewFormView):
 
 
 class CancelBookingView(OperationFormView):
-    """Modal "Cancelar agendamento", com o motivo opcional; o model confere quem cancela,
-    o estado e o prazo de 1 hora (Change cancelar-agendamento-aprovado)."""
+    """Cancelamento com motivo opcional; o model confere quem cancela, o estado e o prazo."""
 
     audit_resource = catalog.BOOKING_REQUEST
     model = BookingRequest
@@ -593,12 +548,7 @@ class ReviewCancelView(CancelBookingView):
 
 
 class AgendaOccurrenceCancelView(OccurrenceCancelView):
-    """Cancelamento da ocorrência pela Grade da Agenda, a tela que o docente usa.
-
-    A rota exige `AGENDA.VISUALIZAR`; quem pode cancelar cada aula é conferido pela mesma
-    view do Ensalamento, que carrega só as aulas que o usuário administra (404 nas demais),
-    e de novo pelo model no POST.
-    """
+    """Cancelamento pela Grade da Agenda, com a view e a visibilidade do Ensalamento."""
 
     permission_required = permissions.BOOKING_VIEW
     success_url = reverse_lazy('agenda_grid')

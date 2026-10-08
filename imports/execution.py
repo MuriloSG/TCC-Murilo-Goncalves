@@ -1,10 +1,4 @@
-"""Execução das linhas e comparação de planos (D7, D8).
-
-A execução roda as operações reais do domínio na transação de quem chama, que
-decide se as mantém (confirmação com plano idêntico) ou as desfaz (prévia e
-divergência). Cada linha roda num savepoint próprio: a recusa de uma linha,
-inclusive por erro do banco, desfaz só aquela linha e vira erro no plano.
-"""
+"""Execução das linhas, cada uma num savepoint, na transação de quem decide mantê-las ou desfazê-las."""
 
 import json
 from dataclasses import dataclass, field
@@ -55,12 +49,7 @@ def canonical(value):
 
 
 def comparable(rows, file_errors):
-    """Estrutura comparada entre prévia e confirmação (D8).
-
-    Entram ação, alvo, mudanças, avisos, pendências e os pares de coluna e código dos
-    erros de cada linha, e os códigos dos erros do arquivo. Mensagens e valores lidos ficam
-    de fora. A normalização por JSON e a ordenação tornam o resultado determinístico.
-    """
+    """Estrutura comparada entre prévia e confirmação, sem mensagens nem valores lidos, normalizada por JSON."""
     return canonical({
         'rows': [
             {
@@ -98,13 +87,7 @@ def execute_row(definition, row, executor):
 
 
 def run(definition, rows, executor, importation=None):
-    """Trava, executa cada linha, a etapa final e as verificações do arquivo, e devolve o Plan.
-
-    As linhas rodam com a origem de importação na auditoria: o responsável continua
-    sendo o executor, e os registros das operações de domínio mostram que vieram de
-    uma planilha (D3 da Change auditar-acoes-do-sistema). A importação em curso vai para
-    a execução da importação específica, e é nenhuma na primeira prévia.
-    """
+    """Executa o plano com a origem de importação na auditoria e devolve o Plan."""
     with definition.execution(importation), acting_from_import(executor):
         definition.lock(rows, executor)
         plan = Plan(rows=[(row, execute_row(definition, row, executor)) for row in rows])

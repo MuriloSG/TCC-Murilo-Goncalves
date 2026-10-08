@@ -1,13 +1,4 @@
-"""Cache compartilhado das telas públicas (Change cachear-telas-publicas-com-redis).
-
-É o único módulo que lê e grava o alias `public` do cache. O PostgreSQL continua sendo a fonte
-de verdade: o cache guarda só o que as telas públicas mostram a qualquer visitante e, com o
-Redis indisponível ou sem configuração, as telas consultam o banco como sem cache (D8).
-
-As chaves têm o formato `public:<recurso>:g<geração>:<hash>` (D4). A geração é um contador
-global sem TTL, incrementado depois do commit de toda escrita num modelo lido pelas telas
-públicas (D5 e D6). As entradas de gerações anteriores deixam de ser lidas e saem pelo TTL.
-"""
+"""Cache das telas públicas, invalidado por geração após cada escrita; sem Redis, as telas usam o banco."""
 
 import hashlib
 import json
@@ -52,7 +43,7 @@ def backend():
 
 
 def is_enabled():
-    """O cache só é usado com um backend real e fora da pausa que segue uma falha (D8)."""
+    """O cache só é usado com um backend real e fora da pausa que segue uma falha."""
     return not isinstance(backend(), DummyCache) and time.monotonic() >= _paused_until
 
 
@@ -70,11 +61,7 @@ def resume():
 
 
 def cache_key(resource, generation, params):
-    """Chave do recurso na geração, com o hash da forma canônica dos parâmetros normalizados.
-
-    Os parâmetros já passaram pela normalização contra o cadastro; nenhum valor da URL entra
-    em texto na chave, que tem tamanho fixo qualquer que seja a requisição.
-    """
+    """Chave de tamanho fixo pelo hash dos parâmetros já normalizados, sem texto da URL."""
     if resource not in TTL:
         raise ValueError(f'Tipo de cache desconhecido: {resource}')
     canonical = json.dumps(params, sort_keys=True, default=str, separators=(',', ':'))
@@ -109,23 +96,14 @@ def bump_generation():
 
 
 def invalidate_on_commit():
-    """Agenda o incremento da geração para depois do commit da transação atual.
-
-    Um rollback descarta o agendamento, e o cache anterior continua valendo. Só um
-    agendamento fica pendente por transação: os savepoints desfeitos removem os seus, e um
-    agendamento ainda pendente cobre toda escrita feita dentro dos mesmos savepoints.
-    """
+    """Agenda o incremento da geração após o commit; um rollback descarta o agendamento."""
     if any(item[1] is bump_generation for item in connection.run_on_commit):
         return
     transaction.on_commit(bump_generation, robust=True)
 
 
 class Lookup:
-    """Leituras do cache de uma requisição: a geração é lida uma vez, e o estado vai para o cabeçalho.
-
-    O estado é `hit` só quando todas as leituras foram hits, `bypass` quando o cache não foi
-    usado e `miss` nos demais casos.
-    """
+    """Leituras do cache de uma requisição, com a geração lida uma vez e o estado para o cabeçalho."""
 
     def __init__(self):
         self.statuses = []
@@ -176,11 +154,7 @@ def changed_public_fields(fields, update_fields):
 
 
 def watch(model, fields=None):
-    """Invalida o cache público depois do commit de toda gravação ou exclusão do model.
-
-    Com `fields`, só a gravação que inclui um desses campos invalida: o login, que grava só
-    `last_login` do usuário, não muda nada nas telas públicas (D6).
-    """
+    """Invalida após o commit; com `fields`, só quando um deles é gravado, o que poupa o login."""
     def saved(sender, update_fields=None, **kwargs):
         if changed_public_fields(fields, update_fields):
             invalidate_on_commit()

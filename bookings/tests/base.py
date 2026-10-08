@@ -1,8 +1,4 @@
-"""Dados e relógio comuns aos testes da Agenda.
-
-O relógio é fixado em 01/10/2026 às 10:00, no fuso do campus, para que as datas dos
-cenários da spec (15/10/2026, uma quinta-feira) estejam sempre no futuro.
-"""
+"""Relógio fixado em 01/10/2026 às 10:00 para que as datas dos cenários fiquem no futuro."""
 
 from datetime import date, datetime, time
 from unittest import mock
@@ -47,11 +43,7 @@ def semester_with_lesson(space_name='Laboratório de Informática 2'):
 
 
 def academic(teacher='Viviane', subject='Redes', label='2º ANO A', code='2026/2', course='INFORMÁTICA'):
-    """Vínculo atual do docente com a disciplina e a turma no semestre, como a importação cria.
-
-    O semestre recebe o período de 2026/2 quando ainda não tem, e a oferta é gravada sem
-    alocação, para não ocupar nenhum espaço.
-    """
+    """Vínculo atual do docente, com a oferta sem alocação para não ocupar espaço."""
     semester, _ = Semester.objects.resolve(code)
     if not semester.has_period:
         semester.define_period(date(2026, 8, 3), date(2026, 12, 18))

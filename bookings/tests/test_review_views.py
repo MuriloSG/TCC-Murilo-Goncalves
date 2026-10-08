@@ -1,4 +1,4 @@
-"""Análise das solicitações: lista, detalhe, aprovação, rejeição e alternativa (D1, D4)."""
+"""Análise das solicitações: lista, detalhe, aprovação, rejeição e alternativa."""
 
 from datetime import time
 

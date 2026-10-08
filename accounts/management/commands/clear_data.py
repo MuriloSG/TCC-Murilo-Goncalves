@@ -9,14 +9,7 @@ KEPT_APPS = {'accounts', 'account', 'auth', 'contenttypes', 'sessions'}
 
 
 class Command(BaseCommand):
-    """Exclui os dados de todos os apps, mantendo usuários, perfis, permissões e os e-mails do allauth.
-
-    Usa `TRUNCATE ... RESTART IDENTITY CASCADE` nas tabelas dos apps fora de
-    `KEPT_APPS`, o que também ignora a proteção do registro de auditoria, feita
-    no model. As sessões ficam, para que ninguém perca o login. O `TRUNCATE` não dispara
-    sinais, e o cache público é invalidado explicitamente depois do commit. Só roda com
-    o banco local comprovado (`require_safe_database`), verificado antes de tudo.
-    """
+    """Trunca os dados dos apps fora de KEPT_APPS, sem a proteção da auditoria; só roda no banco local."""
 
     help = 'Exclui os dados do sistema e mantém apenas os usuários, perfis e permissões.'
 

@@ -17,17 +17,13 @@ def email_field():
 
 
 def use_email_messages(field):
-    """Aplica ao campo de e-mail de um formulário do allauth o rótulo e o erro do projeto (D5)."""
+    """Aplica ao campo de e-mail de um formulário do allauth o rótulo e o erro do projeto."""
     field.label = 'E-mail'
     field.error_messages = field.error_messages | {'invalid': INVALID_EMAIL_MESSAGE}
 
 
 class LoginForm(allauth_forms.LoginForm):
-    """Login com os rótulos da tela de entrada (D14 da Change definir-identidade-visual).
-
-    A ajuda do campo de senha, que o allauth usa para o link de recuperação, sai
-    porque a tela já tem o link "Esqueci minha senha".
-    """
+    """Login sem a ajuda do campo de senha, porque a tela já tem o link de recuperação."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -46,11 +42,7 @@ class PasswordResetForm(allauth_forms.ResetPasswordForm):
         use_email_messages(self.fields['email'])
 
     def save(self, request, **kwargs):
-        """Registra a solicitação de recuperação na auditoria (D6).
-
-        O registro é o mesmo para um e-mail cadastrado e para um e-mail que não
-        existe, para que a auditoria não revele quais contas existem.
-        """
+        """Audita a solicitação do mesmo jeito para e-mail existente ou não, para não revelar contas."""
         email = super().save(request, **kwargs)
         AuditLog.objects.record(
             catalog.PASSWORD_REQUESTED,
@@ -61,11 +53,7 @@ class PasswordResetForm(allauth_forms.ResetPasswordForm):
 
 
 class PasswordResetKeyForm(allauth_forms.ResetPasswordKeyForm):
-    """Definição de senha com a mensagem de senhas diferentes nas regras de texto.
-
-    O clean do PasswordVerificationMixin do allauth é pulado porque a mensagem dele
-    fala com o usuário na segunda pessoa. A comparação é a mesma.
-    """
+    """Pula o clean do allauth, cuja mensagem fala na segunda pessoa; a comparação é a mesma."""
 
     def clean(self):
         cleaned_data = super(allauth_forms.PasswordVerificationMixin, self).clean()
@@ -77,11 +65,7 @@ class PasswordResetKeyForm(allauth_forms.ResetPasswordKeyForm):
 
 
 def username_field():
-    """Campo do nome de usuário, opcional, sem restrição de formato (D3).
-
-    O valor aceita espaços, acentos e abreviações, e a normalização e a unicidade
-    ficam no model, que é quem recusa um valor já em uso.
-    """
+    """Nome de usuário opcional e livre; normalização e unicidade ficam no model."""
     return forms.CharField(
         label='Nome de usuário',
         max_length=150,
@@ -99,11 +83,7 @@ def role_choice_field():
 
 
 def clean_single_role(form):
-    """Recusa o envio de mais de um perfil.
-
-    O ModelChoiceField usaria só o último valor recebido, e o usuário seria gravado
-    com um dos perfis em vez de a operação ser recusada.
-    """
+    """Recusa mais de um perfil, que o ModelChoiceField reduziria ao último valor."""
     if len(form.data.getlist(form.add_prefix('role'))) > 1:
         raise forms.ValidationError('Escolha exatamente um perfil.', code='multiple_roles')
     return form.cleaned_data['role']
@@ -124,13 +104,7 @@ class UserCreateForm(forms.Form):
 
 
 class UserUpdateForm(forms.Form):
-    """Edição de nome, e-mail e nome de usuário.
-
-    Quando o alvo é superadmin e o executor não é superadmin ativo, o e-mail é
-    exibido como somente leitura. Isso é só apresentação: a regra está em
-    User.update_details (D16). O campo usa readonly, e não disabled, para que um
-    e-mail forjado no POST chegue ao model e seja recusado com mensagem de erro.
-    """
+    """O e-mail de superadmin fica readonly, e não disabled, para que um POST forjado seja recusado pelo model."""
 
     name = forms.CharField(label='Nome', max_length=150)
     email = email_field()
@@ -146,11 +120,7 @@ class UserUpdateForm(forms.Form):
 
 
 class UserFilterForm(forms.Form):
-    """Busca e filtro da lista de usuários, recebidos pela URL (D1 da Change filtrar-lista-de-usuarios).
-
-    Os nomes dos campos são os parâmetros da URL, em português, como os caminhos.
-    Um valor inválido é descartado sem mensagem, e a lista trata o campo como vazio.
-    """
+    """Filtros da lista de usuários pela URL; valor inválido é descartado sem mensagem."""
 
     busca = forms.CharField(
         label='Buscar por nome, e-mail ou nome de usuário',
@@ -184,11 +154,7 @@ class UserRoleForm(forms.Form):
 
 
 def grantable_permission_choices():
-    """Permissões do catálogo que podem ser concedidas, agrupadas por recurso (D4, D21).
-
-    Cada grupo leva o nome do recurso na interface, e cada opção tem o código
-    como valor e a descrição como rótulo.
-    """
+    """Permissões concedíveis agrupadas pelo nome do recurso."""
     groups = {}
     for permission in Permission.objects.exclude(code__in=SUPERADMIN_RESERVED_PERMISSIONS).order_by('code'):
         groups.setdefault(permission.resource_label, []).append((permission.code, permission.description))
@@ -196,12 +162,7 @@ def grantable_permission_choices():
 
 
 def permission_choice_field():
-    """Campo de permissões validado contra o catálogo inteiro.
-
-    O widget só exibe as permissões concedíveis. Uma permissão reservada enviada
-    no POST passa pelo campo e é recusada pela operação do model, que informa o
-    motivo (D21).
-    """
+    """Valida contra o catálogo inteiro para que a permissão reservada seja recusada pelo model, com o motivo."""
     return forms.ModelMultipleChoiceField(
         label='Permissões',
         queryset=Permission.objects.all(),
@@ -212,12 +173,7 @@ def permission_choice_field():
 
 
 class RoleCreateForm(forms.Form):
-    """Primeira etapa da criação de perfil: código, nome e descrição.
-
-    O campo de permissões continua aceito na requisição, como a spec prevê, mas
-    não é exibido: a interface escolhe as permissões na segunda etapa, na tela de
-    permissões do perfil criado.
-    """
+    """Primeira etapa da criação de perfil; as permissões são escolhidas na tela seguinte."""
 
     code = forms.CharField(
         label='Código',

@@ -1,13 +1,4 @@
-"""Runner dos testes, que registra os bancos de teste que ele mesmo criou.
-
-A trava dos comandos destrutivos (`accounts.utils.require_safe_database`) libera, sem
-exigir o banco local, só um banco desta lista. Ela existe apenas no processo do runner, entre a
-criação e a remoção dos bancos de teste: um `manage.py flush` digitado à mão nunca a
-preenche, mesmo que o banco tenha nome parecido com o de teste. Com `--parallel`, entram
-também as cópias que o runner cria para cada processo (`test_<nome>_1`, `_2`, ...), que os
-processos herdam do runner. O Django chama `teardown_databases` num `finally`, e a lista
-é esvaziada mesmo se a remoção dos bancos falhar.
-"""
+"""Runner que registra os bancos de teste que criou, os únicos liberados pela trava sem o banco local."""
 
 import logging
 import os
@@ -20,12 +11,7 @@ created_test_databases = set()
 
 
 class TestRunner(DiscoverRunner):
-    """Também deixa os loggers do projeto em WARNING, para a saída da suíte não repetir cada
-    importação dos testes, salvo `DJANGO_LOG_LEVEL` informado. A variável vale para os
-    processos do `--parallel`, que releem as configurações; o `assertLogs` ajusta o nível
-    sozinho e continua vendo o INFO. O ajuste fica depois da descoberta dos testes, porque
-    importar `config.asgi` chama `django.setup()` e reconfigura o log.
-    """
+    """Deixa os loggers em WARNING após a descoberta, que reconfigura o log, salvo com `DJANGO_LOG_LEVEL`."""
 
     def setup_databases(self, **kwargs):
         level = os.environ.setdefault('DJANGO_LOG_LEVEL', 'WARNING').upper()

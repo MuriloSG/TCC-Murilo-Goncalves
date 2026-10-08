@@ -1,4 +1,4 @@
-"""Notificações das transições da Agenda: destinatários, texto, destino e recusa (D10)."""
+"""Notificações das transições da Agenda: destinatários, texto, destino e recusa."""
 
 from datetime import time
 

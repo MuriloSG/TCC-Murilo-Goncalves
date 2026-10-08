@@ -1,11 +1,4 @@
-"""Ator da ação auditada (D3).
-
-O ator fica num ContextVar, e não num parâmetro das operações: assim
-`User.objects.register` registra o cadastro sem conhecer a requisição, e a mesma
-operação chamada pela tela, por uma planilha ou por um comando produz registros
-com origens diferentes. Sem ninguém definir nada, o ator é o do sistema, o que
-mantém auditada a ação de um comando ou do worker.
-"""
+"""Ator da ação num ContextVar, para que as operações auditem sem conhecer a requisição."""
 
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -51,10 +44,6 @@ def acting_from_import(user):
 
 @contextmanager
 def acting_as_user(user):
-    """Ator atual com o usuário identificado, para os sinais de autenticação.
-
-    Numa requisição de login ou de saída, o ator da requisição foi definido antes
-    de a sessão existir, e o usuário responsável é o que o sinal informa.
-    """
+    """Ator com o usuário do sinal, já que o ator da requisição de login é definido antes da sessão."""
     with acting_as(replace(current_actor(), user=user)):
         yield

@@ -1,14 +1,4 @@
-"""Notificações do sistema: criação, entrega por destinatário e leitura (D2, D4, D6).
-
-Uma notificação pertence a um único destinatário. O conteúdo destinado a várias
-pessoas vira uma notificação por pessoa, cada uma com o próprio estado de leitura,
-e o título e a mensagem são copiados para cada uma, de modo que a notificação
-continue legível mesmo quando o que a originou deixar de existir.
-
-Os módulos do mecanismo não importam apps de domínio: o destinatário é o usuário
-configurado em AUTH_USER_MODEL e a resolução dos destinatários usa a consulta do
-próprio usuário, sem conhecer os apps que definem as telas.
-"""
+"""Notificações por destinatário, com título e mensagem copiados para continuarem legíveis."""
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -59,22 +49,13 @@ class NoRecipients(ValidationError):
 
 
 def validate_type(code):
-    """Recusa o tipo fora do catálogo antes de montar a notificação.
-
-    O `clean` do model faz a mesma verificação para uma gravação direta, mas o
-    `full_clean` devolveria a recusa como erro comum de campo, e quem chama as
-    operações espera a exceção do tipo desconhecido.
-    """
+    """Recusa o tipo fora do catálogo com a exceção própria, que o `full_clean` trocaria por erro de campo."""
     if code not in catalog.TYPES:
         raise UnknownNoticeType(code)
 
 
 def resolve_recipients(destination, role=None, users=()):
-    """Usuários que recebem uma publicação manual, sempre só os ativos (D6).
-
-    O usuário inativo é apenas excluído do conjunto, inclusive quando escolhido um
-    a um, porque ele não entra no sistema e não leria a notificação.
-    """
+    """Usuários que recebem uma publicação manual, sempre só os ativos."""
     people = get_user_model().objects.filter(is_active=True)
     if destination == catalog.ALL_USERS:
         return people
@@ -91,13 +72,7 @@ class NoticeQuerySet(models.QuerySet):
 
 
 class Notice(models.Model):
-    """Uma publicação manual: o que foi publicado, para quem e por quem (D14).
-
-    As notificações entregues continuam guardando o próprio título e a própria
-    mensagem, e esta publicação existe para a lista das notificações publicadas e
-    para o registro da auditoria. Uma notificação gerada por evento não tem
-    publicação.
-    """
+    """Publicação manual, para a lista e a auditoria; notificações geradas por evento não têm uma."""
 
     type = models.CharField('tipo', max_length=50)
     title = models.CharField('título', max_length=TITLE_MAX_LENGTH)
@@ -151,7 +126,6 @@ class NotificationQuerySet(models.QuerySet):
 
 class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
     def notify(self, recipient, notice_type, title, message, target_url=''):
-        """Cria a notificação de um destinatário e a devolve."""
         validate_type(notice_type)
         notification = self.model(
             recipient=recipient,
@@ -167,11 +141,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
         return notification
 
     def publish(self, notice_type, title, message, recipients, target_url='', notice=None):
-        """Entrega a mesma notificação a cada destinatário e devolve quantos foram alcançados.
-
-        Os destinatários são resolvidos por quem chama e percorridos aqui uma única
-        vez, numa transação: ou todos recebem, ou ninguém recebe.
-        """
+        """Entrega a cada destinatário numa transação e devolve quantos foram alcançados."""
         validate_type(notice_type)
         prototype = self.model(
             type=notice_type,
@@ -199,14 +169,7 @@ class NotificationManager(models.Manager.from_queryset(NotificationQuerySet)):
         return len(people)
 
     def publish_manually(self, notice_type, title, message, destination, role=None, users=(), published_by=None):
-        """Publica um comunicado, guarda a publicação e a registra na auditoria (D7, D9, D14).
-
-        Os destinatários são resolvidos aqui, no momento da publicação, e não na
-        revisão: a quantidade registrada é a do conjunto alcançado agora. A
-        publicação, as notificações e o registro da auditoria ficam na mesma
-        transação, e um único registro descreve a publicação, com a quantidade de
-        destinatários, em vez de um registro por destinatário. Devolve a publicação.
-        """
+        """Publica com os destinatários resolvidos agora e um único registro de auditoria."""
         validate_type(notice_type)
         if not catalog.is_manual(notice_type):
             raise NotPublishedManually(notice_type)
@@ -307,7 +270,7 @@ class Notification(models.Model):
         return catalog.tone(self.type)
 
     def mark_as_read(self):
-        """Marca como lida e devolve se o estado mudou. Marcar de novo não altera nada."""
+        """Marca como lida e devolve se o estado mudou."""
         if self.read_at is not None:
             return False
         with transaction.atomic():

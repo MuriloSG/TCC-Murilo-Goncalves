@@ -1,5 +1,4 @@
-"""Solicitação de agendamento pelo docente, para uma das suas turmas do ensalamento (Change
-solicitar-agendamento-com-vinculo-academico)."""
+"""Solicitação de agendamento pelo docente, para uma das suas turmas."""
 
 from datetime import date, time
 from unittest import mock
@@ -18,9 +17,7 @@ CREATE = reverse('agenda_request_create')
 
 
 class AcademicTestCase(TestCase):
-    """A docente Ana (usuário `ana`) dá, em 2026/2, Redes para o 2º ANO A e Banco de Dados
-    para o 3º ANO A, e deu Física para o 2º ANO A em 2026/1. Érica dá Física para o 2º ANO A
-    em 2026/2. O usuário `sem_docente` não corresponde a nenhum docente."""
+    """Ana dá Redes e Banco de Dados em 2026/2 e deu Física em 2026/1; Érica dá Física em 2026/2."""
 
     def setUp(self):
         frozen_clock(self)
@@ -202,8 +199,7 @@ class ScreenTests(AcademicTestCase):
 
 
 class SubjectCheckTests(AcademicTestCase):
-    """O fluxo do próprio docente também confere a disciplina no model (Change
-    criar-agendamento-para-outro-usuario)."""
+    """O fluxo do próprio docente também confere a disciplina no model."""
 
     def test_forged_subject_is_refused_by_the_model(self):
         with self.assertRaises(ValidationError) as caught:

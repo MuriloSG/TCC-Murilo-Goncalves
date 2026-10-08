@@ -1,11 +1,4 @@
-"""Ator da requisição e registro do acesso às funcionalidades (D5, D13).
-
-O ator é definido em volta da chamada da view, para que as operações do model
-registrem as ações sem conhecer a requisição. O acesso é registrado a partir do
-`audit_resource` declarado na view, como a permissão é declarada em
-`permission_required`. Fragmentos e modais pedidos pelo htmx são renderização da
-tela atual, e não acesso a uma funcionalidade.
-"""
+"""Define o ator da requisição e registra o acesso pelo `audit_resource` da view, exceto nos pedidos htmx."""
 
 from audit import catalog
 from audit.context import Actor, acting_as

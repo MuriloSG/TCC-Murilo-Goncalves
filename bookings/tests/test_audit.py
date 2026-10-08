@@ -1,4 +1,4 @@
-"""Auditoria das mudanças de estado da Agenda (D9)."""
+"""Auditoria das mudanças de estado da Agenda."""
 
 from datetime import time
 

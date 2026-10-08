@@ -13,12 +13,7 @@ logger = logging.getLogger('imports')
 
 
 class Command(BaseCommand):
-    """Worker das importações (D4 da Change processar-importacao-em-segundo-plano).
-
-    Processa as operações vencidas uma a uma e espera o intervalo configurado quando não há
-    nenhuma. Antes de cada ciclo descarta a conexão que não serve mais, como depois de um
-    reinício do PostgreSQL. SIGTERM e SIGINT param o laço entre uma operação e outra.
-    """
+    """Worker das importações; descarta a conexão inválida antes de cada ciclo e para entre operações no SIGTERM."""
 
     help = 'Executa as prévias, as atualizações e as confirmações pendentes das importações.'
 

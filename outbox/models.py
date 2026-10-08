@@ -20,20 +20,12 @@ class OutboxEntryQuerySet(models.QuerySet):
         ).order_by('next_attempt_at', 'pk')
 
     def enqueue(self, kind, reference):
-        """Registra o envio na transação de quem chama (D2).
-
-        O ON CONFLICT DO NOTHING respeita o índice único parcial: um envio a enviar
-        do mesmo tipo e referência não é duplicado nem tem as tentativas reiniciadas.
-        """
+        """Registra o envio sem duplicar um pendente do mesmo tipo e referência, pelo índice único parcial."""
         self.bulk_create([self.model(kind=kind, reference=str(reference))], ignore_conflicts=True)
 
 
 class OutboxEntry(models.Model):
-    """Intenção de enviar um e-mail de um tipo sobre uma referência (D1).
-
-    O conteúdo não é gravado: o tratador do tipo monta o e-mail no envio, com os
-    dados atuais, e nenhum token ou link fica no banco.
-    """
+    """O conteúdo não é gravado: o tratador monta o e-mail no envio, sem token ou link no banco."""
 
     class Status(models.TextChoices):
         PENDING = 'A_ENVIAR', 'a enviar'
@@ -84,10 +76,7 @@ class OutboxEntry(models.Model):
         self.save(update_fields=['status', 'last_error'])
 
     def register_failure(self, error):
-        """Conta a tentativa e agenda a próxima, ou encerra em FALHOU no limite (D4).
-
-        O último intervalo configurado se repete quando há mais tentativas que intervalos.
-        """
+        """Conta a tentativa e agenda a próxima, ou encerra em FALHOU no limite."""
         self.attempts += 1
         self.last_error = describe_error(error)
         if self.attempts >= settings.OUTBOX_MAX_ATTEMPTS:

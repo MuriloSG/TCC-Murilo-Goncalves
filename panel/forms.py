@@ -4,11 +4,7 @@ from panel.indicators import TODAY, WEEK
 
 
 class PanelFilterForm(forms.Form):
-    """Semestre das pendências da grade e período da ocupação, pela URL.
-
-    Um valor que não é opção é ignorado e vale o padrão, sem erro (Change
-    exibir-painel-administrativo).
-    """
+    """Semestre e período pela URL; valor fora das opções vale o padrão, sem erro."""
 
     PERIODS = [(TODAY, 'Hoje'), (WEEK, 'Semana')]
 

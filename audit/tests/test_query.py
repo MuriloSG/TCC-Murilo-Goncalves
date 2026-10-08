@@ -33,11 +33,7 @@ class AuditQueryTestCase(TestCase):
         return client
 
     def listed(self, query=''):
-        """Registros exibidos, sem os acessos à própria tela de auditoria.
-
-        Cada consulta gera o seu registro de acesso, que apareceria na consulta
-        seguinte e tornaria a comparação instável.
-        """
+        """Registros exibidos, sem os acessos à própria auditoria, que tornariam a comparação instável."""
         entries = self.client.get(f'{LIST_URL}{query}').context['entries']
         return [entry for entry in entries if entry.resource != catalog.AUDIT]
 

@@ -1,11 +1,4 @@
-"""Aviso de que as notificações de um usuário mudaram (D11).
-
-O aviso é disparado no `transaction.on_commit` da operação que grava, e nunca
-dentro dela: uma transação desfeita não avisa sobre uma notificação que não
-existe. Uma falha do canal é registrada no log e não desfaz a notificação nem
-recusa a publicação, porque a entrega imediata é uma camada sobre o estado
-gravado, e não a fonte dele.
-"""
+"""Aviso de mudança disparado no on_commit; falha do canal só vai ao log."""
 
 import logging
 

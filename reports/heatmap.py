@@ -1,10 +1,4 @@
-"""Mapa de calor dos espaços: ocupação por dia da semana e faixa de horário na semana típica do semestre.
-
-Calculado a cada requisição e nunca gravado (Change gerar-mapa-de-calor-dos-espacos). A
-ocupação de um espaço numa data e faixa é a interseção da faixa com a união das aulas e dos
-agendamentos, pela mesma regra do painel (D2). A célula é a média, entre as datas daquele dia
-da semana no período do semestre, da fração de espaços ocupados.
-"""
+"""Ocupação média por dia da semana e faixa, pela mesma união de intervalos do painel."""
 
 import math
 from dataclasses import dataclass, field

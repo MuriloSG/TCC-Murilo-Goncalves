@@ -37,12 +37,7 @@ class CatalogTests(SimpleTestCase):
 
 
 class MechanismIndependenceTests(SimpleTestCase):
-    """O mecanismo não importa apps de domínio.
-
-    O `audit` fica de fora dessa regra, como no `accounts` e no `imports`: ele é o
-    ponto único de gravação da auditoria, e não um app de domínio. As telas da
-    publicação, essas sim, conhecem os usuários e os perfis que oferecem na escolha.
-    """
+    """O mecanismo não importa apps de domínio; o `audit` não é um deles."""
 
     def test_mechanism_modules_do_not_import_domain_apps(self):
         for name in ('catalog.py', 'models.py'):

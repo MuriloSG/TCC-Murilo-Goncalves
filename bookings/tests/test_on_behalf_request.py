@@ -1,5 +1,4 @@
-"""Solicitação de agendamento criada em nome de outro usuário, com a cadeia usuário, curso,
-disciplina e turma (Change criar-agendamento-para-outro-usuario)."""
+"""Solicitação de agendamento criada em nome de outro usuário."""
 
 import re
 from datetime import date, time
@@ -24,11 +23,7 @@ DESCRIPTION = 'Reunião do projeto de extensão com os alunos.'
 
 
 class OnBehalfTestCase(TestCase):
-    """Em 2026/2: Ana dá Redes para o 2º e o 3º ANO A e Banco de Dados para o 3º ANO A, em
-    INFORMÁTICA, e Química para o 1º ANO A de AGROPECUÁRIA. Bruno dá Redes para o 2º ANO A de
-    INFORMÁTICA e Física para o 1º ANO B de AGROPECUÁRIA. Érica dá Redes para o 1º ANO A de
-    INFORMÁTICA. Ana deu Física para o 2º ANO A em 2026/1. `sem_docente` não corresponde a
-    nenhum docente. A secretaria tem `AGENDA.CRIAR` e não é superadmin."""
+    """Ana, Bruno e Érica com vínculos em INFORMÁTICA e AGROPECUÁRIA; a secretaria tem `AGENDA.CRIAR`."""
 
     def setUp(self):
         frozen_clock(self)

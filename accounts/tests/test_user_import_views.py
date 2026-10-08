@@ -334,7 +334,7 @@ class ImportDeletionTests(ImportViewsTestCase):
 
 
 class ProcessingTests(ImportViewsTestCase):
-    """Quadro da operação pendente, rota do andamento e aviso de demora (D9 e D13)."""
+    """Quadro da operação pendente, rota do andamento e aviso de demora."""
 
     def requested(self):
         return Import.objects.request_preview(

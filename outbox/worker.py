@@ -1,17 +1,4 @@
-"""Processamento dos envios pelo worker (D4).
-
-Cada envio é processado numa transação própria e travado com skip_locked, para
-que dois workers nunca processem o mesmo envio. Não existe estado intermediário:
-se o processo cair depois do envio e antes do commit, o envio continua a enviar
-e o e-mail pode sair de novo (entrega pelo menos uma vez).
-
-Cada lote carrega a configuração SMTP gravada antes de travar qualquer envio. Sem
-ela, ou com ela inválida, o lote não toca nos envios: eles continuam a enviar, sem
-tentativa consumida (D5 da Change configurar-servidor-de-email).
-
-O log de falha leva o número, o tipo e a classe da exceção, sem a mensagem, que pode
-conter endereços de e-mail; o texto completo fica em `last_error`.
-"""
+"""Envio com skip_locked, entregue pelo menos uma vez; sem SMTP válido, o lote não consome tentativas."""
 
 import logging
 
@@ -28,7 +15,7 @@ logger = logging.getLogger('outbox')
 
 
 def record(action, entry):
-    """Registra a ação automática do worker, sem usuário responsável (D11)."""
+    """Registra a ação automática do worker, sem usuário responsável."""
     AuditLog.objects.record(
         action,
         catalog.EMAIL,
@@ -42,7 +29,7 @@ class SmtpUnavailable(Exception):
 
 
 def load_smtp():
-    """Configuração SMTP vigente, lida a cada lote para valer sem reiniciar o worker (D6)."""
+    """Configuração SMTP vigente, lida a cada lote para valer sem reiniciar o worker."""
     try:
         smtp = SystemSetting.objects.smtp()
     except ValidationError:
@@ -85,10 +72,7 @@ def process(entry, smtp, connection):
 
 
 def process_next(smtp=None, connection=None):
-    """Processa o próximo envio vencido. Devolve False quando não há nenhum.
-
-    Sem `smtp`, carrega a configuração e lança SmtpUnavailable quando ela falta.
-    """
+    """Processa o próximo envio vencido; devolve False quando não há nenhum."""
     if smtp is None:
         smtp = load_smtp()
         connection = smtp.connection()
@@ -101,11 +85,7 @@ def process_next(smtp=None, connection=None):
 
 
 def process_batch(size, should_stop=lambda: False):
-    """Processa até `size` envios vencidos e devolve quantos foram processados.
-
-    Lança SmtpUnavailable, sem tocar nos envios, quando há envio vencido e o
-    servidor de e-mail não está configurado.
-    """
+    """Processa até `size` envios; lança SmtpUnavailable sem tocá-los quando falta o servidor."""
     if not OutboxEntry.objects.due().exists():
         return 0
     smtp = load_smtp()

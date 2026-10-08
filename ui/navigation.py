@@ -1,8 +1,4 @@
-"""Itens do menu lateral, na ordem em que aparecem.
-
-A mesma lista decide a página aberta depois do login: é o primeiro item que o
-perfil do usuário libera.
-"""
+"""Itens do menu lateral; o primeiro liberado é a página aberta depois do login."""
 
 from dataclasses import dataclass
 
@@ -11,11 +7,7 @@ from django.urls import reverse
 
 @dataclass(frozen=True)
 class MenuItem:
-    """Item do menu com as rotas possíveis, cada uma com a permissão que a libera.
-
-    A primeira rota liberada é a do link, e `prefix` marca o item como atual. A permissão de
-    uma rota pode ser uma tupla, quando ela exige todas.
-    """
+    """Item do menu; a primeira rota liberada é o link, e uma tupla de permissões exige todas."""
 
     label: str
     icon: str
@@ -32,12 +24,7 @@ class MenuItem:
 
 @dataclass(frozen=True)
 class MenuGroup:
-    """Grupo do menu com submenu, como "Relatórios" (D8 da Change gerar-mapa-de-calor-dos-espacos).
-
-    O grupo é só organização visual: não tem permissão própria, aparece quando algum item dele
-    está liberado e mostra apenas os itens liberados, cada um pela sua permissão. O link do grupo
-    é o do primeiro item liberado, e o grupo fica aberto quando um dos seus itens é o atual.
-    """
+    """Grupo do menu sem permissão própria, visível quando algum item está liberado."""
 
     label: str
     icon: str

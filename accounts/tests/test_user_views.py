@@ -123,8 +123,7 @@ class CreateTests(UserViewsTestCase):
 
 
 class CreateSendTests(TransactionTestCase):
-    """O link é disparado em transaction.on_commit, que só roda dentro da
-    requisição sem a transação externa do TestCase."""
+    """O link sai em on_commit, que só roda sem a transação externa do TestCase."""
 
     serialized_rollback = True
     data = CreateTests.data

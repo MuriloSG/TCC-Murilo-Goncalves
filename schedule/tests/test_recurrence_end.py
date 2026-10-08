@@ -1,4 +1,4 @@
-"""Encerramento de uma aula a partir de uma data (Change encerrar-recorrencia-do-ensalamento)."""
+"""Encerramento de uma aula a partir de uma data."""
 
 import re
 from datetime import date, time, timedelta

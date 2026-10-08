@@ -1,4 +1,4 @@
-"""Classes base da interface: ações em modal (D16) e opções de um campo de seleção."""
+"""Classes base da interface: ações em modal e opções de um campo de seleção."""
 
 import json
 from urllib.parse import urlsplit
@@ -11,13 +11,7 @@ from ui.pagination import OPTIONS_PAGE_SIZE, paginate
 
 
 class ModalView(TemplateResponseMixin, View):
-    """Responde com o fragmento do modal quando a requisição vem do htmx.
-
-    Sem o htmx, a mesma URL responde com a página completa de `template_name`,
-    que inclui o mesmo fragmento. No sucesso, o htmx recebe HX-Redirect em vez de
-    um redirecionamento, e a página de origem é recarregada. Quando a origem é a
-    própria URL de destino, os parâmetros dela (busca e filtro) são mantidos.
-    """
+    """Responde com o fragmento do modal ao htmx e com a página completa sem ele."""
 
     modal_template_name = None
     close_url = None
@@ -36,10 +30,7 @@ class ModalView(TemplateResponseMixin, View):
         return super().get_context_data(close_url=self.get_close_url(), **kwargs)
 
     def redirect_to(self, url):
-        """Redireciona para `url`: pelo htmx, recarrega a tela de origem ou, quando
-        a ação continua numa próxima etapa (`continues_in_modal`), abre `url` no
-        mesmo modal, sem mudar o endereço da página.
-        """
+        """Pelo htmx, recarrega a origem ou, com `continues_in_modal`, abre `url` no mesmo modal."""
         url = str(url)
         if not self.request.htmx:
             return HttpResponseRedirect(url)
@@ -57,12 +48,7 @@ class ModalView(TemplateResponseMixin, View):
 
 
 class OptionsView(View):
-    """Opções de um campo de seleção, buscadas e paginadas no servidor (D5, D6).
-
-    A view não conhece o domínio: o app dono dos dados declara a consulta, o rótulo
-    de cada opção e a permissão, e cria a própria rota com login_required. A resposta
-    tem o mesmo formato para qualquer fonte, para que o componente não conheça o domínio.
-    """
+    """Opções de um campo de seleção, paginadas no servidor, sem conhecer o domínio."""
 
     http_method_names = ['get']
     page_size = OPTIONS_PAGE_SIZE

@@ -3,12 +3,7 @@ from django.core.exceptions import PermissionDenied
 
 
 class PermissionMiddleware:
-    """Aplica a permissão que a view declara em `permission_required` (D14).
-
-    A autenticação é exigida na URL, com login_required. Mesmo assim, um anônimo
-    que chegue a uma view com permissão é mandado ao login, para que esquecer o
-    login_required numa rota não deixe a view aberta.
-    """
+    """Aplica `permission_required` e manda o anônimo ao login caso a rota esqueça o login_required."""
 
     def __init__(self, get_response):
         self.get_response = get_response

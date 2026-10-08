@@ -1,14 +1,4 @@
-"""Contrato das importações específicas (D4).
-
-Cada app estende ImportDefinition e declara colunas, identificador, travamento,
-execução de uma linha, verificações do arquivo e rótulos. O motor trata o plano
-como dado e não interpreta o seu conteúdo.
-
-Uma pendência é um ponto da linha que depende de uma decisão de usuário prevista pela
-importação específica, e não um erro do arquivo: a linha com pendência não é aplicada, e a
-importação sem erro com alguma pendência fica `PENDENTE` (D10 da Change
-manipulacao-dos-espacos).
-"""
+"""Contrato das importações; linha com pendência não é aplicada e deixa a importação `PENDENTE`."""
 
 from contextlib import nullcontext
 from dataclasses import dataclass, field
@@ -18,12 +8,7 @@ from django.core.exceptions import NON_FIELD_ERRORS
 
 @dataclass(frozen=True)
 class Column:
-    """Coluna declarada.
-
-    A coluna é sempre exigida no cabeçalho. `required` diz respeito à célula: numa
-    coluna opcional, a célula vazia é entregue à importação específica como texto
-    vazio, em vez de virar erro da linha.
-    """
+    """`required` vale para a célula; a coluna é sempre exigida no cabeçalho."""
 
     label: str
     required: bool = True
@@ -31,11 +16,7 @@ class Column:
 
 @dataclass(frozen=True)
 class RowFilter:
-    """Recorte das linhas oferecido na prévia, por um valor de uma coluna lógica.
-
-    `columns` limita as colunas exibidas enquanto o recorte está escolhido, para que a
-    tabela mostre só o que importa naquele recorte. Vazio mantém todas as colunas.
-    """
+    """Recorte das linhas da prévia; `columns` vazio mantém todas as colunas."""
 
     slug: str
     label: str
@@ -53,14 +34,7 @@ class RowError:
 
 @dataclass
 class RowPlan:
-    """Decisão sobre uma linha: ação, alvo, mudanças, avisos, pendências e erros (D8).
-
-    `created` é a chave do registro criado pela linha. Fica fora da comparação e só
-    é gravado na conclusão, porque a chave gerada na prévia desaparece no rollback.
-
-    `pending` é a lista de pendências da linha, cada uma com o código e a chave canônica
-    que a agrupa.
-    """
+    """`created` fica fora da comparação, porque a chave gerada na prévia some no rollback."""
 
     action: str | None = None
     target: str | None = None
@@ -72,13 +46,7 @@ class RowPlan:
 
 
 class ImportDefinition:
-    """Importação específica, declarada por atributos e operações sobre as linhas.
-
-    `optional_sheets` são as abas da fonte em grade que a planilha pode não ter: a ausência
-    delas não recusa o arquivo, e a leitura de cada uma, quando presente, é feita pela
-    própria importação específica. O motor só as cita no texto de ajuda do envio (D4 da
-    Change importar-usuarios-com-o-ensalamento).
-    """
+    """Importação específica; `optional_sheets` são abas que a planilha pode não ter."""
 
     kind = ''
     audit_resource = ''
@@ -97,10 +65,7 @@ class ImportDefinition:
     has_template = True
 
     def source(self):
-        """Fonte que lê o arquivo enviado. A leitura de CSV é o padrão.
-
-        O import é local porque o leitor depende deste módulo, e não o contrário.
-        """
+        """Leitor do arquivo, CSV por padrão; o import é local para evitar o ciclo."""
         from imports.reader import CsvSource
 
         return CsvSource()
@@ -113,12 +78,7 @@ class ImportDefinition:
         return value.strip()
 
     def execution(self, importation=None):
-        """Contexto aberto em volta de todas as linhas e das verificações do arquivo.
-
-        Recebe a importação em curso na atualização da prévia e na confirmação, e nenhuma
-        na primeira prévia, para que a importação específica leia os dados que guarda
-        junto da importação.
-        """
+        """Contexto em volta das linhas; recebe a importação em curso, salvo na primeira prévia."""
         return nullcontext()
 
     def lock(self, rows, executor):
@@ -129,53 +89,33 @@ class ImportDefinition:
         raise NotImplementedError
 
     def clean_upload(self, values):
-        """Validação conjunta dos campos próprios do envio, antes da leitura do arquivo.
-
-        Recebe os valores limpos, pelo rótulo da coluna lógica, e lança `ValidationError`
-        para recusar o envio. A regra fica no model; aqui ela só é chamada.
-        """
+        """Validação conjunta dos campos próprios do envio, antes da leitura do arquivo."""
 
     def upload_display(self, label, value):
         """Valor de um campo próprio como aparece no resumo; o gravado nas linhas não muda."""
         return value
 
     def finish(self, executor):
-        """Etapa final, depois de todas as linhas e antes das verificações do arquivo.
-
-        Roda na mesma transação e com a mesma importação em curso que as linhas, e só deve
-        considerar o que as linhas mantidas fizeram: a prévia a desfaz junto com elas, e a
-        confirmação a grava junto com elas (Change otimizar-consultas-do-sistema). Um erro
-        do banco aqui não é erro de uma linha, e sobe como erro inesperado da execução.
-        """
+        """Etapa final na transação das linhas; um erro do banco aqui sobe como erro inesperado, e não de linha."""
 
     def check_file(self, executor):
-        """Verificações do arquivo inteiro, depois de todas as linhas. Devolve RowError sem coluna."""
+        """Verificações do arquivo inteiro, depois de todas as linhas; devolve RowError sem coluna."""
         return []
 
     def check_confirmation(self, importation, executor):
-        """Verificação própria da confirmação, antes de reexecutar as linhas.
-
-        Lança `ValidationError` com a mensagem para recusar a confirmação; a recusa não
-        altera a importação nem nenhum dado.
-        """
+        """Recusa a confirmação com `ValidationError`, antes de reexecutar as linhas e sem alterar dados."""
 
     def pending_label(self, code, key):
         """Texto de uma pendência da linha, a partir do rótulo declarado para o código."""
         return self.pending_labels.get(code, code).format(key=key)
 
     def audit_metadata(self, rows):
-        """Informações adicionais próprias da importação nos registros de auditoria.
-
-        Recebe as linhas, cada uma com os valores lidos, e devolve valores canônicos.
-        """
+        """Metadados próprios da importação nos registros de auditoria, em valores canônicos."""
         return {}
 
 
 def errors_from_validation(error, columns_by_field):
-    """Traduz uma ValidationError do model em erros de coluna, com as mensagens do próprio model.
-
-    Campos fora do mapa e erros gerais ficam sem coluna.
-    """
+    """Traduz a ValidationError do model em erros de coluna; o que não mapeia fica sem coluna."""
     if hasattr(error, 'error_dict'):
         groups = error.error_dict.items()
     else:

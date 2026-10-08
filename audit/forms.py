@@ -1,8 +1,4 @@
-"""Filtros da consulta de auditoria, recebidos pela URL (D12).
-
-Os nomes dos campos são os parâmetros da URL, em português, como nas demais listas.
-Um valor inválido é descartado sem mensagem, e a consulta trata o filtro como vazio.
-"""
+"""Filtros da auditoria pela URL; valor inválido é descartado sem mensagem."""
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -15,7 +11,6 @@ INPUT = {'class': 'input'}
 
 
 def user_option_label(user):
-    """Rótulo de um usuário nas opções, com o nome e o e-mail."""
     return f'{user.name} ({user.email})'
 
 

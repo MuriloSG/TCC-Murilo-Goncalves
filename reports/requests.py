@@ -1,11 +1,4 @@
-"""Relatório de solicitações de agendamento: a demanda do semestre e como ela foi atendida.
-
-Calculado a cada requisição e nunca gravado (Change gerar-relatorio-de-solicitacoes). Uma
-solicitação pertence ao semestre pela data de uso dentro do período dele (D1). Uma consulta
-traz as solicitações do recorte, e as contagens, a mediana e os rankings saem em Python (D9).
-A solicitação cancelada foi aprovada antes, e conta como aprovada na taxa de aprovação, no
-aceite da alternativa e no ranking dos espaços (Change cancelar-agendamento-aprovado).
-"""
+"""Demanda do semestre pela data de uso; a cancelada conta como aprovada antes."""
 
 import math
 from dataclasses import dataclass, field
@@ -76,7 +69,7 @@ class Filters:
 
 @dataclass
 class Week:
-    """Uma semana do período, de segunda a domingo, com as contagens por situação (D3)."""
+    """Uma semana do período, de segunda a domingo, com as contagens por situação."""
 
     number: int
     start: object
@@ -134,7 +127,7 @@ class StatusRow:
 
 @dataclass
 class SpaceDemand:
-    """Solicitações de um espaço no período, com a largura da barra do ranking (D6)."""
+    """Solicitações de um espaço no período, com a largura da barra do ranking."""
 
     space: object
     total: int = 0
@@ -183,12 +176,7 @@ class Report:
 
 
 def axis_ticks(highest):
-    """Marcas do eixo do gráfico, do topo ao zero, em passos de 1, 2 ou 5 vezes uma potência
-    de dez, com no máximo quatro intervalos.
-
-    O topo nunca fica abaixo de 4, para que uma semana com 2 solicitações não pareça cheia
-    (D12).
-    """
+    """Marcas do eixo em passos de 1, 2 ou 5; o topo mínimo é 4 para uma semana pequena não parecer cheia."""
     top = max(highest, AXIS_MIN_TOP)
     magnitude = 1
     while True:
@@ -201,7 +189,7 @@ def axis_ticks(highest):
 
 
 def semester_weeks(semester, today):
-    """Semanas de segunda a domingo que cobrem o período; a Semana 1 contém o início (D3)."""
+    """Semanas de segunda a domingo que cobrem o período; a Semana 1 contém o início."""
     first = semester.start_date - timedelta(days=semester.start_date.weekday())
     weeks = []
     start = first
@@ -216,8 +204,7 @@ def semester_weeks(semester, today):
 
 
 def chosen_requests(filters):
-    """Solicitações com data de uso no período do semestre, com os filtros de etapa, curso e
-    espaços. Com etapa ou curso, as solicitações sem vínculo acadêmico ficam de fora (D8)."""
+    """Solicitações do semestre filtradas; com etapa ou curso, as sem vínculo ficam de fora."""
     semester = filters.semester
     requests = BookingRequest.objects.filter(date__range=(semester.start_date, semester.end_date))
     if filters.course is not None:
@@ -230,7 +217,7 @@ def chosen_requests(filters):
 
 
 def build(filters, today=None):
-    """O relatório do semestre filtrado, ou None quando o semestre não tem período (D1)."""
+    """O relatório do semestre filtrado, ou None quando o semestre não tem período."""
     semester = filters.semester
     if semester is None or not semester.has_period:
         return None

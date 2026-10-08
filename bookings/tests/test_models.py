@@ -1,4 +1,4 @@
-"""Solicitação, conflitos e máquina de estados da Agenda (D3 a D6)."""
+"""Solicitação, conflitos e máquina de estados da Agenda."""
 
 import threading
 from datetime import date, datetime, time
@@ -347,7 +347,6 @@ class SuggestTests(BookingTestCase):
 
 class TransitionTests(BookingTestCase):
     def states(self):
-        """Uma solicitação em cada estado."""
         pending = submit(self.ana, self.lab, start=time(8, 0), end=time(9, 0))
         approved = submit(self.ana, self.lab, start=time(9, 0), end=time(10, 0))
         approved.approve(self.reviewer)

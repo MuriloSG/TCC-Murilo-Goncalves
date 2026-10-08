@@ -11,13 +11,7 @@ FORBIDDEN = 'PROIBIDO'
 
 
 class GroupImport(ImportDefinition):
-    """Cria o grupo do nome da linha ou o deixa como está.
-
-    "ERRO" recusa a linha pelo model, "BANCO" provoca erro do banco, "FALHA" lança
-    uma exceção inesperada e um grupo "PROIBIDO" ao fim reprova o arquivo. "DECIDIR" fica
-    com uma pendência enquanto não existir o grupo "DECIDIDO", e `refusal` recusa a
-    confirmação com a mensagem dada.
-    """
+    """"ERRO", "BANCO", "FALHA", "PROIBIDO" e "DECIDIR" provocam cada tipo de recusa do motor."""
 
     kind = 'GRUPO'
     audit_resource = catalog.USER_IMPORT

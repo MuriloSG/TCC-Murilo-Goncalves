@@ -1,7 +1,4 @@
-"""Formatos brasileiros de data, hora e número (seção 9.5 das convenções, D6).
-
-Os formatos não definidos aqui continuam vindo de django.conf.locale.pt_BR.
-"""
+"""Formatos brasileiros de data, hora e número; os demais vêm do pt_BR do Django."""
 
 DATE_FORMAT = 'd/m/Y'
 SHORT_DATE_FORMAT = 'd/m/Y'

@@ -1,12 +1,4 @@
-"""Ocupação de um espaço num intervalo de datas, calculada das regras e nunca gravada.
-
-A alocação é a regra semanal do semestre; a ocorrência é a regra posta numa data do
-intervalo consultado, dentro do período do semestre. A Grade recebe só ocorrências, e cada
-fonte de ocupação devolve as suas: nesta versão, só o ensalamento. A reserva de uma
-funcionalidade futura entra como mais uma fonte em `grid_sources` (D4, D6 e D12 da Change
-visualizar-ocupacao-por-semana-e-mes). Os agendamentos aprovados da Agenda entram por
-`register_source` (Change agendar-uso-eventual-dos-espacos).
-"""
+"""Ocupação calculada das regras e nunca gravada; outras fontes entram por `register_source`."""
 
 from dataclasses import dataclass
 from datetime import date, time, timedelta
@@ -37,13 +29,7 @@ def dates_between(start_date, end_date):
 
 
 class AllocationSource:
-    """Ocorrências do ensalamento: cada alocação da sala em cada data do seu dia da semana.
-
-    São quatro consultas, qualquer que seja o intervalo: os semestres que o cruzam, as
-    alocações da sala neles, os docentes delas e as ocorrências canceladas no intervalo. A
-    ocorrência cancelada não é gerada, e por isso some da Grade do ensalamento e da Grade da
-    Agenda, que reúnem esta fonte (Change cancelar-ocorrencia-do-ensalamento).
-    """
+    """Ocorrências do ensalamento em quatro consultas, sem as canceladas."""
 
     kind = SPACE_ALLOCATION
 
@@ -102,13 +88,7 @@ class SpaceOccurrence:
 
 
 def occurrences_of_all_spaces(start_date, end_date):
-    """Ocorrências das aulas com espaço de todos os espaços no intervalo, em três consultas.
-
-    A regra é a de `AllocationSource`: o período do semestre e a vigência por
-    `Allocation.occurs_on`, sem as ocorrências canceladas de
-    `AllocationException.objects.cancelled`. Serve ao painel, que agrega todos os espaços de
-    uma vez (D4 da Change exibir-painel-administrativo).
-    """
+    """Ocorrências de todos os espaços no intervalo, em três consultas, para o painel."""
     if start_date > end_date:
         return []
     semesters = {
@@ -146,11 +126,7 @@ _public = []
 
 
 def register_source(source, public=False):
-    """Acrescenta uma fonte de ocupação de outro app, como os agendamentos da Agenda.
-
-    O app registra a fonte no `ready()`, e o `schedule` não passa a depender dele. Com
-    `public`, a fonte também entra no calendário público.
-    """
+    """Acrescenta a fonte de outro app no `ready()`, sem que o `schedule` dependa dele."""
     if not any(type(item) is type(source) for item in _registered):
         _registered.append(source)
         if public:

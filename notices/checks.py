@@ -1,10 +1,4 @@
-"""Aviso de configuração da camada do Channels.
-
-Sem `DJANGO_REDIS_URL`, a camada fica em memória e só alcança as conexões do mesmo processo:
-as notificações criadas no `import_worker` não atualizam o sino na hora. A aplicação continua
-funcionando, por isso é um aviso, e não um erro, mas ele aparece em todo comando de gestão,
-inclusive na subida do `web` e dos workers.
-"""
+"""Aviso da camada do Channels em memória, que não alcança as notificações dos workers."""
 
 from django.conf import settings
 from django.core.checks import Warning

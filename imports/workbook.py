@@ -1,13 +1,4 @@
-"""Leitura de uma planilha XLSX em grade, como fonte do motor de importação.
-
-A grade não tem linhas no sentido do CSV: a importação específica descreve as abas e
-percorre as células, e esta fonte entrega uma linha por célula de dado, numerada em
-sequência na ordem de leitura. As fórmulas não são recalculadas: o valor lido é o que
-está em cache na planilha, e uma fórmula sem valor chega como célula vazia.
-
-Cabe à importação específica recusar o arquivo cuja estrutura não permita a leitura,
-lançando FileRejected de dentro de `read_cells`.
-"""
+"""Leitura de XLSX em grade, uma linha por célula, com o valor em cache das fórmulas."""
 
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter

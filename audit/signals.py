@@ -1,10 +1,4 @@
-"""Ligação dos sinais de autenticação com a auditoria (D6).
-
-O login realizado, a saída e a redefinição de senha são registrados pelos sinais
-do Django e do allauth. A recusa do login não tem sinal que cubra o usuário
-inativo com a senha correta e fica no adaptador de contas, que é o ponto único
-onde a recusa é decidida.
-"""
+"""Auditoria pelos sinais de autenticação; a recusa do login fica no adaptador de contas."""
 
 from allauth.account.signals import password_reset
 from django.contrib.auth.signals import user_logged_in, user_logged_out

@@ -15,10 +15,7 @@ Status = BookingRequest.Status
 
 
 class RequestsTestCase(PanelTestCase):
-    """Semestre 2026/2 de 03/08 a 18/12: 20 semanas, com o relógio em 05/10/2026 às 10:00.
-
-    A aula na Sala 9/9 deixa o semestre importado, para que o filtro o ofereça.
-    """
+    """Semestre 2026/2 de 03/08 a 18/12, com o relógio em 05/10/2026 às 10:00."""
 
     def setUp(self):
         super().setUp()

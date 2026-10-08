@@ -1,13 +1,4 @@
-"""Contraste WCAG 2.x dos pares de cores da interface (D6).
-
-Os valores vêm do ui/styles/app.css: as variáveis --palette-* e os tokens
---color-*, que apontam para a paleta com var(). O símbolo do IF não é token, e o
-verde dele entra como valor literal, tirado dos arquivos oficiais (D3).
-
-Os mesmos pares valem nos dois temas. O tema claro é o bloco @theme do CSS e o
-escuro é o bloco :root[data-theme="dark"], que redefine parte dos tokens sobre
-os valores do tema claro.
-"""
+"""Contraste WCAG 2.x dos pares de cores nos dois temas, lidos do ui/styles/app.css."""
 
 import re
 from pathlib import Path
@@ -120,12 +111,7 @@ def theme_block(css, theme):
 
 
 def read_colors(css, theme='light'):
-    """Devolve {token: hexadecimal} dos tokens --color-* do tema.
-
-    Um token cujo valor não é hexadecimal nem var() da paleta, como o overlay com
-    transparência, fica com None. O tema escuro herda do claro os tokens que não
-    redefine.
-    """
+    """Tokens --color-* do tema em hexadecimal, com None para o que não é cor sólida."""
     palette = dict(re.findall(r'--palette-([\w-]+):\s*(#[0-9A-Fa-f]{6})\s*;', css))
     colors = {} if theme == 'light' else dict(read_colors(css))
     for name, value in re.findall(r'--color-([\w-]+):\s*([^;]+);', theme_block(css, theme)):

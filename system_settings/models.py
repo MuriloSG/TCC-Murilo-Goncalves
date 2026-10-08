@@ -1,8 +1,4 @@
-"""Configurações do sistema guardadas no banco (Change configurar-servidor-de-email).
-
-Cada tipo tem uma linha só e um esquema próprio, que valida e converte o valor
-JSON (D1). O sistema atende a um único campus, então as configurações são globais (D2).
-"""
+"""Configurações globais do sistema, uma linha por tipo com esquema próprio."""
 
 import base64
 import hashlib
@@ -23,7 +19,7 @@ UNREADABLE_PASSWORD_MESSAGE = 'A senha gravada não pode ser lida com a chave at
 
 
 def cipher():
-    """Fernet com a chave de DJANGO_CREDENTIALS_KEY, levada a 32 bytes pelo SHA-256 (D3)."""
+    """Fernet com a chave de DJANGO_CREDENTIALS_KEY, levada a 32 bytes pelo SHA-256."""
     digest = hashlib.sha256(settings.CREDENTIALS_KEY.encode()).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
@@ -48,11 +44,7 @@ class Security(models.TextChoices):
 
 @dataclass(frozen=True)
 class SmtpSettings:
-    """Esquema da configuração `smtp` (D4).
-
-    A senha só existe decifrada nesta instância, na memória. O `repr` não a mostra,
-    para que ela não chegue a um log por engano.
-    """
+    """Senha decifrada só em memória, fora do `repr` para não chegar a um log."""
 
     host: str
     port: int
@@ -108,7 +100,7 @@ class SmtpSettings:
             raise ValidationError(errors)
 
     def connection(self):
-        """Conexão do backend configurado no ambiente com as credenciais daqui (D6, D7)."""
+        """Conexão do backend configurado no ambiente com as credenciais daqui."""
         return get_connection(
             host=self.host,
             port=self.port,
@@ -126,10 +118,7 @@ class SmtpSettings:
         return message
 
     def audit_values(self, password_changed):
-        """Campos visíveis para a auditoria. A senha aparece só como credencial alterada ou mantida.
-
-        A chave não pode conter "senha", que o `sanitize` da auditoria descarta.
-        """
+        """Campos para a auditoria; a chave evita "senha", que o `sanitize` descartaria."""
         return {
             'servidor': self.host,
             'porta': self.port,
@@ -142,18 +131,12 @@ class SmtpSettings:
 
 class SystemSettingQuerySet(models.QuerySet):
     def smtp(self):
-        """Configuração SMTP pronta para envio, ou None quando não existe.
-
-        Lança ValidationError quando a configuração gravada é inválida.
-        """
+        """Configuração SMTP pronta, ou None; lança ValidationError se a gravada for inválida."""
         setting = self.filter(kind=SystemSetting.Kind.SMTP).first()
         return None if setting is None else SmtpSettings.from_value(setting.value)
 
     def save_smtp(self, *, host, port, security, username, password, from_email):
-        """Cadastra ou atualiza a configuração SMTP, com auditoria (D4, D9).
-
-        Senha em branco mantém a gravada; sem usuário, a senha gravada é apagada.
-        """
+        """Senha em branco mantém a gravada; sem usuário, a senha é apagada."""
         with transaction.atomic(using=self.db):
             setting = self.select_for_update().filter(kind=SystemSetting.Kind.SMTP).first()
             username = (username or '').strip()
@@ -183,7 +166,7 @@ class SystemSettingQuerySet(models.QuerySet):
         return setting
 
     def clear_smtp(self):
-        """Exclui a configuração SMTP, com auditoria. Os envios pendentes ficam retidos (D5)."""
+        """Exclui a configuração SMTP, com auditoria; os envios pendentes ficam retidos."""
         with transaction.atomic(using=self.db):
             setting = self.select_for_update().get(kind=SystemSetting.Kind.SMTP)
             AuditLog.objects.record(
@@ -202,7 +185,7 @@ class SystemSettingQuerySet(models.QuerySet):
 
 
 class SystemSetting(models.Model):
-    """Uma configuração do sistema, única por tipo, com o valor no esquema do tipo (D1)."""
+    """Uma configuração do sistema, única por tipo, com o valor no esquema do tipo."""
 
     class Kind(models.TextChoices):
         SMTP = 'smtp', 'servidor de e-mail'

@@ -472,12 +472,7 @@ class PublicViewCacheTests(CleanPublicCache, PublicCalendarTestCase):
 
 
 class BulkWriteScanTests(SimpleTestCase):
-    """Escritas em massa nos models lidos pelas telas públicas não disparam sinais (D6).
-
-    Cada uma está revisada aqui: ou não toca dado público, ou está numa transação que salva um
-    model observado, ou chama `invalidate_on_commit()`. Uma escrita nova fora da lista faz o
-    teste falhar até ser revisada.
-    """
+    """Escritas em massa não disparam sinais; uma escrita nova fora da lista falha até ser revisada."""
 
     APPS = ('accounts', 'audit', 'bookings', 'imports', 'notices', 'outbox', 'panel', 'reports', 'schedule', 'system_settings', 'ui')
     MODELS = (

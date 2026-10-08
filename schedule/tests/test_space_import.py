@@ -1,8 +1,4 @@
-"""Espaços na importação de ensalamento: classificação, decisões, permissões e confirmação.
-
-Os testes percorrem a importação real, pelo motor de `imports`, com planilhas montadas pelo
-`workbook_file` e com as duas planilhas de exemplo do campus.
-"""
+"""Espaços na importação de ensalamento: classificação, decisões, permissões e confirmação."""
 
 
 from django.conf import settings

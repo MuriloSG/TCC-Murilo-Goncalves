@@ -1,8 +1,4 @@
-"""Registro das importações específicas pelo tipo (D4 da Change processar-importacao-em-segundo-plano).
-
-O worker só conhece o tipo gravado na importação, por isso cada app registra, no
-AppConfig.ready, a definição da sua importação, como os tratadores do outbox.
-"""
+"""Registro das importações pelo tipo, que é tudo o que o worker conhece da importação."""
 
 from django.core.exceptions import ImproperlyConfigured
 

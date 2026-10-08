@@ -1,13 +1,4 @@
-"""Conflitos de horário e a ocupação que a Grade da Agenda reúne.
-
-O intervalo é semiaberto, `[início, fim)`: há conflito quando `início < outro_fim` e
-`fim > outro_início`, e `14:00–15:00` não conflita com `15:00–16:00` (D5 da Change
-agendar-uso-eventual-dos-espacos). A verificação usa duas consultas, uma do ensalamento e
-uma dos agendamentos, e devolve o primeiro intervalo ocupado para a mensagem.
-
-Os agendamentos aprovados entram em `grid_sources()` e no calendário público por
-`register_source`, feito no `ready()` do app (D7).
-"""
+"""Conflitos de horário no intervalo semiaberto `[início, fim)` e a ocupação da Grade da Agenda."""
 
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
@@ -37,8 +28,7 @@ def conflict_message(conflict):
 
 
 def allocation_conflict(space, day, start, end):
-    """Aula do espaço que ocorre na data, pela regra de `Allocation.objects.active_on`, que
-    deixa de fora a ocorrência cancelada."""
+    """Aula do espaço na data, sem a ocorrência cancelada."""
     found = (
         Allocation.objects.active_on(day)
         .filter(space=space, time_slot__start_time__lt=end, time_slot__end_time__gt=start)
@@ -71,12 +61,7 @@ def find_conflict(space, day, start, end):
 
 @dataclass(frozen=True)
 class BookingEntry:
-    """Agendamento aprovado no card da Grade da Agenda.
-
-    Os campos `subject`, `group_label`, `teachers` e `stage` existem para que a célula da
-    Grade trate a entrada como as demais; o template da Agenda usa `is_booking`. `subject`,
-    `course`, `group` e `teacher` vêm do docente da oferta e ficam vazios sem ele.
-    """
+    """Agendamento na Grade, com os campos que a célula espera das demais entradas."""
 
     pk: int
     description: str
@@ -155,13 +140,7 @@ class BookingSource:
 
 
     def public_occurrences(self, start_date, end_date, space=None, teacher_name=None):
-        """Agendamentos aprovados do intervalo para o calendário público, numa consulta.
-
-        Filtra pela sala, por quem solicitou ou pelos dois. Quem solicitou corresponde ao
-        docente quando o `username` do usuário é igual ao nome do docente, sem diferenciar a
-        caixa, a mesma regra do e-mail do docente no calendário público. Devolve só a data,
-        o horário, a sala, a disciplina, o curso, a turma, o docente e quem solicitou, sem a descrição.
-        """
+        """Agendamentos do intervalo para o calendário público, sem a descrição."""
         Booking = apps.get_model('bookings', 'Booking')
         first = timezone.make_aware(datetime.combine(start_date, time.min))
         last = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min))
@@ -208,8 +187,7 @@ class PublicOccurrence:
 
 
 def own_occurrences(occurrences, user):
-    """Só as ocorrências do usuário: os agendamentos que ele solicitou e as aulas em que é
-    docente, pela regra de `teacher_of` (nome do docente igual ao `username`, sem caixa)."""
+    """Só os agendamentos do usuário e as aulas em que ele é docente."""
     username = (user.username or '').casefold()
     return [
         item for item in occurrences
@@ -219,6 +197,5 @@ def own_occurrences(occurrences, user):
 
 
 def agenda_sources():
-    """Fontes da Grade da Agenda: o ensalamento e os agendamentos aprovados, as mesmas da
-    Grade do Ensalamento."""
+    """Fontes da Grade da Agenda: o ensalamento e os agendamentos aprovados."""
     return grid_sources()

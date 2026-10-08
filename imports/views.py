@@ -1,9 +1,4 @@
-"""Views base das telas de importação (D16).
-
-O motor não conhece o app de domínio. Cada app descreve as telas da sua importação
-num ImportScreens e cria as próprias rotas, com login_required e a permissão
-declarada nas subclasses destas views.
-"""
+"""Views base das telas de importação; cada app cria as rotas e declara as permissões nas subclasses."""
 
 from dataclasses import dataclass
 from typing import Callable
@@ -31,23 +26,7 @@ from ui.views import ModalView
 
 @dataclass(frozen=True)
 class ImportScreens:
-    """Descrição das telas de uma importação: definição, textos e prefixo das rotas.
-
-    As rotas do app seguem o prefixo: `<prefixo>_list`, `_upload`, `_template`,
-    `_detail`, `_status`, `_confirm`, `_discard` e `_delete`. A rota do modelo existe só quando a
-    importação tem modelo, e a de exclusão só quando `delete_permission` é declarada.
-
-    `section_permission` é a permissão da tela da seção: sem ela, o caminho de navegação
-    mostra a seção sem link.
-
-    `tabs` declara as abas do detalhe, cada uma com a rota, o rótulo e o ícone, e
-    `review_route` é a rota da tabela de linhas. Sem abas, o detalhe é a própria tabela
-    (D8 da Change visualizar-grade-do-ensalamento).
-
-    `panel_template` é um quadro próprio da importação específica, mostrado no detalhe
-    antes das linhas, com o contexto que a view dela acrescenta (D10 da Change
-    manipulacao-dos-espacos).
-    """
+    """Telas de uma importação; as rotas do app seguem `<prefixo>_list`, `_upload`, `_detail` e afins."""
 
     definition: ImportDefinition
     url_prefix: str
@@ -147,7 +126,7 @@ def detail_head_context(screens, importation, current, user):
 
 
 def processing_context(screens, importation):
-    """Quadro da operação pendente, com o aviso de demora calculado da hora do pedido (D9, D13)."""
+    """Quadro da operação pendente, com o aviso de demora calculado da hora do pedido."""
     if not importation.is_busy:
         return None
     stale = importation.is_stale
@@ -177,7 +156,7 @@ def rows_title(numbers, only_errors):
 
 
 def line_numbers(request):
-    """Números de linha pedidos na consulta, descartando os que não são inteiros (D9)."""
+    """Números de linha pedidos na consulta, descartando os que não são inteiros."""
     return sorted({int(value) for value in request.GET.getlist('numero') if value.isdigit()})
 
 
@@ -240,10 +219,7 @@ class ImportUploadView(ModalView, FormView):
 
 
 class ImportTemplateView(View):
-    """Modelo em UTF-8 com BOM, separado por ";", só com o cabeçalho (D18).
-
-    A rota só existe nas importações que têm modelo, e por isso a view não confere nada.
-    """
+    """Modelo em UTF-8 com BOM, separado por ";", só com o cabeçalho."""
 
     screens = None
 
@@ -362,16 +338,7 @@ class ImportDetailView(DetailView):
 
 
 class ImportStatusView(View):
-    """Andamento consultado pelo quadro de processamento do detalhe (D9 da Change processar-importacao-em-segundo-plano).
-
-    Responde 204 enquanto a operação está pendente, e pede o recarregamento da página quando
-    ela termina ou quando o aviso de demora passa a valer e o quadro ainda não o mostra. O
-    estado vem do banco a cada consulta; nada depende da página ficar aberta.
-
-    O worker não tem requisição para registrar mensagens, por isso a conclusão vira mensagem
-    aqui, na consulta que percebe o fim, e aparece uma vez na página recarregada. Quem volta
-    depois vê a situação "Concluída" no detalhe.
-    """
+    """Responde 204 enquanto pendente e pede o recarregamento ao terminar, gerando ali a mensagem que o worker não pode."""
 
     screens = None
     http_method_names = ['get']
@@ -386,11 +353,7 @@ class ImportStatusView(View):
 
 
 class ImportConfirmView(View):
-    """Pedido de confirmação por POST. A página de prévia é o GET que mostra o que será confirmado (D16).
-
-    A requisição só registra a operação pendente; o worker executa a confirmação, e o
-    resultado aparece no detalhe.
-    """
+    """Só registra a operação de confirmação pendente; o worker a executa."""
 
     screens = None
     http_method_names = ['post']

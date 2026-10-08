@@ -1,8 +1,4 @@
-"""Renderização de formulários com os componentes da interface (D11).
-
-O Django 5.2 já coloca aria-invalid e aria-describedby nos campos, apontando para
-os ids {id}_helptext e {id}_error. Os templates de ui/forms usam esses mesmos ids.
-"""
+"""Formulários com os componentes da interface, com os ids que o Django usa em aria-describedby."""
 
 from django import forms
 from django.forms.renderers import TemplatesSetting
@@ -16,13 +12,7 @@ class FormRenderer(TemplatesSetting):
 
 
 class DateInput(forms.DateInput):
-    """Campo de data com o calendário do ui/static/ui/js/datepicker.js.
-
-    O input nativo do tipo date continua sendo o campo enviado, no formato
-    aaaa-mm-dd, e sem JavaScript é ele que aparece. O calendário só preenche o
-    input e dispara os eventos input e change. Com o atributo data-weekdays-only,
-    o calendário também desabilita sábado e domingo.
-    """
+    """Input date nativo, enviado e visível sem JavaScript, preenchido pelo datepicker.js."""
 
     input_type = 'date'
     template_name = 'ui/forms/date.html'
@@ -32,12 +22,7 @@ class DateInput(forms.DateInput):
 
 
 class GroupedCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
-    """Lista de seleção em grupos recolhíveis, com contagem, busca e seleção de todas.
-
-    O valor de cada opção aparece como código e o rótulo como descrição. As
-    contagens vêm do servidor, e o ui/static/ui/js/checklist.js as atualiza e
-    liga a busca e o botão de seleção, que ficam ocultos sem JavaScript.
-    """
+    """Seleção em grupos recolhíveis; o checklist.js liga a busca e a contagem."""
 
     template_name = 'ui/forms/grouped_checkboxes.html'
 
@@ -59,12 +44,7 @@ class GroupedCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
 
 
 def limit_choices(field, selected=None, page_size=OPTIONS_PAGE_SIZE):
-    """Deixa no campo só a primeira página das opções, mais as escolhidas (D5).
-
-    `selected` é um valor ou vários, conforme o campo escolha um ou vários. A
-    validação continua usando o queryset inteiro: só a lista que vai para o HTML
-    é limitada, e as demais opções chegam pela rota de opções.
-    """
+    """Limita o HTML à primeira página e às escolhidas; a validação usa o queryset inteiro."""
     items = list(field.queryset[:page_size])
     values = selected if isinstance(selected, (list, tuple, set)) else [selected]
     values = [value for value in values if value not in (None, '')]

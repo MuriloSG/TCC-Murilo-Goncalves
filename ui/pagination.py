@@ -1,8 +1,4 @@
-"""Paginação das listas (D1 da Change paginar-listas).
-
-get_page devolve a primeira página para valores inválidos e a última para números
-além do fim, para que um link salvo nunca vire erro depois que a lista mudar.
-"""
+"""Paginação que nunca falha num link salvo, caindo na primeira ou na última página."""
 
 from django.core.paginator import Paginator
 

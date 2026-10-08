@@ -11,13 +11,7 @@ logger = logging.getLogger('outbox')
 
 
 class Command(BaseCommand):
-    """Worker do outbox (D4).
-
-    Processa os envios vencidos em lotes e espera o intervalo configurado quando
-    não há nenhum. SIGTERM e SIGINT param o laço entre um envio e outro. Sem
-    servidor de e-mail configurado, os envios ficam retidos e o motivo vai ao log
-    só quando muda, para não repetir a cada ciclo (D5 da Change configurar-servidor-de-email).
-    """
+    """Worker do outbox; sem servidor de e-mail, os envios ficam retidos e o motivo só vai ao log quando muda."""
 
     help = 'Envia os e-mails registrados no outbox.'
 

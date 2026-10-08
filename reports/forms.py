@@ -7,11 +7,7 @@ from schedule.timetable import natural_key
 
 
 def filter_options(form, data, semesters, semester):
-    """Opções e valores de semestre, etapa, curso e espaços, comuns aos filtros dos relatórios.
-
-    Guarda as opções no formulário e devolve os valores escolhidos: um valor que não é opção
-    vale o padrão, sem erro (D8 da Change gerar-relatorio-de-solicitacoes).
-    """
+    """Opções e valores comuns aos filtros dos relatórios; valor fora das opções vale o padrão."""
     form.semesters = {item.code: item for item in semesters}
     form.courses = {str(course.pk): course for course in Course.objects.order_by('name')}
     form.space_options = {str(space.pk): space for space in sorted(Space.objects.filter(is_active=True), key=natural_key)}
@@ -39,11 +35,7 @@ def fill_choices(form):
 
 
 class HeatmapFilterForm(forms.Form):
-    """Filtros do mapa de calor pela URL, todos no select do projeto (D5).
-
-    Um valor que não é opção é ignorado e vale o padrão, sem erro, como no painel. Etapa e
-    curso restringem só as aulas e são ignorados com a origem "só agendamentos".
-    """
+    """Filtros do mapa de calor; etapa e curso são ignorados com a origem "só agendamentos"."""
 
     ORIGINS = [(ALL, 'Aulas e agendamentos'), (LESSONS, 'Só aulas'), (BOOKINGS, 'Só agendamentos')]
 
@@ -75,11 +67,7 @@ class HeatmapFilterForm(forms.Form):
 
 
 class RequestsFilterForm(forms.Form):
-    """Filtros do relatório de solicitações pela URL, todos no select do projeto (D8).
-
-    Etapa e curso vêm do vínculo acadêmico da solicitação: com um dos dois escolhido, as
-    solicitações sem vínculo ficam de fora.
-    """
+    """Filtros do relatório; com etapa ou curso, as solicitações sem vínculo ficam de fora."""
 
     semestre = forms.ChoiceField(label='Semestre', required=False, widget=forms.Select(attrs={'class': 'input'}))
     etapa = forms.ChoiceField(label='Etapa de ensino', required=False, widget=forms.Select(attrs={'class': 'input'}))

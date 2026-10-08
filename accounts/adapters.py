@@ -11,7 +11,7 @@ logger = logging.getLogger('accounts')
 
 
 class AccountAdapter(DefaultAccountAdapter):
-    """Adaptador do allauth com as mensagens de erro reescritas nas regras de texto (D5)."""
+    """Adaptador do allauth com as mensagens de erro do projeto."""
 
     error_messages = DefaultAccountAdapter.error_messages | {
         'email_password_mismatch': 'E-mail ou senha incorretos. Confira os dados ou use "Esqueci minha senha".',
@@ -25,13 +25,7 @@ class AccountAdapter(DefaultAccountAdapter):
         return False
 
     def authenticate(self, request, **credentials):
-        """Trata o usuário inativo como credencial inválida e audita a recusa (D6).
-
-        Com a senha correta, o allauth devolve o usuário inativo para redirecioná-lo
-        a account_inactive, rota que não é exposta. Assim a resposta é a mesma de
-        uma senha errada. A recusa é registrada aqui, e não pelo sinal do Django,
-        porque o usuário inativo não chega a ele. A senha nunca é registrada.
-        """
+        """Recusa o usuário inativo como credencial inválida e audita a recusa, que o sinal do Django não alcança."""
         user = super().authenticate(request, **credentials)
         if user is not None and not user.is_active:
             user = None
@@ -44,11 +38,7 @@ class AccountAdapter(DefaultAccountAdapter):
         return user
 
     def send_mail(self, template_prefix, email, context):
-        """Envia pela configuração SMTP gravada (D8 da Change configurar-servidor-de-email).
-
-        Sem configuração válida, o e-mail não sai e o motivo vai ao log. A página
-        responde como sempre, sem revelar o estado do servidor a quem não entrou.
-        """
+        """Envia pela configuração SMTP gravada; sem ela, só registra o motivo no log."""
         try:
             smtp = SystemSetting.objects.smtp()
         except ValidationError:

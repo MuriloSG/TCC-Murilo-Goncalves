@@ -1,11 +1,4 @@
-"""Leitura do arquivo CSV e conferência da estrutura e das linhas (D5).
-
-Recusas do arquivo inteiro lançam FileRejected e não criam importação. Problemas
-de uma linha viram erros dessa linha, e o arquivo segue para a prévia.
-
-A leitura de CSV é uma das fontes do motor, declarada por `CsvSource`. A outra é a
-leitura de planilha em grade, em `imports.workbook`.
-"""
+"""Leitura do CSV: recusas do arquivo lançam FileRejected, e problemas de linha viram erros dela."""
 
 import csv
 import io
@@ -156,10 +149,7 @@ def check_identifiers(rows, definition):
 
 
 def read_csv(uploaded_file, definition):
-    """Lê o arquivo e devolve as linhas de dados, cada uma com os erros de estrutura dela.
-
-    Lança FileRejected quando o arquivo inteiro deve ser recusado.
-    """
+    """Lê as linhas com os erros de estrutura; lança FileRejected quando o arquivo inteiro é recusado."""
     text = decode(uploaded_file, definition)
     source = records(text)
     header = next(source, None)

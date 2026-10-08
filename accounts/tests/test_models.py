@@ -19,10 +19,7 @@ class UserModelTests(SimpleTestCase):
         self.assertEqual(User.REQUIRED_FIELDS, ['name'])
 
     def test_no_default_django_user_attributes(self):
-        """O `username` fica fora da lista: ele existe como identificador de domínio, e não
-
-        como a credencial do AbstractUser (D2 da Change identificar-usuario-por-username).
-        """
+        """O `username` fica fora: é identificador de domínio, e não a credencial do AbstractUser."""
         user = User(email='maria@ifnmg.edu.br', name='Maria')
         for attribute in (
             'first_name',

@@ -1,4 +1,4 @@
-"""Cancelamento de uma ocorrência do ensalamento (Change cancelar-ocorrencia-do-ensalamento)."""
+"""Cancelamento de uma ocorrência do ensalamento."""
 
 import re
 from datetime import date, time

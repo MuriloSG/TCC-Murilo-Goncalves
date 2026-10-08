@@ -1,13 +1,4 @@
-"""Grade da semana de uma sala, montada das alocações confirmadas de um semestre.
-
-Os templates recebem só `Week`, sem referência a `Allocation`. A leitura é feita em uma
-quantidade fixa de consultas e nada é gravado (D15 e D16 da Change
-visualizar-grade-do-ensalamento).
-
-Com o período do semestre definido, a semana é datada e montada das ocorrências calculadas
-em `schedule.occupancy`; sem ele, continua sendo a semana típica (D7 e D9 da Change
-visualizar-ocupacao-por-semana-e-mes).
-"""
+"""Grade da semana de uma sala; datada quando o semestre tem período, senão a semana típica."""
 
 import re
 from dataclasses import dataclass, field, replace
@@ -31,11 +22,7 @@ def all_caps(name):
 
 
 def readable_course(name):
-    """Nome do curso em caixa alta passado para iniciais maiúsculas, só na exibição (D12).
-
-    `LICENCIATURA EM FÍSICA` aparece como `Licenciatura em Física`. O dado gravado não
-    muda, e nomes que já têm minúsculas ficam como estão.
-    """
+    """Nome do curso em caixa alta passado para iniciais maiúsculas, só na exibição."""
     if not all_caps(name):
         return name
     words = name.lower().split()
@@ -117,11 +104,7 @@ class Cell:
 
     @property
     def kind(self):
-        """Uma turma, turmas juntas ou choque (D13 da Change visualizar-grade-do-ensalamento).
-
-        Turmas juntas têm a mesma disciplina e os mesmos docentes; o resto é choque, que
-        só é mostrado. A classificação é das entradas da célula, e não um dado gravado.
-        """
+        """Uma turma, turmas juntas ou choque; turmas juntas têm a mesma disciplina e docentes."""
         if self.group_count <= 1:
             return SINGLE
         lessons = {(entry.subject.casefold(), frozenset(name.casefold() for name in entry.teachers)) for entry in self.lessons}
@@ -222,11 +205,7 @@ def weekday_of(today):
 
 
 def build_day(slots, by_slot):
-    """Células do dia, uma por faixa, com as faixas seguidas de mesmas aulas unidas num bloco.
-
-    O bloco junta as alocações de cada aula das faixas unidas, para que cancelar a
-    ocorrência do bloco alcance todas elas.
-    """
+    """Une faixas seguidas de mesmas aulas num bloco com todas as alocações, para o cancelamento alcançar todas."""
     cells, previous_entries, open_cell, previous_slot = [], None, None, None
     for slot in slots:
         entries = by_slot.get(slot)
@@ -251,14 +230,7 @@ def build_day(slots, by_slot):
 
 
 def build_week(slots, by_day_slot, today, dates=None, semester=None):
-    """Grade com as faixas nas linhas e os dias nas colunas.
-
-    Sem `dates`, é a semana típica, de segunda a sexta, com as entradas indexadas pelo dia
-    da semana e o dia atual pelo dia da semana. Com `dates`, os dias úteis de uma semana ou
-    de um mês, com as entradas indexadas pela data: "Hoje" é a data de hoje e o dia fora do
-    período do semestre não tem células nem entra na contagem. A semana e o mês são a mesma
-    estrutura, com listas de datas diferentes (D8 da Change visualizar-ocupacao-por-semana-e-mes).
-    """
+    """Grade com faixas nas linhas; sem `dates`, a semana típica, e com elas, a semana ou o mês datados."""
     today_code = weekday_of(today)
     columns = [(weekday, weekday, None) for weekday in WEEKDAYS] if dates is None else [
         (WEEKDAYS[day.weekday()], day, day) for day in dates
@@ -301,11 +273,7 @@ def imported_semesters():
 
 
 def listed_spaces(semester):
-    """Espaços ativos e os inativos com alocação no semestre, sem repetição.
-
-    Um espaço ativo sem aula também é listado, e a Grade dele aparece com as faixas vazias
-    (Change listar-salas-sem-aula). O inativo só entra quando tem aula no semestre.
-    """
+    """Espaços ativos, com ou sem aula, e os inativos com alocação no semestre."""
     return Space.objects.filter(Q(is_active=True) | Q(allocations__semester=semester)).distinct()
 
 
@@ -351,11 +319,7 @@ def monday_of(day):
 
 
 def clamp(semester, reference, today):
-    """Data de referência levada para dentro do período do semestre (D7, D8).
-
-    A referência é a data da URL ou, sem ela, hoje. Antes do período vale o primeiro dia
-    dele; depois, o último.
-    """
+    """Data de referência levada para dentro do período do semestre."""
     return min(max(reference or today, semester.start_date), semester.end_date)
 
 
@@ -395,12 +359,7 @@ def previous_month(first):
 
 
 def slots_of(occurrence, slots, by_overlap):
-    """Faixas em que a ocorrência aparece: a faixa igual à dela ou, com `by_overlap`, todas
-    as que ela cruza, no intervalo `[início, fim)`.
-
-    A sobreposição serve às ocorrências de horário livre, como o agendamento da Agenda, que
-    não coincidem com as faixas do semestre (D7 da Change agendar-uso-eventual-dos-espacos).
-    """
+    """Faixas em que a ocorrência aparece; com `by_overlap`, todas as que ela cruza."""
     if by_overlap:
         return [slot for slot in slots if occurrence.start < slot[1] and occurrence.end > slot[0]]
     slot = (occurrence.start, occurrence.end)
@@ -408,11 +367,7 @@ def slots_of(occurrence, slots, by_overlap):
 
 
 def with_uncovered(slots, occurrences):
-    """Faixas do semestre mais o intervalo de cada ocorrência que não cruza nenhuma delas.
-
-    Um agendamento fora das faixas do semestre, como no almoço, ganha a própria linha, para
-    que nenhum uso aprovado fique fora da Grade da Agenda.
-    """
+    """Faixas do semestre mais a de cada ocorrência fora delas, para nenhum agendamento sumir da Grade."""
     extra = {
         (occurrence.start, occurrence.end)
         for occurrence in occurrences
@@ -451,10 +406,7 @@ def dated_space_week(semester, space, start, today, occurrences, by_overlap=Fals
 
 
 def dated_space_month(semester, space, first, today, occurrences, by_overlap=False):
-    """Mês da sala: a mesma Grade da semana, com um dia útil do mês por coluna (D8).
-
-    Os meses vizinhos só são oferecidos quando tocam o período do semestre.
-    """
+    """Mês da sala com a mesma Grade da semana, um dia útil por coluna."""
     month = dated_grid(semester, space, month_dates(first), today, occurrences, by_overlap)
     if semester is None or space is None:
         return month

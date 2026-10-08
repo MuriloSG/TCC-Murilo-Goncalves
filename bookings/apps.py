@@ -7,8 +7,7 @@ class BookingsConfig(AppConfig):
     verbose_name = 'Agenda'
 
     def ready(self):
-        """Registra os agendamentos aprovados como fonte de ocupação, as transições que notificam e
-        as gravações de agendamento e de solicitação que invalidam o cache público."""
+        """Registra a fonte de ocupação, as notificações e a invalidação do cache público."""
         from bookings.models import Booking, BookingRequest
         from bookings.notifications import EVENTS
         from bookings.occupancy import BookingSource

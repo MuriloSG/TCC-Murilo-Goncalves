@@ -35,7 +35,8 @@ A referência de implementação é o app `accounts`.
 - As permissões são constantes do catálogo no `permissions.py` do app, no formato `RECURSO.ACAO`, e entram no banco por migration de dados.
 - Views e templates **nunca** decidem acesso pelo código, pelo nome ou pela marca de sistema do perfil, nem por `is_superadmin`. O único ponto de decisão é `User.has_perm`.
 - Nos templates, `perms.RECURSO.ACAO` serve **só** para mostrar ou esconder links e botões.
-- **Rotas públicas** (Changes `calendario-publico` e `ver-horario-original-no-calendario-publico`): as únicas rotas abertas sem login além do fluxo de autenticação são a raiz da aplicação (`/`) e o horário original (`/horario-original/`). Elas têm view, formulário, consulta, templates e layout (`ui/layouts/public.html`) próprios, não declara `permission_required` nem `audit_resource`, não lê `request.user` e só aceita GET e HEAD. Nenhuma view autenticada é aberta por reaproveitamento. Rate limit e cache da rota pública ficam no proxy de produção, e não no código.
+- **Rotas públicas** (Changes `calendario-publico` e `ver-horario-original-no-calendario-publico`): as únicas rotas abertas sem login além do fluxo de autenticação são a raiz da aplicação (`/`) e o horário original (`/horario-original/`). Elas têm view, formulário, consulta, templates e layout (`ui/layouts/public.html`) próprios, não declara `permission_required` nem `audit_resource`, não lê `request.user` e só aceita GET e HEAD. Nenhuma view autenticada é aberta por reaproveitamento. O rate limit da rota pública fica no proxy de produção.
+- **Cache das rotas públicas** (Change `cachear-telas-publicas-com-redis`): fica na aplicação, no alias `public` do cache (Redis), e só o módulo `schedule.public_cache` o lê e grava. As chaves saem de `cache_key`, a partir de parâmetros já normalizados contra o cadastro. A invalidação incrementa uma geração global por `transaction.on_commit`: os sinais `post_save` e `post_delete` dos models lidos pelas telas públicas já fazem isso, e toda escrita que não dispara sinais nesses models (`bulk_create`, `bulk_update`, `QuerySet.update`, `teachers.set`/`add` sem salvar a alocação, SQL direto) chama `public_cache.invalidate_on_commit()`. O teste `BulkWriteScanTests` falha diante de uma escrita nova não revisada. Telas autenticadas não usam cache.
 
 ## 5. Organização do código
 
@@ -63,7 +64,7 @@ A referência de implementação é o app `accounts`.
 - Não se testa comportamento do Django: `max_length`, `unique`, CASCADE, `Meta.ordering`, valores padrão, o 405 de `require_POST` e o `transaction.atomic`.
 - Os testes conferem textos e valores, pelo `context` quando possível, e não a marcação exata do HTML. A marcação é verificada pelas varreduras do app `ui`.
 - Variações de um mesmo caso viram um teste com `subTest`. Números que vêm do catálogo, como o total de permissões, são calculados a partir de `accounts/permissions.py`.
-- Use `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `transaction.on_commit` ou de concorrência.
+- Use `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `transaction.on_commit` ou de concorrência. Toda classe `TransactionTestCase` declara `serialized_rollback = True`: uma classe sem ele recria os tipos de conteúdo no `flush`, e a próxima classe com ele falha ao recarregar os dados.
 - Limpe o cache (`cache.clear()`) no `setUp` de testes que passam pelos limites de tentativas do allauth.
 - Os testes de permissão usam usuários que não são superadmin, para que o acesso irrestrito não mascare falhas.
 

@@ -13,6 +13,9 @@ x-app-env: &app-env
   DJANGO_SITE_URL: ${DJANGO_SITE_URL:-http://localhost:8000}
   DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
   DJANGO_CREDENTIALS_KEY: ${DJANGO_CREDENTIALS_KEY:-chave-de-credenciais-somente-para-desenvolvimento-local}
+  DJANGO_REDIS_URL: ${DJANGO_REDIS_URL-redis://redis:6379/0}
+  DJANGO_REDIS_TIMEOUT: ${DJANGO_REDIS_TIMEOUT:-0.1}
+  DJANGO_CACHE_KEY_PREFIX: ${DJANGO_CACHE_KEY_PREFIX:-ifagenda}
 
 services:
   db:
@@ -37,6 +40,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   worker:
     build: .
@@ -48,6 +53,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   import_worker:
     build: .
@@ -59,6 +66,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   tailwind:
     build:

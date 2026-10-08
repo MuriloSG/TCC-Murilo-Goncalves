@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -91,6 +92,20 @@ FORM_RENDERER = 'ui.forms.FormRenderer'
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+
+REDIS_URL = os.environ.get('DJANGO_REDIS_URL', '')
+REDIS_TIMEOUT = float(os.environ.get('DJANGO_REDIS_TIMEOUT', '0.1'))
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'public': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+        'KEY_PREFIX': os.environ.get('DJANGO_CACHE_KEY_PREFIX', 'ifagenda'),
+        'OPTIONS': {'socket_connect_timeout': REDIS_TIMEOUT, 'socket_timeout': REDIS_TIMEOUT},
+    } if REDIS_URL and not TESTING else {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'},
+}
 
 CHANNEL_LAYERS = {
     'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},

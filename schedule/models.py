@@ -29,6 +29,7 @@ from accounts import permissions
 
 from audit import catalog
 from audit.models import AuditLog
+from schedule import public_cache
 from schedule.utils import normalize_name
 
 SEMESTER_CODE_PATTERN = r'^\d{4}/[12]$'
@@ -1773,6 +1774,7 @@ class Allocation(models.Model):
                 self.save(update_fields=['space'])
             if 'teachers' in changes:
                 self.teachers.set(teachers)
+                public_cache.invalidate_on_commit()
         return 'update', changes
 
     def audit_values(self):
@@ -1830,6 +1832,7 @@ class ClassOfferingManager(models.Manager):
                 if (offering.subject_id, offering.class_group_id) in pairs
             ]
             sync_offerings(semester.pk, offerings)
+            public_cache.invalidate_on_commit()
             return offerings
 
 
@@ -1919,6 +1922,7 @@ def sync_offerings(semester_id, offerings):
         TeachingAssignment.objects.filter(pk__in=current).update(is_current=True)
     if former:
         TeachingAssignment.objects.filter(pk__in=former).update(is_current=False)
+    public_cache.invalidate_on_commit()
 
 
 class TeachingAssignmentQuerySet(models.QuerySet):

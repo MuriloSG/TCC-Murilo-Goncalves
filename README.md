@@ -98,11 +98,13 @@ Os registros são somente de inclusão: a aplicação recusa qualquer alteraçã
 | `worker` | a mesma do `web` | Envia os e-mails registrados no outbox, com o comando `process_outbox` |
 | `import_worker` | a mesma do `web` | Executa a prévia, a atualização da prévia e a confirmação das importações, com o comando `process_imports` |
 | `db` | `postgres:17` | Banco de dados PostgreSQL, sem porta publicada no host |
+| `redis` | `redis:8-alpine` | Cache das telas públicas, sem porta publicada no host e sem gravar em disco |
 | `tailwind` | estágio `tailwind` do `Dockerfile` (Node.js 22) | Compila o CSS da interface com o Tailwind CSS e o recompila a cada alteração |
 
 - O código do projeto é montado em `/app` no container `web`. Alterações feitas na máquina recarregam o servidor automaticamente, e arquivos gerados no container, como migrations, aparecem no repositório.
 - Os dados do PostgreSQL ficam no volume `postgres_data`, que `make down` preserva e `make reset-db` remove.
 - O `web`, o `worker` e o `import_worker` só são iniciados depois que o healthcheck do `db` indica que o banco está pronto para receber conexões.
+- O `redis` é só cache das telas públicas (`/` e `/horario-original/`). O PostgreSQL continua sendo a fonte de verdade: com o `redis` parado, as telas consultam o banco e respondem com o mesmo conteúdo. Ele não grava em disco, então reiniciá-lo esvazia o cache, e usa no máximo 64 MB, removendo as chaves menos usadas. A aplicação não espera o `redis` para subir.
 - O `worker` reinicia sozinho se encerrar, por exemplo quando sobe antes do `make migrate` ou quando o banco fica indisponível. Ele monta o mesmo código do `web`, mas não recarrega sozinho: depois de alterar o código de envio de e-mails, rode `docker compose restart worker`. O `import_worker` segue a mesma regra: depois de alterar o código de uma importação, rode `docker compose restart import_worker`.
 - O `tailwind` lê o `ui/styles/app.css` e os templates de todos os apps e grava `ui/static/ui/css/app.css`, que o `web` serve como arquivo estático. Uma classe nova num template aparece no CSS sem reiniciar containers. O CSS gerado fica fora do Git.
 - O `tailwind` monta o projeto em `/app`, como o `web`, e guarda as dependências de Node.js num volume anônimo em `/app/node_modules`, para que a montagem do projeto não as esconda. O Node.js só é usado para compilar o CSS: a imagem do `web` não o tem.
@@ -134,6 +136,9 @@ O comando descobre o IPv4 do computador na rede local, sobe o ambiente aceitando
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
 | `DJANGO_CREDENTIALS_KEY` | `chave-de-credenciais-somente-para-desenvolvimento-local` | Chave que cifra as senhas guardadas no banco, como a do servidor de e-mail. Trocá-la exige informar essas senhas de novo |
+| `DJANGO_REDIS_URL` | `redis://redis:6379/0` | Conexão do cache das telas públicas, compartilhada pelo `web` e pelo `import_worker`. Vazia, as telas públicas funcionam sem cache |
+| `DJANGO_REDIS_TIMEOUT` | `0.1` | Tempo limite, em segundos, de conexão e de leitura do Redis |
+| `DJANGO_CACHE_KEY_PREFIX` | `ifagenda` | Prefixo das chaves do cache. Ambientes que dividem um mesmo Redis usam prefixos diferentes |
 | `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail do outbox antes de desistir |
 | `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |
 | `DJANGO_OUTBOX_POLL_INTERVAL` | `5` | Segundos que o `worker` espera quando não há e-mail para enviar |
@@ -159,6 +164,15 @@ DJANGO_SECRET_KEY=outra-chave-local
 - Se uma variável obrigatória estiver ausente, a aplicação não inicia e o erro indica o nome da variável.
 
 > **Atenção:** os valores padrão são inseguros e servem apenas ao desenvolvimento local. Não os reutilize em nenhum ambiente acessível externamente.
+
+## Cache das telas públicas
+
+O calendário público e o horário original guardam no Redis as opções dos filtros do semestre (por 1 hora) e o HTML da Grade (por 10 minutos no calendário e 30 minutos no horário original). O tempo é só uma proteção: toda gravação confirmada num dado mostrado nessas telas (ensalamento, importação, espaços, docentes, disciplinas, turmas, cursos, agendamentos e os dados públicos dos usuários) invalida o cache logo depois do commit. A resposta traz o cabeçalho `X-Public-Cache` com `hit`, `miss` ou `bypass` (cache não usado) e `Cache-Control: no-cache`.
+
+Em produção:
+
+- Use senha no Redis (`requirepass`, informada na URL: `redis://:senha@host:6379/0`), não publique a porta dele e deixe-o só na rede privada dos containers da aplicação. Se ele estiver em outra máquina, use TLS (`rediss://`).
+- A configuração do proxy de produção não está neste repositório. Confira nele se há cache HTTP nas rotas `/` e `/horario-original/`: um proxy que guarda a página por regra própria (por exemplo, `proxy_cache_valid` no Nginx) ignora a invalidação e pode mostrar a página antiga até o fim do tempo dele. Desligue esse cache ou use um tempo curto.
 
 ## E-mail
 

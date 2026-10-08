@@ -2,6 +2,8 @@ from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 
+from schedule import public_cache
+
 KEPT_APPS = {'accounts', 'account', 'auth', 'contenttypes', 'sessions'}
 
 
@@ -10,7 +12,8 @@ class Command(BaseCommand):
 
     Usa `TRUNCATE ... RESTART IDENTITY CASCADE` nas tabelas dos apps fora de
     `KEPT_APPS`, o que também ignora a proteção do registro de auditoria, feita
-    no model. As sessões ficam, para que ninguém perca o login.
+    no model. As sessões ficam, para que ninguém perca o login. O `TRUNCATE` não dispara
+    sinais, e o cache público é invalidado explicitamente depois do commit.
     """
 
     help = 'Exclui os dados do sistema e mantém apenas os usuários, perfis e permissões.'
@@ -33,4 +36,5 @@ class Command(BaseCommand):
         quoted = ', '.join(connection.ops.quote_name(table) for table in tables)
         with transaction.atomic(), connection.cursor() as cursor:
             cursor.execute(f'TRUNCATE {quoted} RESTART IDENTITY CASCADE')
+            public_cache.invalidate_on_commit()
         self.stdout.write(self.style.SUCCESS(f'{len(tables)} tabelas limpas. Os usuários foram mantidos.'))

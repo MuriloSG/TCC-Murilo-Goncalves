@@ -163,6 +163,8 @@ class IsolationTests(TestCase):
 
 
 class ConcurrencyTests(TransactionTestCase):
+    serialized_rollback = True
+
     def setUp(self):
         configure_smtp()
 

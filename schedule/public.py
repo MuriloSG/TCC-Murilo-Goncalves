@@ -15,6 +15,11 @@ a exceção (Change cancelar-ocorrencia-do-ensalamento).
 O horário original (Change ver-horario-original-no-calendario-publico) usa os mesmos filtros e
 mostra a semana típica só com as alocações importadas, sem as versões das alterações de
 recorrência, sem as ocorrências canceladas e sem os agendamentos.
+
+As opções do semestre vêm do cache público (`schedule.public_cache`) como tuplas, e voltam a
+ser instâncias dos models só com os campos guardados. Com `deferred`, a Grade não é montada
+aqui: a view a pede pelo cache, com os parâmetros normalizados em `grid_params` (Change
+cachear-telas-publicas-com-redis).
 """
 
 from dataclasses import dataclass, field
@@ -25,7 +30,8 @@ from django.db.models import Prefetch
 from django.db.models.functions import Lower
 
 from accounts.models import User
-from schedule.models import Allocation, AllocationException, ClassGroup, Course, Origin, Space, Stage, Teacher
+from schedule.models import Allocation, AllocationException, ClassGroup, Course, Origin, Semester, Space, Stage, Teacher
+from schedule import public_cache
 from schedule.occupancy import public_sources
 from schedule.timetable import (
     WEEKDAYS,
@@ -158,6 +164,35 @@ class Options:
     teachers: list = field(default_factory=list)
     courses: list = field(default_factory=list)
     groups: list = field(default_factory=list)
+
+
+def published_semesters(lookup):
+    """Semestres com alocação confirmada, do cache público ou numa consulta."""
+    rows = lookup.fetch(public_cache.OPTIONS, {'semester': '*'}, lambda: [
+        (semester.pk, semester.code, semester.start_date, semester.end_date) for semester in imported_semesters()
+    ])
+    return [Semester(pk=pk, code=code, start_date=start, end_date=end) for pk, code, start, end in rows]
+
+
+def cached_semester_options(semester, lookup):
+    """`semester_options` pelo cache público, guardada como tuplas de chave e nome."""
+    if semester is None:
+        return [], [], []
+
+    def build():
+        spaces, teachers, courses = semester_options(semester)
+        return (
+            [(space.pk, space.name) for space in spaces],
+            [(teacher.pk, teacher.name) for teacher in teachers],
+            [(course.pk, course.name, course.stage) for course in courses],
+        )
+
+    spaces, teachers, courses = lookup.fetch(public_cache.OPTIONS, {'semester': semester.code}, build)
+    return (
+        [Space(pk=pk, name=name) for pk, name in spaces],
+        [Teacher(pk=pk, name=name) for pk, name in teachers],
+        [Course(pk=pk, name=name, stage=stage) for pk, name, stage in courses],
+    )
 
 
 def semester_options(semester):
@@ -449,6 +484,8 @@ class PublicCalendar:
     notice: str = ''
     week: object = None
     free_label: str = 'sem aula'
+    grid_params: dict = None
+    assemble: object = field(default=None, repr=False, compare=False)
 
     @property
     def has_principal(self):
@@ -465,15 +502,16 @@ class PublicCalendar:
         return ', '.join(parts)
 
 
-def read_filters(params, today):
+def read_filters(params, today, lookup=None):
     """Filtros comuns às duas telas públicas, normalizados: (calendário, semestre ou None)."""
-    semesters = {semester.code: semester for semester in imported_semesters()}
+    lookup = lookup or public_cache.Lookup()
+    semesters = {semester.code: semester for semester in published_semesters(lookup)}
     current = current_semester_code(today)
     codes = sorted(set(semesters) | {current}, reverse=True)
     code = (params.get('semestre') or '').strip()
     code = code if code in codes else current
     semester = semesters.get(code)
-    spaces, teachers, courses = semester_options(semester)
+    spaces, teachers, courses = cached_semester_options(semester, lookup)
     stage_key = (params.get('nivel') or '').strip()
     course = chosen(params.get('curso'), courses)
     groups = course_groups(semester, course)
@@ -494,9 +532,38 @@ def free_label(calendar):
     return 'disponível' if only_space else 'sem aula'
 
 
-def public_calendar(params, today):
+def grid_params(calendar, today, dated=True):
+    """Filtros normalizados que definem a Grade, com a data de hoje, para a chave do cache público."""
+    params = {
+        'semester': calendar.semester_code,
+        'space': calendar.space.pk if calendar.space else None,
+        'teacher': calendar.teacher.pk if calendar.teacher else None,
+        'course': calendar.course.pk if calendar.course else None,
+        'group': calendar.group.pk if calendar.group else None,
+        'stage': calendar.stage_key,
+        'today': today.isoformat(),
+    }
+    if dated:
+        params.update(start=calendar.start, end=calendar.end)
+    return params
+
+
+def defer(calendar, assemble, params, deferred):
+    """Guarda a montagem da Grade para a view, ou monta na hora quando não é adiada."""
+    def build():
+        calendar.week = assemble()
+        return calendar.week
+
+    calendar.assemble = build
+    calendar.grid_params = params
+    if not deferred:
+        build()
+    return calendar
+
+
+def public_calendar(params, today, lookup=None, deferred=False):
     """Lê os filtros da URL e monta o calendário público, consultando as aulas só quando pode (D7, D8)."""
-    calendar, semester = read_filters(params, today)
+    calendar, semester = read_filters(params, today, lookup)
     code = calendar.semester_code
     if semester is None:
         calendar.message = f'Nenhum horário publicado no semestre {code}.'
@@ -519,23 +586,26 @@ def public_calendar(params, today):
             f'{semester.start_date:%d/%m/%Y} a {semester.end_date:%d/%m/%Y}.'
         )
         return calendar
-    allocations = public_allocations(
-        semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key), calendar.group,
-    )
-    if semester.has_period:
+    if not semester.has_period:
+        calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'
+
+    def assemble():
+        allocations = public_allocations(
+            semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key), calendar.group,
+        )
+        if not semester.has_period:
+            return typical_week(semester, allocations, today)
         dates = weekdays_between(calendar.start, calendar.end)
         with_bookings = calendar.course is None and not calendar.stage_key
         bookings = public_bookings(dates, calendar.space, calendar.teacher) if with_bookings else []
-        calendar.week = dated_week(semester, allocations, dates, today, bookings)
-    else:
-        calendar.notice = f'Datas do semestre {code} ainda não definidas. O calendário mostra a semana típica.'
-        calendar.week = typical_week(semester, allocations, today)
-    return calendar
+        return dated_week(semester, allocations, dates, today, bookings)
+
+    return defer(calendar, assemble, grid_params(calendar, today), deferred)
 
 
-def original_timetable(params, today):
+def original_timetable(params, today, lookup=None, deferred=False):
     """Monta o horário original: a semana típica das alocações importadas, sem datas."""
-    calendar, semester = read_filters(params, today)
+    calendar, semester = read_filters(params, today, lookup)
     code = calendar.semester_code
     if semester is None:
         calendar.message = f'Nenhum horário publicado no semestre {code}.'
@@ -544,9 +614,12 @@ def original_timetable(params, today):
         calendar.message = CHOOSE_MESSAGE
         return calendar
     calendar.free_label = free_label(calendar)
-    allocations = public_allocations(
-        semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key), calendar.group,
-        original=True,
-    )
-    calendar.week = typical_week(semester, allocations, today)
-    return calendar
+
+    def assemble():
+        allocations = public_allocations(
+            semester, calendar.space, calendar.teacher, calendar.course, STAGES.get(calendar.stage_key), calendar.group,
+            original=True,
+        )
+        return typical_week(semester, allocations, today)
+
+    return defer(calendar, assemble, grid_params(calendar, today, dated=False), deferred)

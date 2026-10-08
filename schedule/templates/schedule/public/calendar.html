@@ -37,6 +37,6 @@
     {% if calendar.message %}
       <p class="timetable-empty" role="status">{{ calendar.message }}</p>
     {% endif %}
-    {% include "schedule/public/grid.html" %}
+    {{ grid_html }}
   </section>
 {% endblock %}

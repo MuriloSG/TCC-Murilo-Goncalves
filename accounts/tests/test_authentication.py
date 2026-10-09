@@ -2,7 +2,8 @@ from django.core.cache import cache
 from django.test import Client, RequestFactory, TestCase
 
 from accounts.adapters import AccountAdapter
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import management_role, requester_role
 from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
@@ -11,8 +12,8 @@ PASSWORD = 'Senha-forte-123'
 class AuthenticationTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.teacher = requester_role()
+        cls.administrator = management_role()
 
     def setUp(self):
         cache.clear()

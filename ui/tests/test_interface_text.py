@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 
 from accounts.models import Role, User
+from accounts.tests.roles import requester_role
 from ui.tests.files import python_files, template_files
 from ui.text_rules import find_violations, html_fragments, python_fragments, template_fragments
 from system_settings.tests.base import configure_smtp
@@ -127,7 +128,7 @@ class RenderedPagesTextTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
         cls.admin = User.objects.create_superadmin(
             email='admin@ifnmg.edu.br', name='Ana Souza', password='Senha-forte-123',
         )

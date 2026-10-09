@@ -8,6 +8,7 @@ from django.utils import timezone
 from accounts import permissions
 from accounts.imports import UserImport
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 from imports.models import Import
 from imports.reader import SourceRow
 from imports.tests.worker import poll, preview, run_worker
@@ -24,8 +25,8 @@ def csv_file(lines, name='usuarios.csv'):
 class ImportViewsTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.administrator)
 
     def setUp(self):
@@ -45,7 +46,7 @@ class ImportViewsTestCase(TestCase):
         return User.objects.register(email=email, name=code.capitalize(), role=role)
 
     def routes(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         pk = importation.pk
         return {
             'list': ('/usuarios/importacoes/', 'get'),
@@ -67,9 +68,9 @@ class AccessTests(ImportViewsTestCase):
                 self.assertEqual(client.get(routes[route][0]).status_code, 200)
 
     def test_direct_access_follows_each_permission(self):
-        discarded = self.preview('bia@ifnmg.edu.br;Bia;DOCENTE')
+        discarded = self.preview('bia@ifnmg.edu.br;Bia;SOLICITACAO')
         discarded.discard(UserImport(), self.admin)
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE').pk
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO').pk
         screens = (
             '/usuarios/importacoes/', '/usuarios/importacoes/nova/', '/usuarios/importacoes/modelo/',
             f'/usuarios/importacoes/{importation}/', f'/usuarios/importacoes/{importation}/descartar/',
@@ -94,7 +95,7 @@ class AccessTests(ImportViewsTestCase):
         self.assertTrue(Import.objects.filter(pk=discarded.pk).exists())
 
     def test_deleting_an_import_needs_its_own_permission(self):
-        discarded = self.preview('bia@ifnmg.edu.br;Bia;DOCENTE')
+        discarded = self.preview('bia@ifnmg.edu.br;Bia;SOLICITACAO')
         discarded.discard(UserImport(), self.admin)
         client = Client()
         client.force_login(self.user_with(permissions.USER_IMPORT, permissions.USER_IMPORT_DELETE))
@@ -121,7 +122,7 @@ class AccessTests(ImportViewsTestCase):
 class UploadTests(ImportViewsTestCase):
     def test_valid_file_creates_the_preview_and_opens_it(self):
         response = self.client.post(
-            '/usuarios/importacoes/nova/', {'file': csv_file('bia@ifnmg.edu.br;Bia;DOCENTE\n')},
+            '/usuarios/importacoes/nova/', {'file': csv_file('bia@ifnmg.edu.br;Bia;SOLICITACAO\n')},
         )
         importation = Import.objects.get()
         self.assertRedirects(response, f'/usuarios/importacoes/{importation.pk}/', fetch_redirect_response=False)
@@ -140,7 +141,7 @@ class UploadTests(ImportViewsTestCase):
     def test_htmx_upload_redirects_the_page(self):
         response = self.client.post(
             '/usuarios/importacoes/nova/',
-            {'file': csv_file('bia@ifnmg.edu.br;Bia;DOCENTE\n')},
+            {'file': csv_file('bia@ifnmg.edu.br;Bia;SOLICITACAO\n')},
             HTTP_HX_REQUEST='true',
         )
         self.assertEqual(response['HX-Redirect'], f'/usuarios/importacoes/{Import.objects.get().pk}/')
@@ -161,16 +162,16 @@ class UploadTests(ImportViewsTestCase):
 class DetailTests(ImportViewsTestCase):
     def test_validated_preview_offers_confirm_and_discard(self):
         User.objects.register(email='bruno@ifnmg.edu.br', name='Bruno', role=self.teacher)
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE', 'bruno@ifnmg.edu.br;Bruno;ADMINISTRADOR')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO', 'bruno@ifnmg.edu.br;Bruno;GESTAO')
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
         self.assertContains(response, 'Confirmar importação')
         self.assertContains(response, 'Descartar importação')
         self.assertNotContains(response, 'Prévia pronta.')
-        self.assertContains(response, 'Perfil: DOCENTE → ADMINISTRADOR')
+        self.assertContains(response, 'Perfil: SOLICITACAO → GESTAO')
         self.assertContains(response, '1 cadastro, 1 atualização e 0 sem alteração')
 
     def test_preview_with_errors_has_no_confirm_and_shows_line_and_column(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;COORDENACAO', 'bia@ifnmg.edu.br;Bia;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;COORDENACAO', 'bia@ifnmg.edu.br;Bia;SOLICITACAO')
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
         self.assertNotContains(response, 'Confirmar importação')
         self.assertContains(response, 'Enviar arquivo corrigido')
@@ -181,12 +182,12 @@ class DetailTests(ImportViewsTestCase):
         self.assertNotContains(only_errors, 'bia@ifnmg.edu.br')
 
     def test_file_error_is_shown(self):
-        importation = self.preview('admin@ifnmg.edu.br;Admin;DOCENTE')
+        importation = self.preview('admin@ifnmg.edu.br;Admin;SOLICITACAO')
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
         self.assertContains(response, 'Operação recusada')
 
     def test_history_lists_only_user_imports(self):
-        self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         Import.objects.create(kind='GRUPO', status='VALIDADA', file_name='grupos.csv', created_by=self.admin)
         response = self.client.get('/usuarios/importacoes/')
         self.assertContains(response, 'usuarios.csv')
@@ -200,7 +201,7 @@ class DetailTests(ImportViewsTestCase):
 class LineNumberFilterTests(ImportViewsTestCase):
     def setUp(self):
         super().setUp()
-        self.importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE', 'bia@ifnmg.edu.br;Bia;DOCENTE', 'caio@ifnmg.edu.br;Caio;DOCENTE')
+        self.importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO', 'bia@ifnmg.edu.br;Bia;SOLICITACAO', 'caio@ifnmg.edu.br;Caio;SOLICITACAO')
         self.url = f'/usuarios/importacoes/{self.importation.pk}/'
 
     def test_one_line(self):
@@ -229,7 +230,7 @@ class LineNumberFilterTests(ImportViewsTestCase):
 
 class ConfirmAndDiscardTests(ImportViewsTestCase):
     def test_confirm_applies_and_informs_the_link(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         response = self.client.post(f'/usuarios/importacoes/{importation.pk}/confirmar/', follow=True)
         self.assertRedirects(response, f'/usuarios/importacoes/{importation.pk}/')
         self.assertContains(response, 'Confirmação da importação do arquivo usuarios.csv em processamento.')
@@ -250,7 +251,7 @@ class ConfirmAndDiscardTests(ImportViewsTestCase):
         self.assertTrue(OutboxEntry.objects.filter(reference=str(ana.pk)).exists())
 
     def test_divergence_message(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=self.teacher)
         self.client.post(f'/usuarios/importacoes/{importation.pk}/confirmar/')
         run_worker(UserImport())
@@ -260,7 +261,7 @@ class ConfirmAndDiscardTests(ImportViewsTestCase):
         self.assertEqual((importation.status, importation.revalidation_count), ('VALIDADA', 1))
 
     def test_discard_asks_on_get_and_discards_on_post(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         url = f'/usuarios/importacoes/{importation.pk}/descartar/'
         self.assertContains(self.client.get(url), 'Descartar a importação de usuarios.csv?')
         importation.refresh_from_db()
@@ -271,7 +272,7 @@ class ConfirmAndDiscardTests(ImportViewsTestCase):
         self.assertEqual(importation.status, 'DESCARTADA')
 
     def test_second_confirmation_is_refused_with_message(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         url = f'/usuarios/importacoes/{importation.pk}/confirmar/'
         self.client.post(url)
         response = self.client.post(url, follow=True)
@@ -312,7 +313,7 @@ class PaginationTests(ImportViewsTestCase):
 
 class ImportDeletionTests(ImportViewsTestCase):
     def discarded(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         importation.discard(UserImport(), self.admin)
         return importation
 
@@ -338,7 +339,7 @@ class ProcessingTests(ImportViewsTestCase):
 
     def requested(self):
         return Import.objects.request_preview(
-            UserImport(), [SourceRow(2, {'E-mail': 'ana@ifnmg.edu.br', 'Nome': 'Ana', 'Perfil': 'DOCENTE', 'Nome de usuário': ''})],
+            UserImport(), [SourceRow(2, {'E-mail': 'ana@ifnmg.edu.br', 'Nome': 'Ana', 'Perfil': 'SOLICITACAO', 'Nome de usuário': ''})],
             'usuarios.csv', self.admin,
         )
 
@@ -356,7 +357,7 @@ class ProcessingTests(ImportViewsTestCase):
         self.assertNotContains(response, 'demorando')
 
     def test_pending_confirmation_keeps_the_business_status_and_the_plan(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         self.client.post(f'/usuarios/importacoes/{importation.pk}/confirmar/')
         response = self.client.get(f'/usuarios/importacoes/{importation.pk}/')
         self.assertNotContains(response, 'em processamento desde')
@@ -418,7 +419,7 @@ class ProcessingTests(ImportViewsTestCase):
 
     @override_settings(IMPORT_MAX_ATTEMPTS=1)
     def test_failed_confirmation_keeps_validated_and_shows_the_result(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         self.client.post(f'/usuarios/importacoes/{importation.pk}/confirmar/')
         with mock.patch.object(Import, 'run_confirmation', side_effect=RuntimeError('falha')):
             run_worker(UserImport())
@@ -431,7 +432,7 @@ class ProcessingTests(ImportViewsTestCase):
         self.assertEqual((importation.status, importation.operation), ('VALIDADA', None))
 
     def test_discard_while_pending_is_refused(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO')
         self.client.post(f'/usuarios/importacoes/{importation.pk}/confirmar/')
         response = self.client.post(f'/usuarios/importacoes/{importation.pk}/descartar/', follow=True)
         self.assertContains(response, 'Esta importação está em processamento e não aceita outra ação até ele terminar.')

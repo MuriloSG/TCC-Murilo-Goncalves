@@ -8,7 +8,7 @@ from accounts.models import User
 
 
 class Command(BaseCommand):
-    help = 'Cria um usuário ativo, superadmin, com o perfil ADMINISTRADOR.'
+    help = 'Cria um usuário ativo e superadmin, sem perfil.'
 
     def add_arguments(self, parser):
         parser.add_argument('--email', help='E-mail do superadmin. Se omitido, é solicitado no terminal.')
@@ -32,4 +32,4 @@ class Command(BaseCommand):
         except ValidationError as error:
             raise CommandError(' '.join(error.messages)) from error
 
-        self.stdout.write(self.style.SUCCESS(f'Superadmin {user.email} criado com o perfil ADMINISTRADOR.'))
+        self.stdout.write(self.style.SUCCESS(f'Superadmin {user.email} criado.'))

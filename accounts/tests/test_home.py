@@ -5,13 +5,14 @@ from django.test import Client, TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 
 
 class HomeTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
 
     def client_for(self, user):
         client = Client()

@@ -11,7 +11,8 @@ from django.db import transaction
 from django.conf import settings
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import requester_role
 from config import asgi
 from notices import catalog
 from notices.consumers import CHANGED, NotificationsConsumer, group_name
@@ -37,7 +38,7 @@ class ChannelTests(TransactionTestCase):
     serialized_rollback = True
 
     def setUp(self):
-        self.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', Role.objects.get(code='DOCENTE'))
+        self.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', requester_role())
 
     def connect_as(self, user):
         communicator = WebsocketCommunicator(NotificationsConsumer.as_asgi(), '/ws/notificacoes/')
@@ -86,7 +87,7 @@ class OriginTests(TransactionTestCase):
     serialized_rollback = True
 
     def setUp(self):
-        self.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', Role.objects.get(code='DOCENTE'))
+        self.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', requester_role())
 
     def session_cookie(self, user):
         client = Client()
@@ -148,7 +149,7 @@ class EmptyAllowedHostsTests(TransactionTestCase):
 class AnnounceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        docente = Role.objects.get(code='DOCENTE')
+        docente = requester_role()
         cls.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', docente)
         cls.bruno = User.objects.register('bruno@ifnmg.edu.br', 'Bruno', docente)
 

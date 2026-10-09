@@ -13,10 +13,10 @@ from accounts.models import (
     Role,
     RoleInUse,
     RolePermission,
-    SystemRoleProtected,
     User,
     UserRole,
 )
+from accounts.tests.roles import management_role, requester_role
 
 
 def codes(role):
@@ -34,7 +34,6 @@ class CreateRoleTests(TestCase):
         role = Role.objects.create_role(code='COORDENACAO', name='Coordenação', description='Cursos')
         role = Role.objects.get(pk=role.pk)
         self.assertEqual((role.code, role.name, role.description), ('COORDENACAO', 'Coordenação', 'Cursos'))
-        self.assertFalse(role.is_system)
         self.assertEqual(codes(role), set())
 
     def test_creates_role_with_chosen_permissions(self):
@@ -44,11 +43,6 @@ class CreateRoleTests(TestCase):
             permissions=[permissions.USER_VIEW, Permission.objects.get(code=permissions.USER_EDIT)],
         )
         self.assertEqual(codes(role), {permissions.USER_VIEW, permissions.USER_EDIT})
-
-    def test_does_not_accept_system_flag(self):
-        with self.assertRaises(TypeError):
-            Role.objects.create_role(code='COORDENACAO', name='Coordenação', is_system=True)
-        self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
 
     def test_refuses_invalid_data_without_creating_anything(self):
         Role.objects.create_role(code='COORDENACAO', name='Coordenação')
@@ -96,23 +90,19 @@ class UpdateRoleDetailsTests(TestCase):
         role = Role.objects.get(pk=self.role.pk)
         self.assertEqual((role.name, role.description), ('Coordenação de Curso', 'Nova descrição'))
         self.assertEqual(role.code, 'COORDENACAO')
-        self.assertFalse(role.is_system)
         self.assertEqual(codes(role), {permissions.USER_VIEW})
         self.assertEqual(User.objects.get(pk=self.user.pk).role, role)
         self.assertTrue(User.objects.get(pk=self.user.pk).has_perm(permissions.USER_VIEW))
 
-    def test_does_not_accept_code_or_system_flag(self):
+    def test_does_not_accept_code(self):
         with self.assertRaises(TypeError):
             self.role.update_details(name='Secretaria', description='', code='SECRETARIA')
-        with self.assertRaises(TypeError):
-            self.role.update_details(name='Secretaria', description='', is_system=True)
 
-    def test_system_role_name_can_change_and_code_stays(self):
+    def test_initial_role_name_can_change_and_code_stays(self):
         administrator = Role.objects.get(code='ADMINISTRADOR')
         administrator.update_details(name='Administração', description='')
         administrator = Role.objects.get(pk=administrator.pk)
         self.assertEqual((administrator.code, administrator.name), ('ADMINISTRADOR', 'Administração'))
-        self.assertTrue(administrator.is_system)
 
     def test_refuses_empty_or_repeated_name_and_keeps_values(self):
         for name in ('', '   ', 'docente'):
@@ -128,8 +118,8 @@ class UpdateRoleDetailsTests(TestCase):
 class SetPermissionsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
 
     def setUp(self):
         self.coordination = Role.objects.create_role(
@@ -141,10 +131,10 @@ class SetPermissionsTests(TestCase):
         self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_CREATE])
         self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_CREATE})
 
-    def test_system_role_permissions_can_change(self):
-        self.teacher.set_permissions([permissions.USER_VIEW])
-        self.assertEqual(codes(self.teacher), {permissions.USER_VIEW})
-        self.assertTrue(Role.objects.get(pk=self.teacher.pk).is_system)
+    def test_initial_role_permissions_can_change(self):
+        teacher = Role.objects.get(code='DOCENTE')
+        teacher.set_permissions([permissions.USER_VIEW])
+        self.assertEqual(codes(teacher), {permissions.USER_VIEW})
 
     def test_empty_set_is_accepted(self):
         create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
@@ -167,7 +157,7 @@ class SetPermissionsTests(TestCase):
             self.coordination.set_permissions([permissions.USER_CREATE, permissions.ROLE_CREATE])
         self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
 
-    def test_refuses_reserved_permission_on_system_role(self):
+    def test_refuses_reserved_permission_on_role_with_capability(self):
         with self.assertRaises(ReservedPermissionNotGrantable):
             self.administrator.set_permissions(
                 set(permissions.ADMINISTRATIVE_CAPABILITY) | {permissions.ROLE_DELETE},
@@ -240,14 +230,20 @@ class DeleteRoleTests(TestCase):
         self.assertFalse(RolePermission.objects.filter(role_id=self.coordination.pk).exists())
         self.assertTrue(Permission.objects.filter(code=permissions.USER_VIEW).exists())
 
-    def test_system_roles_cannot_be_deleted(self):
+    def test_initial_roles_without_users_are_deleted_like_any_other(self):
         for code in ('ADMINISTRADOR', 'DOCENTE'):
             with self.subTest(code=code):
                 role = Role.objects.get(code=code)
-                before = codes(role)
-                with self.assertRaises(SystemRoleProtected):
-                    role.delete_role()
-                self.assertEqual(codes(role), before)
+                role.delete_role()
+                self.assertFalse(Role.objects.filter(code=code).exists())
+                self.assertFalse(RolePermission.objects.filter(role_id=role.pk).exists())
+
+    def test_initial_role_with_user_cannot_be_deleted(self):
+        administrator = Role.objects.get(code='ADMINISTRADOR')
+        create_user('admin@ifnmg.edu.br', administrator)
+        with self.assertRaises(RoleInUse):
+            administrator.delete_role()
+        self.assertTrue(Role.objects.filter(pk=administrator.pk).exists())
 
     def test_role_with_active_user_cannot_be_deleted(self):
         user = create_user('coord@ifnmg.edu.br', self.coordination)
@@ -266,19 +262,19 @@ class DeleteRoleTests(TestCase):
         self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
 
     def test_role_can_be_deleted_after_users_change_role(self):
-        create_user('admin@ifnmg.edu.br', Role.objects.get(code='ADMINISTRADOR'))
+        create_user('admin@ifnmg.edu.br', management_role())
         user = create_user('coord@ifnmg.edu.br', self.coordination)
-        user.change_role(Role.objects.get(code='DOCENTE'))
+        user.change_role(requester_role())
         self.coordination.delete_role()
         self.assertFalse(Role.objects.filter(pk=self.coordination.pk).exists())
-        self.assertEqual(list(User.objects.get(pk=user.pk).roles.values_list('code', flat=True)), ['DOCENTE'])
+        self.assertEqual(list(User.objects.get(pk=user.pk).roles.values_list('code', flat=True)), ['SOLICITACAO'])
 
 
 class ConcurrentPermissionChangeTests(TransactionTestCase):
     serialized_rollback = True
 
     def test_permission_removal_and_deactivation_keep_one_capable_user(self):
-        administrator = Role.objects.get(code='ADMINISTRADOR')
+        administrator = management_role()
         coordination = Role.objects.create_role(
             code='COORDENACAO', name='Coordenação', permissions=permissions.ADMINISTRATIVE_CAPABILITY,
         )

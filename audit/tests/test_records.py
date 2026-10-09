@@ -1,6 +1,7 @@
 from django.test import SimpleTestCase, TestCase
 
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import requester_role
 from audit import catalog
 from audit.context import Actor, acting_as, acting_from_import, current_actor
 from audit.models import AuditLog, AuditLogProtected, UnknownAuditCode, sanitize
@@ -43,7 +44,7 @@ class ActorTests(SimpleTestCase):
 class RecordTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
         cls.user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=cls.teacher)
 
     def test_record_uses_the_actor_of_the_context(self):

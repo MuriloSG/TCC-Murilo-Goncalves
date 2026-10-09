@@ -1,14 +1,15 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from accounts.models import Role, SuperadminOnlyOperation, User
+from accounts.models import SuperadminOnlyOperation, User
+from accounts.tests.roles import management_role, requester_role
 
 
 class SuperadminEmailProtectionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        teacher = Role.objects.get(code='DOCENTE')
-        administrator = Role.objects.get(code='ADMINISTRADOR')
+        teacher = requester_role()
+        administrator = management_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=administrator)
         cls.superadmin = User.objects.register(email='super@ifnmg.edu.br', name='Super', role=teacher)
         cls.superadmin.set_superadmin(True)
@@ -63,15 +64,15 @@ class SuperadminEmailProtectionTests(TestCase):
 
     def regular_executor(self):
         return User.objects.register(
-            email='editor@ifnmg.edu.br', name='Editor', role=Role.objects.get(code='ADMINISTRADOR'),
+            email='editor@ifnmg.edu.br', name='Editor', role=management_role(),
         )
 
 
 class SuperadminProtectionViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        teacher = Role.objects.get(code='DOCENTE')
-        administrator = Role.objects.get(code='ADMINISTRADOR')
+        teacher = requester_role()
+        administrator = management_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=administrator)
         cls.superadmin = User.objects.register(email='super@ifnmg.edu.br', name='Super', role=teacher)
         cls.superadmin.set_superadmin(True)
@@ -107,9 +108,9 @@ class SuperadminProtectionViewTests(TestCase):
         self.client.force_login(self.other_superadmin)
         for url, data in [
             (self.edit_url(self.superadmin), {'name': 'Super', 'email': 'super@ifnmg.edu.br', 'is_superadmin': ''}),
-            (f'/usuarios/{self.superadmin.pk}/perfil/', {'role': Role.objects.get(code='ADMINISTRADOR').pk, 'is_superadmin': 'false'}),
+            (f'/usuarios/{self.superadmin.pk}/perfil/', {'role': management_role().pk, 'is_superadmin': 'false'}),
             (self.edit_url(self.admin), {'name': 'Admin', 'email': 'admin@ifnmg.edu.br', 'is_superadmin': 'on'}),
-            (f'/usuarios/{self.admin.pk}/perfil/', {'role': Role.objects.get(code='ADMINISTRADOR').pk, 'is_superadmin': 'true'}),
+            (f'/usuarios/{self.admin.pk}/perfil/', {'role': management_role().pk, 'is_superadmin': 'true'}),
         ]:
             with self.subTest(url):
                 self.assertEqual(self.client.post(url, data).status_code, 302)
@@ -121,12 +122,12 @@ class SuperadminProtectionViewTests(TestCase):
         response = self.client.post(f'/usuarios/{self.superadmin.pk}/desativar/', follow=True)
         self.assertContains(response, 'Somente um superadmin ativo pode alterar')
         response = self.client.post(
-            f'/usuarios/{self.superadmin.pk}/perfil/', {'role': Role.objects.get(code='ADMINISTRADOR').pk},
+            f'/usuarios/{self.superadmin.pk}/perfil/', {'role': management_role().pk},
         )
         self.assertContains(response, 'Somente um superadmin ativo pode alterar')
         superadmin = self.reload(self.superadmin)
         self.assertTrue(superadmin.is_active)
-        self.assertEqual(superadmin.role.code, 'DOCENTE')
+        self.assertEqual(superadmin.role.code, 'SOLICITACAO')
 
     def test_superadmin_deactivates_another_superadmin_who_keeps_the_flag(self):
         self.client.force_login(self.other_superadmin)

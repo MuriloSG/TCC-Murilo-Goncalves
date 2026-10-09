@@ -56,7 +56,7 @@ make manage cmd="set_superadmin maria@ifnmg.edu.br --grant"
 make manage cmd="set_superadmin maria@ifnmg.edu.br --revoke"
 ```
 
-- `create_superadmin` cria o usuário ativo, com senha (validada pela mesma política) e perfil `ADMINISTRADOR`, sem depender de e-mail. Recusa e-mail já cadastrado. Não exige o domínio `@ifnmg.edu.br`.
+- `create_superadmin` cria o usuário ativo, com senha (validada pela mesma política) e sem perfil, sem depender de e-mail nem de nenhum perfil cadastrado. Recusa e-mail já cadastrado. Não exige o domínio `@ifnmg.edu.br`.
 - `--revoke` é recusado quando deixaria o sistema sem capacidade administrativa.
 
 ## Importação de usuários

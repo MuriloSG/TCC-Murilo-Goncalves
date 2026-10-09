@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from accounts import permissions
 from accounts.models import Permission, Role, RolePermission, User, UserRole
+from accounts.tests.roles import MANAGEMENT_PERMISSIONS, management_role, requester_role
 
 
 def grant(role, *codes):
@@ -17,8 +18,8 @@ TEACHER_PERMISSIONS = frozenset({permissions.BOOKING_VIEW, permissions.BOOKING_R
 class AuthorizationTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.coordination = Role.objects.create(code='COORDENACAO', name='Coordenação')
 
     def create_user(self, email, role, **fields):
@@ -86,7 +87,7 @@ class RolePermissionsTests(AuthorizationTestCase):
         self.assertFalse(user.has_module_perms('PERFIL'))
 
     def test_decision_does_not_depend_on_role_code_or_name(self):
-        granted = permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS
+        granted = MANAGEMENT_PERMISSIONS
         grant(self.coordination, *granted)
         administrator = self.create_user('admin@ifnmg.edu.br', self.administrator)
         coordinator = self.create_user('coord@ifnmg.edu.br', self.coordination)

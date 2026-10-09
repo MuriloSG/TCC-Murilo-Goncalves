@@ -9,7 +9,8 @@ from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 
 from accounts.emails import PASSWORD_RESET
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import management_role, requester_role
 from outbox.models import OutboxEntry
 from system_settings.models import SystemSetting
 from system_settings.tests.base import configure_smtp
@@ -25,7 +26,7 @@ def reset_link(message):
 class PasswordFlowTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
 
     def setUp(self):
         configure_smtp()
@@ -178,7 +179,7 @@ class ResetTests(PasswordFlowTestCase):
 
     def test_email_change_invalidates_the_link(self):
         executor = User.objects.register(
-            email='admin@ifnmg.edu.br', name='Admin', role=Role.objects.get(code='ADMINISTRADOR'),
+            email='admin@ifnmg.edu.br', name='Admin', role=management_role(),
         )
         self.user.update_details(executor, name='Maria Sousa', email='maria.sousa@ifnmg.edu.br')
         self.assertLinkRefused(self.set_password(self.link, 'Nova-senha-forte-456'))

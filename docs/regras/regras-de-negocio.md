@@ -32,7 +32,7 @@ Convenção geral: as regras ficam nas operações dos models e managers, que la
 | Regra | Onde |
 |---|---|
 | Código em maiúsculas sem acento, palavras separadas por `_` (`^[A-Z]+(_[A-Z]+)*$`), único e imutável. Nome único sem diferenciar a caixa | `Role`, `role_code_format`, `role_name_unique_ci` |
-| Perfis do sistema (`ADMINISTRADOR`, `DOCENTE`) não podem ser excluídos | `Role.delete_role`, `SystemRoleProtected` |
+| Nenhum perfil é especial: os da carga inicial (`ADMINISTRADOR`, `DOCENTE`) são editados e excluídos como qualquer outro | `Role.delete_role` |
 | Perfil com usuários vinculados não pode ser excluído | `RoleInUse` |
 | As permissões `PERFIL.*` são reservadas ao superadmin: não podem ser concedidas a perfil e, se estiverem num perfil, não valem | `grantable_permissions`, `User.effective_permissions` |
 | Perfil novo nasce sem permissões até que o superadmin as escolha | `RoleManager.create_role` |
@@ -112,7 +112,7 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 | Curso com alguma turma com oferta ou aula não tem nome nem etapa alterados; curso com turmas não é excluído | `Course.update_details`, `Course.delete_course`, `CourseInUse` |
 | O curso da turma não muda | `ClassGroup.update_details` |
 | Disciplina ou turma com oferta ou aula não pode ser renomeada nem excluída | `AcademicRecordInUse` |
-| O escopo visível é o do docente correspondente ao usuário; só o superadmin vê todos. Perfil `ADMINISTRADOR` sem docente correspondente tem escopo vazio | `teacher_scope`, `SubjectQuerySet.visible_to`, `ClassGroupQuerySet.visible_to`; testes em `schedule/tests/test_academic_views.py` |
+| O escopo visível é o do docente correspondente ao usuário. Quem tem `DISCIPLINA.ACESSAR_TODAS` ou `TURMA.ACESSAR_TODAS`, e o superadmin, vê todos os registros daquele tipo. Sem a permissão de alcance e sem docente correspondente, o escopo é vazio, qualquer que seja o perfil | `teacher_scope`, `SubjectQuerySet.visible_to`, `ClassGroupQuerySet.visible_to`; testes em `schedule/tests/test_academic_views.py` |
 | A oferta e os vínculos nunca são excluídos automaticamente. Vínculo atual é o do docente presente numa alocação atual (sem `valid_until`) da oferta | `ClassOffering`, `sync_offerings` |
 
 ## Agenda

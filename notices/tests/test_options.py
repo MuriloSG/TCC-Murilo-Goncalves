@@ -2,7 +2,8 @@ import json
 
 from django.test import TestCase
 
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import management_role, requester_role
 from ui.pagination import OPTIONS_PAGE_SIZE
 
 OPTIONS_URL = '/notificacoes/opcoes/usuarios/'
@@ -11,8 +12,8 @@ OPTIONS_URL = '/notificacoes/opcoes/usuarios/'
 class UserOptionsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.admin = User.objects.register('admin@ifnmg.edu.br', 'Admin', cls.administrator)
         cls.plain = User.objects.register('docente@ifnmg.edu.br', 'Docente', cls.teacher)
         for number in range(15):

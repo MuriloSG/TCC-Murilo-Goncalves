@@ -6,8 +6,9 @@ from django.core.management import call_command
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 
 from accounts.emails import PASSWORD_RESET
-from accounts.models import Role, User
+from accounts.models import User
 from accounts.utils import INVALID_TYPED_EMAIL, typed_email
+from accounts.tests.roles import requester_role
 from audit import catalog
 from audit.models import AuditLog
 from outbox.models import OutboxEntry
@@ -24,7 +25,7 @@ def reset_link(message):
 class AuthenticationRecordTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
 
     def setUp(self):
         configure_smtp()

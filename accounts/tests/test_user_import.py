@@ -5,6 +5,7 @@ from accounts import permissions
 from accounts.emails import PASSWORD_LINK
 from accounts.imports import UserImport, concluded_message
 from accounts.models import AdministrativeContinuityViolation, Permission, Role, RolePermission, User, UserRole
+from accounts.tests.roles import management_role, requester_role
 from imports.models import Import
 from imports.reader import read_csv
 from imports.tests.worker import confirm, preview, run_worker
@@ -24,8 +25,8 @@ def create_user(email, name, role, **fields):
 class UserImportTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
 
     def setUp(self):
         self.admin = create_user('admin@ifnmg.edu.br', 'Admin', self.administrator)
@@ -53,29 +54,29 @@ class UserImportTestCase(TestCase):
 
 class UsernameTests(UserImportTestCase):
     def test_creates_with_username(self):
-        self.confirm(self.preview('ana@ifnmg.edu.br;Ana Souza;DOCENTE;Ana Souza\n'))
+        self.confirm(self.preview('ana@ifnmg.edu.br;Ana Souza;SOLICITACAO;Ana Souza\n'))
         self.assertEqual(User.objects.get(email='ana@ifnmg.edu.br').username, 'Ana Souza')
 
     def test_update_plans_and_applies_the_username(self):
         aldo = create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
-        row = self.row(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;Aldo Gomes\n'))
+        row = self.row(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;SOLICITACAO;Aldo Gomes\n'))
         self.assertEqual((row.action, row.target), ('update', str(aldo.pk)))
         self.assertEqual(row.changes, {'username': [None, 'Aldo Gomes']})
-        self.confirm(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;Aldo Gomes\n'))
+        self.confirm(self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;SOLICITACAO;Aldo Gomes\n'))
         self.assertEqual(User.objects.get(email='aldo@ifnmg.edu.br').username, 'Aldo Gomes')
 
     def test_empty_cell_keeps_the_current_username(self):
         user = create_user('aldo@ifnmg.edu.br', 'Aldo Gomes da Silva', self.teacher)
         User.objects.filter(pk=user.pk).update(username='Aldo Gomes')
-        importation = self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;DOCENTE;\n')
+        importation = self.preview('aldo@ifnmg.edu.br;Aldo Gomes da Silva;SOLICITACAO;\n')
         self.assertEqual(self.row(importation).action, 'unchanged')
         self.confirm(importation)
         self.assertEqual(User.objects.get(email='aldo@ifnmg.edu.br').username, 'Aldo Gomes')
 
     def test_duplicate_username_in_the_same_file(self):
         importation = self.preview(
-            'ana@ifnmg.edu.br;Ana;DOCENTE;Aldo Gomes\n'
-            'bruno@ifnmg.edu.br;Bruno;DOCENTE;ALDO GOMES\n'
+            'ana@ifnmg.edu.br;Ana;SOLICITACAO;Aldo Gomes\n'
+            'bruno@ifnmg.edu.br;Bruno;SOLICITACAO;ALDO GOMES\n'
         )
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual(self.error_codes(importation, line=3), [('Nome de usuário', 'username_taken')])
@@ -83,20 +84,20 @@ class UsernameTests(UserImportTestCase):
     def test_username_of_an_existing_user(self):
         user = create_user('aldo@ifnmg.edu.br', 'Aldo', self.teacher)
         User.objects.filter(pk=user.pk).update(username='Aldo Gomes')
-        importation = self.preview('bruno@ifnmg.edu.br;Bruno;DOCENTE;aldo gomes\n')
+        importation = self.preview('bruno@ifnmg.edu.br;Bruno;SOLICITACAO;aldo gomes\n')
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual(self.error_codes(importation), [('Nome de usuário', 'username_taken')])
 
     def test_username_change_needs_the_edit_permission(self):
         create_user('aldo@ifnmg.edu.br', 'Aldo', self.teacher)
         executor = self.executor_with(permissions.USER_IMPORT)
-        importation = self.preview('aldo@ifnmg.edu.br;Aldo;DOCENTE;Aldo Gomes\n', executor=executor)
+        importation = self.preview('aldo@ifnmg.edu.br;Aldo;SOLICITACAO;Aldo Gomes\n', executor=executor)
         self.assertEqual(self.error_codes(importation), [('Nome de usuário', 'permission_denied')])
 
 
 class ActionTests(UserImportTestCase):
     def test_creates_new_user_on_confirmation(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana Souza;DOCENTE\n')
+        importation = self.preview('ana@ifnmg.edu.br;Ana Souza;SOLICITACAO\n')
         self.assertEqual(importation.status, 'VALIDADA')
         self.assertFalse(User.objects.filter(email='ana@ifnmg.edu.br').exists())
         self.assertTrue(self.confirm(importation))
@@ -108,18 +109,18 @@ class ActionTests(UserImportTestCase):
 
     def test_role_change_plan(self):
         bruno = create_user('bruno@ifnmg.edu.br', 'Bruno Lima', self.teacher)
-        row = self.row(self.preview('bruno@ifnmg.edu.br;Bruno Lima;ADMINISTRADOR\n'))
+        row = self.row(self.preview('bruno@ifnmg.edu.br;Bruno Lima;GESTAO\n'))
         self.assertEqual((row.action, row.target), ('update', str(bruno.pk)))
-        self.assertEqual(row.changes, {'role': ['DOCENTE', 'ADMINISTRADOR']})
+        self.assertEqual(row.changes, {'role': ['SOLICITACAO', 'GESTAO']})
 
     def test_name_change_is_applied(self):
         create_user('bruno@ifnmg.edu.br', 'Bruno', self.teacher)
-        self.confirm(self.preview('bruno@ifnmg.edu.br;Bruno Lima;DOCENTE\n'))
+        self.confirm(self.preview('bruno@ifnmg.edu.br;Bruno Lima;SOLICITACAO\n'))
         self.assertEqual(User.objects.get(email='bruno@ifnmg.edu.br').name, 'Bruno Lima')
 
     def test_unchanged_with_other_spelling(self):
         create_user('carla@ifnmg.edu.br', 'Carla Mendes', self.teacher)
-        row = self.row(self.preview(' Carla@IFNMG.edu.br ;Carla Mendes;docente\n'))
+        row = self.row(self.preview(' Carla@IFNMG.edu.br ;Carla Mendes;solicitacao\n'))
         self.assertEqual((row.action, row.changes, row.errors), ('unchanged', {}, []))
 
     def test_unknown_role(self):
@@ -129,18 +130,18 @@ class ActionTests(UserImportTestCase):
         self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
 
     def test_email_of_another_domain_is_not_registered(self):
-        importation = self.preview('davi@gmail.com;Davi Rocha;DOCENTE\n')
+        importation = self.preview('davi@gmail.com;Davi Rocha;SOLICITACAO\n')
         self.assertEqual(self.error_codes(importation), [('E-mail', 'institutional_email')])
         self.assertFalse(User.objects.filter(email='davi@gmail.com').exists())
 
     def test_existing_user_of_another_domain_is_still_updated(self):
         create_user('eva@gmail.com', 'Eva', self.teacher)
-        self.confirm(self.preview('eva@gmail.com;Eva Lima;DOCENTE\n'))
+        self.confirm(self.preview('eva@gmail.com;Eva Lima;SOLICITACAO\n'))
         self.assertEqual(User.objects.get(email='eva@gmail.com').name, 'Eva Lima')
 
     def test_inactive_user_is_updated_and_stays_inactive(self):
         create_user('eva@ifnmg.edu.br', 'Eva', self.teacher, is_active=False)
-        importation = self.preview('eva@ifnmg.edu.br;Eva;ADMINISTRADOR\n')
+        importation = self.preview('eva@ifnmg.edu.br;Eva;GESTAO\n')
         self.assertEqual(self.row(importation).warnings, ['inactive_user'])
         self.confirm(importation)
         eva = User.objects.get(email='eva@ifnmg.edu.br')
@@ -149,17 +150,17 @@ class ActionTests(UserImportTestCase):
 
     def test_superadmin_role_changes_only_by_superadmin(self):
         create_user('super@ifnmg.edu.br', 'Super', self.administrator, is_superadmin=True)
-        refused = self.preview('super@ifnmg.edu.br;Super Admin;DOCENTE\n')
+        refused = self.preview('super@ifnmg.edu.br;Super Admin;SOLICITACAO\n')
         self.assertEqual(self.error_codes(refused), [('Perfil', 'insufficient_authority')])
         executor = create_user('outro@ifnmg.edu.br', 'Outro', self.administrator, is_superadmin=True)
-        self.confirm(self.preview('super@ifnmg.edu.br;Super Admin;DOCENTE\n', executor), executor)
+        self.confirm(self.preview('super@ifnmg.edu.br;Super Admin;SOLICITACAO\n', executor), executor)
         superadmin = User.objects.get(email='super@ifnmg.edu.br')
         self.assertEqual((superadmin.name, superadmin.role), ('Super Admin', self.teacher))
         self.assertTrue(superadmin.is_superadmin)
 
     def test_email_is_never_changed(self):
         create_user('ana@ifnmg.edu.br', 'Ana', self.teacher)
-        self.confirm(self.preview('ANA@ifnmg.edu.br;Ana;DOCENTE\n'))
+        self.confirm(self.preview('ANA@ifnmg.edu.br;Ana;SOLICITACAO\n'))
         self.assertEqual(list(User.objects.filter(name='Ana').values_list('email', flat=True)), ['ana@ifnmg.edu.br'])
 
 
@@ -170,38 +171,38 @@ class PermissionTests(UserImportTestCase):
             permissions.USER_IMPORT, permissions.USER_CREATE, permissions.USER_CHANGE_ROLE,
         )
         importation = self.preview(
-            'ana@ifnmg.edu.br;Ana;ADMINISTRADOR\nbruno@ifnmg.edu.br;Bruno;ADMINISTRADOR\n', executor,
+            'ana@ifnmg.edu.br;Ana;GESTAO\nbruno@ifnmg.edu.br;Bruno;GESTAO\n', executor,
         )
         self.assertEqual(self.error_codes(importation, 2), [('Perfil', 'insufficient_authority')])
         self.assertEqual(self.error_codes(importation, 3), [('Perfil', 'insufficient_authority')])
 
     def test_create_without_create_permission(self):
         executor = self.executor_with(permissions.USER_IMPORT)
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\n', executor)
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO\n', executor)
         self.assertEqual(self.error_codes(importation), [(None, 'permission_denied')])
 
     def test_each_change_needs_its_permission(self):
         create_user('bruno@ifnmg.edu.br', 'Bruno', self.teacher)
         executor = self.executor_with(permissions.USER_IMPORT, permissions.USER_EDIT)
-        importation = self.preview('bruno@ifnmg.edu.br;Bruno Lima;ADMINISTRADOR\n', executor)
+        importation = self.preview('bruno@ifnmg.edu.br;Bruno Lima;GESTAO\n', executor)
         self.assertEqual(self.error_codes(importation), [('Perfil', 'permission_denied')])
         self.assertEqual(User.objects.get(email='bruno@ifnmg.edu.br').name, 'Bruno')
 
     def test_unchanged_lines_need_only_import(self):
         create_user('bruno@ifnmg.edu.br', 'Bruno', self.teacher)
         executor = self.executor_with(permissions.USER_IMPORT)
-        self.assertEqual(self.preview('bruno@ifnmg.edu.br;Bruno;DOCENTE\n', executor).status, 'VALIDADA')
+        self.assertEqual(self.preview('bruno@ifnmg.edu.br;Bruno;SOLICITACAO\n', executor).status, 'VALIDADA')
 
     def test_confirmation_by_someone_with_fewer_permissions(self):
         create_user('bruno@ifnmg.edu.br', 'Bruno', self.teacher)
-        importation = self.preview('bruno@ifnmg.edu.br;Bruno;ADMINISTRADOR\n')
+        importation = self.preview('bruno@ifnmg.edu.br;Bruno;GESTAO\n')
         executor = self.executor_with(permissions.USER_IMPORT)
         self.assertFalse(self.confirm(importation, executor))
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual(User.objects.get(email='bruno@ifnmg.edu.br').role, self.teacher)
 
     def test_permission_is_checked_when_the_worker_executes(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\n')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO\n')
         executor = self.executor_with(permissions.USER_IMPORT, permissions.USER_CREATE)
         importation.request_confirmation(UserImport(), executor)
         RolePermission.objects.filter(role__code='IMPORTACAO', permission__code=permissions.USER_CREATE).delete()
@@ -212,7 +213,7 @@ class PermissionTests(UserImportTestCase):
 
     def test_confirmation_by_another_administrator(self):
         other = create_user('outro@ifnmg.edu.br', 'Outro', self.administrator)
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\n')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO\n')
         self.assertTrue(self.confirm(importation, other))
         self.assertEqual((importation.created_by, importation.resolved_by), (self.admin, other))
 
@@ -220,21 +221,21 @@ class PermissionTests(UserImportTestCase):
 class ContinuityTests(UserImportTestCase):
     def test_demote_and_promote_in_the_same_file(self):
         other = create_user('outro@ifnmg.edu.br', 'Outro', self.teacher)
-        importation = self.preview('admin@ifnmg.edu.br;Admin;DOCENTE\noutro@ifnmg.edu.br;Outro;ADMINISTRADOR\n')
+        importation = self.preview('admin@ifnmg.edu.br;Admin;SOLICITACAO\noutro@ifnmg.edu.br;Outro;GESTAO\n')
         self.assertEqual(importation.status, 'VALIDADA')
         self.assertTrue(self.confirm(importation))
         self.assertTrue(User.objects.get(pk=other.pk).has_administrative_capability())
         self.assertFalse(User.objects.get(pk=self.admin.pk).has_administrative_capability())
 
     def test_file_that_leaves_no_administrator(self):
-        importation = self.preview('admin@ifnmg.edu.br;Admin;DOCENTE\n')
+        importation = self.preview('admin@ifnmg.edu.br;Admin;SOLICITACAO\n')
         self.assertEqual(importation.status, 'COM_ERROS')
         self.assertEqual([error['code'] for error in importation.file_errors], ['administrative_continuity'])
         self.assertEqual(self.row(importation).errors, [])
         self.assertEqual(User.objects.get(pk=self.admin.pk).role, self.administrator)
 
     def test_screens_still_check_continuity_after_an_import(self):
-        self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\n')
+        self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO\n')
         with self.assertRaises(AdministrativeContinuityViolation):
             self.admin.change_role(self.teacher)
 
@@ -247,8 +248,8 @@ class OutboxTests(UserImportTestCase):
         create_user('bruno@ifnmg.edu.br', 'Bruno', self.teacher)
         create_user('carla@ifnmg.edu.br', 'Carla', self.teacher)
         importation = self.preview(
-            'ana@ifnmg.edu.br;Ana;DOCENTE\ndavi@ifnmg.edu.br;Davi;DOCENTE\n'
-            'bruno@ifnmg.edu.br;Bruno Lima;DOCENTE\ncarla@ifnmg.edu.br;Carla;DOCENTE\n'
+            'ana@ifnmg.edu.br;Ana;SOLICITACAO\ndavi@ifnmg.edu.br;Davi;SOLICITACAO\n'
+            'bruno@ifnmg.edu.br;Bruno Lima;SOLICITACAO\ncarla@ifnmg.edu.br;Carla;SOLICITACAO\n'
         )
         self.assertEqual(self.links(), set())
         self.confirm(importation)
@@ -257,7 +258,7 @@ class OutboxTests(UserImportTestCase):
         self.assertEqual(self.links(), created)
 
     def test_divergence_registers_no_link(self):
-        importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\ndavi@ifnmg.edu.br;Davi;DOCENTE\n')
+        importation = self.preview('ana@ifnmg.edu.br;Ana;SOLICITACAO\ndavi@ifnmg.edu.br;Davi;SOLICITACAO\n')
         create_user('davi@ifnmg.edu.br', 'Davi', self.teacher)
         self.assertFalse(self.confirm(importation))
         self.assertEqual(self.links(), set())
@@ -273,12 +274,12 @@ class ScreenEquivalenceTests(UserImportTestCase):
 
     def test_invalid_email(self):
         screen = self.screen_errors('/usuarios/novo/', {'name': 'Davi', 'email': 'davi', 'role': self.teacher.pk})
-        row = self.row(self.preview('davi;Davi;DOCENTE\n'))
+        row = self.row(self.preview('davi;Davi;SOLICITACAO\n'))
         self.assertEqual([error['message'] for error in row.errors], screen['email'])
 
     def test_email_of_another_domain(self):
         screen = self.screen_errors('/usuarios/novo/', {'name': 'Davi', 'email': 'davi@gmail.com', 'role': self.teacher.pk})
-        row = self.row(self.preview('davi@gmail.com;Davi;DOCENTE\n'))
+        row = self.row(self.preview('davi@gmail.com;Davi;SOLICITACAO\n'))
         self.assertEqual([error['message'] for error in row.errors], screen['email'])
 
     def test_name_too_long(self):
@@ -286,12 +287,12 @@ class ScreenEquivalenceTests(UserImportTestCase):
         screen = self.screen_errors(
             '/usuarios/novo/', {'name': name, 'email': 'davi@ifnmg.edu.br', 'role': self.teacher.pk},
         )
-        row = self.row(self.preview(f'davi@ifnmg.edu.br;{name};DOCENTE\n'))
+        row = self.row(self.preview(f'davi@ifnmg.edu.br;{name};SOLICITACAO\n'))
         self.assertEqual(row.errors, [{'column': 'Nome', 'code': 'max_length', 'message': screen['name'][0]}])
 
     def test_continuity_message(self):
         screen = self.screen_errors(f'/usuarios/{self.admin.pk}/perfil/', {'role': self.teacher.pk})
-        importation = self.preview('admin@ifnmg.edu.br;Admin;DOCENTE\n')
+        importation = self.preview('admin@ifnmg.edu.br;Admin;SOLICITACAO\n')
         self.assertEqual([error['message'] for error in importation.file_errors], screen['__all__'])
 
 

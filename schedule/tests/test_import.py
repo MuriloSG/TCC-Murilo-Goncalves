@@ -12,6 +12,7 @@ from openpyxl import Workbook
 
 from accounts import permissions
 from accounts.models import Role, User
+from accounts.tests.roles import requester_role
 from audit import catalog
 from audit.models import AuditLog
 from bookings.models import Booking, BookingRequest
@@ -795,9 +796,9 @@ class AcademicLinkTests(ImportTestCase):
         self.assertEqual(offering_teachers(semester='2026/2'), {'Viviane': True})
 
 
-ELZA = ('elza@ifnmg.edu.br', 'Elza Souza', 'DOCENTE', 'Elza')
-VIVIANE = ('viviane@ifnmg.edu.br', 'Viviane Lima', 'DOCENTE', 'Viviane')
-ERICA = ('erica@ifnmg.edu.br', 'Érica Alves', 'DOCENTE', 'Érica')
+ELZA = ('elza@ifnmg.edu.br', 'Elza Souza', 'SOLICITACAO', 'Elza')
+VIVIANE = ('viviane@ifnmg.edu.br', 'Viviane Lima', 'SOLICITACAO', 'Viviane')
+ERICA = ('erica@ifnmg.edu.br', 'Érica Alves', 'SOLICITACAO', 'Érica')
 
 
 class UserSheetTests(ImportTestCase):
@@ -806,7 +807,7 @@ class UserSheetTests(ImportTestCase):
     def setUp(self):
         self.executor = space_manager(extra_permissions=[permissions.USER_CREATE, permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST])
         self.definition = SpaceAllocationImport()
-        self.teacher_role = Role.objects.get(code='DOCENTE')
+        self.teacher_role = requester_role()
 
     def with_users(self, *users, **options):
         return workbook_file(users=list(users), **options)
@@ -844,7 +845,7 @@ class UserSheetTests(ImportTestCase):
         self.assertEqual(row.changes, {
             'email': [None, 'elza@ifnmg.edu.br'],
             'name': [None, 'Elza Souza'],
-            'role': [None, 'DOCENTE'],
+            'role': [None, 'SOLICITACAO'],
             'username': [None, 'Elza'],
         })
 
@@ -865,7 +866,7 @@ class UserSheetTests(ImportTestCase):
     def test_role_is_applied(self):
         Role.objects.create_role(code='SECRETARIA', name='Secretaria')
         self.conclude(self.with_users(ELZA, ('ana@ifnmg.edu.br', 'Ana', 'secretaria', '')))
-        self.assertEqual(User.objects.get(email='elza@ifnmg.edu.br').role.code, 'DOCENTE')
+        self.assertEqual(User.objects.get(email='elza@ifnmg.edu.br').role.code, 'SOLICITACAO')
         ana = User.objects.get(email='ana@ifnmg.edu.br')
         self.assertEqual(ana.role.code, 'SECRETARIA')
         self.assertIsNone(ana.username)
@@ -880,7 +881,7 @@ class UserSheetTests(ImportTestCase):
             email='elza@ifnmg.edu.br', name='Elza Souza', role=self.teacher_role, username='Elza',
         )
         links = self.password_links().count()
-        importation = self.conclude(self.with_users(('ELZA@ifnmg.edu.br', 'Elza Souza', 'DOCENTE', 'Elza')))
+        importation = self.conclude(self.with_users(('ELZA@ifnmg.edu.br', 'Elza Souza', 'SOLICITACAO', 'Elza')))
         row = self.user_rows(importation)[0]
         self.assertEqual((row.action, row.target, row.warnings), ('unchanged', str(existing.pk), []))
         self.assertEqual(User.objects.filter(email__iexact='elza@ifnmg.edu.br').count(), 1)
@@ -896,7 +897,7 @@ class UserSheetTests(ImportTestCase):
         self.assertEqual(row.action, 'unchanged')
         self.assertEqual(row.warnings, ['usuario_com_outros_dados'])
         existing.refresh_from_db()
-        self.assertEqual((existing.name, existing.role.code), ('Elza Souza', 'DOCENTE'))
+        self.assertEqual((existing.name, existing.role.code), ('Elza Souza', 'SOLICITACAO'))
 
     def test_inactive_user_is_not_reactivated(self):
         existing = User.objects.register(
@@ -917,28 +918,28 @@ class UserSheetTests(ImportTestCase):
         self.assertNotIn('usuário', concluded_message(importation.summary(), importation))
 
     def test_invalid_email(self):
-        importation = self.preview(self.with_users(('elza', 'Elza', 'DOCENTE', 'Elza')))
+        importation = self.preview(self.with_users(('elza', 'Elza', 'SOLICITACAO', 'Elza')))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         self.assertIn(('E-mail', 'invalid'), self.error_codes(self.user_rows(importation)[0]))
 
     def test_duplicate_email_in_sheet(self):
-        importation = self.preview(self.with_users(ELZA, ('ELZA@ifnmg.edu.br', 'Outra', 'DOCENTE', 'Outra')))
+        importation = self.preview(self.with_users(ELZA, ('ELZA@ifnmg.edu.br', 'Outra', 'SOLICITACAO', 'Outra')))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         for row in self.user_rows(importation):
             self.assertIn(('E-mail', 'duplicate'), self.error_codes(row))
 
     def test_duplicate_username_in_sheet(self):
-        importation = self.preview(self.with_users(ELZA, ('outra@ifnmg.edu.br', 'Outra', 'DOCENTE', 'ELZA')))
+        importation = self.preview(self.with_users(ELZA, ('outra@ifnmg.edu.br', 'Outra', 'SOLICITACAO', 'ELZA')))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         for row in self.user_rows(importation):
             self.assertIn(('Nome de usuário', 'duplicate'), self.error_codes(row))
 
     def test_missing_required_cells(self):
         importation = self.preview(self.with_users(
-            ('', 'Elza', 'DOCENTE', 'Elza'),
-            ('viviane@ifnmg.edu.br', '', 'DOCENTE', 'Viviane'),
+            ('', 'Elza', 'SOLICITACAO', 'Elza'),
+            ('viviane@ifnmg.edu.br', '', 'SOLICITACAO', 'Viviane'),
             ('erica@ifnmg.edu.br', 'Érica', '', 'Érica'),
-            ('ana@ifnmg.edu.br', 'Ana', 'DOCENTE', ''),
+            ('ana@ifnmg.edu.br', 'Ana', 'SOLICITACAO', ''),
         ))
         rows = self.user_rows(importation)
         self.assertEqual(self.error_codes(rows[0]), [('E-mail', 'required')])
@@ -966,7 +967,7 @@ class UserSheetTests(ImportTestCase):
         self.assertFalse(self.imported_users().exists())
 
     def test_user_error_blocks_whole_import(self):
-        importation = self.preview(self.with_users(ELZA, ('viviane', 'Viviane', 'DOCENTE', 'Viviane')))
+        importation = self.preview(self.with_users(ELZA, ('viviane', 'Viviane', 'SOLICITACAO', 'Viviane')))
         self.assertEqual(importation.status, Import.Status.WITH_ERRORS)
         with self.assertRaises(Exception):
             confirm(importation, self.definition, self.executor)

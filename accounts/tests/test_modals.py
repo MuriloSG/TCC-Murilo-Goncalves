@@ -5,6 +5,7 @@ from django.test import TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from accounts.tests.roles import requester_role
 
 HTMX = {'HX-Request': 'true'}
 
@@ -12,7 +13,7 @@ HTMX = {'HX-Request': 'true'}
 class ModalTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
         cls.admin = User.objects.create_superadmin(email='admin@ifnmg.edu.br', name='Ana Souza', password='Senha-forte-123')
         cls.target = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=cls.teacher)
         cls.role = Role.objects.create_role(code='COORDENACAO', name='Coordenação', permissions=[])

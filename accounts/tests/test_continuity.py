@@ -18,6 +18,7 @@ from accounts.models import (
     deferred_administrative_continuity,
     ensure_administrative_continuity,
 )
+from accounts.tests.roles import MANAGEMENT_PERMISSIONS, management_role, requester_role
 
 
 def create_user(email, role, **fields):
@@ -33,8 +34,8 @@ def capable_emails():
 class ContinuityTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.coordination = Role.objects.create(code='COORDENACAO', name='Coordenação')
 
 
@@ -281,7 +282,7 @@ class ContinuityGuardTests(ContinuityTestCase):
                 RolePermission.objects.filter(role=self.administrator).delete()
         self.assertEqual(
             set(self.administrator.permissions.values_list('code', flat=True)),
-            permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS,
+            MANAGEMENT_PERMISSIONS,
         )
         self.assertTrue(User.objects.get(pk=admin.pk).has_administrative_capability())
 
@@ -309,7 +310,7 @@ class ConcurrentDeactivationTests(TransactionTestCase):
     serialized_rollback = True
 
     def test_simultaneous_deactivations_keep_one_capable_user(self):
-        administrator = Role.objects.get(code='ADMINISTRADOR')
+        administrator = management_role()
         first = create_user('um@ifnmg.edu.br', administrator)
         second = create_user('dois@ifnmg.edu.br', administrator)
 

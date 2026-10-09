@@ -31,7 +31,7 @@ A referência de implementação é o app `accounts`.
 
 - As views **não** fazem verificação de acesso: nada de `LoginRequiredMixin`, `PermissionRequiredMixin` nem decorators de permissão nelas.
 - As permissões são constantes do catálogo único em `accounts/permissions.py`, no formato `RECURSO.ACAO`, e entram no banco por migration de dados.
-- Views e templates **nunca** decidem acesso pelo código, pelo nome ou pela marca de sistema do perfil, nem por `is_superadmin`. O único ponto de decisão é `User.has_perm`.
+- Views, templates, models e migrations **nunca** decidem acesso pelo código, pelo nome ou pela origem do perfil. Nenhum perfil é especial; o único ponto de decisão é `User.has_perm`, que também concentra o acesso irrestrito do superadmin.
 - Nos templates, `perms.RECURSO.ACAO` serve **só** para mostrar ou esconder links e botões.
 - **Rotas públicas:** as únicas rotas abertas sem login além do fluxo de autenticação são a raiz da aplicação (`/`) e o horário original (`/horario-original/`). Elas têm view, formulário, consulta, templates e layout (`ui/layouts/public.html`) próprios, não declara `permission_required` nem `audit_resource`, não lê `request.user` e só aceita GET e HEAD. Nenhuma view autenticada é aberta por reaproveitamento. O rate limit da rota pública fica no proxy de produção.
 - **Cache das rotas públicas:** fica na aplicação, no alias `public` do cache (Redis), e só o módulo `schedule.public_cache` o lê e grava. As chaves saem de `cache_key`, a partir de parâmetros já normalizados contra o cadastro. A invalidação incrementa uma geração global por `transaction.on_commit`: os sinais `post_save` e `post_delete` dos models lidos pelas telas públicas já fazem isso, e toda escrita que não dispara sinais nesses models (`bulk_create`, `bulk_update`, `QuerySet.update`, `teachers.set`/`add` sem salvar a alocação, SQL direto) chama `public_cache.invalidate_on_commit()`. O teste `BulkWriteScanTests` falha diante de uma escrita nova não revisada. Telas autenticadas não usam cache.
@@ -43,7 +43,7 @@ A referência de implementação é o app `accounts`.
   - uma classe base de view, quando o comportamento é da view inteira (ex.: `OperationFormView` e `ConfirmedActionView` em `accounts/views.py`).
 - O objeto alvo da rota é carregado no `setup()` da view, com `get_object_or_404`.
 - **Regras de negócio ficam no model** (princípio P2 do TCC, em [visão geral](../sistema/visao-geral.md#princípios-do-tcc)): operações do model ou do manager, numa transação, lançam `ValidationError` ou uma exceção derivada dela quando recusadas. Views e comandos só chamam essas operações.
-- **Formulários** declaram explicitamente os campos aceitos. Campos sensíveis (senha, `is_superadmin`, `is_system`, código imutável) nunca estão neles. Campo somente leitura por regra de negócio usa `readonly`, e não `disabled`, para que um valor forjado chegue ao model e seja recusado com mensagem.
+- **Formulários** declaram explicitamente os campos aceitos. Campos sensíveis (senha, `is_superadmin`, código imutável) nunca estão neles. Campo somente leitura por regra de negócio usa `readonly`, e não `disabled`, para que um valor forjado chegue ao model e seja recusado com mensagem.
 - Comando de gerenciamento que apaga dados em massa ou troca senhas chama `accounts.utils.require_safe_database` na primeira linha do `handle()`, antes de qualquer outra consulta ou pergunta, e entra em `COMMANDS` de `accounts/tests/test_command_environment.py`. Ele só roda no banco local comprovado (ambiente, identidade declarada e marca no banco) ou num banco de teste criado pelo runner. As recusas por ambiente e identidade não consultam o banco (`assertNumQueries(0)`); a da marca faz uma leitura.
 - Recusas de regra de negócio aparecem como erro do formulário (`OperationFormView`) ou como mensagem do `django.contrib.messages` (`ConfirmedActionView`), sem alterar dados.
 
@@ -66,6 +66,7 @@ A referência de implementação é o app `accounts`.
 - Use `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `transaction.on_commit` ou de concorrência. Toda classe `TransactionTestCase` declara `serialized_rollback = True`: uma classe sem ele recria os tipos de conteúdo no `flush`, e a próxima classe com ele falha ao recarregar os dados.
 - Limpe o cache (`cache.clear()`) no `setUp` de testes que passam pelos limites de tentativas do allauth.
 - Os testes de permissão usam usuários que não são superadmin, para que o acesso irrestrito não mascare falhas.
+- Os testes montam perfis pelas permissões, com `role_with`, `management_role` e `requester_role` de `accounts/tests/roles.py`. Só os testes da carga inicial (`test_catalog`, `test_migrations` e os casos de perfil inicial) buscam `ADMINISTRADOR` ou `DOCENTE` pelo código.
 
 ## 8. Commits
 

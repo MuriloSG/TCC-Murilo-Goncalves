@@ -32,7 +32,7 @@ Os documentos descrevem o comportamento do código revisado em 08/10/2026. Para 
 ## Regras
 
 - [Regras de negócio](regras/regras-de-negocio.md): todas as regras confirmadas, com o local da implementação, e o que não está implementado.
-- [Permissões](regras/permissoes.md): catálogo, perfis do sistema, superadmin, verificações além da rota, menu.
+- [Permissões](regras/permissoes.md): catálogo, concessão inicial, superadmin, verificações além da rota, menu.
 
 ## Desenvolvimento
 

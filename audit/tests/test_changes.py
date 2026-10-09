@@ -9,6 +9,7 @@ from django.test import Client, TestCase, override_settings
 from accounts import permissions
 from accounts.imports import UserImport
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 from audit import catalog
 from audit.models import AuditLog
 from imports.models import Import
@@ -23,8 +24,8 @@ from system_settings.tests.base import configure_smtp
 class ChangeRecordTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
 
     def entries(self, action=None, resource=None):
         queryset = AuditLog.objects.all()
@@ -44,7 +45,7 @@ class UserChangeTests(ChangeRecordTestCase):
         entry = self.entries(catalog.CREATE, catalog.USER).filter(resource_id=str(self.user.pk)).get()
         self.assertEqual(
             entry.new_values,
-            {'email': 'ana@ifnmg.edu.br', 'name': 'Ana Souza', 'username': None, 'role': 'DOCENTE'},
+            {'email': 'ana@ifnmg.edu.br', 'name': 'Ana Souza', 'username': None, 'role': 'SOLICITACAO'},
         )
         self.assertEqual(entry.old_values, {})
 
@@ -62,8 +63,8 @@ class UserChangeTests(ChangeRecordTestCase):
     def test_role_change_is_recorded(self):
         self.user.change_role(self.administrator)
         entry = self.entries(catalog.UPDATE, catalog.USER).get()
-        self.assertEqual(entry.old_values, {'role': 'DOCENTE'})
-        self.assertEqual(entry.new_values, {'role': 'ADMINISTRADOR'})
+        self.assertEqual(entry.old_values, {'role': 'SOLICITACAO'})
+        self.assertEqual(entry.new_values, {'role': 'GESTAO'})
 
     def test_role_change_to_the_same_role_records_nothing(self):
         self.user.change_role(self.teacher)
@@ -140,9 +141,10 @@ class RoleChangeTests(ChangeRecordTestCase):
         self.assertEqual(entry.old_values['name'], 'Coordenação')
 
     def test_refused_deletion_records_nothing(self):
-        system_role = Role.objects.get(code='DOCENTE')
+        role = requester_role()
+        User.objects.register('ana@ifnmg.edu.br', 'Ana', role)
         with self.assertRaises(ValidationError):
-            system_role.delete_role()
+            role.delete_role()
         self.assertFalse(self.entries(catalog.DELETE, catalog.ROLE).exists())
 
 
@@ -156,7 +158,7 @@ class ImportChangeTests(ChangeRecordTestCase):
         return [
             SourceRow(number, {
                 'E-mail': email, 'Nome': email.partition('@')[0],
-                'Perfil': 'DOCENTE', 'Nome de usuário': '',
+                'Perfil': 'SOLICITACAO', 'Nome de usuário': '',
             })
             for number, email in enumerate(emails, start=2)
         ]

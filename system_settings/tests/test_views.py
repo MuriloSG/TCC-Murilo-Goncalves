@@ -1,7 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import management_role
 from outbox.models import OutboxEntry
 from system_settings.models import PASSWORD_FOR_NEW_DESTINATION_MESSAGE, SystemSetting
 from system_settings.tests.base import SMTP_PASSWORD, configure_smtp
@@ -20,7 +21,7 @@ class SmtpViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.register(
-            email='admin@ifnmg.edu.br', name='Ana Souza', role=Role.objects.get(code='ADMINISTRADOR'),
+            email='admin@ifnmg.edu.br', name='Ana Souza', role=management_role(),
         )
         cls.user.set_superadmin(True)
 
@@ -29,7 +30,7 @@ class SmtpViewTests(TestCase):
 
     def test_administrator_who_is_not_superadmin_is_refused(self):
         administrator = User.objects.register(
-            email='outro@ifnmg.edu.br', name='Outro Admin', role=Role.objects.get(code='ADMINISTRADOR'),
+            email='outro@ifnmg.edu.br', name='Outro Admin', role=management_role(),
         )
         self.client.force_login(administrator)
         for name in ('settings_email', 'settings_email_update'):

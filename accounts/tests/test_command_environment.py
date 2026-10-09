@@ -12,8 +12,9 @@ from django.db import connection, connections
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.test.runner import DiscoverRunner
 
-from accounts.models import Role, User
+from accounts.models import User
 from accounts.utils import LOCAL_DATABASE_MARK, database_identity
+from accounts.tests.roles import requester_role
 from config import test_runner
 from schedule.models import Space
 
@@ -73,7 +74,7 @@ class CommandGuardTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)
-        cls.user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=Role.objects.get(code='DOCENTE'))
+        cls.user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=requester_role())
         Space.objects.register('Sala 50')
 
     def snapshot(self):

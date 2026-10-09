@@ -2,13 +2,14 @@
 
 from django.test import Client, TestCase
 
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import management_role
 
 
 class SelectComponentTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.administrator = management_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.administrator)
         cls.admin.set_superadmin(True)
 

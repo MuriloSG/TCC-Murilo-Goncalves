@@ -6,6 +6,7 @@ from django.test import Client, TestCase, TransactionTestCase, override_settings
 from accounts import permissions
 from accounts.emails import PASSWORD_LINK
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 from outbox.models import OutboxEntry
 from system_settings.tests.base import configure_smtp
 
@@ -22,8 +23,8 @@ ROUTES = {
 class UserViewsTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.administrator)
         cls.target = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=cls.teacher)
 
@@ -131,9 +132,9 @@ class CreateSendTests(TransactionTestCase):
     def setUp(self):
         configure_smtp()
         cache.clear()
-        self.teacher = Role.objects.get(code='DOCENTE')
+        self.teacher = requester_role()
         self.admin = User.objects.register(
-            email='admin@ifnmg.edu.br', name='Admin', role=Role.objects.get(code='ADMINISTRADOR'),
+            email='admin@ifnmg.edu.br', name='Admin', role=management_role(),
         )
         self.client.force_login(self.admin)
 

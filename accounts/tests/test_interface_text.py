@@ -7,6 +7,7 @@ from django.core.management import call_command
 from django.test import TestCase, override_settings
 
 from accounts.models import Role, User
+from accounts.tests.roles import requester_role
 from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
@@ -49,7 +50,7 @@ class PasswordResetTextTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.register(
-            email='maria@ifnmg.edu.br', name='Maria Sousa', role=Role.objects.get(code='DOCENTE'),
+            email='maria@ifnmg.edu.br', name='Maria Sousa', role=requester_role(),
         )
 
     def setUp(self):
@@ -72,7 +73,7 @@ class PasswordResetTextTests(TestCase):
 class ManagementScreensTextTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
         cls.admin = User.objects.create_superadmin(email='admin@ifnmg.edu.br', name='Admin', password=PASSWORD)
         cls.target = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=cls.teacher)
         cls.role = Role.objects.create_role(code='COORDENACAO', name='Coordenação', permissions=[])

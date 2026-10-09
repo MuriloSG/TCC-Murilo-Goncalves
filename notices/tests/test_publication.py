@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 from audit import catalog as audit_catalog
 from audit.context import Actor, acting_as
 from audit.models import AuditLog
@@ -11,8 +12,8 @@ from notices.models import NoRecipients, Notification, NotPublishedManually
 class PublicationAuditTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.docente = Role.objects.get(code='DOCENTE')
-        cls.administrador = Role.objects.get(code='ADMINISTRADOR')
+        cls.docente = requester_role()
+        cls.administrador = management_role()
         cls.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', cls.administrador)
         cls.bruno = User.objects.register('bruno@ifnmg.edu.br', 'Bruno', cls.docente)
         cls.carla = User.objects.register('carla@ifnmg.edu.br', 'Carla', cls.docente)

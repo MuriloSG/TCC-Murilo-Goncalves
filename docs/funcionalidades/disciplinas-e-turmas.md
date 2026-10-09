@@ -26,10 +26,11 @@ Cursos não têm escopo de docente: quem tem a permissão vê todos. Toda altera
 
 As listas e os detalhes mostram só o escopo do usuário (`visible_to`):
 
-- Superadmin ativo: todos os registros.
-- Demais usuários: as disciplinas e turmas das ofertas em que o docente correspondente ao usuário tem vínculo, atual ou histórico. Sem docente correspondente, o escopo é vazio, inclusive para quem tem o perfil `ADMINISTRADOR`.
+- Quem tem `DISCIPLINA.ACESSAR_TODAS` vê todas as disciplinas; quem tem `TURMA.ACESSAR_TODAS`, todas as turmas. O superadmin ativo vê todos os registros.
+- Demais usuários: as disciplinas e turmas das ofertas em que o docente correspondente ao usuário tem vínculo, atual ou histórico. Sem docente correspondente, o escopo é vazio, qualquer que seja o perfil.
 - Registro fora do escopo responde 404.
-- Regra vigente, coberta por `schedule/tests/test_academic_views.py`. Consequência: disciplina ou turma cadastrada pela tela, ainda sem oferta, só aparece para o superadmin.
+- As permissões de alcance não abrem a rota: continuam valendo `DISCIPLINA.*` e `TURMA.*`. Foram criadas sem concessão a nenhum perfil.
+- Regra vigente, coberta por `schedule/tests/test_academic_views.py`. Consequência: disciplina ou turma cadastrada pela tela, ainda sem oferta, só aparece para quem tem a permissão de alcance e para o superadmin.
 
 A correspondência entre usuário e docente é `Teacher.name` igual a `User.username`, sem diferenciar a caixa (`teacher_of`).
 

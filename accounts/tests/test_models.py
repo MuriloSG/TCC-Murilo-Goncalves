@@ -10,6 +10,7 @@ from accounts.models import (
     User,
     UserRole,
 )
+from accounts.tests.roles import management_role, requester_role
 
 
 class UserModelTests(SimpleTestCase):
@@ -182,8 +183,8 @@ class UserRoleTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create(email='maria@ifnmg.edu.br', name='Maria')
-        cls.teacher = Role.objects.get(code='DOCENTE')
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.teacher = requester_role()
+        cls.administrator = management_role()
 
     def test_database_rejects_second_role(self):
         UserRole.objects.create(user=self.user, role=self.teacher)
@@ -202,8 +203,8 @@ class UserRoleTests(TestCase):
 class RegisterTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.teacher = requester_role()
+        cls.administrator = management_role()
 
     def test_register_creates_active_user_with_one_role_and_unusable_password(self):
         user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Souza', role=self.teacher)
@@ -267,7 +268,7 @@ class RegisterTests(TestCase):
 class UpdateDetailsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
         cls.executor = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.teacher)
 
     def setUp(self):

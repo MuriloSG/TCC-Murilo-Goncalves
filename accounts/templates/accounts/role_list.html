@@ -30,7 +30,6 @@
       <thead>
         <tr>
           <th scope="col">Perfil</th>
-          <th scope="col">Tipo</th>
           <th scope="col">Usuários vinculados</th>
           <th scope="col">Código</th>
           <th scope="col" class="cell-actions">Ações</th>
@@ -42,7 +41,6 @@
             <td class="cell-primary" data-label="Perfil">
               <span class="person-detail">{{ role.name }}</span>
             </td>
-            <td data-label="Tipo">{{ role.is_system|yesno:"Do sistema,Personalizado" }}</td>
             <td data-label="Usuários vinculados">{{ role.user_count }}</td>
             <td data-label="Código">
               <a class="person-name link" href="{% url 'role_detail' role.pk %}">{{ role.code }}</a>
@@ -50,17 +48,13 @@
             <td class="cell-actions" data-label="Ações">
               {% row_action "role_update" role.pk "Editar" "pencil" when=perms.PERFIL.EDITAR as edit %}
               {% row_action "role_permissions" role.pk "Alterar permissões" "list-checks" when=perms.PERFIL.ALTERAR_PERMISSOES as change_permissions %}
-              {% if role.is_system %}
-                {% row_action "role_delete" role.pk "Excluir perfil" "trash-2" when=False as delete %}
-              {% else %}
-                {% row_action "role_delete" role.pk "Excluir perfil" "trash-2" when=perms.PERFIL.EXCLUIR danger=True as delete %}
-              {% endif %}
+              {% row_action "role_delete" role.pk "Excluir perfil" "trash-2" when=perms.PERFIL.EXCLUIR danger=True as delete %}
               {% action_list edit change_permissions delete as visible %}
               {% include "ui/components/row_actions.html" with more=None %}
             </td>
           </tr>
         {% empty %}
-          {% include "ui/components/empty_row.html" with colspan=5 message="Nenhum perfil cadastrado." %}
+          {% include "ui/components/empty_row.html" with colspan=4 message="Nenhum perfil cadastrado." %}
         {% endfor %}
       </tbody>
     </table>

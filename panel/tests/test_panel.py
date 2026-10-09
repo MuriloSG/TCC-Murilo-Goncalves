@@ -8,7 +8,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts import permissions
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import requester_role
 from bookings.models import Booking, BookingRequest
 from bookings.tests.base import user_with
 from imports.models import Import
@@ -112,7 +113,7 @@ class EntryTests(PanelTestCase):
         self.assertRedirects(self.client.get('/inicio/'), '/painel/', fetch_redirect_response=False)
 
     def test_teacher_keeps_opening_the_agenda(self):
-        teacher = User.objects.register(email='docente@ifnmg.edu.br', name='Docente', role=Role.objects.get(code='DOCENTE'))
+        teacher = User.objects.register(email='docente@ifnmg.edu.br', name='Docente', role=requester_role())
         self.client.force_login(teacher)
         self.assertRedirects(self.client.get('/inicio/'), '/agenda/', fetch_redirect_response=False)
         self.assertNotContains(self.client.get('/agenda/'), 'href="/painel/"')

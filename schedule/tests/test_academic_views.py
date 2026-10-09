@@ -76,6 +76,38 @@ class ScopeTests(AcademicTestCase):
         self.assertEqual(Subject.objects.visible_to(self.superadmin).count(), Subject.objects.count())
         self.assertEqual(ClassGroup.objects.visible_to(self.superadmin).count(), ClassGroup.objects.count())
 
+    def test_scope_permission_reaches_every_record_of_its_own_kind(self):
+        subjects = user_with('disciplinas@ifnmg.edu.br', *ALL_ACADEMIC, permissions.SUBJECT_ALL)
+        groups = user_with('turmas@ifnmg.edu.br', *ALL_ACADEMIC, permissions.CLASS_GROUP_ALL, username='maria')
+        self.assertEqual(set(Subject.objects.visible_to(subjects)), set(Subject.objects.all()))
+        self.assertFalse(ClassGroup.objects.visible_to(subjects).exists())
+        self.assertEqual(set(ClassGroup.objects.visible_to(groups)), set(ClassGroup.objects.all()))
+        self.assertEqual(set(Subject.objects.visible_to(groups)), {self.physics})
+
+    def test_inactive_user_loses_the_scope_permission(self):
+        user = user_with('inativo@ifnmg.edu.br', *ALL_ACADEMIC, permissions.SUBJECT_ALL, permissions.CLASS_GROUP_ALL)
+        User.objects.filter(pk=user.pk).update(is_active=False)
+        user = User.objects.get(pk=user.pk)
+        self.assertFalse(Subject.objects.visible_to(user).exists())
+        self.assertFalse(ClassGroup.objects.visible_to(user).exists())
+
+    def test_scope_permission_reaches_records_outside_the_teacher_by_the_routes(self):
+        user = user_with('alcance@ifnmg.edu.br', *ALL_ACADEMIC, permissions.SUBJECT_ALL, permissions.CLASS_GROUP_ALL)
+        self.client.force_login(user)
+        for url in (
+            reverse('subjects_detail', args=[self.physics.pk]),
+            reverse('class_groups_detail', args=[self.third.pk]),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_scope_permission_without_the_view_permission_opens_nothing(self):
+        user = user_with('soalcance@ifnmg.edu.br', permissions.SUBJECT_ALL, permissions.CLASS_GROUP_ALL)
+        self.client.force_login(user)
+        for url in (reverse('subjects_list'), reverse('class_groups_list')):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403)
+
 
 class AccessTests(AcademicTestCase):
     def routes(self):

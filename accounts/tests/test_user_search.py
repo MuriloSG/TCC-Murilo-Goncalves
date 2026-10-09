@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from accounts.tests.roles import requester_role
 from ui.pagination import PAGE_SIZE
 
 HTMX = {'HX-Request': 'true'}
@@ -12,7 +13,7 @@ HTMX = {'HX-Request': 'true'}
 class SearchTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        teacher = Role.objects.get(code='DOCENTE')
+        teacher = requester_role()
         cls.admin_role = Role.objects.create_role(
             code='SECRETARIA', name='Secretaria',
             permissions=sorted(permissions.ADMINISTRATIVE_CAPABILITY),

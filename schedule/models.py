@@ -578,9 +578,9 @@ class AcademicRecordInUse(ValidationError):
         super().__init__(message, code='academic_record_in_use')
 
 
-def teacher_scope(queryset, user):
-    """Disciplinas ou turmas das ofertas em que o docente do usuário tem vínculo; o superadmin alcança todas."""
-    if user.is_active and user.is_superadmin:
+def teacher_scope(queryset, user, scope_permission):
+    """Todos os registros a quem tem a permissão de alcance; aos demais, os das ofertas do docente do usuário."""
+    if user.has_perm(scope_permission):
         return queryset
     teacher = teacher_of(user)
     if teacher is None:
@@ -590,7 +590,7 @@ def teacher_scope(queryset, user):
 
 class SubjectQuerySet(models.QuerySet):
     def visible_to(self, user):
-        return teacher_scope(self, user)
+        return teacher_scope(self, user, permissions.SUBJECT_ALL)
 
     def search(self, term=''):
         return self.filter(name__icontains=term) if term else self
@@ -662,7 +662,7 @@ class Subject(NamedRecord):
 
 class ClassGroupQuerySet(models.QuerySet):
     def visible_to(self, user):
-        return teacher_scope(self, user)
+        return teacher_scope(self, user, permissions.CLASS_GROUP_ALL)
 
     def search(self, term='', course=None):
         """Busca pelo rótulo ou pelo nome do curso e filtra pelo curso informado."""

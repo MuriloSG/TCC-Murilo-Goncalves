@@ -15,7 +15,7 @@
       <h1 class="page-title">{{ role.name }}</h1>
     </div>
     <div class="page-actions">
-      {% if perms.PERFIL.EXCLUIR and not role.is_system %}<a class="btn-danger" href="{% url 'role_delete' role.pk %}" hx-get="{% url 'role_delete' role.pk %}" hx-target="#modal">{% icon "trash-2" %}Excluir perfil</a>{% endif %}
+      {% if perms.PERFIL.EXCLUIR %}<a class="btn-danger" href="{% url 'role_delete' role.pk %}" hx-get="{% url 'role_delete' role.pk %}" hx-target="#modal">{% icon "trash-2" %}Excluir perfil</a>{% endif %}
       {% if perms.PERFIL.EDITAR %}<a class="btn-secondary" href="{% url 'role_update' role.pk %}" hx-get="{% url 'role_update' role.pk %}" hx-target="#modal">{% icon "pencil" %}Editar perfil</a>{% endif %}
       {% if perms.PERFIL.ALTERAR_PERMISSOES %}<a class="btn-primary" href="{% url 'role_permissions' role.pk %}" hx-get="{% url 'role_permissions' role.pk %}" hx-target="#modal">{% icon "list-checks" %}Alterar permissões</a>{% endif %}
     </div>
@@ -26,7 +26,6 @@
   <section class="card" aria-labelledby="dados-perfil">
     <dl class="detail-grid">
       <div><dt>Código do perfil</dt><dd>{{ role.code }}</dd></div>
-      <div><dt>Tipo</dt><dd>{{ role.is_system|yesno:"Perfil do sistema,Perfil personalizado" }}</dd></div>
       <div><dt>Descrição</dt><dd>{{ role.description|default:"Sem descrição" }}</dd></div>
       <div><dt>Usuários vinculados</dt><dd>{{ role.user_count }} usuário{{ role.user_count|pluralize }}</dd></div>
     </dl>

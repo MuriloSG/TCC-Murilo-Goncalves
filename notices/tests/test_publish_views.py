@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 from audit import catalog as audit_catalog
 from audit.models import AuditLog
 from notices import catalog
@@ -24,8 +25,8 @@ def data(**changes):
 class PublishTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.admin = User.objects.register('admin@ifnmg.edu.br', 'Admin', cls.administrator)
         cls.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', cls.teacher)
         cls.bruno = User.objects.register('bruno@ifnmg.edu.br', 'Bruno', cls.teacher)
@@ -77,6 +78,17 @@ class ReviewStepTests(PublishTestCase):
         self.assertIn(f'<input type="hidden" name="role" value="{self.teacher.pk}">', content)
         self.assertIn('<dt>Destinatários</dt><dd>Usuários de um perfil</dd>', content)
         self.assertIn('<dt>Total estimado</dt><dd>2 usuários ativos</dd>', content)
+
+    def test_review_carries_keys_without_thousands_separator(self):
+        role = Role.objects.create(pk=1234, code='EXTENSAO', name='Extensão')
+        user = User.objects.create(pk=1235, email='caio@ifnmg.edu.br', name='Caio')
+        cases = (
+            (dict(destination=catalog.ROLE, role=role.pk), '<input type="hidden" name="role" value="1234">'),
+            (dict(destination=catalog.USERS, users=[user.pk]), '<input type="hidden" name="users" value="1235">'),
+        )
+        for changes, expected in cases:
+            with self.subTest(changes['destination']):
+                self.assertIn(expected, self.review(**changes).content.decode())
 
     def test_review_counts_only_active_users(self):
         self.bruno.deactivate()

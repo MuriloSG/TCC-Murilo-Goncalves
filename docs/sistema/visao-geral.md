@@ -14,10 +14,10 @@ As duas aparecem juntas na Grade autenticada e no calendário público, que não
 | Quem | Como é definido | O que faz |
 |---|---|---|
 | Visitante | sem login | Consulta o calendário público (`/`) e o horário original (`/horario-original/`) |
-| Docente | perfil `DOCENTE` | Consulta a Agenda e solicita agendamento. Cancela ocorrências das próprias aulas. Quem solicita é definido só pela permissão `AGENDA.SOLICITAR` |
-| Administrador | perfil `ADMINISTRADOR` | Recebe pela migration todas as permissões, exceto as `PERFIL.*` |
-| Superadmin | atributo `User.is_superadmin` | Tem todas as permissões, inclusive as reservadas `PERFIL.*`. É controlado só por comando de gerenciamento |
-| Perfis personalizados | criados pelo superadmin | Concedem a combinação de permissões escolhida |
+| Usuário autenticado | perfil com permissões | Faz o que as permissões do perfil liberam. Solicitar agendamento depende só de `AGENDA.SOLICITAR`. Cancelar ocorrências das próprias aulas depende de ser o docente da aula |
+| Superadmin | atributo `User.is_superadmin` | Tem todas as permissões, inclusive as reservadas `PERFIL.*`, sem precisar de perfil. É controlado só por comando de gerenciamento |
+
+Os perfis são cadastrados pelo superadmin na tela de perfis. A carga inicial cria `ADMINISTRADOR` e `DOCENTE` como exemplo, mas eles são perfis comuns: o código não dá a nenhum perfil acesso pelo nome.
 
 O detalhamento está em [permissões](../regras/permissoes.md).
 

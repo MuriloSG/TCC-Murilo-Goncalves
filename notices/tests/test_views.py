@@ -1,6 +1,7 @@
 from django.test import TestCase
 
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import requester_role
 from audit.models import AuditLog
 from notices import catalog
 from notices.models import Notification
@@ -9,7 +10,7 @@ from notices.models import Notification
 class NotificationViewTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        docente = Role.objects.get(code='DOCENTE')
+        docente = requester_role()
         cls.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', docente)
         cls.bruno = User.objects.register('bruno@ifnmg.edu.br', 'Bruno', docente)
 

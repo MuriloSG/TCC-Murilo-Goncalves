@@ -41,21 +41,24 @@ class InitialCatalogTests(TestCase):
     def test_every_permission_has_a_description(self):
         self.assertFalse(Permission.objects.filter(description='').exists())
 
-    def test_system_roles_exist_and_are_marked_as_system(self):
-        self.assertEqual(
-            set(Role.objects.values_list('code', 'is_system')), {('ADMINISTRADOR', True), ('DOCENTE', True)},
-        )
+    def test_initial_roles_exist(self):
+        self.assertEqual(set(Role.objects.values_list('code', flat=True)), {'ADMINISTRADOR', 'DOCENTE'})
 
     def test_administrator_grants_every_permission_not_reserved(self):
         administrator = Role.objects.get(code='ADMINISTRADOR')
         self.assertEqual(
             set(administrator.permissions.values_list('code', flat=True)),
-            permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS,
+            permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS - permissions.ACADEMIC_SCOPE_PERMISSIONS,
         )
 
     def test_teacher_grants_only_the_booking_request(self):
         teacher = Role.objects.get(code='DOCENTE')
         self.assertEqual(set(teacher.permissions.values_list('code', flat=True)), TEACHER_CODES)
+
+    def test_no_role_grants_academic_scope_permission(self):
+        self.assertFalse(
+            RolePermission.objects.filter(permission__code__in=permissions.ACADEMIC_SCOPE_PERMISSIONS).exists()
+        )
 
     def test_no_role_grants_reserved_permission(self):
         self.assertFalse(

@@ -3,6 +3,7 @@ from pathlib import Path
 from django.test import SimpleTestCase, TestCase
 
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 from notices import catalog
 from notices.models import (
     NoRecipients,
@@ -49,8 +50,8 @@ class MechanismIndependenceTests(SimpleTestCase):
 class DeliveryTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.docente = Role.objects.get(code='DOCENTE')
-        cls.administrador = Role.objects.get(code='ADMINISTRADOR')
+        cls.docente = requester_role()
+        cls.administrador = management_role()
         cls.ana = make_user('ana@ifnmg.edu.br', cls.docente)
         cls.bruno = make_user('bruno@ifnmg.edu.br', cls.docente)
         cls.carla = make_user('carla@ifnmg.edu.br', cls.administrador)
@@ -105,8 +106,8 @@ class DeliveryTests(TestCase):
 class RecipientResolutionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.docente = Role.objects.get(code='DOCENTE')
-        cls.administrador = Role.objects.get(code='ADMINISTRADOR')
+        cls.docente = requester_role()
+        cls.administrador = management_role()
         cls.ana = make_user('ana@ifnmg.edu.br', cls.docente)
         cls.bruno = make_user('bruno@ifnmg.edu.br', cls.docente)
         cls.carla = make_user('carla@ifnmg.edu.br', cls.administrador)
@@ -146,7 +147,7 @@ class RecipientResolutionTests(TestCase):
 class ReadingTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.ana = make_user('ana@ifnmg.edu.br', Role.objects.get(code='DOCENTE'))
+        cls.ana = make_user('ana@ifnmg.edu.br', requester_role())
 
     def test_unread_count(self):
         for title in ('Uma', 'Outra', 'Mais uma'):

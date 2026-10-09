@@ -40,7 +40,7 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 **Motivo registrado.** O admin do Django autoriza por `is_staff`, `is_superuser` e `auth.Permission`, o que criaria um segundo sistema de autorização e contornaria as operações que garantem as invariantes.
 
-**Consequência.** Permissões novas só chegam aos perfis do sistema; perfis personalizados precisam de revisão manual.
+**Consequência.** Nenhum perfil é fixo no código: os criados pela carga inicial são dados e se comportam como os demais. Permissão nova nasce sem concessão, e o superadmin a concede pela tela de perfis. O superadmin não depende de perfil.
 
 ## 4. E-mails pelo outbox transacional
 

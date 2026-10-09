@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from accounts.tests.roles import requester_role
 
 GRANTABLE = permissions.ALL_PERMISSIONS - permissions.SUPERADMIN_RESERVED_PERMISSIONS
 USER_GROUP = sum(code.startswith('USUARIO.') for code in GRANTABLE)
@@ -12,7 +13,7 @@ USER_GROUP = sum(code.startswith('USUARIO.') for code in GRANTABLE)
 class ScreensTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.teacher = requester_role()
         cls.admin = User.objects.create_superadmin(email='admin@ifnmg.edu.br', name='Ana Souza', password='Senha-forte-123')
         cls.active = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=cls.teacher)
         cls.inactive = User.objects.register(email='carla@ifnmg.edu.br', name='Carla Mendes', role=cls.teacher)
@@ -158,9 +159,10 @@ class RoleScreenTests(ScreensTestCase):
             with self.subTest(url=url):
                 self.assertLessEqual(self.client.get(url).content.decode().count('class="btn-primary"'), 1)
 
-    def test_acoes_do_perfil_personalizado(self):
-        row = self.row(self.client.get('/perfis/').content.decode(), 'COORDENACAO')
-        for label in ('Editar', 'Alterar permissões', 'Excluir perfil'):
-            self.assertIn(f'aria-label="{label}"', row)
-        system = self.row(self.client.get('/perfis/').content.decode(), 'ADMINISTRADOR')
-        self.assertNotIn('Excluir perfil', system)
+    def test_acoes_iguais_em_todo_perfil(self):
+        content = self.client.get('/perfis/').content.decode()
+        for code in ('COORDENACAO', 'ADMINISTRADOR'):
+            row = self.row(content, code)
+            for label in ('Editar', 'Alterar permissões', 'Excluir perfil'):
+                with self.subTest(code=code, label=label):
+                    self.assertIn(f'aria-label="{label}"', row)

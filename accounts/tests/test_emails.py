@@ -7,7 +7,8 @@ from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 
 from accounts.emails import PASSWORD_LINK, password_link
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import requester_role
 from outbox.models import OutboxEntry
 from system_settings.tests.base import configure_smtp
 
@@ -19,7 +20,7 @@ class PasswordLinkTests(TestCase):
         configure_smtp()
         cache.clear()
         self.user = User.objects.register(
-            email='maria@ifnmg.edu.br', name='Maria Sousa', role=Role.objects.get(code='DOCENTE'),
+            email='maria@ifnmg.edu.br', name='Maria Sousa', role=requester_role(),
         )
 
     def entry(self):
@@ -67,7 +68,7 @@ class PasswordLinkTests(TestCase):
         for case, change in cases.items():
             with self.subTest(case):
                 self.user = User.objects.register(
-                    email=f'{case.replace(" ", ".")}@ifnmg.edu.br', name='Pessoa', role=Role.objects.get(code='DOCENTE'),
+                    email=f'{case.replace(" ", ".")}@ifnmg.edu.br', name='Pessoa', role=requester_role(),
                 )
                 entry = self.entry()
                 change()

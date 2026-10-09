@@ -110,6 +110,6 @@ class NoticeForm(forms.Form):
             ('destination', data['destination']),
         ]
         if data.get('role'):
-            values.append(('role', data['role'].pk))
-        values.extend(('users', user.pk) for user in data.get('users') or [])
+            values.append(('role', str(data['role'].pk)))
+        values.extend(('users', str(user.pk)) for user in data.get('users') or [])
         return values

@@ -73,7 +73,7 @@
 
 | Comando | App | Uso |
 |---|---|---|
-| `create_superadmin` | `accounts` | Cria o primeiro superadmin, com o perfil `ADMINISTRADOR` |
+| `create_superadmin` | `accounts` | Cria o primeiro superadmin, sem perfil |
 | `set_superadmin <email> --grant/--revoke` | `accounts` | Concede ou retira o superadmin |
 | `clear_data [--yes]` | `accounts` | `TRUNCATE` de todas as tabelas, exceto usuários, perfis, permissões, sessões e e-mails do allauth. Ignora a proteção da auditoria |
 | `delete_users [--yes]` | `accounts` | Exclui os usuários que não são superadmin e os registros que dependem deles. Exige um superadmin ativo |

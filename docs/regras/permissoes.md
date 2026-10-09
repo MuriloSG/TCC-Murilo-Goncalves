@@ -8,11 +8,12 @@ Controle de acesso por perfil (RBAC). Catálogo: `accounts/permissions.py`. Carg
 2. A view declara `permission_required = permissions.CONSTANTE`. O `PermissionMiddleware` responde 403 sem ela.
 3. Algumas views e operações conferem uma segunda permissão ou o vínculo de docente (tabela abaixo).
 4. `User.has_perm`: inativo não tem nada; superadmin ativo tem tudo; os demais têm as permissões do perfil, exceto as `PERFIL.*`.
-5. Templates usam `perms.RECURSO.ACAO` só para mostrar ou esconder links. Nenhum código decide acesso pelo nome do perfil ou por `is_superadmin`, exceto o escopo de disciplinas e turmas (`teacher_scope`) e a escolha do modal da Agenda (`creates_directly`).
+5. Templates usam `perms.RECURSO.ACAO` só para mostrar ou esconder links. Nenhum código decide acesso pelo código, pelo nome ou pela origem do perfil. Fora de `User.has_perm`, só a escolha do modal da Agenda (`creates_directly`) lê `is_superadmin`.
+6. Nenhum perfil é especial para o código. Os perfis criados pela carga inicial são dados, editados e excluídos como qualquer outro.
 
-## Catálogo e perfis do sistema
+## Catálogo e concessão inicial
 
-A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
+As colunas A e D mostram o que a carga inicial (`0002` a `0004`) concedeu aos perfis de exemplo `ADMINISTRADOR` e `DOCENTE`. É dado, e não regra: os dois são perfis comuns, com permissões alteráveis, e podem ser renomeados ou excluídos sem usuários. O superadmin tem todas.
 
 | Código | Descrição | A | D |
 |---|---|---|---|
@@ -52,6 +53,10 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 | `CURSO.VISUALIZAR`, `CRIAR`, `EDITAR`, `EXCLUIR` | Cursos, sem escopo de docente | ✓ | |
 | `DISCIPLINA.VISUALIZAR`, `CRIAR`, `EDITAR`, `EXCLUIR` | Disciplinas do próprio escopo | ✓ | |
 | `TURMA.VISUALIZAR`, `CRIAR`, `EDITAR`, `EXCLUIR` | Turmas do próprio escopo | ✓ | |
+| `DISCIPLINA.ACESSAR_TODAS` | Alcançar todas as disciplinas, e não só as do próprio escopo | | |
+| `TURMA.ACESSAR_TODAS` | Alcançar todas as turmas, e não só as do próprio escopo | | |
+
+As duas permissões de alcance (`ACADEMIC_SCOPE_PERMISSIONS`) só ampliam o que `DISCIPLINA.*` e `TURMA.*` já liberam: sozinhas não abrem nenhuma rota. A migration `0006` as criou sem conceder a nenhum perfil, para não mudar o escopo de quem já usava o sistema; a concessão é feita na tela de perfis.
 
 `ADMINISTRATIVE_CAPABILITY` (as cinco primeiras `USUARIO.*`) define a [continuidade administrativa](regras-de-negocio.md#usuários-e-acesso).
 
@@ -59,7 +64,8 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 
 - Atributo `User.is_superadmin`, não perfil nem permissão. Controlado só por `create_superadmin` e `set_superadmin`.
 - Tem todas as permissões, inclusive as reservadas `PERFIL.*` e `CONFIGURACAO.EDITAR`: só ele gerencia perfis e o servidor de e-mail, cuja configuração decide para onde vão os links de senha. A migration `accounts.0004` retirou essa permissão do ADMINISTRADOR.
-- Vê todas as disciplinas e turmas (os demais veem só o escopo de docente).
+- Vê todas as disciplinas e turmas, porque `has_perm` responde sim para as permissões de alcance.
+- Não precisa de perfil: `create_superadmin` cria a conta sem nenhum.
 - Só um superadmin ativo altera o e-mail, o nome de usuário, o perfil ou a situação de outro superadmin. O nome continua editável por quem tem `USUARIO.EDITAR`.
 
 ## Cobertura de quem gere usuários
@@ -89,7 +95,7 @@ Risco aceito: quem cobre as permissões das duas contas pode mover o vínculo de
 | Relatório de solicitações | `RELATORIO.VISUALIZAR` | `AGENDA.ANALISAR` (403 sem ela) |
 | Importação de usuários, por linha | `USUARIO.IMPORTAR` | `USUARIO.CRIAR`, `EDITAR`, `ALTERAR_PERFIL` conforme o que a linha muda |
 | Importação de ensalamento, decisão de espaço | `ENSALAMENTO.IMPORTAR` | `ESPACO.CRIAR`, `EDITAR` ou `ALTERAR_SITUACAO` conforme a decisão |
-| Disciplinas e turmas | `DISCIPLINA.*`, `TURMA.*` | Registro fora do escopo de docente responde 404 |
+| Disciplinas e turmas | `DISCIPLINA.*`, `TURMA.*` | Sem `DISCIPLINA.ACESSAR_TODAS` ou `TURMA.ACESSAR_TODAS`, registro fora do escopo de docente responde 404 |
 | Solicitar agendamento | `AGENDA.SOLICITAR` | Usuário precisa corresponder a docente com vínculo atual |
 | Cancelar agendamento | `AGENDA.SOLICITAR` (próprio) ou `AGENDA.ANALISAR` | O model aceita quem solicitou ou quem analisa |
 | Notificações (sino, abrir, marcar) | só login | Só as do próprio usuário |
@@ -116,6 +122,6 @@ As importações de usuários abrem pelo botão "Importações" da lista de usu�
 ## Permissão nova
 
 1. Constante em `accounts/permissions.py`, incluída em `ALL_PERMISSIONS` e, se for de recurso novo, em `RESOURCE_LABELS`.
-2. Migration de dados que cria a permissão e a concede aos perfis do sistema. A `0002` escreve os códigos literalmente, sem importar as constantes.
+2. Migration de dados que só cria a permissão, com o código escrito literalmente, sem importar as constantes (como a `0006`). Ela não concede a permissão a nenhum perfil e nunca procura perfil pelo código ou pelo nome. As concessões ao `ADMINISTRADOR` feitas pela `0003` e pela `0004` ficam como histórico e não são repetidas.
 3. `permission_required` na view e a rota em `PROTECTED_ROUTES` de `accounts/tests/test_route_protection.py`.
-4. Depois do deploy, o superadmin revisa os perfis personalizados: a permissão nova só chega aos perfis do sistema.
+4. Depois do deploy, o superadmin concede a permissão aos perfis que devem recebê-la, pela tela de perfis.

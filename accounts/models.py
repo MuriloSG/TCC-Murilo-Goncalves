@@ -26,7 +26,6 @@ from outbox.models import OutboxEntry
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
 PERMISSION_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*\.[A-Z]+(_[A-Z]+)*$'
-ADMINISTRATOR_ROLE = 'ADMINISTRADOR'
 INSTITUTIONAL_EMAIL_DOMAIN = 'ifnmg.edu.br'
 USERNAME_TAKEN_MESSAGE = 'Este nome de usuário já pertence a outro usuário. Use outro nome de usuário.'
 UNCHANGED = object()
@@ -130,11 +129,6 @@ class ReservedPermissionNotGrantable(ValidationError):
             + '.',
             code='reserved_permission',
         )
-
-
-class SystemRoleProtected(ValidationError):
-    def __init__(self):
-        super().__init__('Perfis do sistema não podem ser excluídos.', code='system_role')
 
 
 class RoleInUse(ValidationError):
@@ -284,6 +278,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         return user
 
     def create_superadmin(self, email, name, password):
+        """Cria sem perfil: o acesso do superadmin vem do atributo, e não das permissões de um perfil."""
         user = self.model(
             email=self.normalize_email(email),
             name=(name or '').strip(),
@@ -293,14 +288,12 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         user.set_password(password)
         user.full_clean()
         with transaction.atomic(using=self.db):
-            role = Role.objects.using(self.db).get(code=ADMINISTRATOR_ROLE)
             user.save(using=self.db)
-            UserRole.objects.using(self.db).create(user=user, role=role)
             AuditLog.objects.record(
                 catalog.CREATE,
                 catalog.USER,
                 resource_id=user.pk,
-                new_values={'email': user.email, 'name': user.name, 'role': role.code, 'superadmin': True},
+                new_values={'email': user.email, 'name': user.name, 'superadmin': True},
             )
         return user
 
@@ -547,7 +540,6 @@ class RoleManager(models.Manager):
             code=code or '',
             name=(name or '').strip(),
             description=description or '',
-            is_system=False,
         )
         role.full_clean()
         granted = grantable_permissions(permissions)
@@ -584,7 +576,6 @@ class Role(models.Model):
     )
     name = models.CharField('nome', max_length=100)
     description = models.TextField('descrição', blank=True)
-    is_system = models.BooleanField('perfil do sistema', default=False)
     permissions = models.ManyToManyField(
         'Permission',
         through='RolePermission',
@@ -657,8 +648,6 @@ class Role(models.Model):
     def delete_role(self):
         with transaction.atomic():
             role = Role.objects.select_for_update().get(pk=self.pk)
-            if role.is_system:
-                raise SystemRoleProtected()
             count = role.user_roles.count()
             if count:
                 raise RoleInUse(count)

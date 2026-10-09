@@ -2,7 +2,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.test import SimpleTestCase, TestCase
 
-from accounts.models import AdministrativeContinuityViolation, Role, User
+from accounts.models import AdministrativeContinuityViolation, User
+from accounts.tests.roles import management_role, requester_role
 from notices import catalog
 from notices.events import announce, register
 from notices.models import Notification
@@ -29,8 +30,8 @@ class RegistryTests(SimpleTestCase):
 class RoleChangeEventTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.docente = Role.objects.get(code='DOCENTE')
-        cls.administrador = Role.objects.get(code='ADMINISTRADOR')
+        cls.docente = requester_role()
+        cls.administrador = management_role()
         cls.ana = User.objects.register('ana@ifnmg.edu.br', 'Ana', cls.administrador)
         cls.bruno = User.objects.register('bruno@ifnmg.edu.br', 'Bruno', cls.docente)
 
@@ -39,7 +40,7 @@ class RoleChangeEventTests(TestCase):
         notification = Notification.objects.for_user(self.bruno).get()
         self.assertEqual(notification.type, catalog.ROLE_CHANGED)
         self.assertEqual(notification.title, 'Perfil de acesso alterado')
-        self.assertEqual(notification.message, 'Seu perfil passou a ser Administrador.')
+        self.assertEqual(notification.message, 'Seu perfil passou a ser Gestão.')
         self.assertTrue(notification.unread)
         self.assertEqual(Notification.objects.count(), 1)
 

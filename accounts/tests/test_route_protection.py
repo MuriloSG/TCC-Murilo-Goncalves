@@ -1,8 +1,11 @@
-from django.test import Client, TestCase
+from django.core.exceptions import PermissionDenied
+from django.test import Client, RequestFactory, TestCase
 from django.urls import URLResolver, get_resolver, reverse
 
 from accounts import permissions
-from accounts.models import Role, User
+from accounts.middleware import PermissionMiddleware
+from accounts.models import Permission, Role, RolePermission, User
+from accounts.tests.roles import management_role
 
 PROTECTED_ROUTES = {
     'home': None,
@@ -144,7 +147,7 @@ class RouteProtectionTests(TestCase):
     def setUpTestData(cls):
         cls.patterns = {pattern.name: pattern for pattern in url_patterns()}
         cls.admin = User.objects.register(
-            email='admin@ifnmg.edu.br', name='Admin', role=Role.objects.get(code='ADMINISTRADOR'),
+            email='admin@ifnmg.edu.br', name='Admin', role=management_role(),
         )
         cls.without = {}
         for permission in {code for code in PROTECTED_ROUTES.values() if code}:
@@ -189,6 +192,50 @@ class RouteProtectionTests(TestCase):
             for method in accepted_methods(pattern):
                 with self.subTest(name, method=method):
                     self.assertEqual(getattr(client, method)(url).status_code, 403)
+
+    def passes_middleware(self, user, pattern):
+        request = RequestFactory().get(route_url(pattern))
+        request.user = user
+        try:
+            return PermissionMiddleware(None).process_view(request, pattern.callback, (), {}) is None
+        except PermissionDenied:
+            return False
+
+    def test_role_name_or_code_grants_nothing(self):
+        administrator = Role.objects.get(code='ADMINISTRADOR')
+        administrator.set_permissions([])
+        named = Role.objects.create_role(code='SUPERADMIN', name='Superadmin')
+        for role in (administrator, named):
+            user = User.objects.register(email=f'{role.code.lower()}@ifnmg.edu.br', name=role.name, role=role)
+            client = Client()
+            client.force_login(user)
+            for name, permission, pattern in self.protected():
+                if permission is None:
+                    continue
+                with self.subTest(role=role.code, route=name):
+                    self.assertFalse(self.passes_middleware(user, pattern))
+                    self.assertEqual(client.get(route_url(pattern)).status_code, 403)
+
+    def test_custom_role_with_only_the_route_permission_passes_unless_reserved(self):
+        users = {}
+        for permission in {code for code in PROTECTED_ROUTES.values() if code}:
+            code = 'SO_' + permission.replace('.', '_')
+            role = Role.objects.create_role(code=code, name=code)
+            RolePermission.objects.create(role=role, permission=Permission.objects.get(code=permission))
+            users[permission] = User.objects.register(email=f'{code.lower()}@ifnmg.edu.br', name=code, role=role)
+        for name, permission, pattern in self.protected():
+            if permission is None:
+                continue
+            with self.subTest(name):
+                expected = permission not in permissions.SUPERADMIN_RESERVED_PERMISSIONS
+                self.assertEqual(self.passes_middleware(users[permission], pattern), expected)
+
+    def test_superadmin_without_role_passes_every_route(self):
+        superadmin = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super Admin', 'Senha-forte-123')
+        self.assertIsNone(superadmin.role)
+        for name, _, pattern in self.protected():
+            with self.subTest(name):
+                self.assertTrue(self.passes_middleware(superadmin, pattern))
 
     def test_post_without_csrf_is_refused(self):
         client = Client(enforce_csrf_checks=True)

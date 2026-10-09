@@ -53,8 +53,8 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 Confirmados pelo código, valem para qualquer instalação:
 
 ```bash
-python manage.py migrate              # cria o catálogo de permissões e os perfis do sistema
-python manage.py create_superadmin    # primeiro acesso
+python manage.py migrate              # cria o catálogo de permissões e os perfis iniciais
+python manage.py create_superadmin    # primeiro acesso, sem perfil
 ```
 
 1. Entrar com o superadmin em `/contas/login/`.
@@ -67,7 +67,7 @@ python manage.py create_superadmin    # primeiro acesso
 
 - `migrate` depois de cada atualização; nada roda sozinho.
 - Reiniciar `worker` e `import_worker` depois de alterar o código: eles não recarregam.
-- Depois de um módulo novo com permissões novas, o superadmin revisa os perfis personalizados, que não as recebem.
+- Depois de um módulo novo com permissões novas, o superadmin as concede aos perfis pela tela de perfis: nenhum perfil as recebe sozinho.
 
 ## Pendente
 

@@ -4,7 +4,8 @@ import re
 from django.test import Client, TestCase
 
 from accounts import permissions
-from accounts.models import Role, User
+from accounts.models import User
+from accounts.tests.roles import management_role, requester_role
 from ui.pagination import OPTIONS_PAGE_SIZE
 
 OPTIONS_URL = '/auditoria/opcoes/usuarios/'
@@ -13,8 +14,8 @@ OPTIONS_URL = '/auditoria/opcoes/usuarios/'
 class UserOptionsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.administrator)
         cls.plain = User.objects.register(email='docente@ifnmg.edu.br', name='Docente', role=cls.teacher)
         for number in range(15):
@@ -57,7 +58,7 @@ class UserOptionsTests(TestCase):
 class PaginatedFieldTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
+        cls.administrator = management_role()
         cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.administrator)
         for number in range(15):
             User.objects.register(

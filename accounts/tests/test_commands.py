@@ -4,7 +4,9 @@ from unittest import mock
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 
+from accounts import permissions
 from accounts.models import Role, User
+from accounts.tests.roles import management_role, requester_role
 
 PASSWORD = 'Senha-forte-123'
 
@@ -18,18 +20,25 @@ def create_superadmin(*args, passwords=(PASSWORD, PASSWORD), inputs=()):
 
 
 class CreateSuperadminTests(TestCase):
-    def test_creates_active_superadmin_with_administrator_role(self):
+    def test_creates_active_superadmin_without_role(self):
         create_superadmin(inputs=[' Super@IFNMG.edu.br ', 'Super Admin'])
         user = User.objects.get()
         self.assertEqual((user.email, user.name), ('super@ifnmg.edu.br', 'Super Admin'))
         self.assertTrue(user.is_active)
         self.assertTrue(user.is_superadmin)
-        self.assertEqual(user.role.code, 'ADMINISTRADOR')
+        self.assertIsNone(user.role)
         self.assertTrue(user.check_password(PASSWORD))
         self.assertNotEqual(user.password, PASSWORD)
 
+    def test_creates_superadmin_without_any_role_registered(self):
+        Role.objects.all().delete()
+        create_superadmin('--email', 'super@ifnmg.edu.br', '--name', 'Super Admin')
+        user = User.objects.get()
+        self.assertTrue(user.has_perms(permissions.ALL_PERMISSIONS))
+        self.assertTrue(user.has_administrative_capability())
+
     def test_refuses_email_in_use_pointing_to_set_superadmin(self):
-        User.objects.register(email='maria@ifnmg.edu.br', name='Maria', role=Role.objects.get(code='DOCENTE'))
+        User.objects.register(email='maria@ifnmg.edu.br', name='Maria', role=requester_role())
         with self.assertRaisesMessage(CommandError, 'set_superadmin'):
             create_superadmin('--email', 'Maria@ifnmg.edu.br', '--name', 'Maria')
         self.assertFalse(User.objects.get().is_superadmin)
@@ -65,8 +74,8 @@ class CreateSuperadminTests(TestCase):
 class SetSuperadminTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.administrator = Role.objects.get(code='ADMINISTRADOR')
-        cls.teacher = Role.objects.get(code='DOCENTE')
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
 
     def call(self, *args):
         call_command('set_superadmin', *args, stdout=StringIO())
@@ -109,7 +118,7 @@ class SetSuperadminTests(TestCase):
 @override_settings(ENVIRONMENT='local')
 class DeleteUsersTests(TestCase):
     def setUp(self):
-        self.role = Role.objects.get(code='DOCENTE')
+        self.role = requester_role()
         self.superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)
         self.user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=self.role)
 
@@ -148,7 +157,7 @@ class DeleteUsersTests(TestCase):
         self.assertIsNone(kept.resolved_by)
         self.assertFalse(AuditLog.objects.filter(user_id=self.user.pk).exists())
         self.assertTrue(AuditLog.objects.filter(resource_id=str(self.user.pk), user=None).exists())
-        self.assertEqual(self.superadmin.roles.get().code, 'ADMINISTRADOR')
+        self.assertFalse(self.superadmin.roles.exists())
 
     def test_refused_without_active_superadmin(self):
         User.objects.filter(pk=self.superadmin.pk).update(is_superadmin=False)
@@ -166,7 +175,7 @@ class DeleteUsersTests(TestCase):
 class SetPasswordsTests(TestCase):
     def test_sets_the_default_password_for_every_user(self):
         superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)
-        user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=Role.objects.get(code='DOCENTE'))
+        user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=requester_role())
         output = StringIO()
         call_command('set_passwords', '--yes', stdout=output)
         for account in (superadmin, user):
@@ -176,7 +185,7 @@ class SetPasswordsTests(TestCase):
         self.assertIn('2 usuários', output.getvalue())
 
     def test_answer_other_than_yes_keeps_passwords(self):
-        user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=Role.objects.get(code='DOCENTE'))
+        user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=requester_role())
         with mock.patch('builtins.input', return_value='não'):
             call_command('set_passwords', stdout=StringIO())
         user.refresh_from_db()

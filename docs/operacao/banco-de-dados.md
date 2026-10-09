@@ -41,11 +41,11 @@ Só rodam no banco local comprovado: `DJANGO_ENVIRONMENT=local`, `DJANGO_LOCAL_D
 | `make delete-users` (`delete_users`) | Exclui os usuários que não são superadmin e, em cascata, o que depende deles (solicitações, importações enviadas). Referências anuláveis, como o usuário de um registro de auditoria, passam a nulo. Exige superadmin ativo |
 | `make set-passwords` (`set_passwords`) | Define a mesma senha para todos os usuários, inclusive superadmins e inativos |
 
-## Lacunas
-
-- Não há rotina de backup nem de restauração no repositório.
-
 ## `flush`
 
 O comando nativo do Django apaga todas as tabelas. O projeto o substitui por `accounts/management/commands/flush.py`, com a mesma trava do `clear_data`, aplicada ao alias escolhido em `--database`: fora do banco local comprovado, `make manage cmd="flush"` é recusado antes de apagar. A única exceção é um banco de teste criado pelo runner do próprio processo (`config/test_runner.py`, inclusive as cópias do `--parallel`), que é onde o `TransactionTestCase` o chama. O nome do banco sozinho não dispensa a trava: um banco operacional chamado `test_algo` continua protegido. Para limpar os dados de desenvolvimento, prefira `make clear-data`, que mantém usuários e sessões.
+
+## Lacunas
+
+- Não há rotina de backup nem de restauração no repositório.
 - Não há política de retenção para `AuditLog`, `Notification`, `OutboxEntry` e importações antigas; as tabelas só crescem.

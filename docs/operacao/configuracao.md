@@ -101,7 +101,6 @@ Sem servidor SMTP cadastrado, nenhum e-mail sai, nem para o console.
 
 ## Não configurado no repositório
 
-- `LOGGING`: não há configuração. Os loggers do projeto (`accounts`, `outbox`, `imports`, `schedule.public_cache`, `notices.realtime`) não têm handler; mensagens `WARNING` ou acima aparecem no stderr pelo handler padrão do Python, e `INFO` e `DEBUG` (por exemplo `CACHE INVALIDATED`) não aparecem.
 - `STATIC_ROOT`: ausente. Os estáticos são servidos pelo `runserver` com `DEBUG` ligado.
 - `ACCOUNT_RATE_LIMITS`: ausente; valem os padrões do allauth.
 - Mídia: não há `MEDIA_ROOT` nem `FileField`. A importação lê o arquivo enviado e grava só as linhas.

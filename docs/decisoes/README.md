@@ -2,7 +2,7 @@
 
 Decisões que explicam a forma atual do sistema, com o motivo registrado na época. Quando o motivo não foi registrado, isso é dito.
 
-Os docstrings do código citam essas e outras decisões no formato "D<n> da Change <nome>". Os registros originais, com as alternativas avaliadas, ficaram no histórico do Git, no diretório `openspec/changes/` do commit `2dae843` (por exemplo, `git show 2dae843:openspec/changes/archive/2026-09-19-enviar-emails-por-outbox/design.md`).
+Os registros originais, com as alternativas avaliadas, ficaram no histórico do Git, no diretório `openspec/changes/` do commit `2dae843` (por exemplo, `git show 2dae843:openspec/changes/archive/2026-09-19-enviar-emails-por-outbox/design.md`).
 
 | # | Decisão |
 |---|---|
@@ -36,7 +36,7 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 ## 3. RBAC próprio, um perfil por usuário, superadmin como atributo
 
-**Decisão.** `User`, `Role` e `Permission` próprios, com tabelas intermediárias explícitas. Exatamente um perfil por usuário (restrição no banco), mas modelado como N:N para liberar vários perfis com uma migration. Superadmin é `User.is_superadmin`, controlado por comando. As permissões `PERFIL.*` são reservadas ao superadmin. Regra de continuidade administrativa. Sem `django.contrib.admin`.
+**Decisão.** `User`, `Role` e `Permission` próprios, com tabelas intermediárias explícitas. Exatamente um perfil por usuário (restrição no banco), mas modelado como N:N para liberar vários perfis com uma migration. Superadmin é `User.is_superadmin`, controlado por comando, e não precisa de perfil. As permissões `PERFIL.*` e `CONFIGURACAO.EDITAR` são reservadas ao superadmin. Regra de continuidade administrativa. Sem `django.contrib.admin`.
 
 **Motivo registrado.** O admin do Django autoriza por `is_staff`, `is_superuser` e `auth.Permission`, o que criaria um segundo sistema de autorização e contornaria as operações que garantem as invariantes.
 
@@ -44,7 +44,7 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 ## 4. E-mails pelo outbox transacional
 
-**Decisão.** O e-mail é gravado como intenção (`OutboxEntry`) na transação da operação e enviado por um worker com novas tentativas. O conteúdo é montado no envio; nenhum token é gravado. A recuperação de senha continua síncrona.
+**Decisão.** O e-mail é gravado como intenção (`OutboxEntry`) na transação da operação e enviado por um worker com novas tentativas. O conteúdo é montado no envio; nenhum token é gravado. Vale também para a recuperação de senha, para que a requisição não fale com o SMTP.
 
 **Motivo registrado.** Permitir que a prévia da importação desfaça os envios junto com os cadastros, e tirar o envio da requisição. Celery e Redis ficaram fora de escopo.
 
@@ -116,7 +116,7 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 ## 15. Comandos destrutivos só no banco local comprovado
 
-**Decisão.** `clear_data`, `delete_users` e `set_passwords` só rodam quando `settings.ENVIRONMENT` é exatamente `local`, lido de `DJANGO_ENVIRONMENT`. Ausente, vazio, outro valor ou valor ambíguo recusam com `CommandError`, na primeira linha do `handle()`, antes de qualquer consulta, prompt ou escrita (`accounts.utils.require_local_environment`).
+**Decisão.** `clear_data`, `delete_users` e `set_passwords` só rodam quando `settings.ENVIRONMENT` é exatamente `local`, lido de `DJANGO_ENVIRONMENT`. Ausente, vazio, outro valor ou valor ambíguo recusam com `CommandError`, na primeira linha do `handle()`, antes de qualquer consulta, prompt ou escrita. A função, na época `require_local_environment`, hoje é `accounts.utils.require_safe_database` (ver a revisão abaixo).
 
 **Motivo registrado.** Os três comandos apagam dados ou trocam todas as senhas, inclusive dos superadmins, e o repositório não tinha como distinguir a máquina de desenvolvimento de outras instalações. `DEBUG` não serve como evidência, porque o padrão do `compose.yaml` é `1` e uma instalação mal configurada o herdaria. O padrão da variável é vazio, então a falta de configuração nega.
 

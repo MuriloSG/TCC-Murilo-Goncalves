@@ -31,7 +31,7 @@ O ator fica num `ContextVar` (`audit/context.py`):
 | Entrada, entrada recusada, saída | `AUTENTICACAO` (sinais do Django e do allauth; a recusa, no `AccountAdapter`) |
 | Recuperação solicitada, senha redefinida | `AUTENTICACAO` |
 | Acesso a uma tela | O `audit_resource` da view, só em GET com resposta 200 e fora do htmx |
-| Cadastro, alteração, exclusão, desativação, reativação | `USUARIO`, `PERFIL`, `ESPACO`, `DISCIPLINA`, `TURMA`, `CONFIGURACAO` |
+| Cadastro, alteração, exclusão, desativação, reativação | `USUARIO`, `PERFIL`, `ESPACO`, `CURSO`, `DISCIPLINA`, `TURMA`, `CONFIGURACAO` |
 | Prévia gerada (`CRIAR`), confirmação concluída (`IMPORTAR`), descarte, exclusão, falha no processamento, decisão de espaço gravada ou desfeita (`ALTERAR`) | `IMPORTACAO_USUARIO`, `IMPORTACAO_ENSALAMENTO`, com o resumo da importação e não cada linha |
 | Download do modelo da planilha (`EXPORTAR`) | o módulo da importação |
 | Cadastro, alteração e encerramento de aula; cancelamento de ocorrência | `ENSALAMENTO`, `EXCECAO_ENSALAMENTO` |
@@ -49,7 +49,7 @@ Telas sem `audit_resource` (painel, relatórios, calendário público, sino de n
 | Detalhe com campos alterados e informações adicionais | `/auditoria/<pk>/` | `AUDITORIA.VISUALIZAR` |
 | Opções do filtro de usuário, paginadas no servidor | `/auditoria/opcoes/usuarios/` | `AUDITORIA.VISUALIZAR` |
 
-Filtros: usuário, ação, módulo (`recurso`), identificador do registro (`registro`), período e origem. Ordem do mais recente para o mais antigo. A lista de espaços e as de disciplinas e turmas têm atalho "Ver auditoria" filtrado pelo registro.
+Filtros: usuário, ação, módulo (`recurso`), identificador do registro (`registro`), período e origem. Ordem do mais recente para o mais antigo. As listas de espaços, cursos, disciplinas e turmas têm atalho "Ver auditoria" filtrado pelo registro.
 
 ## Testes
 

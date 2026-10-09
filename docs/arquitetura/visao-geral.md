@@ -18,7 +18,7 @@ Aplicação Django monolítica no padrão MTV, com um app por domínio, PostgreS
 ## Caminho de uma requisição
 
 1. `config/urls.py` inclui as rotas de cada app com prefixo vazio. Toda rota autenticada é envolvida por `login_required` no `urls.py` do app.
-2. Middlewares, na ordem de `MIDDLEWARE`: segurança, sessão, CSRF, autenticação, mensagens, `AccountMiddleware` (allauth), `HtmxMiddleware`, `accounts.middleware.PermissionMiddleware` e `audit.middleware.AuditMiddleware`.
+2. Middlewares, na ordem de `MIDDLEWARE`: segurança, sessão, `CommonMiddleware`, CSRF, autenticação, mensagens, proteção contra clickjacking, `AccountMiddleware` (allauth), `HtmxMiddleware`, `accounts.middleware.PermissionMiddleware` e `audit.middleware.AuditMiddleware`.
 3. `PermissionMiddleware.process_view` lê o atributo `permission_required` da view e responde 403 quando `request.user.has_perm` recusa. Um anônimo que chegue a uma view com permissão é mandado ao login.
 4. `AuditMiddleware` define o ator da requisição (usuário, IP, cliente, origem `INTERFACE`) num `ContextVar` e, depois da resposta, registra o acesso quando a view declara `audit_resource`, o método é GET, a resposta é 200 e a requisição não veio do htmx.
 5. A view (sempre CBV) chama uma operação do model ou do manager. A operação abre a transação, trava o que precisa (`select_for_update`), confere as regras e lança `ValidationError` quando recusa. Na mesma transação grava a auditoria (`AuditLog.objects.record`), as notificações (`notices.events.announce`), os e-mails (`OutboxEntry.objects.enqueue`) e agenda a invalidação do cache público (`transaction.on_commit`).
@@ -49,7 +49,7 @@ Os mecanismos genéricos não conhecem os apps que os usam. Cada app se registra
 
 | Registro | Função | Quem registra |
 |---|---|---|
-| `outbox.handlers.register(kind, handler)` | Monta o e-mail de um tipo de envio | `accounts` (`LINK_SENHA`) |
+| `outbox.handlers.register(kind, handler)` | Monta o e-mail de um tipo de envio | `accounts` (`LINK_SENHA`, `REDEFINIR_SENHA`) |
 | `notices.events.register(name, event)` | Gera as notificações de um evento | `accounts` (perfil alterado), `bookings` (transições da Agenda) |
 | `imports.registry.register(definition)` | Importação específica | `accounts` (`UserImport`), `schedule` (`SpaceAllocationImport`) |
 | `schedule.occupancy.register_source(source, public=...)` | Fonte de ocupação da Grade e, com `public=True`, do calendário público | `bookings` (`BookingSource`) |

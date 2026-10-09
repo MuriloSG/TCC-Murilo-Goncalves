@@ -37,7 +37,7 @@
 | `templates/<app>/` | Templates; os que abrem em modal têm a versão `_modal.html` |
 | `tests/test_*.py` | Testes do app |
 | `management/commands/` | Comandos de gerenciamento |
-| `migrations/` | Uma migration inicial por app, mais as posteriores (as anteriores foram consolidadas no commit `49ec2b3`) |
+| `migrations/` | Só a `0001_initial` de cada app, consolidada antes do primeiro deploy |
 
 ## Módulos que não seguem o nome padrão
 
@@ -46,7 +46,7 @@
 | `accounts/permissions.py` | Catálogo único das permissões de todos os módulos |
 | `accounts/imports.py` | `UserImport`, a importação de usuários |
 | `accounts/adapters.py`, `accounts/tokens.py` | Adaptador do allauth e gerador do token de senha |
-| `accounts/emails.py`, `accounts/notifications.py` | Tratador do e-mail `LINK_SENHA` e gerador da notificação de perfil alterado |
+| `accounts/emails.py`, `accounts/notifications.py` | Tratadores dos e-mails `LINK_SENHA` e `REDEFINIR_SENHA` e gerador da notificação de perfil alterado |
 | `audit/catalog.py`, `audit/context.py` | Catálogo de ações, módulos e origens; ator da ação em `ContextVar` |
 | `outbox/handlers.py`, `outbox/worker.py` | Registro de tratadores e processamento dos envios |
 | `notices/catalog.py`, `notices/events.py`, `notices/realtime.py`, `notices/consumers.py` | Tipos de notificação, registro de eventos, aviso pós-commit e consumer WebSocket |
@@ -78,10 +78,11 @@
 | `clear_data [--yes]` | `accounts` | `TRUNCATE` de todas as tabelas, exceto usuários, perfis, permissões, sessões e e-mails do allauth. Ignora a proteção da auditoria |
 | `delete_users [--yes]` | `accounts` | Exclui os usuários que não são superadmin e os registros que dependem deles. Exige um superadmin ativo |
 | `set_passwords [--password X] [--yes]` | `accounts` | Define a mesma senha (padrão `DEFAULT_PASSWORD` do comando) para todos os usuários |
-
-`flush`, `clear_data`, `delete_users` e `set_passwords` só rodam no banco local comprovado ou num banco de teste criado pelo runner (`accounts.utils.require_safe_database`).
+| `flush` | `accounts` | Substitui o `flush` do Django, com a mesma trava dos comandos acima |
 | `process_outbox` | `outbox` | Laço do worker de e-mails |
 | `process_imports` | `imports` | Laço do worker de importações |
+
+`flush`, `clear_data`, `delete_users` e `set_passwords` só rodam no banco local comprovado ou num banco de teste criado pelo runner (`accounts.utils.require_safe_database`).
 
 ## `sources/`
 

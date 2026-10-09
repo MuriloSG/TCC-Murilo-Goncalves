@@ -1,6 +1,6 @@
 # Agenda
 
-Uso eventual de um espaço numa data: o docente pede, quem analisa aprova, rejeita ou sugere outra opção. Implementação: app `bookings`. Regras em [regras de negócio](../regras/regras-de-negocio.md#agenda).
+Uso eventual de um espaço numa data: quem tem `AGENDA.SOLICITAR` pede, quem tem `AGENDA.ANALISAR` aprova, rejeita ou sugere outra opção. Implementação: app `bookings`. Regras em [regras de negócio](../regras/regras-de-negocio.md#agenda).
 
 ## Conceitos
 

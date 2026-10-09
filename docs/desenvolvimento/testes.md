@@ -11,25 +11,25 @@ make manage cmd="test bookings.tests.test_models.SubmitTests.test_past_start_is_
 
 Sem `make`: `docker compose run --rm web python manage.py test`.
 
-Situação em 08/10/2026: 1656 testes, todos passando, em cerca de 90 segundos. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
+Situação em 09/10/2026: 1747 testes, todos passando, em cerca de 100 segundos. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
 
 A convenção do projeto é rodar a suíte inteira antes de cada commit. Não há CI no repositório.
 
 ## Organização
 
-- Testes em `<app>/tests/test_*.py`. Auxiliares compartilhados: `bookings/tests/base.py`, `system_settings/tests/base.py` (`configure_smtp`), `imports/tests/definitions.py` (importação de teste sobre `auth.Group`), `imports/tests/worker.py` (roda o worker nos testes), `ui/tests/files.py` (lista templates e módulos).
+- Testes em `<app>/tests/test_*.py`. Auxiliares compartilhados: `accounts/tests/roles.py` (perfis montados pelas permissões), `bookings/tests/base.py`, `system_settings/tests/base.py` (`configure_smtp`), `imports/tests/definitions.py` (importação de teste sobre `auth.Group`), `imports/tests/worker.py` (roda o worker nos testes), `ui/tests/files.py` (lista templates e módulos).
 - A planilha real e as sugeridas de `sources/` são lidas pelos testes do ensalamento.
 
 ## Testes transversais
 
 | Teste | O que garante |
 |---|---|
-| `accounts/tests/test_route_protection.py` | Toda rota está em `PROTECTED_ROUTES` (com a permissão) ou em `PUBLIC_ROUTES`. Para cada rota protegida: anônimo vai ao login com `next`, usuário sem a permissão recebe 403, POST sem CSRF recebe 403. Rota nova fora da tabela faz o teste falhar |
+| `accounts/tests/test_route_protection.py` | Toda rota está em `PROTECTED_ROUTES` (com a permissão) ou em `PUBLIC_ROUTES`. Para cada rota protegida: anônimo vai ao login com `next`, usuário sem a permissão recebe 403, POST sem CSRF recebe 403, perfil com só a permissão da rota passa (exceto as reservadas), perfil sem permissões recebe 403 qualquer que seja o nome, e o superadmin sem perfil passa. Rota nova fora da tabela faz o teste falhar |
 | `ui/tests/test_interface_text.py`, `test_text_rules.py` | Texto exibido em templates e em strings Python segue a seção 9 das convenções (expressões proibidas, glossário) |
 | `ui/tests/test_template_classes.py` | Templates sem `style=`, sem valores arbitrários do Tailwind e só com classes da escala de tokens |
 | `ui/tests/test_contrast.py` | Pares de cores de `ui/contrast.py` acima do contraste AA, nos dois temas |
 | `schedule/tests/test_public_cache.py`, `BulkWriteScanTests` | Toda escrita sem sinais nos models das telas públicas chama a invalidação do cache |
-| `accounts/tests/test_catalog.py` | Catálogo de permissões coerente com a migration |
+| `accounts/tests/test_catalog.py` | Catálogo de permissões coerente com a carga da `accounts/0001_initial`, e nenhum perfil com permissão reservada ou de alcance acadêmico |
 | `accounts/tests/test_command_environment.py` | `flush`, `clear_data`, `delete_users` e `set_passwords` recusados fora de `DJANGO_ENVIRONMENT=local`, sem `DJANGO_LOCAL_DATABASE`, com identidade diferente da declarada, sem a marca no banco, com outra marca, com nome efetivo divergente e num banco com nome de teste fora do registro do runner; mensagens sem configuração nem credenciais; execução no banco local simulado (marca só na sessão do teste) e no banco de teste do runner; registro do runner esvaziado ao final, mesmo com falha |
 
 ## Regras para escrever testes

@@ -28,7 +28,7 @@ O detalhamento está em [permissões](../regras/permissoes.md).
 | Autenticação, usuários e perfis | `/contas/login/`, `/usuarios/`, `/perfis/` | [autenticacao-e-usuarios.md](../funcionalidades/autenticacao-e-usuarios.md) |
 | Ensalamento (Grade, importação, recorrências) | `/ensalamento/` | [ensalamento.md](../funcionalidades/ensalamento.md) |
 | Espaços | `/espacos/` | [espacos.md](../funcionalidades/espacos.md) |
-| Disciplinas e turmas | `/disciplinas/`, `/turmas/` | [disciplinas-e-turmas.md](../funcionalidades/disciplinas-e-turmas.md) |
+| Cursos, disciplinas e turmas | `/cursos/`, `/disciplinas/`, `/turmas/` | [disciplinas-e-turmas.md](../funcionalidades/disciplinas-e-turmas.md) |
 | Agenda | `/agenda/` | [agenda.md](../funcionalidades/agenda.md) |
 | Calendário público | `/`, `/horario-original/` | [calendario-publico.md](../funcionalidades/calendario-publico.md) |
 | Painel e relatórios | `/painel/`, `/relatorios/...` | [painel-e-relatorios.md](../funcionalidades/painel-e-relatorios.md) |
@@ -61,7 +61,7 @@ Não há API REST, front-end separado nem `django.contrib.admin`.
 
 ```mermaid
 erDiagram
-    User ||--|| UserRole : "tem um perfil"
+    User ||--o| UserRole : "perfil (o superadmin pode não ter)"
     Role ||--o{ UserRole : ""
     Role ||--o{ RolePermission : ""
     Permission ||--o{ RolePermission : ""

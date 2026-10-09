@@ -1,6 +1,6 @@
 # Regras de negócio
 
-Regras confirmadas no código e nos testes em 08/10/2026. Cada regra indica onde é aplicada. As permissões estão em [permissoes.md](permissoes.md). O que não está implementado fica no fim.
+Regras confirmadas no código e nos testes em 09/10/2026. Cada regra indica onde é aplicada. As permissões estão em [permissoes.md](permissoes.md). O que não está implementado fica no fim.
 
 Convenção geral: as regras ficam nas operações dos models e managers, que lançam `ValidationError` ao recusar e não gravam nada nesse caso. As telas só exibem a recusa.
 
@@ -11,7 +11,7 @@ Convenção geral: as regras ficam nas operações dos models e managers, que la
 | O login é pelo e-mail. O e-mail é único sem diferenciar a caixa e é gravado em minúsculas | `User`, `UserManager.normalize_email`, `user_email_unique_ci` |
 | Usuário cadastrado pela tela ou por importação precisa de e-mail `@ifnmg.edu.br`. A edição e o `create_superadmin` não exigem o domínio | `validate_institutional_email`, `UserCreateForm.clean_email`, `UserImport.create` |
 | O usuário nasce sem senha utilizável e recebe o link para defini-la. Ninguém define a senha de outra pessoa | `UserManager.register` |
-| Cada usuário tem exatamente um perfil | `UserRole`, restrição `user_role_one_per_user` |
+| Cada usuário tem no máximo um perfil. O cadastro pela tela e pela importação exige um; o superadmin criado por comando fica sem perfil | `UserRole`, restrição `user_role_one_per_user`, `UserManager.register`, `UserManager.create_superadmin` |
 | O nome de usuário (`username`) é opcional, gravado como informado (espaços internos reduzidos) e único sem diferenciar a caixa. Não é credencial | `User.clean`, `normalize_username`, `user_username_unique_ci` |
 | Usuário inativo não entra (resposta igual à de senha errada), não redefine senha por link antigo e não tem permissão nenhuma | `AccountAdapter.authenticate`, `PasswordResetTokenGenerator`, `User.has_perm` |
 | Só um superadmin ativo altera o e-mail de um superadmin | `User.update_details`, `SuperadminOnlyOperation` |
@@ -34,7 +34,7 @@ Convenção geral: as regras ficam nas operações dos models e managers, que la
 | Código em maiúsculas sem acento, palavras separadas por `_` (`^[A-Z]+(_[A-Z]+)*$`), único e imutável. Nome único sem diferenciar a caixa | `Role`, `role_code_format`, `role_name_unique_ci` |
 | Nenhum perfil é especial: os da carga inicial (`ADMINISTRADOR`, `DOCENTE`) são editados e excluídos como qualquer outro | `Role.delete_role` |
 | Perfil com usuários vinculados não pode ser excluído | `RoleInUse` |
-| As permissões `PERFIL.*` são reservadas ao superadmin: não podem ser concedidas a perfil e, se estiverem num perfil, não valem | `grantable_permissions`, `User.effective_permissions` |
+| As permissões `PERFIL.*` e `CONFIGURACAO.EDITAR` são reservadas ao superadmin: não podem ser concedidas a perfil e, se estiverem num perfil, não valem | `SUPERADMIN_RESERVED_PERMISSIONS`, `grantable_permissions`, `User.effective_permissions` |
 | Perfil novo nasce sem permissões até que o superadmin as escolha | `RoleManager.create_role` |
 
 ## Importações (todas)
@@ -174,7 +174,7 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 
 | Item | Situação |
 |---|---|
-| Página com todas as notificações do usuário | Não implementada (tarefa 6.2 de `notificar-usuarios`). Só o sino, com as 10 mais recentes |
+| Página com todas as notificações do usuário | Não implementada. Só o sino, com as 10 mais recentes |
 | Recorrência de agendamento | Não existe. O agendamento é numa data só |
 | Capacidade do espaço e conferência da quantidade de alunos | Não existe. A quantidade é só informativa |
 | Rate limit das rotas públicas | Fora da aplicação; o proxy de produção não está no repositório |

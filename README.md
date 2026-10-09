@@ -137,7 +137,7 @@ Para enviar de verdade, por exemplo pelo Gmail, defina no `.env` o backend SMTP 
 DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 ```
 
-O link de definição de senha de um usuário cadastrado sai pelo `worker` em alguns segundos; o de "Esqueci minha senha" sai na hora, pelo `web`. Detalhes em [docs/funcionalidades/emails.md](docs/funcionalidades/emails.md).
+Os dois links de senha, o do usuário cadastrado e o de "Esqueci minha senha", saem pelo `worker` em alguns segundos. Detalhes em [docs/funcionalidades/emails.md](docs/funcionalidades/emails.md).
 
 ## Acesso pelo celular na rede local
 
@@ -167,10 +167,10 @@ make up
 
 ## Permissões de arquivos em hosts Linux
 
-O container roda como root. Em hosts Linux, arquivos criados por comandos executados no container, como migrations geradas com `makemigrations`, ficam com o root como dono. Para criá-los com o seu usuário:
+A imagem da aplicação roda como o usuário `app`, com uid 1000 (`APP_UID` no `Dockerfile`), e o container `tailwind` como o usuário `node`, também com uid 1000. Num host Linux cujo usuário tenha outro uid, os arquivos gravados pelo container no repositório, como migrations geradas com `makemigrations`, falham por permissão. Reconstrua a imagem com o seu uid:
 
 ```bash
-docker compose run --rm --user "$(id -u):$(id -g)" web python manage.py makemigrations
+docker compose build --build-arg APP_UID="$(id -u)" web
 ```
 
 No macOS e no Windows com Docker Desktop, isso não é necessário.

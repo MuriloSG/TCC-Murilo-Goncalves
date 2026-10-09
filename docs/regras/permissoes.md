@@ -75,13 +75,13 @@ Ter a permissão da operação não basta: o executor precisa cobrir o que alter
 - Cadastrar, trocar perfil ou importar com um perfil exige ter todas as permissões desse perfil. Os formulários só oferecem esses perfis.
 - Alterar e-mail, nome de usuário, perfil ou situação de outra conta exige ter todas as permissões que ela concede, mesmo com a conta inativa.
 - O próprio nome de usuário, que liga a conta ao docente, só é alterado por outro usuário ou por um superadmin.
+- Superadmin ativo cobre tudo. Comandos de gerenciamento chamam as operações sem executor e não passam por essa verificação.
 
 ### Vínculo com o docente
 
 A conta é ligada ao docente do ensalamento pelo nome de usuário, comparado sem diferenciar caixa com `Teacher.name`. Os dois são únicos sem diferenciar caixa, então cada docente fica ligado a no máximo uma conta; para passar o vínculo a outra conta, é preciso primeiro tirar o nome da conta atual. Trocar o nome de usuário exige a cobertura acima e, quando liga ou desliga um docente, a auditoria da alteração traz `docente_desligado` e `docente_ligado` em `metadata`.
 
 Risco aceito: quem cobre as permissões das duas contas pode mover o vínculo de um docente, e com ele o escopo de disciplinas e turmas e o cancelamento de ocorrências. A troca fica registrada. Docentes homônimos na planilha viram um só `Teacher` e dividem o escopo; isso vem da planilha e não do vínculo.
-- Superadmin ativo cobre tudo. Comandos de gerenciamento chamam as operações sem executor e não passam por essa verificação.
 
 ## Verificações além da rota
 
@@ -96,7 +96,7 @@ Risco aceito: quem cobre as permissões das duas contas pode mover o vínculo de
 | Importação de usuários, por linha | `USUARIO.IMPORTAR` | `USUARIO.CRIAR`, `EDITAR`, `ALTERAR_PERFIL` conforme o que a linha muda |
 | Importação de ensalamento, decisão de espaço | `ENSALAMENTO.IMPORTAR` | `ESPACO.CRIAR`, `EDITAR` ou `ALTERAR_SITUACAO` conforme a decisão |
 | Disciplinas e turmas | `DISCIPLINA.*`, `TURMA.*` | Sem `DISCIPLINA.ACESSAR_TODAS` ou `TURMA.ACESSAR_TODAS`, registro fora do escopo de docente responde 404 |
-| Solicitar agendamento | `AGENDA.SOLICITAR` | Usuário precisa corresponder a docente com vínculo atual |
+| Solicitar agendamento | `AGENDA.SOLICITAR` | Nenhuma ligada ao docente: a turma é opcional e, quando informada, precisa ser vínculo atual do semestre da data |
 | Cancelar agendamento | `AGENDA.SOLICITAR` (próprio) ou `AGENDA.ANALISAR` | O model aceita quem solicitou ou quem analisa |
 | Notificações (sino, abrir, marcar) | só login | Só as do próprio usuário |
 

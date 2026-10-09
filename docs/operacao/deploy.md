@@ -34,7 +34,7 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | HTTPS e cookies | Cookies `Secure` ligados quando `DEBUG` está desligado. HSTS, redirecionamento para HTTPS, cabeçalho de esquema do proxy e origens confiáveis de CSRF são variáveis (`DJANGO_SECURE_HSTS_SECONDS`, `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_TRUSTED_PROXY_SSL_HEADER`, `DJANGO_CSRF_TRUSTED_ORIGINS`), desligadas por padrão até a topologia do proxy ser conhecida. Ver [configuração](configuracao.md) |
 | Proxy reverso | Fora do repositório. Deve terminar o TLS, sobrescrever (e não repassar) `X-Forwarded-For` e `X-Forwarded-Proto`, limitar o tamanho do corpo das requisições, aplicar rate limit em `/`, `/horario-original/` e `/contas/*` e não guardar as páginas públicas em cache próprio. Com ele definido, declare `DJANGO_TRUSTED_PROXY_COUNT` (ou `DJANGO_TRUSTED_CLIENT_IP_HEADER`) e `DJANGO_TRUSTED_PROXY_SSL_HEADER`; sem isso, os limites por IP do allauth e a auditoria veem o IP do proxy |
 | Vários processos web | Com `DJANGO_REDIS_URL`, os limites de tentativa, o cache público e a camada do Channels são compartilhados. Sem ela, os limites valem por processo |
-| Logs | Sem `LOGGING`; ver [configuração](configuracao.md#não-configurado-no-repositório) |
+| Logs | `LOGGING` manda tudo para o `stdout` do container; quem coleta e guarda os logs não está definido. Ver [configuração](configuracao.md#logs) |
 | Backup | Não há rotina no repositório |
 
 ## Instruções de desenvolvimento que não valem para produção

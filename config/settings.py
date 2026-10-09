@@ -34,6 +34,30 @@ LOCAL_DATABASE = os.environ.get('DJANGO_LOCAL_DATABASE', '')
 ALLOWED_HOSTS = [host for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if host]
 
 
+def env_flag(name, default):
+    """Liga ou desliga pela variável com `1` ou `0`; ausente, vale o padrão."""
+    value = os.environ.get(name, '')
+    return default if value == '' else value == '1'
+
+
+def env_list(name):
+    return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
+
+
+SECURE_COOKIES = env_flag('DJANGO_SECURE_COOKIES', not DEBUG)
+SESSION_COOKIE_SECURE = SECURE_COOKIES
+CSRF_COOKIE_SECURE = SECURE_COOKIES
+CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
+SECURE_SSL_REDIRECT = env_flag('DJANGO_SECURE_SSL_REDIRECT', False)
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_flag('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = env_flag('DJANGO_SECURE_HSTS_PRELOAD', False)
+TRUSTED_PROXY_SSL_HEADER = os.environ.get('DJANGO_TRUSTED_PROXY_SSL_HEADER', '')
+SECURE_PROXY_SSL_HEADER = (TRUSTED_PROXY_SSL_HEADER, 'https') if TRUSTED_PROXY_SSL_HEADER else None
+ALLAUTH_TRUSTED_PROXY_COUNT = int(os.environ.get('DJANGO_TRUSTED_PROXY_COUNT', '0'))
+ALLAUTH_TRUSTED_CLIENT_IP_HEADER = os.environ.get('DJANGO_TRUSTED_CLIENT_IP_HEADER') or None
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -102,21 +126,33 @@ REDIS_TIMEOUT = float(os.environ.get('DJANGO_REDIS_TIMEOUT', '0.1'))
 TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 CACHE_KEY_PREFIX = os.environ.get('DJANGO_CACHE_KEY_PREFIX', 'ifagenda')
 
+REDIS_OPTIONS = {
+    'socket_connect_timeout': REDIS_TIMEOUT,
+    'socket_timeout': REDIS_TIMEOUT,
+    'serializer': 'config.cache.JsonSerializer',
+}
+SHARED_CACHE = bool(REDIS_URL) and not TESTING
+
 CACHES = {
-    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'default': {
+        'BACKEND': 'config.cache.TolerantRedisCache',
+        'LOCATION': REDIS_URL,
+        'KEY_PREFIX': f'{CACHE_KEY_PREFIX}:default',
+        'OPTIONS': REDIS_OPTIONS,
+    } if SHARED_CACHE else {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
     'public': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': REDIS_URL,
         'KEY_PREFIX': CACHE_KEY_PREFIX,
-        'OPTIONS': {'socket_connect_timeout': REDIS_TIMEOUT, 'socket_timeout': REDIS_TIMEOUT},
-    } if REDIS_URL and not TESTING else {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'},
+        'OPTIONS': REDIS_OPTIONS,
+    } if SHARED_CACHE else {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'},
 }
 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [{'address': REDIS_URL, 'socket_connect_timeout': REDIS_TIMEOUT}],
+            'hosts': [{'address': REDIS_URL, 'socket_connect_timeout': REDIS_TIMEOUT, 'socket_timeout': None}],
             'prefix': f'{CACHE_KEY_PREFIX}:channels',
         },
     } if REDIS_URL and not TESTING else {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
@@ -232,6 +268,12 @@ OUTBOX_BATCH_SIZE = int(os.environ.get('DJANGO_OUTBOX_BATCH_SIZE', '20'))
 
 IMPORT_MAX_FILE_SIZE = int(os.environ.get('DJANGO_IMPORT_MAX_FILE_SIZE', str(1024 * 1024)))
 IMPORT_MAX_ROWS = int(os.environ.get('DJANGO_IMPORT_MAX_ROWS', '1000'))
+IMPORT_MAX_XLSX_UNCOMPRESSED_SIZE = int(
+    os.environ.get('DJANGO_IMPORT_MAX_XLSX_UNCOMPRESSED_SIZE', str(64 * 1024 * 1024)),
+)
+IMPORT_MAX_XLSX_ENTRIES = int(os.environ.get('DJANGO_IMPORT_MAX_XLSX_ENTRIES', '500'))
+IMPORT_MAX_SHEET_ROWS = int(os.environ.get('DJANGO_IMPORT_MAX_SHEET_ROWS', '5000'))
+IMPORT_MAX_SHEET_COLUMNS = int(os.environ.get('DJANGO_IMPORT_MAX_SHEET_COLUMNS', '100'))
 IMPORT_MAX_ATTEMPTS = int(os.environ.get('DJANGO_IMPORT_MAX_ATTEMPTS', '3'))
 IMPORT_RETRY_DELAYS = [
     int(delay) for delay in os.environ.get('DJANGO_IMPORT_RETRY_DELAYS', '30,120').split(',')
@@ -242,7 +284,7 @@ IMPORT_LOCK_TIMEOUT = int(os.environ.get('DJANGO_IMPORT_LOCK_TIMEOUT', '60'))
 IMPORT_STALE_AFTER = int(os.environ.get('DJANGO_IMPORT_STALE_AFTER', '60'))
 
 LOG_LEVEL = os.environ.get('DJANGO_LOG_LEVEL', 'INFO').upper()
-APP_LOGGERS = ('accounts', 'imports', 'notices', 'outbox', 'schedule')
+APP_LOGGERS = ('accounts', 'config', 'imports', 'notices', 'outbox', 'schedule')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

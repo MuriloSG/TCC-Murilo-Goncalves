@@ -804,7 +804,7 @@ class UserSheetTests(ImportTestCase):
     """Aba opcional `usuários - sistema`."""
 
     def setUp(self):
-        self.executor = space_manager(extra_permissions=[permissions.USER_CREATE])
+        self.executor = space_manager(extra_permissions=[permissions.USER_CREATE, permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST])
         self.definition = SpaceAllocationImport()
         self.teacher_role = Role.objects.get(code='DOCENTE')
 
@@ -1025,7 +1025,7 @@ class SuggestedSpreadsheetTests(ImportTestCase):
     """Planilha sugerida, com a aba `usuários - sistema`."""
 
     def setUp(self):
-        self.executor = space_manager(extra_permissions=[permissions.USER_CREATE])
+        self.executor = space_manager(extra_permissions=[permissions.USER_CREATE, permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST])
         self.definition = SpaceAllocationImport()
 
     def test_users_sheet_is_read_and_every_user_is_planned(self):

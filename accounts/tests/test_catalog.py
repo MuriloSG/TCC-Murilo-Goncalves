@@ -29,8 +29,8 @@ class PermissionConstantsTests(SimpleTestCase):
     def test_administrative_capability_is_user_management_without_import(self):
         self.assertEqual(permissions.ADMINISTRATIVE_CAPABILITY, USER_CODES)
 
-    def test_reserved_permissions_are_exactly_role_permissions(self):
-        self.assertEqual(permissions.SUPERADMIN_RESERVED_PERMISSIONS, ROLE_CODES)
+    def test_reserved_permissions_are_role_and_settings_permissions(self):
+        self.assertEqual(permissions.SUPERADMIN_RESERVED_PERMISSIONS, ROLE_CODES | {permissions.SETTINGS_EDIT})
 
 
 class InitialCatalogTests(TestCase):

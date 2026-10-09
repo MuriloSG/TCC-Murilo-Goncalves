@@ -41,7 +41,7 @@ class LayerSettingsTests(SimpleTestCase):
 
     def test_shared_layer_has_no_read_timeout_shorter_than_the_blocking_wait(self):
         host = self.layer('redis://redis:6379/0')['CONFIG']['hosts'][0]
-        self.assertNotIn('socket_timeout', host)
+        self.assertIsNone(host['socket_timeout'])
         self.assertIn('socket_connect_timeout', host)
 
     def test_missing_url_keeps_the_layer_in_memory(self):

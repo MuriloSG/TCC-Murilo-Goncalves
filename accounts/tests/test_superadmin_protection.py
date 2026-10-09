@@ -116,8 +116,20 @@ class SuperadminProtectionViewTests(TestCase):
         self.assertTrue(self.reload(self.superadmin).is_superadmin)
         self.assertFalse(self.reload(self.admin).is_superadmin)
 
-    def test_regular_admin_deactivates_a_superadmin_who_keeps_the_flag(self):
+    def test_regular_admin_cannot_deactivate_or_change_role_of_superadmin(self):
         self.client.force_login(self.admin)
+        response = self.client.post(f'/usuarios/{self.superadmin.pk}/desativar/', follow=True)
+        self.assertContains(response, 'Somente um superadmin ativo pode alterar')
+        response = self.client.post(
+            f'/usuarios/{self.superadmin.pk}/perfil/', {'role': Role.objects.get(code='ADMINISTRADOR').pk},
+        )
+        self.assertContains(response, 'Somente um superadmin ativo pode alterar')
+        superadmin = self.reload(self.superadmin)
+        self.assertTrue(superadmin.is_active)
+        self.assertEqual(superadmin.role.code, 'DOCENTE')
+
+    def test_superadmin_deactivates_another_superadmin_who_keeps_the_flag(self):
+        self.client.force_login(self.other_superadmin)
         self.client.post(f'/usuarios/{self.superadmin.pk}/desativar/')
         superadmin = self.reload(self.superadmin)
         self.assertFalse(superadmin.is_active)

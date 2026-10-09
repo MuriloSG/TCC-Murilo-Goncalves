@@ -74,7 +74,6 @@ class PublicBooking:
     end: object
     space: str
     requester: str
-    email: str
     group_label: str = ''
     subject: str = ''
     teachers: tuple = ()
@@ -82,14 +81,6 @@ class PublicBooking:
     group: str = ''
     teacher: str = ''
     is_booking = True
-
-    @property
-    def mailbox(self):
-        return self.email.partition('@')[0]
-
-    @property
-    def domain(self):
-        return self.email.partition('@')[2]
 
 
 @dataclass(frozen=True)
@@ -304,7 +295,7 @@ def public_bookings(dates, space=None, teacher=None):
             date=occurrence.date, start=occurrence.start, end=occurrence.end,
             entry=PublicBooking(
                 start=occurrence.start, end=occurrence.end, space=occurrence.space,
-                requester=occurrence.requester, email=occurrence.email,
+                requester=occurrence.requester,
                 subject=occurrence.subject, course=occurrence.course,
                 group=occurrence.group, teacher=occurrence.teacher,
             ),

@@ -1,4 +1,5 @@
 from django.contrib.auth.context_processors import PermWrapper
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts import permissions
@@ -147,3 +148,117 @@ class TemplatePermsTests(AuthorizationTestCase):
         self.assertTrue(perms['USUARIO']['VISUALIZAR'])
         self.assertFalse(perms['USUARIO']['CRIAR'])
         self.assertFalse(perms['PERFIL'])
+
+
+class AuthorityTests(AuthorizationTestCase):
+    """Quem gere usuários só atribui ou altera o que já cobre com as próprias permissões."""
+
+    def create_user(self, email, role, **fields):
+        user = super().create_user(email, role, **fields)
+        user.set_unusable_password()
+        user.save(update_fields=['password'])
+        return user
+
+    def setUp(self):
+        grant(
+            self.coordination, permissions.USER_VIEW, permissions.USER_CREATE, permissions.USER_EDIT,
+            permissions.USER_CHANGE_ROLE, permissions.USER_CHANGE_STATUS,
+        )
+        self.coordinator = self.create_user('coord@ifnmg.edu.br', self.coordination)
+        self.colleague = self.create_user('admin@ifnmg.edu.br', self.administrator)
+        self.teacher_user = self.create_user('docente@ifnmg.edu.br', self.teacher)
+
+    def assertRefused(self, operation):
+        with self.assertRaises(ValidationError) as caught:
+            operation()
+        error = caught.exception
+        items = [item for group in error.error_dict.values() for item in group] if hasattr(error, 'error_dict') else error.error_list
+        self.assertEqual([item.code for item in items], ['insufficient_authority'])
+
+    def test_role_not_covered_is_refused_everywhere(self):
+        self.assertRefused(lambda: User.objects.register(
+            email='novo@ifnmg.edu.br', name='Novo', role=self.administrator, executor=self.coordinator,
+        ))
+        self.assertRefused(lambda: self.teacher_user.change_role(self.administrator, executor=self.coordinator))
+        self.assertRefused(lambda: self.coordinator.change_role(self.administrator, executor=self.coordinator))
+        self.assertFalse(User.objects.filter(email='novo@ifnmg.edu.br').exists())
+        self.assertEqual(User.objects.get(pk=self.coordinator.pk).role, self.coordination)
+
+    def test_covered_role_and_account_are_allowed(self):
+        grant(self.coordination, *TEACHER_PERMISSIONS)
+        coordinator = User.objects.get(pk=self.coordinator.pk)
+        created = User.objects.register(
+            email='novo@ifnmg.edu.br', name='Novo', role=self.teacher, executor=coordinator,
+        )
+        created.update_details(coordinator, name='Novo', email='outro@ifnmg.edu.br', username='Novo Docente')
+        created.deactivate(executor=coordinator)
+        created.reactivate(executor=coordinator)
+        self.assertEqual(User.objects.get(pk=created.pk).username, 'Novo Docente')
+
+    def test_account_not_covered_is_refused(self):
+        for operation in (
+            lambda: self.colleague.update_details(self.coordinator, name='Admin', email='novo@ifnmg.edu.br'),
+            lambda: self.colleague.update_details(self.coordinator, name='Admin', email=self.colleague.email, username='Fulano'),
+            lambda: self.colleague.change_role(self.teacher, executor=self.coordinator),
+            lambda: self.colleague.deactivate(executor=self.coordinator),
+        ):
+            with self.subTest(operation=operation):
+                self.assertRefused(operation)
+        colleague = User.objects.get(pk=self.colleague.pk)
+        self.assertEqual((colleague.email, colleague.username, colleague.is_active), ('admin@ifnmg.edu.br', None, True))
+
+    def test_inactive_account_keeps_its_protection(self):
+        self.colleague.deactivate()
+        self.assertRefused(lambda: User.objects.get(pk=self.colleague.pk).reactivate(executor=self.coordinator))
+
+    def test_name_of_account_not_covered_can_be_changed(self):
+        self.colleague.update_details(self.coordinator, name='Admin Novo', email=self.colleague.email)
+        self.assertEqual(User.objects.get(pk=self.colleague.pk).name, 'Admin Novo')
+
+    def test_own_username_is_refused_unless_superadmin(self):
+        self.assertRefused(lambda: self.coordinator.update_details(
+            self.coordinator, name='coord', email=self.coordinator.email, username='Docente Qualquer',
+        ))
+        superadmin = self.create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+        superadmin.update_details(superadmin, name='super', email=superadmin.email, username='Super')
+        self.assertEqual(User.objects.get(pk=superadmin.pk).username, 'Super')
+
+    def test_forms_offer_only_covered_roles(self):
+        from accounts.forms import UserCreateForm
+
+        offered = set(UserCreateForm(executor=self.coordinator).fields['role'].queryset)
+        self.assertNotIn(self.administrator, offered)
+        self.assertNotIn(self.teacher, offered)
+        self.assertIn(self.coordination, offered)
+
+    def test_forged_role_post_is_refused_by_the_screen(self):
+        self.client.force_login(self.coordinator)
+        response = self.client.post(
+            f'/usuarios/{self.teacher_user.pk}/perfil/', {'role': self.administrator.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].errors['role'])
+        self.assertEqual(User.objects.get(pk=self.teacher_user.pk).role, self.teacher)
+
+    def test_username_change_that_moves_a_teacher_link_is_highlighted_in_the_audit(self):
+        from audit import catalog
+        from audit.models import AuditLog
+        from schedule.models import Teacher
+
+        Teacher.objects.create(name='Ana Lima')
+        Teacher.objects.create(name='Bruno Reis')
+        grant(self.coordination, *TEACHER_PERMISSIONS)
+        coordinator = User.objects.get(pk=self.coordinator.pk)
+        teacher_user = User.objects.get(pk=self.teacher_user.pk)
+        teacher_user.update_details(coordinator, name='docente', email=teacher_user.email, username='ana lima')
+        teacher_user.update_details(coordinator, name='docente', email=teacher_user.email, username='Bruno Reis')
+        teacher_user.update_details(coordinator, name='docente', email=teacher_user.email, username='Sem Docente')
+        entries = AuditLog.objects.filter(resource=catalog.USER, resource_id=str(teacher_user.pk), action=catalog.UPDATE)
+        self.assertEqual(
+            [entry.metadata for entry in entries.order_by('pk')],
+            [
+                {'docente_ligado': 'Ana Lima'},
+                {'docente_desligado': 'Ana Lima', 'docente_ligado': 'Bruno Reis'},
+                {'docente_desligado': 'Bruno Reis'},
+            ],
+        )

@@ -1,5 +1,5 @@
 from django.core.cache import cache
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
 
 from accounts.adapters import AccountAdapter
 from accounts.models import Role, User
@@ -122,6 +122,61 @@ class InactiveUserTests(AuthenticationTestCase):
         User.objects.filter(pk=self.user.pk).update(is_active=False)
         response = self.client.get('/inicio/')
         self.assertRedirects(response, '/contas/login/?next=/inicio/', fetch_redirect_response=False)
+
+
+class SessionsAfterChangeByAnotherTests(AuthenticationTestCase):
+    """Trocar o e-mail ou o perfil de outra conta encerra as sessões dela, e só dela."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = self.create_user('admin@ifnmg.edu.br', role=self.administrator)
+        self.bystander = self.create_user('maria@ifnmg.edu.br')
+        self.target_client, self.other_client = Client(), Client()
+        self.login(client=self.target_client)
+        self.login('maria@ifnmg.edu.br', client=self.other_client)
+        self.second_target_client = Client()
+        self.login(client=self.second_target_client)
+
+    def logged_in(self, client):
+        response = client.get('/inicio/')
+        return not response.get('Location', '').startswith('/contas/login/')
+
+    def target(self):
+        return User.objects.get(pk=self.user.pk)
+
+    def test_email_change_by_another_ends_every_session_of_the_account(self):
+        self.target().update_details(self.admin, name='João Silva', email='joao.silva@ifnmg.edu.br')
+        self.assertFalse(self.logged_in(self.target_client))
+        self.assertFalse(self.logged_in(self.second_target_client))
+        self.assertTrue(self.logged_in(self.other_client))
+
+    def test_role_change_by_another_ends_the_sessions(self):
+        self.target().change_role(self.administrator, executor=self.admin)
+        self.assertFalse(self.logged_in(self.target_client))
+        self.assertTrue(self.logged_in(self.other_client))
+
+    def test_ended_session_cannot_be_reused_and_a_new_login_works(self):
+        cookie = self.target_client.cookies['sessionid'].value
+        self.target().change_role(self.administrator, executor=self.admin)
+        reused = Client()
+        reused.cookies['sessionid'] = cookie
+        response = reused.get('/inicio/')
+        self.assertRedirects(response, '/contas/login/?next=/inicio/', fetch_redirect_response=False)
+        fresh = Client()
+        self.login('joao@ifnmg.edu.br', client=fresh)
+        self.assertTrue(self.logged_in(fresh))
+
+    def test_unchanged_email_and_role_keep_the_sessions(self):
+        target = self.target()
+        target.update_details(self.admin, name='João S. Silva', email=target.email)
+        target.change_role(self.teacher, executor=self.admin)
+        self.assertEqual(self.target().session_epoch, 0)
+        self.assertTrue(self.logged_in(self.target_client))
+
+    def test_own_change_keeps_the_own_sessions(self):
+        target = self.target()
+        target.update_details(target, name='João Silva', email='joao.silva@ifnmg.edu.br')
+        self.assertTrue(self.logged_in(self.target_client))
 
 
 class LogoutTests(AuthenticationTestCase):

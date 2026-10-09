@@ -5,9 +5,12 @@ from unittest import mock
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core import mail
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.core.management import call_command
+from django.test import Client, TestCase, override_settings
 
+from accounts.emails import PASSWORD_RESET
 from accounts.models import Role, User
+from outbox.models import OutboxEntry
 from system_settings.models import SystemSetting
 from system_settings.tests.base import configure_smtp
 
@@ -18,6 +21,7 @@ def reset_link(message):
     return re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', message.body).group(1)
 
 
+@override_settings(SITE_URL='http://testserver')
 class PasswordFlowTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -27,10 +31,13 @@ class PasswordFlowTestCase(TestCase):
         configure_smtp()
         cache.clear()
         self.user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=self.teacher)
+        OutboxEntry.objects.all().delete()
 
     def request_link(self, email='maria@ifnmg.edu.br'):
+        """Pede o link pela tela e roda o worker, que é quem fala com o SMTP."""
         response = self.client.post('/contas/senha/recuperar/', {'email': email})
         self.assertRedirects(response, '/contas/senha/recuperar/enviado/', fetch_redirect_response=False)
+        call_command('process_outbox', '--once')
 
     def set_password(self, link, password=PASSWORD, client=None):
         client = client or Client()
@@ -95,6 +102,7 @@ class RecoveryRequestTests(PasswordFlowTestCase):
     def test_unknown_email_gets_the_same_response_and_no_email(self):
         known = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'}, follow=True)
         unknown = self.client.post('/contas/senha/recuperar/', {'email': 'inexistente@ifnmg.edu.br'}, follow=True)
+        call_command('process_outbox', '--once')
         self.assertEqual(known.redirect_chain, unknown.redirect_chain)
         self.assertEqual(known.content, unknown.content)
         self.assertEqual(len(mail.outbox), 1)
@@ -114,11 +122,25 @@ class RecoveryRequestTests(PasswordFlowTestCase):
 
 
 class RecoveryWithoutSmtpTests(PasswordFlowTestCase):
-    def test_request_is_answered_without_email(self):
+    def test_request_is_answered_and_the_link_waits_in_the_outbox(self):
         SystemSetting.objects.all().delete()
-        with self.assertLogs('accounts', 'WARNING'):
-            self.request_link()
+        response = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
+        self.assertRedirects(response, '/contas/senha/recuperar/enviado/', fetch_redirect_response=False)
         self.assertEqual(mail.outbox, [])
+        self.assertTrue(OutboxEntry.objects.filter(kind=PASSWORD_RESET, reference=str(self.user.pk)).exists())
+
+    def test_failing_smtp_gives_the_same_response_for_known_and_unknown_email(self):
+        with mock.patch('system_settings.models.SmtpSettings.connection', side_effect=OSError):
+            known = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'}, follow=True)
+            unknown = self.client.post('/contas/senha/recuperar/', {'email': 'inexistente@ifnmg.edu.br'}, follow=True)
+        self.assertEqual((known.status_code, known.redirect_chain), (unknown.status_code, unknown.redirect_chain))
+        self.assertEqual(known.content, unknown.content)
+
+    def test_repeated_requests_keep_a_single_pending_link(self):
+        SystemSetting.objects.all().delete()
+        for _ in range(3):
+            self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
+        self.assertEqual(OutboxEntry.objects.filter(kind=PASSWORD_RESET).count(), 1)
 
 
 class ResetTests(PasswordFlowTestCase):

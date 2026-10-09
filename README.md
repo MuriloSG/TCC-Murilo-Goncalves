@@ -95,8 +95,9 @@ Para conceder ou retirar o superadmin de um usuário existente: `make manage cmd
 | `POSTGRES_PASSWORD` | `agendamento` | Senha do banco de dados |
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | Forma de envio dos e-mails |
 | `DJANGO_CREDENTIALS_KEY` | `chave-de-credenciais-somente-para-desenvolvimento-local` | Cifra as senhas guardadas no banco, como a do servidor de e-mail. Trocá-la exige informar essas senhas de novo |
-| `DJANGO_REDIS_URL` | `redis://redis:6379/0` | Conexão do cache das telas públicas e da camada do Channels. Vazia, as telas públicas funcionam sem cache e a camada fica em memória, com o aviso `notices.W001` |
-| `DJANGO_REDIS_TIMEOUT` | `0.1` | Tempo limite, em segundos, de conexão e de leitura do cache público e de conexão da camada do Channels |
+| `DJANGO_REDIS_URL` | `redis://:<REDIS_PASSWORD>@redis:6379/0` | Conexão dos limites de tentativa, do cache das telas públicas e da camada do Channels. Vazia, as telas públicas funcionam sem cache, os limites ficam por processo e a camada fica em memória, com o aviso `notices.W001` |
+| `REDIS_PASSWORD` | senha só para desenvolvimento | Senha do container `redis`, usada na URL padrão |
+| `DJANGO_REDIS_TIMEOUT` | `0.1` | Tempo limite, em segundos, de conexão e de leitura dos caches e de conexão da camada do Channels |
 | `DJANGO_CACHE_KEY_PREFIX` | `ifagenda` | Prefixo das chaves do cache; a camada do Channels usa `<prefixo>:channels`. Ambientes que dividem um Redis usam prefixos diferentes |
 | `DJANGO_OUTBOX_MAX_ATTEMPTS` | `5` | Tentativas de envio de um e-mail antes de desistir |
 | `DJANGO_OUTBOX_RETRY_DELAYS` | `60,300,900,3600` | Intervalos, em segundos, entre as tentativas. O último se repete |

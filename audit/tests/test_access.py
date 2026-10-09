@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from accounts import permissions
 from accounts.models import Role, User
@@ -30,6 +30,15 @@ class AccessRecordTests(TestCase):
         self.assertEqual(entry.origin, catalog.INTERFACE)
         self.assertEqual(entry.ip_address, '127.0.0.1')
         self.assertEqual(entry.user_agent, 'Firefox/142.0')
+
+    def test_forwarded_ip_is_ignored_without_a_declared_proxy(self):
+        self.client.get('/usuarios/', HTTP_X_FORWARDED_FOR='203.0.113.9')
+        self.assertEqual(self.accesses().get().ip_address, '127.0.0.1')
+
+    @override_settings(ALLAUTH_TRUSTED_PROXY_COUNT=1)
+    def test_client_ip_comes_from_the_declared_proxy(self):
+        self.client.get('/usuarios/', HTTP_X_FORWARDED_FOR='203.0.113.9')
+        self.assertEqual(self.accesses().get().ip_address, '203.0.113.9')
 
     def test_each_screen_records_its_own_resource(self):
         superadmin = User.objects.register(email='super@ifnmg.edu.br', name='Super', role=self.teacher)

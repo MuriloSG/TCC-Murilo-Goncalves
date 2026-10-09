@@ -42,6 +42,18 @@ CSV (`imports/reader.py`):
 
 XLSX (`imports/workbook.py`): fórmulas não são recalculadas. Vale o valor em cache na planilha, e uma fórmula sem valor chega vazia. A definição percorre as células e lança `FileRejected` quando a estrutura não permite a leitura.
 
+Antes de o openpyxl abrir o arquivo, `check_package` confere o pacote, e depois de aberto `check_dimensions` confere as abas. Toda recusa é um `FileRejected` com mensagem para quem envia, sem detalhe interno.
+
+| Conferência | Limite padrão | Variável | Motivo |
+|---|---|---|---|
+| É um XLSX | ZIP legível com `[Content_Types].xml` e `xl/workbook.xml` | — | ZIP corrompido, truncado, cifrado ou de outro formato é recusado antes do openpyxl |
+| Partes internas do pacote | 500 | `DJANGO_IMPORT_MAX_XLSX_ENTRIES` | As planilhas reais têm de 12 a 24; o limite cobre abas, estilos e imagens com folga e barra pacotes com milhares de entradas |
+| Tamanho descompactado | 64 MiB | `DJANGO_IMPORT_MAX_XLSX_UNCOMPRESSED_SIZE` | Contado ao descompactar, pois o tamanho declarado no ZIP pode mentir. A maior planilha real expande para cerca de 6,4 MiB (cerca de 10 vezes menos); o limite barra a bomba de descompressão, que um arquivo dentro dos 10 MiB comprimidos poderia carregar |
+| Linhas de cada aba | 5000 | `DJANGO_IMPORT_MAX_SHEET_ROWS` | A leitura percorre as abas até `max_row` e `max_column` criando cada célula que acessa; uma única célula na última linha do Excel faria esse percurso criar milhões de células. A maior aba real vai até a linha 1143 (as de 1000 linhas são formatação vazia do Excel) |
+| Colunas de cada aba | 100 (coluna `CV`) | `DJANGO_IMPORT_MAX_SHEET_COLUMNS` | A aba real mais larga vai até a coluna 49. Com as linhas, limita o pior percurso a 500 mil células |
+
+O modo `read_only` do openpyxl não é usado: a leitura do ensalamento (`schedule/sheets.py`) depende de acesso aleatório às células e das células mescladas, que esse modo não oferece. Os limites acima substituem a economia de memória que ele daria.
+
 ## Situação e operação pendente
 
 A importação tem dois campos independentes:

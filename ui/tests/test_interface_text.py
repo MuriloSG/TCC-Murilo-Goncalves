@@ -5,7 +5,8 @@ import re
 from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
-from django.test import Client, SimpleTestCase, TestCase
+from django.core.management import call_command
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 
 from accounts.models import Role, User
 from ui.tests.files import python_files, template_files
@@ -120,6 +121,7 @@ class PythonExtractionTests(SimpleTestCase):
         self.assertEqual(self.violations('x = {"email": 1}\ny = f"Usuário {data[\'email\']} desativado."\n'), [])
 
 
+@override_settings(SITE_URL='http://testserver')
 class RenderedPagesTextTests(TestCase):
     """Textos das telas renderizadas, sem a regra de maiúsculas, que vale só nos templates."""
 
@@ -174,6 +176,7 @@ class RenderedPagesTextTests(TestCase):
         self.assertPageFollowsRules(client.post('/contas/login/', {'login': 'admin@ifnmg.edu.br', 'password': 'x'}))
         self.assertPageFollowsRules(client.post('/contas/senha/recuperar/', {'email': 'invalido'}))
         client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
+        call_command('process_outbox', '--once')
         for number, line in enumerate(mail.outbox[0].body.splitlines(), start=1):
             self.assertEqual(find_violations(line), [], f'Linha {number} do e-mail: {line}')
         link = re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', mail.outbox[0].body).group(1)

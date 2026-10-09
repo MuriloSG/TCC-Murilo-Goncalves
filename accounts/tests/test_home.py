@@ -58,15 +58,14 @@ class DeniedAccessTests(HomeTestCase):
 
 
 class ChangesOnTheSameSessionTests(HomeTestCase):
-    def test_role_change_removes_and_grants_access(self):
+    def test_role_change_ends_the_session_and_the_next_login_has_the_new_access(self):
         self.register('admin@ifnmg.edu.br', self.administrator)
         user = self.register('maria@ifnmg.edu.br', self.administrator)
         client = self.client_for(user)
         self.assertEqual(client.get('/usuarios/').status_code, 200)
         user.change_role(self.teacher)
-        self.assertEqual(client.get('/usuarios/').status_code, 403)
-        user.change_role(self.administrator)
-        self.assertEqual(client.get('/usuarios/').status_code, 200)
+        self.assertRedirects(client.get('/usuarios/'), '/contas/login/?next=/usuarios/', fetch_redirect_response=False)
+        self.assertEqual(self.client_for(User.objects.get(pk=user.pk)).get('/usuarios/').status_code, 403)
 
     def test_superadmin_granted_and_revoked_by_command(self):
         self.register('admin@ifnmg.edu.br', self.administrator)

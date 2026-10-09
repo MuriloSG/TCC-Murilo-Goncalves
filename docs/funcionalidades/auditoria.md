@@ -6,6 +6,8 @@ Registro único das ações do sistema. Implementação: app `audit`. Regras em 
 
 `AuditLog` guarda: usuário (pode ser vazio), ação, módulo (`resource`), identificador do registro, data e hora, origem, IP, cliente (user agent), `old_values`, `new_values` e `metadata`.
 
+O IP segue a regra de proxy confiável dos limites do allauth (`DJANGO_TRUSTED_PROXY_COUNT`); sem proxy declarado, é o `REMOTE_ADDR`. No login recusado e no pedido de recuperação de senha, `metadata` guarda o e-mail digitado só se ele tiver formato de e-mail (`accounts.utils.typed_email`); outro valor, que pode ser uma senha digitada no campo errado, vira o marcador `valor que não é e-mail`.
+
 - Gravação só por `AuditLog.objects.record(action, resource, ...)` ou `record_changes(resource, id, antes, depois)`, que grava só os campos que mudaram e nada quando nada mudou.
 - O registro fica na transação de quem chama: uma operação desfeita leva o registro junto.
 - Ação e módulo precisam estar em `audit/catalog.py`; fora dele, `UnknownAuditCode`.

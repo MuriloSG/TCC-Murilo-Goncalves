@@ -7,7 +7,7 @@ Implementação: apps `outbox` (fila e worker) e `system_settings` (configuraç�
 | E-mail | Quando | Caminho |
 |---|---|---|
 | Link para definir a senha (`LINK_SENHA`) | Cadastro de usuário pela tela, pela importação de usuários ou pela aba de usuários do ensalamento | Outbox, enviado pelo `worker` |
-| Link de recuperação de senha | "Esqueci minha senha" | Direto, pelo `web`, no `AccountAdapter.send_mail` |
+| Link de recuperação de senha (`REDEFINIR_SENHA`) | "Esqueci minha senha" | Outbox, enviado pelo `worker`; o link é gerado no envio |
 
 As notificações do sistema não geram e-mail.
 
@@ -20,7 +20,7 @@ Configurado na interface, em **Configurações > E-mail** (`/configuracoes/email
 | Servidor | Obrigatório |
 | Porta | 1 a 65535 (padrão do formulário: 587) |
 | Segurança | `STARTTLS`, `SSL` ou `NENHUMA` (padrão: STARTTLS). Com usuário, `NENHUMA` é recusada |
-| Usuário e senha | Os dois juntos ou nenhum. Senha em branco na edição mantém a gravada; sem usuário, a senha gravada é apagada |
+| Usuário e senha | Os dois juntos ou nenhum. Senha em branco na edição mantém a gravada só se servidor, porta, segurança e usuário não mudarem; mudando qualquer um deles, a senha precisa ser informada de novo, para a gravada nunca ir a outro destino. Sem usuário, a senha gravada é apagada |
 | Remetente | E-mail válido, aceito no formato `IFAgenda <agenda@ifnmg.edu.br>` |
 
 - A senha é cifrada com Fernet, com chave derivada (SHA-256) de `DJANGO_CREDENTIALS_KEY`, e nunca é exibida. Trocar a variável torna a senha gravada ilegível, e a configuração passa a ser inválida até a senha ser informada de novo.

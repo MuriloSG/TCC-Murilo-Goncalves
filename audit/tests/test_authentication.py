@@ -2,11 +2,15 @@ import re
 
 from django.core import mail
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.core.management import call_command
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 
+from accounts.emails import PASSWORD_RESET
 from accounts.models import Role, User
+from accounts.utils import INVALID_TYPED_EMAIL, typed_email
 from audit import catalog
 from audit.models import AuditLog
+from outbox.models import OutboxEntry
 from system_settings.tests.base import configure_smtp
 
 PASSWORD = 'Senha-forte-123'
@@ -16,6 +20,7 @@ def reset_link(message):
     return re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', message.body).group(1)
 
 
+@override_settings(SITE_URL='http://testserver')
 class AuthenticationRecordTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -85,13 +90,23 @@ class AuthenticationRecordTests(TestCase):
                 entry = self.entries(catalog.PASSWORD_REQUESTED).latest('pk')
                 self.assertEqual(entry.metadata, {'email': email})
                 self.assertIsNone(entry.user)
+        OutboxEntry.objects.exclude(kind=PASSWORD_RESET).delete()
+        call_command('process_outbox', '--once')
         self.assertEqual(len(mail.outbox), 1)
 
     def test_password_reset_is_recorded(self):
         self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
+        call_command('process_outbox', '--once')
         client = Client()
         form_url = client.get(reset_link(mail.outbox[0]))['Location']
         client.post(form_url, {'password1': 'Outra-senha-456', 'password2': 'Outra-senha-456'})
         entry = self.entries(catalog.PASSWORD_RESET).get()
         self.assertEqual(entry.user, self.user)
         self.assertNotIn('Outra-senha-456', f'{entry.metadata}{entry.new_values}{entry.old_values}')
+
+
+class TypedEmailTests(SimpleTestCase):
+    def test_only_an_email_is_kept_for_the_audit(self):
+        self.assertEqual(typed_email(' maria@ifnmg.edu.br '), 'maria@ifnmg.edu.br')
+        self.assertEqual(typed_email('Senha-forte-123'), INVALID_TYPED_EMAIL)
+        self.assertEqual(typed_email(None), '')

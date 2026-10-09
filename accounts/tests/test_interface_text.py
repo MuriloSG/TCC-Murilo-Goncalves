@@ -3,7 +3,8 @@ import re
 from django.contrib.messages import get_messages
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 
 from accounts.models import Role, User
 from system_settings.tests.base import configure_smtp
@@ -43,6 +44,7 @@ class AuthenticationMessagesTests(TestCase):
         self.assertContains(response, INVALID_EMAIL)
 
 
+@override_settings(SITE_URL='http://testserver')
 class PasswordResetTextTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -55,6 +57,7 @@ class PasswordResetTextTests(TestCase):
         cache.clear()
         response = self.client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'}, follow=True)
         self.done_page = response
+        call_command('process_outbox', '--once')
         self.link = re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', mail.outbox[0].body).group(1)
 
     def test_aviso_de_envio_na_terceira_pessoa(self):

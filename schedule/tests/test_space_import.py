@@ -53,7 +53,7 @@ class SpaceImportTestCase(ImportTestCase):
 class ClassificationTests(SpaceImportTestCase):
     def test_first_import_of_the_corrected_spreadsheet_proposes_every_listed_space(self):
         """A planilha corrigida traz a aba de usuários, e cadastrá-los exige `USUARIO.CRIAR`."""
-        self.executor = space_manager('completo@ifnmg.edu.br', extra_permissions=[permissions.USER_CREATE])
+        self.executor = space_manager('completo@ifnmg.edu.br', extra_permissions=[permissions.USER_CREATE, permissions.BOOKING_VIEW, permissions.BOOKING_REQUEST])
         importation = self.preview(real(CORRECTED))
         self.assertEqual(importation.status, Import.Status.PENDING)
         resolution = classify_import(importation)

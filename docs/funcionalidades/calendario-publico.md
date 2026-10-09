@@ -21,7 +21,7 @@ As duas telas alternam entre si mantendo os filtros (exceto as datas).
 ## O que a página expõe
 
 - Aula: disciplina, horário, curso, turma, sala e nome dos docentes.
-- Agendamento, nas faixas que cruza: selo "Agendamento", disciplina, curso, turma, sala e o nome do docente do vínculo ou, sem vínculo, o nome de quem solicitou. A descrição e o e-mail não aparecem.
+- Agendamento, nas faixas que cruza: selo "Agendamento", disciplina, curso, turma, sala e o nome do docente do vínculo ou, sem vínculo, o nome de quem solicitou. A descrição e o e-mail não aparecem, e o e-mail nem chega às estruturas do calendário (`PublicOccurrence`, `PublicBooking`) nem ao cache. O nome de quem solicitou continua público, como dado de ocupação do espaço.
 - Nenhum ID de registro.
 
 ## Comportamento HTTP

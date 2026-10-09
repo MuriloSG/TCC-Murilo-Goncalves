@@ -14,9 +14,10 @@ Implementação: app `accounts`. Regras consolidadas em [regras de negócio](../
 - Login por e-mail e senha (`ACCOUNT_LOGIN_METHODS = {'email'}`). Não há cadastro público (`AccountAdapter.is_open_for_signup` devolve `False`).
 - Usuário inativo com a senha correta recebe a mesma resposta de senha errada, e a recusa é auditada (`AccountAdapter.authenticate`).
 - A recuperação não revela se o e-mail existe (`ACCOUNT_PREVENT_ENUMERATION`). O link vale pelo `PASSWORD_RESET_TIMEOUT` padrão do Django (3 dias), serve uma vez e é recusado para usuário inativo (`accounts.tokens.PasswordResetTokenGenerator`). Redefinir a senha não faz login.
-- O e-mail de recuperação sai na hora, pelo `web`, com a configuração SMTP do sistema. Sem configuração, não sai e o motivo vai ao log (`AccountAdapter.send_mail`).
+- O pedido de recuperação só grava no outbox o envio `REDEFINIR_SENHA` (`PasswordResetForm.save`); o link é gerado e enviado pelo `worker`. A requisição nunca fala com o SMTP, então a resposta e o tempo são os mesmos para e-mail existente, inexistente ou com o servidor de e-mail fora do ar. Pedidos repetidos não duplicam o envio pendente.
 - Limites de tentativas: os padrões do allauth, com mensagens reescritas no adaptador.
 - Senha: validadores do Django (similaridade com e-mail e nome, tamanho mínimo, senha comum, só números).
+- Sessões encerradas: desativar a conta, redefinir a senha ou outra pessoa trocar o e-mail ou o perfil da conta (pela tela, pela importação ou por comando) encerra todas as sessões dela, e o próximo acesso pede login. A troca feita pela própria conta mantém a sessão, e uma alteração que não muda o e-mail nem o perfil não encerra nada. O mecanismo é o hash de autenticação que o Django guarda na sessão e confere a cada requisição, inclusive no WebSocket: `User.session_epoch` entra nesse hash e é incrementado pela troca (`end_sessions_if_changed_by_another`), o que funciona com qualquer backend de sessão e não toca nas sessões de outras contas.
 
 ## Usuários
 

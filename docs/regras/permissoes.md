@@ -32,7 +32,7 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 | `NOTIFICACAO.PUBLICAR` | Publicar notificações | ✓ | |
 | `PAINEL.VISUALIZAR` | Ver o painel administrativo | ✓ | |
 | `RELATORIO.VISUALIZAR` | Ver os relatórios | ✓ | |
-| `CONFIGURACAO.EDITAR` | Editar as configurações do sistema (servidor de e-mail) | ✓ | |
+| `CONFIGURACAO.EDITAR` | Editar as configurações do sistema (servidor de e-mail) | reservada | |
 | `ENSALAMENTO.VISUALIZAR` | Consultar a Grade do ensalamento | ✓ | |
 | `ENSALAMENTO.IMPORTAR` | Importar o ensalamento | ✓ | |
 | `ENSALAMENTO.EXCLUIR_IMPORTACAO` | Excluir importações de ensalamento descartadas, com erros ou que falharam | ✓ | |
@@ -58,9 +58,24 @@ A = `ADMINISTRADOR`, D = `DOCENTE`. O superadmin tem todas.
 ## Superadmin
 
 - Atributo `User.is_superadmin`, não perfil nem permissão. Controlado só por `create_superadmin` e `set_superadmin`.
-- Tem todas as permissões, inclusive as reservadas `PERFIL.*`: só ele gerencia perfis.
+- Tem todas as permissões, inclusive as reservadas `PERFIL.*` e `CONFIGURACAO.EDITAR`: só ele gerencia perfis e o servidor de e-mail, cuja configuração decide para onde vão os links de senha. A migration `accounts.0004` retirou essa permissão do ADMINISTRADOR.
 - Vê todas as disciplinas e turmas (os demais veem só o escopo de docente).
-- Só um superadmin ativo altera o e-mail de outro superadmin. As demais ações sobre um superadmin (desativar, trocar perfil) seguem as permissões comuns e a continuidade administrativa.
+- Só um superadmin ativo altera o e-mail, o nome de usuário, o perfil ou a situação de outro superadmin. O nome continua editável por quem tem `USUARIO.EDITAR`.
+
+## Cobertura de quem gere usuários
+
+Ter a permissão da operação não basta: o executor precisa cobrir o que altera. A regra fica no model (`check_role_assignable` e `check_account_manageable` em `accounts/models.py`) e vale para a tela, o POST direto e a importação.
+
+- Cadastrar, trocar perfil ou importar com um perfil exige ter todas as permissões desse perfil. Os formulários só oferecem esses perfis.
+- Alterar e-mail, nome de usuário, perfil ou situação de outra conta exige ter todas as permissões que ela concede, mesmo com a conta inativa.
+- O próprio nome de usuário, que liga a conta ao docente, só é alterado por outro usuário ou por um superadmin.
+
+### Vínculo com o docente
+
+A conta é ligada ao docente do ensalamento pelo nome de usuário, comparado sem diferenciar caixa com `Teacher.name`. Os dois são únicos sem diferenciar caixa, então cada docente fica ligado a no máximo uma conta; para passar o vínculo a outra conta, é preciso primeiro tirar o nome da conta atual. Trocar o nome de usuário exige a cobertura acima e, quando liga ou desliga um docente, a auditoria da alteração traz `docente_desligado` e `docente_ligado` em `metadata`.
+
+Risco aceito: quem cobre as permissões das duas contas pode mover o vínculo de um docente, e com ele o escopo de disciplinas e turmas e o cancelamento de ocorrências. A troca fica registrada. Docentes homônimos na planilha viram um só `Teacher` e dividem o escopo; isso vem da planilha e não do vínculo.
+- Superadmin ativo cobre tudo. Comandos de gerenciamento chamam as operações sem executor e não passam por essa verificação.
 
 ## Verificações além da rota
 

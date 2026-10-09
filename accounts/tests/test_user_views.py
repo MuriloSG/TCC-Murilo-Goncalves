@@ -167,6 +167,7 @@ class CreateSendTests(TransactionTestCase):
         self.post()
         call_command('process_outbox', '--once')
         Client().post('/contas/senha/recuperar/', {'email': 'joana@ifnmg.edu.br'})
+        call_command('process_outbox', '--once')
         created, recovery = [message for message in mail.outbox if message.to == ['joana@ifnmg.edu.br']]
         prefix = 'http://testserver/contas/senha/redefinir/'
         self.assertIn(prefix, created.body)

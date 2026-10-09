@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.core.management import CommandError
 from django.db import DEFAULT_DB_ALIAS, connections
 
@@ -6,6 +8,17 @@ from config import test_runner
 
 LOCAL_ENVIRONMENT = 'local'
 LOCAL_DATABASE_MARK = 'ifagenda.environment'
+INVALID_TYPED_EMAIL = 'valor que não é e-mail'
+
+
+def typed_email(value):
+    """E-mail digitado numa tela pública, para a auditoria; o que não é e-mail pode ser uma senha e não é gravado."""
+    value = (value or '').strip()
+    try:
+        validate_email(value)
+    except ValidationError:
+        return INVALID_TYPED_EMAIL if value else ''
+    return value
 
 
 def add_operation_error(form, error):

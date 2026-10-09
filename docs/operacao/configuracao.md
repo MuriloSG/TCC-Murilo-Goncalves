@@ -47,9 +47,17 @@ Implementação: `accounts.utils.require_safe_database`, chamada na primeira lin
 | `DJANGO_LOG_LEVEL` | Nível dos loggers do projeto. Padrão e recomendado em produção: `INFO`. `DEBUG` inclui o traceback das falhas de importação |
 | `DJANGO_SITE_URL` | Base dos links nos e-mails enviados pelo worker (que não tem requisição) |
 | `DJANGO_EMAIL_BACKEND` | Padrão: console. Para enviar de fato, `django.core.mail.backends.smtp.EmailBackend`. As credenciais vêm da interface, não de variáveis |
-| `DJANGO_REDIS_URL` | Usada pelo cache público e pela camada do Channels. Vazia desliga o cache público (as telas consultam o banco) e deixa a camada em memória, com o aviso `notices.W001`. Fora da máquina de desenvolvimento, com senha (`redis://:senha@host:6379/0`) e TLS (`rediss://`) quando o Redis não está na rede privada |
+| `DJANGO_REDIS_URL` | Usada pelo cache `default` (limites de tentativa do allauth), pelo cache público e pela camada do Channels. Vazia desliga o cache público (as telas consultam o banco), deixa os limites por processo e a camada em memória, com o aviso `notices.W001`. Sempre com senha (`redis://:senha@host:6379/0`); TLS (`rediss://`) quando o Redis não está na mesma rede privada da aplicação. O `check --deploy` recusa a senha padrão do `compose.yaml` (`system_settings.E002`) e avisa a URL sem senha (`system_settings.W001`) |
+| `REDIS_PASSWORD` | Só no `compose.yaml`: senha do container `redis` e da URL padrão. O padrão serve só ao desenvolvimento |
+| `DJANGO_SECURE_COOKIES` | Cookies de sessão e de CSRF com `Secure`. Sem valor, ligados quando `DEBUG` está desligado; `0` desliga, `1` liga. Desligado no `check --deploy` gera `system_settings.W002` |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Origens com esquema, separadas por vírgula (`https://agenda.exemplo.edu.br`), quando o proxy muda o host ou o esquema vistos pelo Django |
+| `DJANGO_SECURE_SSL_REDIRECT` | `1` faz o Django redirecionar HTTP para HTTPS. Desligado por padrão: o redirecionamento costuma ficar no proxy, e ligá-lo sem `DJANGO_TRUSTED_PROXY_SSL_HEADER` atrás de um proxy que termina o TLS cria um laço de redirecionamento |
+| `DJANGO_SECURE_HSTS_SECONDS`, `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS`, `DJANGO_SECURE_HSTS_PRELOAD` | HSTS. Padrão `0` (desligado), até a instalação servir só HTTPS; o cabeçalho só sai em requisição que o Django reconhece como HTTPS |
+| `DJANGO_TRUSTED_PROXY_SSL_HEADER` | Nome do cabeçalho do proxy que informa o esquema, no formato do META (`HTTP_X_FORWARDED_PROTO`). Defina só se o proxy sempre sobrescrever esse cabeçalho; vazio, o Django não confia em cabeçalho de esquema |
+| `DJANGO_TRUSTED_PROXY_COUNT` | Quantos proxies confiáveis acrescentam o `X-Forwarded-For` (`ALLAUTH_TRUSTED_PROXY_COUNT`). Padrão `0`: vale o `REMOTE_ADDR`, e o cabeçalho enviado pelo cliente é ignorado. Usado pelos limites de tentativa e pelo IP da auditoria |
+| `DJANGO_TRUSTED_CLIENT_IP_HEADER` | Alternativa ao anterior: cabeçalho com o IP real do cliente (`X-Real-IP`). Só com um proxy que sempre o sobrescreve |
 | `DJANGO_CACHE_KEY_PREFIX` | Diferente por instalação quando várias dividem o mesmo Redis. A camada do Channels usa `<prefixo>:channels` |
-| `DJANGO_OUTBOX_*`, `DJANGO_IMPORT_*` | Tentativas, intervalos, lotes e limites dos workers. Não estão no `compose.yaml`; valem os padrões de `settings.py` |
+| `DJANGO_OUTBOX_*`, `DJANGO_IMPORT_*` | Tentativas, intervalos, lotes e limites dos workers e da leitura de XLSX ([motor de importação](../arquitetura/motor-de-importacao.md)). Não estão no `compose.yaml`; valem os padrões de `settings.py` |
 
 ## Logs
 
@@ -83,8 +91,9 @@ Sem servidor SMTP cadastrado, nenhum e-mail sai, nem para o console.
 | Item | Valor | Onde |
 |---|---|---|
 | Fuso e idioma | `America/Sao_Paulo`, `pt-br` | `settings.py` |
-| Cache `default` | `LocMemCache`, por processo. Usado pelos limites de tentativas do allauth | `CACHES` |
-| Camada do Channels | `RedisChannelLayer` com `DJANGO_REDIS_URL`, só com timeout de conexão (a leitura bloqueia por até 5 segundos à espera de mensagens). Sem a URL e nos testes, `InMemoryChannelLayer`, por processo | `CHANNEL_LAYERS` |
+| Cache `default` | Com `DJANGO_REDIS_URL`, `config.cache.TolerantRedisCache` sob `<prefixo>:default`, compartilhado entre processos: os limites de tentativas do allauth valem para a instalação toda. Com o Redis fora do ar, os limites deixam de valer e o login continua funcionando (aviso `REDIS UNAVAILABLE` no log). Sem a URL e nos testes, `LocMemCache`, por processo | `CACHES` |
+| Serialização no Redis | JSON (`config.cache.JsonSerializer`) nos dois caches, e não pickle: um valor gravado no Redis por terceiros não vira objeto Python. Datas são marcadas e restauradas; tuplas voltam como listas | `CACHES` |
+| Camada do Channels | `RedisChannelLayer` com `DJANGO_REDIS_URL`, com timeout de conexão e `socket_timeout=None`: sem ele, o redis-py usa o timeout de conexão também na leitura, e a espera de até 5 segundos por mensagens falha. Sem a URL e nos testes, `InMemoryChannelLayer`, por processo | `CHANNEL_LAYERS` |
 | Timeout SMTP | 30 segundos | `EMAIL_TIMEOUT` |
 | Limites da importação do ensalamento | 5000 linhas, 10 MiB | `schedule/imports.py` |
 | Prazo de cancelamento de agendamento | 1 hora antes do início | `bookings.models.CANCEL_DEADLINE` |
@@ -94,6 +103,5 @@ Sem servidor SMTP cadastrado, nenhum e-mail sai, nem para o console.
 
 - `LOGGING`: não há configuração. Os loggers do projeto (`accounts`, `outbox`, `imports`, `schedule.public_cache`, `notices.realtime`) não têm handler; mensagens `WARNING` ou acima aparecem no stderr pelo handler padrão do Python, e `INFO` e `DEBUG` (por exemplo `CACHE INVALIDATED`) não aparecem.
 - `STATIC_ROOT`: ausente. Os estáticos são servidos pelo `runserver` com `DEBUG` ligado.
-- Cabeçalhos e cookies de HTTPS (`SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`): ausentes, valem os padrões do Django (cookies sem `Secure`).
 - `ACCOUNT_RATE_LIMITS`: ausente; valem os padrões do allauth.
 - Mídia: não há `MEDIA_ROOT` nem `FileField`. A importação lê o arquivo enviado e grava só as linhas.

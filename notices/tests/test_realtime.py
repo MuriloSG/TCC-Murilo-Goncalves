@@ -64,6 +64,14 @@ class ChannelTests(TransactionTestCase):
         connected, _ = await communicator.connect()
         self.assertFalse(connected)
 
+    async def test_deactivation_closes_the_open_connection(self):
+        await database_sync_to_async(User.objects.create_superadmin)('super@ifnmg.edu.br', 'Super', 'Senha-forte-123')
+        communicator = self.connect_as(self.ana)
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+        await database_sync_to_async(self.ana.deactivate)()
+        self.assertEqual((await communicator.receive_output(timeout=2))['type'], 'websocket.close')
+
     async def test_inactive_user_is_refused(self):
         self.ana.is_active = False
         communicator = self.connect_as(self.ana)

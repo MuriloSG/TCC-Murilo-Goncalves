@@ -2,11 +2,13 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 from allauth.account.models import EmailAddress
+from django.apps import apps
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
+from django.utils.crypto import salted_hmac
 
 from accounts.emails import PASSWORD_LINK
 
@@ -19,6 +21,7 @@ from accounts import notifications
 from audit import catalog
 from audit.models import AuditLog
 from notices.events import announce
+from notices.realtime import close_connections
 from outbox.models import OutboxEntry
 
 ROLE_CODE_PATTERN = r'^[A-Z]+(_[A-Z]+)*$'
@@ -65,6 +68,58 @@ def validate_institutional_email(value):
 
 def role_required_error():
     return ValidationError({'role': 'Informe o perfil.'}, code='required')
+
+
+ROLE_NOT_COVERED_MESSAGE = 'Somente quem já tem todas as permissões deste perfil pode atribuí-lo.'
+OWN_USERNAME_MESSAGE = 'O próprio nome de usuário só pode ser alterado por outro usuário com permissão para isso.'
+ACCOUNT_NOT_COVERED_MESSAGE = (
+    'Somente quem já tem todas as permissões deste usuário pode alterar o e-mail, '
+    'o nome de usuário, o perfil ou a situação dele.'
+)
+SUPERADMIN_ACCOUNT_MESSAGE = (
+    'Somente um superadmin ativo pode alterar o nome de usuário, o perfil ou a situação de um superadmin.'
+)
+
+
+class InsufficientAuthority(ValidationError):
+    def __init__(self, message, field=None):
+        error = ValidationError(message, code='insufficient_authority')
+        super().__init__({field: error} if field else error)
+
+
+def is_active_superadmin(user):
+    return user.is_active and user.is_superadmin
+
+
+def check_role_assignable(executor, role):
+    """Recusa perfil com permissão que o executor não tem; `None` é operação fora da web."""
+    if executor is None or is_active_superadmin(executor):
+        return
+    codes = set(role.permissions.values_list('code', flat=True)) - SUPERADMIN_RESERVED_PERMISSIONS
+    if not executor.covers(codes):
+        raise InsufficientAuthority(ROLE_NOT_COVERED_MESSAGE, 'role')
+
+
+def teacher_link_change(previous, current):
+    """Docentes que a troca de nome de usuário desliga e liga, em destaque na auditoria por mudar o escopo."""
+    if (previous or '').casefold() == (current or '').casefold():
+        return None
+    Teacher = apps.get_model('schedule', 'Teacher')
+    names = {
+        key: Teacher.objects.filter(name__iexact=value).values_list('name', flat=True).first() if value else None
+        for key, value in (('docente_desligado', previous), ('docente_ligado', current))
+    }
+    return {key: value for key, value in names.items() if value} or None
+
+
+def check_account_manageable(executor, target, field=None):
+    """Recusa alterar conta com permissão que o executor não tem; superadmin só por superadmin ativo."""
+    if executor is None or is_active_superadmin(executor):
+        return
+    if target.is_superadmin:
+        raise InsufficientAuthority(SUPERADMIN_ACCOUNT_MESSAGE, field)
+    if not executor.covers(target.granted_permissions()):
+        raise InsufficientAuthority(ACCOUNT_NOT_COVERED_MESSAGE, field)
 
 
 class ReservedPermissionNotGrantable(ValidationError):
@@ -193,10 +248,11 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
     def normalize_email(cls, email):
         return (email or '').strip().lower()
 
-    def register(self, email, name, role, username=None):
+    def register(self, email, name, role, username=None, executor=None):
         """Cadastra sem senha e enfileira o link no outbox na mesma transação."""
         if role is None:
             raise role_required_error()
+        check_role_assignable(executor, role)
         try:
             validate_institutional_email(email)
         except ValidationError as error:
@@ -257,6 +313,7 @@ class User(AbstractBaseUser):
     username = models.CharField('nome de usuário', max_length=150, null=True, blank=True)
     is_active = models.BooleanField('ativo', default=True)
     is_superadmin = models.BooleanField('superadmin', default=False)
+    session_epoch = models.PositiveIntegerField('geração das sessões', default=0)
     created_at = models.DateTimeField('criado em', auto_now_add=True)
     roles = models.ManyToManyField(
         'Role',
@@ -319,6 +376,36 @@ class User(AbstractBaseUser):
             self._effective_permissions_cache = frozenset(codes)
         return self._effective_permissions_cache
 
+    def _get_session_auth_hash(self, secret=None):
+        """Na geração 0, o hash padrão do Django; depois, a geração entra no hash e derruba as sessões anteriores."""
+        if not self.session_epoch:
+            return super()._get_session_auth_hash(secret)
+        key_salt = 'accounts.models.User.get_session_auth_hash'
+        return salted_hmac(key_salt, f'{self.password}:{self.session_epoch}', secret=secret, algorithm='sha256').hexdigest()
+
+    def end_sessions_if_changed_by_another(self, executor):
+        """Encerra as sessões da conta alterada por outra pessoa, em qualquer backend de sessão."""
+        if executor is not None and executor.pk == self.pk:
+            return
+        type(self).objects.filter(pk=self.pk).update(session_epoch=models.F('session_epoch') + 1)
+        self.session_epoch = type(self).objects.values_list('session_epoch', flat=True).get(pk=self.pk)
+
+    def granted_permissions(self):
+        """Permissões que a conta concede quando ativa; o superadmin concede também as reservadas."""
+        if self.is_superadmin:
+            return frozenset(Permission.objects.values_list('code', flat=True)) | SUPERADMIN_RESERVED_PERMISSIONS
+        return frozenset(
+            Permission.objects.filter(roles__users=self)
+            .exclude(code__in=SUPERADMIN_RESERVED_PERMISSIONS)
+            .values_list('code', flat=True)
+        )
+
+    def covers(self, codes):
+        """Diz se o usuário ativo tem todas as permissões de `codes`."""
+        if not self.is_active:
+            return False
+        return self.is_superadmin or set(codes) <= self.effective_permissions()
+
     def has_perm(self, perm, obj=None):
         if not self.is_active:
             return False
@@ -344,12 +431,16 @@ class User(AbstractBaseUser):
     def has_administrative_capability(self):
         return self.has_perms(ADMINISTRATIVE_CAPABILITY)
 
-    def change_role(self, role):
+    def change_role(self, role, executor=None):
         if role is None:
             raise role_required_error()
+        check_role_assignable(executor, role)
+        check_account_manageable(executor, self, 'role')
         with administrative_continuity():
             previous = self.role
             UserRole.objects.update_or_create(user=self, defaults={'role': role})
+            if previous is None or previous.pk != role.pk:
+                self.end_sessions_if_changed_by_another(executor)
             AuditLog.objects.record_changes(
                 catalog.USER,
                 self.pk,
@@ -372,6 +463,11 @@ class User(AbstractBaseUser):
                 and not (executor.is_active and executor.is_superadmin)
             ):
                 raise SuperadminOnlyOperation()
+            changes_username = username is not UNCHANGED and normalize_username(username) != current.username
+            if changes_username and executor.pk == current.pk and not is_active_superadmin(executor):
+                raise InsufficientAuthority(OWN_USERNAME_MESSAGE, 'username')
+            if email != current.email or changes_username:
+                check_account_manageable(executor, current, 'email' if email != current.email else 'username')
             previous = (self.name, self.email, self.username)
             self.name, self.email = name, email
             if username is not UNCHANGED:
@@ -385,19 +481,25 @@ class User(AbstractBaseUser):
                     self.pk,
                     {'name': previous[0], 'email': previous[1], 'username': previous[2]},
                     {'name': self.name, 'email': self.email, 'username': self.username},
+                    metadata=teacher_link_change(previous[2], self.username),
                 )
+                if self.email != previous[1]:
+                    self.end_sessions_if_changed_by_another(executor)
             except BaseException:
                 self.name, self.email, self.username = previous
                 raise
 
-    def deactivate(self):
+    def deactivate(self, executor=None):
+        check_account_manageable(executor, self)
         with transaction.atomic():
             changed = self.is_active
             self._apply_guarded(is_active=False)
             if changed:
                 AuditLog.objects.record(catalog.DEACTIVATE, catalog.USER, resource_id=self.pk)
+                close_connections(self.pk)
 
-    def reactivate(self):
+    def reactivate(self, executor=None):
+        check_account_manageable(executor, self)
         with transaction.atomic():
             changed = not self.is_active
             self._apply(is_active=True)

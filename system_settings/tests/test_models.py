@@ -52,11 +52,23 @@ class SaveSmtpTests(TestCase):
         SystemSetting.objects.save_smtp(**(VALID | {'username': '', 'password': '', 'security': 'NENHUMA', 'port': 25}))
         self.assertEqual(SystemSetting.objects.smtp().password, '')
 
-    def test_blank_password_keeps_the_stored_one(self):
+    def test_blank_password_keeps_the_stored_one_for_the_same_destination(self):
         SystemSetting.objects.save_smtp(**VALID)
-        SystemSetting.objects.save_smtp(**(VALID | {'port': 465, 'security': 'SSL', 'password': ''}))
+        SystemSetting.objects.save_smtp(**(VALID | {'from_email': 'outro@ifnmg.edu.br', 'password': ''}))
         smtp = SystemSetting.objects.smtp()
-        self.assertEqual((smtp.port, smtp.password), (465, SMTP_PASSWORD))
+        self.assertEqual((smtp.from_email, smtp.password), ('outro@ifnmg.edu.br', SMTP_PASSWORD))
+
+    def test_blank_password_is_refused_for_a_new_destination(self):
+        SystemSetting.objects.save_smtp(**VALID)
+        for values in (
+            {'host': 'smtp.externo.example'}, {'port': 465, 'security': 'SSL'}, {'username': 'outro.usuario'},
+        ):
+            with self.subTest(values=values):
+                with self.assertRaises(ValidationError) as caught:
+                    SystemSetting.objects.save_smtp(**(VALID | values | {'password': ''}))
+                self.assertIn('password', caught.exception.error_dict)
+        smtp = SystemSetting.objects.smtp()
+        self.assertEqual((smtp.host, smtp.username, smtp.password), (VALID['host'], VALID['username'], SMTP_PASSWORD))
 
     def test_removing_the_user_drops_the_password(self):
         SystemSetting.objects.save_smtp(**VALID)

@@ -3,7 +3,6 @@
 import hashlib
 import json
 import logging
-import pickle
 import time
 
 from django.core.cache import caches
@@ -27,7 +26,7 @@ TTL = {
     ORIGINAL_GRID: 30 * 60,
 }
 
-USER_PUBLIC_FIELDS = ('name', 'username', 'email', 'is_active')
+USER_PUBLIC_FIELDS = ('name', 'username', 'is_active')
 
 HIT = 'hit'
 MISS = 'miss'
@@ -132,7 +131,7 @@ class Lookup:
             pause('read', error)
             self.statuses.append(BYPASS)
             return builder()
-        except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, ValueError, TypeError):
+        except (ValueError, TypeError):
             value = None
         if value is not None:
             self.statuses.append(HIT)

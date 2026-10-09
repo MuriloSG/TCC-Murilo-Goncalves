@@ -170,9 +170,13 @@ class UserCreateView(OperationFormView):
     title = 'Cadastrar usuário'
     submit_label = 'Cadastrar'
 
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'executor': self.request.user}
+
     def perform(self, data):
         user = User.objects.register(
             email=data['email'], name=data['name'], role=data['role'], username=data['username'],
+            executor=self.request.user,
         )
         messages.success(
             self.request,
@@ -211,10 +215,10 @@ class UserRoleView(OperationFormView):
     title = 'Trocar perfil'
 
     def get_form_kwargs(self):
-        return super().get_form_kwargs() | {'target': self.target}
+        return super().get_form_kwargs() | {'target': self.target, 'executor': self.request.user}
 
     def perform(self, data):
-        self.target.change_role(data['role'])
+        self.target.change_role(data['role'], executor=self.request.user)
         messages.success(self.request, f'Perfil de {self.target.email} alterado para {data["role"]}.')
 
 
@@ -235,7 +239,7 @@ class UserDeactivateView(UserStatusView):
     action = 'desativar'
 
     def perform(self):
-        self.target.deactivate()
+        self.target.deactivate(executor=self.request.user)
         messages.success(self.request, f'Usuário {self.target.email} desativado.')
 
 
@@ -243,7 +247,7 @@ class UserReactivateView(UserStatusView):
     action = 'reativar'
 
     def perform(self):
-        self.target.reactivate()
+        self.target.reactivate(executor=self.request.user)
         messages.success(self.request, f'Usuário {self.target.email} reativado.')
 
 

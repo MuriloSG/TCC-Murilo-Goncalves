@@ -58,3 +58,11 @@ A página com todas as notificações do próprio usuário não existe. O usuár
 ## Testes
 
 `notices/tests/`: `test_models.py`, `test_events.py`, `test_views.py`, `test_publication.py`, `test_publish_views.py`, `test_options.py`, `test_realtime.py`.
+
+## Usuário desativado
+
+A conexão só é aceita para usuário autenticado e ativo. Ao desativar um usuário, `User.deactivate` agenda para depois do commit o evento `notifications.closed` no grupo dele (`notices.realtime.close_connections`), e o consumer encerra as conexões abertas. Mesmo antes disso, o canal só avisa que algo mudou: o conteúdo vem por HTTP, que já recusa o usuário inativo.
+
+## Risco aceito: lista de destinatários
+
+Quem tem `NOTIFICACAO.PUBLICAR` vê o nome e o e-mail de todos os usuários ativos ao escolher destinatários (`notice_user_options`). A informação é necessária para distinguir homônimos na escolha e fica restrita a essa permissão.

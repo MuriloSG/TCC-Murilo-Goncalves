@@ -1,15 +1,26 @@
 """Define o ator da requisição e registra o acesso pelo `audit_resource` da view, exceto nos pedidos htmx."""
 
+from allauth.account.adapter import get_adapter
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+
 from audit import catalog
 from audit.context import Actor, acting_as
 from audit.models import AuditLog
+
+
+def client_ip(request):
+    """IP pela mesma regra de proxy confiável dos limites do allauth; sem proxy declarado, o `REMOTE_ADDR`."""
+    try:
+        return get_adapter().get_client_ip(request)
+    except (ImproperlyConfigured, PermissionDenied):
+        return request.META.get('REMOTE_ADDR') or None
 
 
 def request_actor(request):
     user = getattr(request, 'user', None)
     return Actor(
         user=user if user is not None and user.is_authenticated else None,
-        ip_address=request.META.get('REMOTE_ADDR') or None,
+        ip_address=client_ip(request),
         user_agent=request.META.get('HTTP_USER_AGENT', ''),
         origin=catalog.INTERFACE,
     )

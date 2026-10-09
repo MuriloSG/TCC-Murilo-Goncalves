@@ -164,7 +164,6 @@ class BookingSource:
                 end=ends_at.time(),
                 space=booking.space.name,
                 requester=booking.requested_by.name,
-                email=booking.requested_by.email,
                 **offering_fields(booking.request.teaching_assignment),
             ))
         return result
@@ -179,7 +178,6 @@ class PublicOccurrence:
     end: time
     space: str
     requester: str
-    email: str
     subject: str = ''
     course: str = ''
     group: str = ''

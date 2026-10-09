@@ -115,6 +115,7 @@ class UserImport(ImportDefinition):
                 name=cleaned['name'],
                 role=cleaned['role'],
                 username=cleaned['username'],
+                executor=executor,
             )
         except ValidationError as error:
             plan.errors = errors_from_validation(error, self.columns_by_field)
@@ -153,7 +154,7 @@ class UserImport(ImportDefinition):
                     username=username if 'username' in plan.changes else UNCHANGED,
                 )
             if 'role' in plan.changes:
-                user.change_role(role)
+                user.change_role(role, executor=executor)
         except ValidationError as error:
             plan.errors = errors_from_validation(error, self.columns_by_field)
         return plan

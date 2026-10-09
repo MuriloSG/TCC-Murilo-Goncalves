@@ -1,6 +1,7 @@
 """Capacidades do motor usadas pelo ensalamento, testadas sem depender de app de domínio."""
 
 import io
+import zipfile
 
 from django import forms
 from django.contrib.auth.models import Group
@@ -70,7 +71,7 @@ def two_sheets():
     return {'Primeira': {'A1': 'Docentes', 'B2': 'Técnicos'}, 'Segunda': {'A1': 'Direção'}}
 
 
-class WorkbookSourceTests(TestCase):
+class WorkbookTestCase(TestCase):
     def setUp(self):
         self.definition = GridGroupImport()
 
@@ -82,6 +83,8 @@ class WorkbookSourceTests(TestCase):
             self.read(uploaded)
         self.assertIn(message, context.exception.message)
 
+
+class WorkbookSourceTests(WorkbookTestCase):
     def test_reads_one_row_per_cell_of_the_declared_sheets(self):
         rows = self.read(workbook_file(two_sheets()))
         self.assertEqual([row.line_number for row in rows], [1, 2, 3])
@@ -114,6 +117,61 @@ class WorkbookSourceTests(TestCase):
         sheets = {'Primeira': {'A1': '=UPPER(B1)', 'A2': 'Docentes'}, 'Segunda': {'A1': 'Direção'}}
         rows = self.read(workbook_file(sheets))
         self.assertEqual([row.values['Nome'] for row in rows], ['Docentes', 'Direção'])
+
+
+XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+
+def rebuilt(uploaded, extra=(), drop=()):
+    """Copia o pacote XLSX acrescentando ou retirando entradas, como um arquivo forjado."""
+    source = zipfile.ZipFile(io.BytesIO(uploaded.read()))
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w', zipfile.ZIP_DEFLATED) as package:
+        for entry in source.infolist():
+            if entry.filename not in drop:
+                package.writestr(entry, source.read(entry))
+        for name, content in extra:
+            package.writestr(name, content)
+    return SimpleUploadedFile('planilha.xlsx', stream.getvalue(), content_type=XLSX_TYPE)
+
+
+class PackageTests(WorkbookTestCase):
+    """Pacote XLSX conferido antes do openpyxl: tipo, entradas, expansão e dimensões das abas."""
+
+    def test_zip_that_is_not_a_workbook_is_rejected(self):
+        self.assertRejected(rebuilt(workbook_file(two_sheets()), drop=('xl/workbook.xml',)), 'não pôde ser lido como planilha')
+
+    def test_truncated_package_is_rejected(self):
+        content = workbook_file(two_sheets()).read()
+        uploaded = SimpleUploadedFile('planilha.xlsx', content[: len(content) // 2], content_type=XLSX_TYPE)
+        self.assertRejected(uploaded, 'não pôde ser lido como planilha')
+
+    @override_settings(IMPORT_MAX_XLSX_UNCOMPRESSED_SIZE=1024 * 1024)
+    def test_content_that_expands_too_much_is_rejected(self):
+        bomb = rebuilt(workbook_file(two_sheets()), extra=[('xl/media/vazio.bin', b'0' * (2 * 1024 * 1024))])
+        self.assertLess(bomb.size, 64 * 1024)
+        self.assertRejected(bomb, 'passa de 1 MB quando descompactado')
+
+    @override_settings(IMPORT_MAX_XLSX_ENTRIES=20)
+    def test_package_with_too_many_entries_is_rejected(self):
+        crowded = rebuilt(workbook_file(two_sheets()), extra=[(f'xl/media/{n}.bin', b'') for n in range(20)])
+        self.assertRejected(crowded, 'O limite é 20')
+
+    def test_distant_cell_is_rejected_before_the_sheet_is_walked(self):
+        self.assertRejected(
+            workbook_file({'Primeira': {'A1': 'Docentes', 'A1048576': 'x'}, 'Segunda': {'A1': 'Direção'}}),
+            'A aba "Primeira" vai até a linha 1.048.576',
+        )
+        self.assertRejected(
+            workbook_file({'Primeira': {'A1': 'Docentes', 'XFD1': 'x'}, 'Segunda': {'A1': 'Direção'}}),
+            'e a coluna XFD',
+        )
+
+    def test_valid_workbook_is_read_and_can_be_read_again(self):
+        uploaded = workbook_file(two_sheets())
+        self.assertEqual(len(self.read(uploaded)), 3)
+        uploaded.seek(0)
+        self.assertEqual(len(self.read(uploaded)), 3)
 
 
 class LimitTests(TestCase):

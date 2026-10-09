@@ -147,9 +147,12 @@ class ActionTests(UserImportTestCase):
         self.assertEqual(eva.role, self.administrator)
         self.assertFalse(eva.is_active)
 
-    def test_superadmin_is_treated_like_any_user(self):
+    def test_superadmin_role_changes_only_by_superadmin(self):
         create_user('super@ifnmg.edu.br', 'Super', self.administrator, is_superadmin=True)
-        self.confirm(self.preview('super@ifnmg.edu.br;Super Admin;DOCENTE\n'))
+        refused = self.preview('super@ifnmg.edu.br;Super Admin;DOCENTE\n')
+        self.assertEqual(self.error_codes(refused), [('Perfil', 'insufficient_authority')])
+        executor = create_user('outro@ifnmg.edu.br', 'Outro', self.administrator, is_superadmin=True)
+        self.confirm(self.preview('super@ifnmg.edu.br;Super Admin;DOCENTE\n', executor), executor)
         superadmin = User.objects.get(email='super@ifnmg.edu.br')
         self.assertEqual((superadmin.name, superadmin.role), ('Super Admin', self.teacher))
         self.assertTrue(superadmin.is_superadmin)
@@ -161,6 +164,17 @@ class ActionTests(UserImportTestCase):
 
 
 class PermissionTests(UserImportTestCase):
+    def test_role_not_covered_by_executor_is_refused(self):
+        create_user('bruno@ifnmg.edu.br', 'Bruno', self.teacher)
+        executor = self.executor_with(
+            permissions.USER_IMPORT, permissions.USER_CREATE, permissions.USER_CHANGE_ROLE,
+        )
+        importation = self.preview(
+            'ana@ifnmg.edu.br;Ana;ADMINISTRADOR\nbruno@ifnmg.edu.br;Bruno;ADMINISTRADOR\n', executor,
+        )
+        self.assertEqual(self.error_codes(importation, 2), [('Perfil', 'insufficient_authority')])
+        self.assertEqual(self.error_codes(importation, 3), [('Perfil', 'insufficient_authority')])
+
     def test_create_without_create_permission(self):
         executor = self.executor_with(permissions.USER_IMPORT)
         importation = self.preview('ana@ifnmg.edu.br;Ana;DOCENTE\n', executor)

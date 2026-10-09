@@ -19,6 +19,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from accounts.models import User
 from bookings.models import Booking, SlotUnavailable
 from bookings.tests.base import REQUESTER, REVIEWER, frozen_clock, semester_with_lesson, space, submit, user_with
+from config.cache import JsonSerializer, TolerantRedisCache
 from imports.forms import ImportUploadForm
 from imports.tests.worker import confirm, preview
 from schedule import public_cache
@@ -136,7 +137,7 @@ class LookupTests(CleanPublicCache, SimpleTestCase):
     def test_unreadable_value_is_a_miss(self):
         lookup = public_cache.Lookup()
         lookup.generation()
-        with mock.patch.object(caches['public'], 'get', side_effect=EOFError):
+        with mock.patch.object(caches['public'], 'get', side_effect=ValueError):
             self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
         self.assertEqual(lookup.status, 'miss')
 
@@ -264,10 +265,13 @@ class CommitTests(InvalidationTestCase):
         user.set_password('outra-senha-forte-456')
         user.save(update_fields=['password'])
         self.assertEqual(self.bumps(), before)
+        user.email = 'novo@ifnmg.edu.br'
+        user.save(update_fields=['email'])
+        self.assertEqual(self.bumps(), before)
 
     def test_relevant_user_change_bumps(self):
         user = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'senha-forte-123')
-        for field, value in (('email', 'novo@ifnmg.edu.br'), ('name', 'Outro'), ('username', 'outro'), ('is_active', False)):
+        for field, value in (('name', 'Outro'), ('username', 'outro'), ('is_active', False)):
             with self.subTest(field=field):
                 before = self.bumps()
                 setattr(user, field, value)
@@ -523,3 +527,36 @@ class BulkWriteScanTests(SimpleTestCase):
         clear_data = (Path(settings.BASE_DIR) / 'accounts/management/commands/clear_data.py').read_text()
         self.assertEqual(models.count('public_cache.invalidate_on_commit()'), 3)
         self.assertIn('public_cache.invalidate_on_commit()', clear_data)
+
+
+class JsonSerializerTests(SimpleTestCase):
+    """O Redis guarda JSON, e não pickle: um valor gravado por terceiros nunca vira objeto Python arbitrário."""
+
+    def test_round_trip_of_cached_shapes(self):
+        serializer = JsonSerializer()
+        value = [(1, '2026/1', date(2026, 2, 2), date(2026, 7, 1))]
+        self.assertEqual(serializer.loads(serializer.dumps(value)), [[1, '2026/1', date(2026, 2, 2), date(2026, 7, 1)]])
+        self.assertEqual(serializer.loads(serializer.dumps('<p>grade</p>')), '<p>grade</p>')
+        self.assertEqual(serializer.dumps(7), 7)
+
+    def test_pickled_payload_is_not_unpickled(self):
+        import pickle
+
+        with self.assertRaises(ValueError):
+            JsonSerializer().loads(pickle.dumps(object()))
+
+    def test_unknown_type_is_refused_when_writing(self):
+        with self.assertRaises(TypeError):
+            JsonSerializer().dumps({'x': object()})
+
+
+class TolerantCacheTests(SimpleTestCase):
+    """Com o Redis fora, os limites de tentativa deixam de valer e o login não falha."""
+
+    def test_operations_do_not_raise_when_redis_is_unavailable(self):
+        cache = TolerantRedisCache('redis://127.0.0.1:1/0', {'OPTIONS': {'socket_connect_timeout': 0.01}})
+        with self.assertLogs('config', 'WARNING'):
+            self.assertEqual(cache.get('chave', []), [])
+            cache.set('chave', [1.0], 10)
+            self.assertTrue(cache.add('trava', True, 10))
+            self.assertFalse(cache.delete('chave'))

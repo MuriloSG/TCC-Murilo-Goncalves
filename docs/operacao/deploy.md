@@ -11,7 +11,7 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | Imagem da aplicação | `Dockerfile` com `python:3.13-slim` e as dependências do `requirements.txt`. Instala as dependências como root e roda como o usuário `app` (uid `APP_UID`, padrão 1000, sem shell nem sudo). O código é só lido; a escrita fica em `/tmp` (upload grande) e no home do usuário. Num host Linux cujo usuário não tenha uid 1000, construa com `--build-arg APP_UID=$(id -u)` para `makemigrations` conseguir gravar no repositório. O container `tailwind` roda como o usuário `node` da imagem (uid 1000), dono de `/app/node_modules`; num host Linux com outro uid, o CSS gerado no volume não poderá ser gravado. Não copia o código: depende do volume `.:/app` do `compose.yaml` |
 | Servidor | `python manage.py runserver 0.0.0.0:8000` (Daphne via `runserver`, por causa do Channels) |
 | Workers | `process_outbox` e `process_imports`, com `restart: unless-stopped` |
-| Redis | `redis:8-alpine` sem senha, sem persistência, 64 MB, `allkeys-lru`, sem porta publicada |
+| Redis | `redis:8-alpine` com senha (`REDIS_PASSWORD`, padrão só para desenvolvimento), sem persistência, 64 MB, `allkeys-lru`, sem porta publicada |
 | CSS | Gerado pelo container `tailwind` em modo watch, ou uma vez com `make css`. O arquivo gerado fica fora do Git |
 | CI | Nenhum (não há `.github/`, `.gitlab-ci.yml` ou equivalente) |
 
@@ -20,7 +20,8 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | Tema | O que o código exige ou deixa em aberto |
 |---|---|
 | `DEBUG` | `DJANGO_DEBUG` diferente de `1`. Com `DEBUG` desligado, `ALLOWED_HOSTS` vazio recusa todas as requisições |
-| `SECRET_KEY` | `DJANGO_SECRET_KEY` própria; sem ela a aplicação não inicia. O padrão do `compose.yaml` é inseguro |
+| `SECRET_KEY` | `DJANGO_SECRET_KEY` própria; sem ela a aplicação não inicia. O padrão do `compose.yaml` é recusado pelo `check --deploy` (`system_settings.E001`), assim como o de `DJANGO_CREDENTIALS_KEY` |
+| Conferência | `python manage.py check --deploy` com as variáveis da instalação, antes de cada implantação. Além das conferências do Django, recusa segredos e senha do Redis padrão do `compose.yaml` |
 | `ALLOWED_HOSTS` | `DJANGO_ALLOWED_HOSTS` com os nomes reais da instalação |
 | Identificação | `DJANGO_ENVIRONMENT` e `DJANGO_LOCAL_DATABASE` ausentes, e o banco sem a marca `ifagenda.environment`, para que `flush`, `clear_data`, `delete_users` e `set_passwords` sejam recusados |
 | Banco | PostgreSQL 15 ou superior (usa `nulls_distinct`), com permissão para `CREATE EXTENSION btree_gist` na primeira migration de `bookings`. Variáveis `POSTGRES_*` |
@@ -30,9 +31,9 @@ Este documento lista o que o código exige de qualquer instalação. Valores de 
 | Redis | Sem `DJANGO_REDIS_URL` as telas públicas funcionam sem cache e as notificações criadas pelo `import_worker` não chegam ao sino em tempo real (aviso `notices.W001`). Com ele, senha e rede privada. As chaves do Channels dividem o Redis com o cache público, sob `allkeys-lru` e 64 MB: sob pressão de memória podem ser descartadas, e quem perde a inscrição no grupo só volta a receber avisos ao reconectar (recarregar a página). |
 | Estáticos | Sem `STATIC_ROOT` e sem `collectstatic`. Com `DEBUG` desligado o Django não serve `ui/static/`; o CSS precisa ser gerado (`make css`) antes. Quem serve os estáticos não está definido |
 | Mídia | Nenhuma: o sistema não grava arquivos enviados |
-| HTTPS e cookies | `SECURE_PROXY_SSL_HEADER`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS` e HSTS não estão em `settings.py`. Ajustá-los exige alterar o settings, o que depende do proxy escolhido |
-| Proxy reverso | Fora do repositório. Deve aplicar o rate limit de `/` e `/horario-original/` (convenção da seção 4) e não guardar essas páginas com cache próprio, que ignoraria a invalidação da aplicação. Sem `ALLAUTH_TRUSTED_PROXY_COUNT` ou `ALLAUTH_TRUSTED_CLIENT_IP_HEADER`, os limites por IP do allauth passam a valer para o IP do proxy, compartilhados por todos; o valor depende do proxy escolhido |
-| Vários processos web | O `LocMemCache` dos limites do allauth é por processo: com mais de um processo, os limites de tentativa não são compartilhados. A camada do Channels só é compartilhada com `DJANGO_REDIS_URL` |
+| HTTPS e cookies | Cookies `Secure` ligados quando `DEBUG` está desligado. HSTS, redirecionamento para HTTPS, cabeçalho de esquema do proxy e origens confiáveis de CSRF são variáveis (`DJANGO_SECURE_HSTS_SECONDS`, `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_TRUSTED_PROXY_SSL_HEADER`, `DJANGO_CSRF_TRUSTED_ORIGINS`), desligadas por padrão até a topologia do proxy ser conhecida. Ver [configuração](configuracao.md) |
+| Proxy reverso | Fora do repositório. Deve terminar o TLS, sobrescrever (e não repassar) `X-Forwarded-For` e `X-Forwarded-Proto`, limitar o tamanho do corpo das requisições, aplicar rate limit em `/`, `/horario-original/` e `/contas/*` e não guardar as páginas públicas em cache próprio. Com ele definido, declare `DJANGO_TRUSTED_PROXY_COUNT` (ou `DJANGO_TRUSTED_CLIENT_IP_HEADER`) e `DJANGO_TRUSTED_PROXY_SSL_HEADER`; sem isso, os limites por IP do allauth e a auditoria veem o IP do proxy |
+| Vários processos web | Com `DJANGO_REDIS_URL`, os limites de tentativa, o cache público e a camada do Channels são compartilhados. Sem ela, os limites valem por processo |
 | Logs | Sem `LOGGING`; ver [configuração](configuracao.md#não-configurado-no-repositório) |
 | Backup | Não há rotina no repositório |
 

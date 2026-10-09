@@ -43,6 +43,6 @@ class SmtpForm(forms.Form):
         password = self.fields['password']
         password.conditional = True
         if has_password:
-            password.help_text = 'Deixe em branco para manter a senha gravada.'
+            password.help_text = 'Deixe em branco para manter a senha gravada. Ao mudar servidor, porta, segurança ou usuário, informe a senha de novo.'
         else:
             password.help_text = 'Exigida quando há usuário.'

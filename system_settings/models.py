@@ -129,6 +129,22 @@ class SmtpSettings:
         }
 
 
+PASSWORD_FOR_NEW_DESTINATION_MESSAGE = (
+    'Informe a senha de novo: o servidor, a porta, a segurança ou o usuário mudou, '
+    'e a senha gravada só é mantida para o mesmo destino.'
+)
+
+
+def same_destination(value, host, port, security, username):
+    """Diz se a senha gravada continuaria indo ao mesmo servidor, porta, segurança e usuário."""
+    return (
+        value.get('host') == (host or '').strip()
+        and value.get('port') == port
+        and value.get('security') == security
+        and value.get('username') == username
+    )
+
+
 class SystemSettingQuerySet(models.QuerySet):
     def smtp(self):
         """Configuração SMTP pronta, ou None; lança ValidationError se a gravada for inválida."""
@@ -142,6 +158,8 @@ class SystemSettingQuerySet(models.QuerySet):
             username = (username or '').strip()
             current = ''
             if setting is not None and username and not password and setting.value.get('password'):
+                if not same_destination(setting.value, host, port, security, username):
+                    raise ValidationError({'password': PASSWORD_FOR_NEW_DESTINATION_MESSAGE})
                 current = decrypt(setting.value['password'])
             smtp = SmtpSettings(
                 host=(host or '').strip(),

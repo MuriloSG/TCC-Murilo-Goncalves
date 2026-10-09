@@ -3,6 +3,7 @@ import logging
 from allauth.account.adapter import DefaultAccountAdapter
 from django.core.exceptions import ValidationError
 
+from accounts.utils import typed_email
 from audit import catalog
 from audit.models import AuditLog
 from system_settings.models import SystemSetting
@@ -33,7 +34,7 @@ class AccountAdapter(DefaultAccountAdapter):
             AuditLog.objects.record(
                 catalog.LOGIN_REFUSED,
                 catalog.AUTHENTICATION,
-                metadata={'email': credentials.get('email') or credentials.get('username') or ''},
+                metadata={'email': typed_email(credentials.get('email') or credentials.get('username'))},
             )
         return user
 

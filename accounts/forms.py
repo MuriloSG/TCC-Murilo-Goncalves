@@ -1,10 +1,13 @@
 from allauth.account import forms as allauth_forms
 from django import forms
 
+from accounts.emails import PASSWORD_RESET
 from accounts.models import Permission, Role, validate_institutional_email
 from accounts.permissions import SUPERADMIN_RESERVED_PERMISSIONS
+from accounts.utils import typed_email
 from audit import catalog
 from audit.models import AuditLog
+from outbox.models import OutboxEntry
 from ui.forms import GroupedCheckboxSelectMultiple
 
 
@@ -42,12 +45,14 @@ class PasswordResetForm(allauth_forms.ResetPasswordForm):
         use_email_messages(self.fields['email'])
 
     def save(self, request, **kwargs):
-        """Audita a solicitação do mesmo jeito para e-mail existente ou não, para não revelar contas."""
-        email = super().save(request, **kwargs)
+        """Enfileira o link no outbox e audita igual para e-mail existente ou não, para não revelar contas."""
+        email = self.cleaned_data['email']
+        for user in self.users:
+            OutboxEntry.objects.enqueue(PASSWORD_RESET, user.pk)
         AuditLog.objects.record(
             catalog.PASSWORD_REQUESTED,
             catalog.AUTHENTICATION,
-            metadata={'email': self.cleaned_data.get('email', '')},
+            metadata={'email': typed_email(self.cleaned_data.get('email'))},
         )
         return email
 
@@ -82,6 +87,17 @@ def role_choice_field():
     )
 
 
+def assignable_roles(executor):
+    """Perfis cujas permissões o executor tem todas; a recusa com motivo fica no model."""
+    roles = Role.objects.order_by('name')
+    if executor.is_active and executor.is_superadmin:
+        return roles
+    missing = Permission.objects.exclude(code__in=executor.effective_permissions()).exclude(
+        code__in=SUPERADMIN_RESERVED_PERMISSIONS,
+    )
+    return roles.exclude(permissions__in=missing)
+
+
 def clean_single_role(form):
     """Recusa mais de um perfil, que o ModelChoiceField reduziria ao último valor."""
     if len(form.data.getlist(form.add_prefix('role'))) > 1:
@@ -94,6 +110,10 @@ class UserCreateForm(forms.Form):
     email = email_field()
     username = username_field()
     role = role_choice_field()
+
+    def __init__(self, *args, executor, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['role'].queryset = assignable_roles(executor)
 
     def clean_email(self):
         validate_institutional_email(self.cleaned_data['email'])
@@ -144,9 +164,10 @@ class UserFilterForm(forms.Form):
 class UserRoleForm(forms.Form):
     role = role_choice_field()
 
-    def __init__(self, *args, target, **kwargs):
+    def __init__(self, *args, target, executor, **kwargs):
         kwargs['initial'] = {'role': target.role} | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
+        self.fields['role'].queryset = assignable_roles(executor)
 
     def clean_role(self):
         return clean_single_role(self)

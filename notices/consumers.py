@@ -4,6 +4,7 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 
 CHANGED = 'notifications.changed'
+CLOSED = 'notifications.closed'
 
 
 def group_name(user_id):
@@ -28,3 +29,7 @@ class NotificationsConsumer(JsonWebsocketConsumer):
 
     def notifications_changed(self, event):
         self.send_json({'evento': 'notificacoes'})
+
+    def notifications_closed(self, event):
+        """Encerra a conexão do usuário desativado, que de outro modo seguiria aberta até recarregar a página."""
+        self.close()

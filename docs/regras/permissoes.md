@@ -1,6 +1,6 @@
 # Permissões
 
-Controle de acesso por perfil (RBAC). Catálogo: `accounts/permissions.py`. Carga inicial: `accounts/migrations/0002_system_roles_and_permissions.py`. Verificação: `accounts.middleware.PermissionMiddleware` e `User.has_perm`.
+Controle de acesso por perfil (RBAC). Catálogo: `accounts/permissions.py`. Carga inicial: `create_catalog` em `accounts/migrations/0001_initial.py`. Verificação: `accounts.middleware.PermissionMiddleware` e `User.has_perm`.
 
 ## Como o acesso é decidido
 
@@ -13,7 +13,7 @@ Controle de acesso por perfil (RBAC). Catálogo: `accounts/permissions.py`. Carg
 
 ## Catálogo e concessão inicial
 
-As colunas A e D mostram o que a carga inicial (`0002` a `0004`) concedeu aos perfis de exemplo `ADMINISTRADOR` e `DOCENTE`. É dado, e não regra: os dois são perfis comuns, com permissões alteráveis, e podem ser renomeados ou excluídos sem usuários. O superadmin tem todas.
+As colunas A e D mostram o que a carga inicial concede aos perfis de exemplo `ADMINISTRADOR` e `DOCENTE`. É dado, e não regra: os dois são perfis comuns, com permissões alteráveis, e podem ser renomeados ou excluídos sem usuários. O superadmin tem todas.
 
 | Código | Descrição | A | D |
 |---|---|---|---|
@@ -56,14 +56,14 @@ As colunas A e D mostram o que a carga inicial (`0002` a `0004`) concedeu aos pe
 | `DISCIPLINA.ACESSAR_TODAS` | Alcançar todas as disciplinas, e não só as do próprio escopo | | |
 | `TURMA.ACESSAR_TODAS` | Alcançar todas as turmas, e não só as do próprio escopo | | |
 
-As duas permissões de alcance (`ACADEMIC_SCOPE_PERMISSIONS`) só ampliam o que `DISCIPLINA.*` e `TURMA.*` já liberam: sozinhas não abrem nenhuma rota. A migration `0006` as criou sem conceder a nenhum perfil, para não mudar o escopo de quem já usava o sistema; a concessão é feita na tela de perfis.
+As duas permissões de alcance (`ACADEMIC_SCOPE_PERMISSIONS`) só ampliam o que `DISCIPLINA.*` e `TURMA.*` já liberam: sozinhas não abrem nenhuma rota. A carga inicial não as concede a nenhum perfil; a concessão é feita na tela de perfis.
 
 `ADMINISTRATIVE_CAPABILITY` (as cinco primeiras `USUARIO.*`) define a [continuidade administrativa](regras-de-negocio.md#usuários-e-acesso).
 
 ## Superadmin
 
 - Atributo `User.is_superadmin`, não perfil nem permissão. Controlado só por `create_superadmin` e `set_superadmin`.
-- Tem todas as permissões, inclusive as reservadas `PERFIL.*` e `CONFIGURACAO.EDITAR`: só ele gerencia perfis e o servidor de e-mail, cuja configuração decide para onde vão os links de senha. A migration `accounts.0004` retirou essa permissão do ADMINISTRADOR.
+- Tem todas as permissões, inclusive as reservadas `PERFIL.*` e `CONFIGURACAO.EDITAR`: só ele gerencia perfis e o servidor de e-mail, cuja configuração decide para onde vão os links de senha.
 - Vê todas as disciplinas e turmas, porque `has_perm` responde sim para as permissões de alcance.
 - Não precisa de perfil: `create_superadmin` cria a conta sem nenhum.
 - Só um superadmin ativo altera o e-mail, o nome de usuário, o perfil ou a situação de outro superadmin. O nome continua editável por quem tem `USUARIO.EDITAR`.
@@ -122,6 +122,6 @@ As importações de usuários abrem pelo botão "Importações" da lista de usu�
 ## Permissão nova
 
 1. Constante em `accounts/permissions.py`, incluída em `ALL_PERMISSIONS` e, se for de recurso novo, em `RESOURCE_LABELS`.
-2. Migration de dados que só cria a permissão, com o código escrito literalmente, sem importar as constantes (como a `0006`). Ela não concede a permissão a nenhum perfil e nunca procura perfil pelo código ou pelo nome. As concessões ao `ADMINISTRADOR` feitas pela `0003` e pela `0004` ficam como histórico e não são repetidas.
+2. Migration de dados que só cria a permissão, com o código escrito literalmente, sem importar as constantes. Ela não concede a permissão a nenhum perfil e nunca procura perfil pelo código ou pelo nome.
 3. `permission_required` na view e a rota em `PROTECTED_ROUTES` de `accounts/tests/test_route_protection.py`.
 4. Depois do deploy, o superadmin concede a permissão aos perfis que devem recebê-la, pela tela de perfis.

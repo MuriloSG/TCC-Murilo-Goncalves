@@ -66,7 +66,7 @@ A referência de implementação é o app `accounts`.
 - Use `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `transaction.on_commit` ou de concorrência. Toda classe `TransactionTestCase` declara `serialized_rollback = True`: uma classe sem ele recria os tipos de conteúdo no `flush`, e a próxima classe com ele falha ao recarregar os dados.
 - Limpe o cache (`cache.clear()`) no `setUp` de testes que passam pelos limites de tentativas do allauth.
 - Os testes de permissão usam usuários que não são superadmin, para que o acesso irrestrito não mascare falhas.
-- Os testes montam perfis pelas permissões, com `role_with`, `management_role` e `requester_role` de `accounts/tests/roles.py`. Só os testes da carga inicial (`test_catalog`, `test_migrations` e os casos de perfil inicial) buscam `ADMINISTRADOR` ou `DOCENTE` pelo código.
+- Os testes montam perfis pelas permissões, com `role_with`, `management_role` e `requester_role` de `accounts/tests/roles.py`. Só os testes da carga inicial (`test_catalog` e os casos de perfil inicial) buscam `ADMINISTRADOR` ou `DOCENTE` pelo código.
 
 ## 8. Commits
 

@@ -7,9 +7,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.formats import date_format
 
+from accounts import permissions
 from bookings.models import (
-    ASSIGNMENT_REQUIRED_MESSAGE,
-    COURSE_REQUIRED_MESSAGE,
     DESCRIPTION_MAX_LENGTH,
     DESCRIPTION_REQUIRED_MESSAGE,
     REASON_MAX_LENGTH,
@@ -18,11 +17,10 @@ from bookings.models import (
     STUDENT_COUNT_MAX,
     STUDENT_COUNT_RANGE_MESSAGE,
     STUDENT_COUNT_REQUIRED_MESSAGE,
-    SUBJECT_REQUIRED_MESSAGE,
 )
 from schedule.forms import GridFilterForm
 from accounts.models import User
-from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot, teacher_of, teacher_users
+from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot
 from ui.forms import DateInput
 
 DATE_REQUIRED_MESSAGE = 'Informe a data.'
@@ -67,26 +65,41 @@ def chosen(form, name):
 
 
 class AssignmentChoiceField(forms.ModelChoiceField):
-    """Turma da disciplina escolhida, identificada pelo vínculo do docente com ela."""
+    """Turma da disciplina escolhida; o docente distingue os vínculos da mesma turma."""
 
     def label_from_instance(self, obj):
-        return str(obj.offering.class_group)
+        return f'{obj.offering.class_group} · {obj.teacher.name}'
 
 
 class BookingRequestForm(forms.Form):
-    """Solicitação do docente; as opções só orientam, e o model confere a turma de novo."""
+    """Solicitação com turma opcional; as opções só orientam, e o model confere a turma de novo."""
 
+    DEPENDENTS = {
+        'course': ('subject', 'teaching_assignment'),
+        'subject': ('teaching_assignment',),
+    }
+
+    course = forms.ModelChoiceField(
+        label='Curso',
+        required=False,
+        queryset=Course.objects.none(),
+        empty_label='Sem curso',
+        error_messages={'invalid_choice': 'Escolha um dos cursos do semestre.'},
+    )
     subject = forms.ModelChoiceField(
         label='Disciplina',
+        required=False,
         queryset=Subject.objects.none(),
-        empty_label='Escolha a disciplina',
-        error_messages={'required': SUBJECT_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha uma das suas disciplinas do semestre.'},
+        empty_label='Sem disciplina',
+        error_messages={'invalid_choice': 'Escolha uma das disciplinas do curso escolhido.'},
     )
     teaching_assignment = AssignmentChoiceField(
         label='Turma',
+        required=False,
         queryset=TeachingAssignment.objects.none(),
-        empty_label='Escolha a turma',
-        error_messages={'required': ASSIGNMENT_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha uma turma da disciplina escolhida.'},
+        empty_label='Sem turma',
+        help_text='Opcional. Informe quando o uso for de uma turma do semestre.',
+        error_messages={'invalid_choice': 'Escolha uma turma da disciplina escolhida.'},
     )
     space = forms.ModelChoiceField(
         label='Espaço',
@@ -117,9 +130,7 @@ class BookingRequestForm(forms.Form):
         },
     )
 
-    DEPENDENTS = {}
-
-    def __init__(self, *args, user=None, refresh_url='', today=None, trigger='', **kwargs):
+    def __init__(self, *args, refresh_url='', today=None, trigger='', **kwargs):
         super().__init__(*args, **kwargs)
         self.clear_after(trigger)
         self.refresh = {
@@ -132,12 +143,7 @@ class BookingRequestForm(forms.Form):
         } if refresh_url else {}
         self.semester = semester_of(chosen(self, 'date'), today or timezone.localdate())
         semester = self.semester
-        self.teacher = self.teacher_for(user)
-        assignments = (
-            list(TeachingAssignment.objects.available(semester, teacher=self.teacher))
-            if semester is not None and self.teacher is not None
-            else []
-        )
+        assignments = list(TeachingAssignment.objects.available(semester)) if semester is not None else []
         self.fields['date'].widget.attrs.update(self.refresh)
         self.fields['date'].help_text = f'Semestre {semester.code}.' if semester else 'A data define o semestre da Agenda.'
         self.build_chain(assignments)
@@ -162,13 +168,19 @@ class BookingRequestForm(forms.Form):
         else:
             self.initial = {key: value for key, value in self.initial.items() if key not in names}
 
-    def teacher_for(self, user):
-        """Docente de quem solicita: aqui, o próprio usuário logado."""
-        return teacher_of(user) if user is not None else None
-
     def build_chain(self, assignments):
-        """Disciplinas dos vínculos e turmas da disciplina escolhida, só entre as opções válidas."""
-        subjects = {item.offering.subject.pk: item.offering.subject for item in assignments}
+        """Cursos das turmas do semestre, e disciplina e turma só do curso e da disciplina escolhidos."""
+        courses = {item.offering.class_group.course.pk: item.offering.class_group.course for item in assignments}
+        field = self.fields['course']
+        field.queryset = Course.objects.filter(pk__in=courses)
+        field.choices = [
+            ('', field.empty_label),
+            *((item.pk, item.name) for item in sorted(courses.values(), key=lambda item: item.name.casefold())),
+        ]
+        field.widget.attrs.update({'class': 'input', **self.refresh})
+        course_id = chosen(self, 'course')
+        of_course = [item for item in assignments if str(item.offering.class_group.course_id) == course_id]
+        subjects = {item.offering.subject.pk: item.offering.subject for item in of_course}
         field = self.fields['subject']
         field.queryset = Subject.objects.filter(pk__in=subjects)
         field.choices = [
@@ -178,8 +190,8 @@ class BookingRequestForm(forms.Form):
         field.widget.attrs.update({'class': 'input', **self.refresh})
         subject_id = chosen(self, 'subject')
         of_subject = sorted(
-            (item for item in assignments if str(item.offering.subject_id) == subject_id),
-            key=lambda item: str(item.offering.class_group).casefold(),
+            (item for item in of_course if str(item.offering.subject_id) == subject_id),
+            key=lambda item: (str(item.offering.class_group).casefold(), item.teacher.name.casefold()),
         )
         field = self.fields['teaching_assignment']
         field.queryset = TeachingAssignment.objects.filter(pk__in=[item.pk for item in of_subject])
@@ -202,32 +214,18 @@ class BookingRequestForm(forms.Form):
 
 
 class UserChoiceField(forms.ModelChoiceField):
-    """Usuário identificado pelo nome e pelo `username`, que é o nome do docente no ensalamento."""
-
     def label_from_instance(self, obj):
-        return f'{obj.name} ({obj.username})'
+        return f'{obj.name} ({obj.username or obj.email})'
 
 
 class BookingOnBehalfForm(BookingRequestForm):
-    """Solicitação em nome de outro usuário; o model confere de novo a cadeia curso, disciplina e turma."""
-
-    DEPENDENTS = {
-        'requested_for': ('course', 'subject', 'teaching_assignment'),
-        'course': ('subject', 'teaching_assignment'),
-        'subject': ('teaching_assignment',),
-    }
+    """Solicitação em nome de quem tem `AGENDA.SOLICITAR`; o model confere a permissão de novo."""
 
     requested_for = UserChoiceField(
         label='Usuário',
         queryset=User.objects.none(),
         empty_label='Escolha o usuário',
-        error_messages={'required': REQUESTER_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha um dos usuários docentes do semestre.'},
-    )
-    course = forms.ModelChoiceField(
-        label='Curso',
-        queryset=Course.objects.none(),
-        empty_label='Escolha o curso',
-        error_messages={'required': COURSE_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha um dos cursos do usuário no semestre.'},
+        error_messages={'required': REQUESTER_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha um dos usuários que solicitam agendamento.'},
     )
 
     field_order = [
@@ -235,35 +233,10 @@ class BookingOnBehalfForm(BookingRequestForm):
     ]
 
     def __init__(self, *args, **kwargs):
-        self.requester = None
         super().__init__(*args, **kwargs)
-        self.fields['subject'].error_messages['invalid_choice'] = 'Escolha uma das disciplinas do usuário no curso escolhido.'
-        self.fields['teaching_assignment'].error_messages['invalid_choice'] = (
-            'Escolha uma das turmas do usuário na disciplina escolhida.'
-        )
-
-    def teacher_for(self, user):
-        """Docente do usuário escolhido, entre os usuários docentes do semestre da data."""
         field = self.fields['requested_for']
-        field.queryset = teacher_users(self.semester)
-        field.widget.attrs.update({'class': 'input', **self.refresh})
-        requester_id = chosen(self, 'requested_for')
-        if requester_id.isdigit():
-            self.requester = field.queryset.filter(pk=requester_id).first()
-        return teacher_of(self.requester) if self.requester is not None else None
-
-    def build_chain(self, assignments):
-        """Cursos das turmas dos vínculos, e disciplina e turma só dos vínculos do curso escolhido."""
-        courses = {item.offering.class_group.course.pk: item.offering.class_group.course for item in assignments}
-        field = self.fields['course']
-        field.queryset = Course.objects.filter(pk__in=courses)
-        field.choices = [
-            ('', field.empty_label),
-            *((item.pk, item.name) for item in sorted(courses.values(), key=lambda item: item.name.casefold())),
-        ]
-        field.widget.attrs.update({'class': 'input', **self.refresh})
-        course_id = chosen(self, 'course')
-        super().build_chain([item for item in assignments if str(item.offering.class_group.course_id) == course_id])
+        field.queryset = User.objects.with_permission(permissions.BOOKING_REQUEST).order_by('name', 'pk')
+        field.widget.attrs['class'] = 'input'
 
 
 class ReviewFilterForm(forms.Form):

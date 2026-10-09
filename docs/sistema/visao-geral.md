@@ -14,7 +14,7 @@ As duas aparecem juntas na Grade autenticada e no calendário público, que não
 | Quem | Como é definido | O que faz |
 |---|---|---|
 | Visitante | sem login | Consulta o calendário público (`/`) e o horário original (`/horario-original/`) |
-| Docente | perfil `DOCENTE` | Consulta a Agenda e solicita agendamento. Cancela ocorrências das próprias aulas. Só solicita quem corresponde a um docente do ensalamento (ver [regras](../regras/regras-de-negocio.md#vínculo-entre-usuário-e-docente)) |
+| Docente | perfil `DOCENTE` | Consulta a Agenda e solicita agendamento. Cancela ocorrências das próprias aulas. Quem solicita é definido só pela permissão `AGENDA.SOLICITAR` |
 | Administrador | perfil `ADMINISTRADOR` | Recebe pela migration todas as permissões, exceto as `PERFIL.*` |
 | Superadmin | atributo `User.is_superadmin` | Tem todas as permissões, inclusive as reservadas `PERFIL.*`. É controlado só por comando de gerenciamento |
 | Perfis personalizados | criados pelo superadmin | Concedem a combinação de permissões escolhida |

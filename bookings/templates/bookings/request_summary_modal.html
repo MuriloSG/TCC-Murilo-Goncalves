@@ -12,10 +12,12 @@
       <div><dt>Solicitante</dt><dd>{{ prepared.requested_by.name }}</dd></div>
       <div><dt>Criada por</dt><dd>{{ prepared.created_by.name }}</dd></div>
     {% endif %}
-    <div><dt>Semestre</dt><dd>{{ prepared.teaching_assignment.offering.semester.code }}</dd></div>
-    <div><dt>Docente</dt><dd>{{ prepared.teaching_assignment.teacher.name }}</dd></div>
-    <div><dt>Turma</dt><dd>{{ prepared.teaching_assignment.offering.class_group }}</dd></div>
-    <div><dt>Disciplina</dt><dd>{{ prepared.teaching_assignment.offering.subject.name }}</dd></div>
+    {% with link=prepared.teaching_assignment %}{% if link %}
+      <div><dt>Semestre</dt><dd>{{ link.offering.semester.code }}</dd></div>
+      <div><dt>Docente</dt><dd>{{ link.teacher.name }}</dd></div>
+      <div><dt>Turma</dt><dd>{{ link.offering.class_group }}</dd></div>
+      <div><dt>Disciplina</dt><dd>{{ link.offering.subject.name }}</dd></div>
+    {% endif %}{% endwith %}
     <div><dt>Espaço</dt><dd>{{ prepared.space.name }}</dd></div>
     <div><dt>Data e horário</dt><dd>{{ prepared.schedule_text }}</dd></div>
     <div><dt>Descrição</dt><dd>{{ prepared.description }}</dd></div>

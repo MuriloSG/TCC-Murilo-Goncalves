@@ -167,7 +167,7 @@ def request_related(queryset):
     )
 
 
-REQUEST_FIELDS = ('subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description', 'student_count')
+REQUEST_FIELDS = ('course', 'subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description', 'student_count')
 
 
 class BookingRequestCreateView(OperationFormView):
@@ -194,7 +194,7 @@ class BookingRequestCreateView(OperationFormView):
     def get_form_kwargs(self):
         trigger = (self.request.htmx.trigger_name or '') if self.request.htmx else ''
         return super().get_form_kwargs() | {
-            'user': self.request.user, 'refresh_url': reverse(self.refresh_route), 'trigger': trigger,
+            'refresh_url': reverse(self.refresh_route), 'trigger': trigger,
         }
 
     def get_close_url(self):
@@ -207,7 +207,7 @@ class BookingRequestCreateView(OperationFormView):
         data = form.cleaned_data
         return [
             self.request.user, data['space'], data['date'], data['start_time'], data['end_time'], data['description'],
-            data['student_count'], form.semester, data['teaching_assignment'], None, None, data['subject'],
+            data['student_count'], form.semester, data['teaching_assignment'], None, data['course'], data['subject'],
         ]
 
     def form_valid(self, form):
@@ -235,7 +235,7 @@ class BookingRequestCreateView(OperationFormView):
         )
 
 
-ON_BEHALF_FIELDS = ('requested_for', 'course', *REQUEST_FIELDS)
+ON_BEHALF_FIELDS = ('requested_for', *REQUEST_FIELDS)
 
 
 class BookingOnBehalfCreateView(BookingRequestCreateView):

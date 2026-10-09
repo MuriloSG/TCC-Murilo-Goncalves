@@ -30,6 +30,7 @@ class RequestScreenTestCase(TestCase):
 
     def data(self, **values):
         return {
+            'course': self.offering.class_group.course_id,
             'subject': self.offering.subject_id,
             'teaching_assignment': self.assignment.pk,
             'space': self.lab.pk, 'date': '2026-10-15', 'start_time': '16:00', 'end_time': '18:00',

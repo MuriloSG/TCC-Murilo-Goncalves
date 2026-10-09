@@ -36,7 +36,7 @@ O ensalamento não é alterado pela Agenda. São três conceitos em tabelas sepa
 
 ## Fluxo
 
-1. **Solicitar** (`BookingRequest.objects.prepare` e `submit`): o formulário escolhe a disciplina e a turma entre os vínculos atuais do docente no semestre da data. A data precisa ser de segunda a sexta (`check_weekday`); o calendário do campo já desabilita sábado e domingo. O primeiro envio mostra a revisão sem gravar; a confirmação grava a solicitação `PENDENTE` e notifica quem analisa. Nenhum horário é reservado nesse momento.
+1. **Solicitar** (`BookingRequest.objects.prepare` e `submit`): o curso, a disciplina e a turma são opcionais e vêm de todos os vínculos atuais do semestre da data, de qualquer docente. A data precisa ser de segunda a sexta (`check_weekday`); o calendário do campo já desabilita sábado e domingo. O primeiro envio mostra a revisão sem gravar; a confirmação grava a solicitação `PENDENTE` e notifica quem analisa. Nenhum horário é reservado nesse momento.
 2. **Analisar**: quem tem `AGENDA.ANALISAR`
    - aprova (`approve`): confere o conflito de novo, trava o espaço e cria o `Booking` com o horário original;
    - rejeita (`reject`): motivo obrigatório;
@@ -61,7 +61,7 @@ Uma ação que o estado atual não admite é recusada com `InvalidTransition`.
 
 ## Criar para outro usuário
 
-`/agenda/criar/` (`BookingOnBehalfCreateView`): quem tem `AGENDA.CRIAR` escolhe o usuário, o curso, a disciplina e a turma, nessa ordem. A lista de usuários são os ativos que correspondem a um docente com vínculo atual no semestre (`schedule.models.teacher_users`). A solicitação fica `PENDENTE` em nome do usuário escolhido (`requested_by`), com quem criou em `created_by`, e segue o mesmo fluxo de análise.
+`/agenda/criar/` (`BookingOnBehalfCreateView`): quem tem `AGENDA.CRIAR` escolhe o usuário e, se quiser, o curso, a disciplina e a turma, nessa ordem. A lista de usuários são os ativos com `AGENDA.SOLICITAR` (`User.objects.with_permission`). A solicitação fica `PENDENTE` em nome do usuário escolhido (`requested_by`), com quem criou em `created_by`, e segue o mesmo fluxo de análise.
 
 ## Notificações
 

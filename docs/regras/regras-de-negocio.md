@@ -24,7 +24,7 @@ Convenção geral: as regras ficam nas operações dos models e managers, que la
 
 | Regra | Onde |
 |---|---|
-| Um usuário corresponde a um docente do ensalamento quando `Teacher.name` é igual a `User.username`, sem diferenciar a caixa. Não há chave estrangeira | `teacher_of`, `manages`, `teacher_users` |
+| Um usuário corresponde a um docente do ensalamento quando `Teacher.name` é igual a `User.username`, sem diferenciar a caixa. Não há chave estrangeira | `teacher_of`, `manages` |
 | Sem `username`, ou com usuário inativo, não há correspondência | `teacher_of` |
 
 ## Perfis
@@ -119,8 +119,8 @@ Regras do ciclo de vida em [motor de importação](../arquitetura/motor-de-impor
 
 | Regra | Onde |
 |---|---|
-| Só quem corresponde a um docente do ensalamento solicita, e só para turmas de vínculos atuais dele no semestre. A disciplina e o curso informados precisam ser os do vínculo | `check_assignment` |
-| Quem tem `AGENDA.CRIAR` cria em nome de outro usuário ativo, que também precisa ser docente com vínculo atual | `BookingRequestManager.prepare`, `teacher_users` |
+| Solicita quem tem `AGENDA.SOLICITAR`, sem depender de corresponder a um docente. A turma é opcional; quando informada, precisa ser vínculo atual do semestre da data, de qualquer docente, e combinar com o curso e a disciplina informados | `check_assignment` |
+| Quem tem `AGENDA.CRIAR` cria em nome de outro usuário ativo que tenha `AGENDA.SOLICITAR` | `BookingRequestManager.prepare`, `check_assignment` |
 | O semestre precisa ter período, e a data, estar dentro dele | `bookings.models.check_period` |
 | Só de segunda a sexta: sábado e domingo são recusados na solicitação (própria ou em nome de outro) e na alternativa sugerida. O calendário do campo de data desabilita esses dias (`data-weekdays-only`), mas a regra vale no servidor sem JavaScript. A aprovação e o aceite da alternativa não conferem o dia, para não travar solicitações anteriores à regra | `bookings.models.check_weekday` |
 | Descrição obrigatória (até 500 caracteres). Quantidade de alunos obrigatória, de 1 a 999 | `BookingRequest` |

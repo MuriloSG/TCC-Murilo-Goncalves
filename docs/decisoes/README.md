@@ -74,7 +74,7 @@ Os docstrings do código citam essas e outras decisões no formato "D<n> da Chan
 
 **Motivo registrado.** Nem todo docente é usuário e vice-versa. A lista real tem nomes com prefixo comum (`Gera Jr.` e `Gera Magela`), em que qualquer heurística atribuiria aula a outra pessoa. Ignorar acentos exigiria `unaccent` e índice próprio, sem justificativa para os poucos casos.
 
-**Consequência.** Escopo de disciplinas e turmas, cancelamento de ocorrência e solicitação de agendamento dependem do `username` estar preenchido e igual ao nome da planilha.
+**Consequência.** Escopo de disciplinas e turmas e cancelamento de ocorrência dependem do `username` estar preenchido e igual ao nome da planilha. A solicitação de agendamento não depende: basta `AGENDA.SOLICITAR`, e a turma é opcional.
 
 ## 9. Ocupação calculada e vigência na própria alocação
 

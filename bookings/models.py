@@ -18,7 +18,7 @@ from audit.models import AuditLog
 from bookings import notifications
 from bookings.occupancy import conflict_message, find_conflict
 from notices.events import announce
-from schedule.models import Space, TeachingAssignment, teacher_of
+from schedule.models import Space, TeachingAssignment
 
 DESCRIPTION_MAX_LENGTH = 500
 REASON_MAX_LENGTH = 500
@@ -36,19 +36,15 @@ SAME_SUGGESTION_MESSAGE = 'A alternativa deve mudar o espaço, a data ou o horá
 OWNER_ONLY_MESSAGE = 'Só quem solicitou pode responder à alternativa.'
 PERMISSION_MESSAGE = 'Sem permissão para esta ação na Agenda.'
 SEMESTER_REQUIRED_MESSAGE = 'Escolha o semestre.'
-SUBJECT_REQUIRED_MESSAGE = 'Escolha a disciplina.'
-ASSIGNMENT_REQUIRED_MESSAGE = 'Escolha a turma.'
-NOT_A_TEACHER_MESSAGE = 'O seu usuário não corresponde a um docente do ensalamento. Só docentes solicitam agendamento.'
 REQUESTER_REQUIRED_MESSAGE = 'Escolha o usuário.'
-COURSE_REQUIRED_MESSAGE = 'Escolha o curso.'
-SUBJECT_OUTSIDE_COURSE_MESSAGE = 'Esta disciplina não está entre as disciplinas do usuário no curso escolhido. Escolha outra disciplina.'
+SUBJECT_OUTSIDE_COURSE_MESSAGE = 'Esta disciplina não é do curso escolhido. Escolha outra disciplina.'
 CANCEL_DEADLINE_MESSAGE = 'O agendamento só pode ser cancelado até 1 hora antes do início.'
 CANCEL_PERMISSION_MESSAGE = 'Só quem solicitou ou quem analisa a Agenda pode cancelar este agendamento.'
-ASSIGNMENT_OUTSIDE_SUBJECT_MESSAGE = 'Esta turma não está entre as turmas do usuário na disciplina escolhida. Escolha outra turma.'
+ASSIGNMENT_OUTSIDE_SUBJECT_MESSAGE = 'Esta turma não é da disciplina escolhida. Escolha outra turma.'
 
 
-def not_a_teacher_message(user):
-    return f'O usuário {user.username or user.email} não corresponde a um docente do ensalamento. Escolha outro usuário.'
+def without_permission_message(user):
+    return f'O usuário {user.username or user.email} não tem permissão para solicitar agendamento. Escolha outro usuário.'
 
 
 class TsTzRange(Func):
@@ -119,31 +115,18 @@ def check_slot(space, day, start, end, prefix='', exclude_request=None):
 
 
 def check_assignment(requester, semester, assignment, course=None, subject=None, on_behalf=False):
-    """Recusa a turma que não é vínculo atual do docente do solicitante, conferindo curso e disciplina a partir dele."""
-    teacher = teacher_of(requester)
-    if teacher is None:
-        if on_behalf:
-            raise ValidationError({'requested_for': ValidationError(not_a_teacher_message(requester), code='not_a_teacher')})
-        raise ValidationError(NOT_A_TEACHER_MESSAGE, code='not_a_teacher')
-    missing = {}
+    """Turma opcional; quando informada, precisa ser vínculo atual do semestre e combinar com curso e disciplina."""
+    if on_behalf and not requester.has_perm(permissions.BOOKING_REQUEST):
+        raise ValidationError({'requested_for': ValidationError(without_permission_message(requester), code='permission')})
     if semester is None:
-        missing['semester'] = ValidationError(SEMESTER_REQUIRED_MESSAGE, code='required')
+        raise ValidationError({'semester': ValidationError(SEMESTER_REQUIRED_MESSAGE, code='required')})
     if assignment is None:
-        missing['teaching_assignment'] = ValidationError(ASSIGNMENT_REQUIRED_MESSAGE, code='required')
-    if missing:
-        raise ValidationError(missing)
+        return
     offering = assignment.offering
-    if (
-        assignment.teacher_id != teacher.pk
-        or not assignment.is_current
-        or offering.semester_id != semester.pk
-    ):
-        text = (
-            f'Esta turma não está entre as turmas do usuário no ensalamento de {semester.code}. Escolha outra turma.'
-            if on_behalf
-            else f'Esta turma não está entre as suas turmas do ensalamento de {semester.code}. Escolha uma das suas turmas.'
-        )
-        raise ValidationError({'teaching_assignment': ValidationError(text, code='not_available')})
+    if not assignment.is_current or offering.semester_id != semester.pk:
+        raise ValidationError({'teaching_assignment': ValidationError(
+            f'Esta turma não está entre as turmas do ensalamento de {semester.code}. Escolha outra turma.', code='not_available',
+        )})
     if course is not None and offering.class_group.course_id != course.pk:
         raise ValidationError({'subject': ValidationError(SUBJECT_OUTSIDE_COURSE_MESSAGE, code='not_available')})
     if subject is not None and offering.subject_id != subject.pk:
@@ -205,13 +188,14 @@ class BookingRequestManager(models.Manager):
                 user, space, day, start, end, description, student_count, semester, assignment, requester, course, subject,
             )
             request.save()
-            offering = request.teaching_assignment.offering
-            values = {
-                'situacao': request.status,
-                'semestre': semester.code,
-                'docente': request.teaching_assignment.teacher.name,
-                'disciplina': offering.subject.name,
-                'turma': str(offering.class_group),
+            values = {'situacao': request.status, 'semestre': semester.code}
+            if assignment is not None:
+                values |= {
+                    'docente': assignment.teacher.name,
+                    'disciplina': assignment.offering.subject.name,
+                    'turma': str(assignment.offering.class_group),
+                }
+            values |= {
                 'espaco': space.name,
                 'data': day.isoformat(),
                 'horario': hours(start, end),

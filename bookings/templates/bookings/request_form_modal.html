@@ -6,7 +6,6 @@
 
 {% block body %}
   <div id="request-fields">
-    {% if not form.teacher %}<div class="alert tone-warning" role="alert">{% icon "triangle-alert" %}<p>O seu usuário não corresponde a um docente do ensalamento. Só docentes solicitam agendamento.</p></div>{% endif %}
     {{ form }}
     <datalist id="horarios-inicio">{% for value in form.slot_starts %}<option value="{{ value }}"></option>{% endfor %}</datalist>
     <datalist id="horarios-fim">{% for value in form.slot_ends %}<option value="{{ value }}"></option>{% endfor %}</datalist>

@@ -33,6 +33,7 @@ class OnBehalfTestCase(TestCase):
         self.bruno = user_with('bruno@ifnmg.edu.br', *REQUESTER)
         self.erica = user_with('erica@ifnmg.edu.br', *REQUESTER)
         self.outsider = user_with('sem_docente@ifnmg.edu.br', *REQUESTER)
+        self.viewer = user_with('consulta@ifnmg.edu.br', REQUESTER[0])
         self.creator = user_with('secretaria@ifnmg.edu.br', *CREATOR)
         self.reviewer = user_with('analise@ifnmg.edu.br', *REVIEWER)
         self.networks = academic(teacher='ana')
@@ -138,64 +139,60 @@ class ChainOptionsTests(OnBehalfTestCase):
         found = re.search(r'<option value="([^"]*)" selected>', self.options(content, name))
         return found.group(1) if found else ''
 
-    def test_users_are_the_active_teachers_of_the_semester(self):
+    def test_users_are_the_active_users_with_the_request_permission(self):
         User.objects.filter(pk=self.erica.pk).update(is_active=False)
         users = self.options(self.refresh(), 'requested_for')
         self.assertIn('Ana (ana)', users)
         self.assertIn('Bruno (bruno)', users)
+        self.assertIn('Sem_docente (sem_docente)', users)
         self.assertNotIn('erica', users)
-        self.assertNotIn('sem_docente', users)
+        self.assertNotIn('consulta', users)
         self.assertNotIn('secretaria', users)
 
-    def test_courses_of_the_chosen_user(self):
-        courses = self.options(self.refresh(requested_for=self.ana.pk), 'course')
+    def test_courses_of_every_class_group_of_the_semester(self):
+        courses = self.options(self.refresh(requested_for=self.erica.pk), 'course')
         self.assertIn('>INFORMÁTICA</option>', courses)
         self.assertIn('>AGROPECUÁRIA</option>', courses)
-        erica = self.options(self.refresh(requested_for=self.erica.pk), 'course')
-        self.assertIn('>INFORMÁTICA</option>', erica)
-        self.assertNotIn('AGROPECUÁRIA', erica)
 
-    def test_historical_and_other_semester_links_bring_no_course(self):
+    def test_historical_and_other_semester_links_bring_no_option(self):
         self.chemistry.is_current = False
         self.chemistry.save()
-        courses = self.options(self.refresh(requested_for=self.ana.pk), 'course')
-        self.assertNotIn('AGROPECUÁRIA', courses)
-        self.assertNotIn('>Física</option>', self.refresh(requested_for=self.ana.pk, course=self.informatics.pk))
+        subjects = self.options(self.refresh(course=self.agriculture.pk), 'subject')
+        self.assertNotIn('Química', subjects)
+        self.assertIn('>Física</option>', subjects)
+        self.assertNotIn('>Física</option>', self.refresh(course=self.informatics.pk))
 
-    def test_subjects_of_the_user_in_the_course(self):
-        subjects = self.options(self.refresh(requested_for=self.ana.pk, course=self.informatics.pk), 'subject')
+    def test_subjects_of_the_course(self):
+        subjects = self.options(self.refresh(requested_for=self.erica.pk, course=self.informatics.pk), 'subject')
         self.assertIn('>Redes</option>', subjects)
         self.assertIn('>Banco de Dados</option>', subjects)
         self.assertNotIn('Química', subjects)
         self.assertNotIn('Física', subjects)
 
-    def test_class_groups_of_the_user_in_the_subject_and_course(self):
+    def test_class_groups_of_the_subject_and_course(self):
         content = self.refresh(requested_for=self.ana.pk, course=self.informatics.pk, subject=self.redes.pk)
         groups = self.options(content, 'teaching_assignment')
-        self.assertIn(f'<option value="{self.networks.pk}">2º ANO A (INFORMÁTICA)</option>', groups)
-        self.assertIn(f'<option value="{self.networks_third.pk}">3º ANO A (INFORMÁTICA)</option>', groups)
-        self.assertNotIn(f'value="{self.erica_networks.pk}"', groups)
-        self.assertNotIn(f'value="{self.bruno_networks.pk}"', groups)
+        self.assertIn(f'<option value="{self.networks.pk}">2º ANO A (INFORMÁTICA) · ana</option>', groups)
+        self.assertIn(f'<option value="{self.bruno_networks.pk}">2º ANO A (INFORMÁTICA) · bruno</option>', groups)
+        self.assertIn(f'<option value="{self.networks_third.pk}">3º ANO A (INFORMÁTICA) · ana</option>', groups)
+        self.assertIn(f'value="{self.erica_networks.pk}"', groups)
         self.assertNotIn(f'value="{self.databases.pk}"', groups)
 
     def test_fields_are_in_the_required_order_with_htmx(self):
         content = self.refresh()
         positions = [content.index(f'name="{name}"') for name in ('requested_for', 'course', 'subject', 'teaching_assignment', 'space', 'date')]
         self.assertEqual(positions, sorted(positions))
-        for name in ('requested_for', 'course', 'subject', 'date'):
+        for name in ('course', 'subject', 'date'):
             with self.subTest(name=name):
                 self.assertIn('hx-get', content.split(f'name="{name}"')[1].split('>')[0])
 
-    def test_changing_the_user_clears_the_following_fields(self):
+    def test_changing_the_user_keeps_the_following_fields(self):
         content = self.refresh(
             'requested_for', requested_for=self.bruno.pk, course=self.informatics.pk, subject=self.redes.pk,
-            teaching_assignment=self.bruno_networks.pk,
+            teaching_assignment=self.networks.pk,
         )
         self.assertEqual(self.chosen(content, 'requested_for'), str(self.bruno.pk))
-        for name in ('course', 'subject', 'teaching_assignment'):
-            with self.subTest(name=name):
-                self.assertEqual(self.chosen(content, name), '')
-        self.assertIn('>INFORMÁTICA</option>', self.options(content, 'course'))
+        self.assertEqual(self.chosen(content, 'teaching_assignment'), str(self.networks.pk))
 
     def test_changing_the_course_clears_subject_and_class_group(self):
         content = self.refresh(
@@ -222,7 +219,6 @@ class ChainOptionsTests(OnBehalfTestCase):
         Semester.objects.filter(pk=self.semester.pk).update(start_date=date(2026, 10, 10))
         content = self.refresh('date', date='2026-10-05', requested_for=self.ana.pk, course=self.informatics.pk)
         self.assertIn('Semestre 2026/1.', content)
-        self.assertNotIn('Bruno (bruno)', self.options(content, 'requested_for'))
         self.assertIn('>Física</option>', self.options(content, 'subject'))
 
     def test_header_entry_starts_with_a_date(self):
@@ -244,36 +240,41 @@ class ChainSecurityTests(OnBehalfTestCase):
         self.assertContains(response, 'Agendamentos só podem ser feitos de segunda a sexta. Escolha outra data.')
         self.assertFalse(BookingRequest.objects.exists())
 
-    def test_course_of_another_user(self):
-        response = self.post(requested_for=self.erica.pk, course=self.agriculture.pk,
-                             subject=self.redes.pk, teaching_assignment=self.erica_networks.pk)
-        self.assertContains(response, 'Escolha um dos cursos do usuário no semestre.')
-        self.assertFalse(BookingRequest.objects.exists())
+    def test_class_group_of_another_teacher(self):
+        response = self.post(teaching_assignment=self.erica_networks.pk)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BookingRequest.objects.get().teaching_assignment, self.erica_networks)
+
+    def test_without_class_group(self):
+        response = self.post(course='', subject='', teaching_assignment='')
+        self.assertEqual(response.status_code, 302)
+        request = BookingRequest.objects.get()
+        self.assertEqual((request.requested_by, request.teaching_assignment), (self.ana, None))
 
     def test_subject_of_another_course(self):
         response = self.post(subject=self.chem.pk, teaching_assignment=self.chemistry.pk)
-        self.assertContains(response, 'Escolha uma das disciplinas do usuário no curso escolhido.')
+        self.assertContains(response, 'Escolha uma das disciplinas do curso escolhido.')
         self.assertFalse(BookingRequest.objects.exists())
 
-    def test_class_group_of_another_teacher(self):
-        response = self.post(teaching_assignment=self.erica_networks.pk)
-        self.assertContains(response, 'Escolha uma das turmas do usuário na disciplina escolhida.')
-        self.assertFalse(BookingRequest.objects.exists())
-
-    def test_class_group_of_another_subject_of_the_same_teacher(self):
+    def test_class_group_of_another_subject(self):
         response = self.post(teaching_assignment=self.databases.pk)
-        self.assertContains(response, 'Escolha uma das turmas do usuário na disciplina escolhida.')
+        self.assertContains(response, 'Escolha uma turma da disciplina escolhida.')
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_user_that_is_not_a_teacher(self):
         response = self.post(requested_for=self.outsider.pk)
-        self.assertContains(response, 'Escolha um dos usuários docentes do semestre.')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BookingRequest.objects.get().requested_by, self.outsider)
+
+    def test_user_without_the_request_permission(self):
+        response = self.post(requested_for=self.viewer.pk)
+        self.assertContains(response, 'Escolha um dos usuários que solicitam agendamento.')
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_inactive_user(self):
         User.objects.filter(pk=self.ana.pk).update(is_active=False)
         response = self.post()
-        self.assertContains(response, 'Escolha um dos usuários docentes do semestre.')
+        self.assertContains(response, 'Escolha um dos usuários que solicitam agendamento.')
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_unknown_ids(self):
@@ -293,18 +294,18 @@ class ChainModelTests(OnBehalfTestCase):
         error = self.refused(self.creator, self.ana, self.networks, subject=self.chem)
         self.assertEqual(
             error.message_dict['teaching_assignment'],
-            ['Esta turma não está entre as turmas do usuário na disciplina escolhida. Escolha outra turma.'],
+            ['Esta turma não é da disciplina escolhida. Escolha outra turma.'],
         )
 
-    def test_class_group_of_another_teacher(self):
-        error = self.refused(self.creator, self.ana, self.erica_networks)
+    def test_class_group_of_another_semester(self):
+        error = self.refused(self.creator, self.ana, self.old_physics)
         self.assertIn('teaching_assignment', error.message_dict)
 
-    def test_user_that_is_not_a_teacher(self):
-        error = self.refused(self.creator, self.outsider, self.networks)
+    def test_user_without_the_request_permission(self):
+        error = self.refused(self.creator, self.viewer, self.networks)
         self.assertEqual(
             error.message_dict['requested_for'],
-            ['O usuário sem_docente não corresponde a um docente do ensalamento. Escolha outro usuário.'],
+            ['O usuário consulta não tem permissão para solicitar agendamento. Escolha outro usuário.'],
         )
 
     def test_inactive_user(self):

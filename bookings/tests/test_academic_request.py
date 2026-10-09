@@ -1,4 +1,4 @@
-"""Solicitação de agendamento pelo docente, para uma das suas turmas."""
+"""Solicitação de agendamento por quem tem `AGENDA.SOLICITAR`, com a turma opcional."""
 
 from datetime import date, time
 from unittest import mock
@@ -25,7 +25,7 @@ class AcademicTestCase(TestCase):
         self.lab = Space.objects.get(name='Laboratório de Informática 2')
         self.ana = user_with('ana@ifnmg.edu.br', *REQUESTER)
         self.erica = user_with('erica@ifnmg.edu.br', *REQUESTER)
-        self.outsider = user_with('sem_docente@ifnmg.edu.br', *REQUESTER)
+        self.outsider = user_with('secretaria@ifnmg.edu.br', *REQUESTER)
         self.reviewer = user_with('analise@ifnmg.edu.br', *REVIEWER)
         self.networks = academic(teacher='ana')
         self.databases = academic(teacher='ana', subject='Banco de Dados', label='3º ANO A')
@@ -35,11 +35,11 @@ class AcademicTestCase(TestCase):
         self.old_physics = academic(teacher='ana', subject='Física', code='2026/1')
         self.semester = self.networks.offering.semester
 
-    def submit_as(self, user, assignment, semester=None, **overrides):
+    def submit_as(self, user, assignment, semester=None, course=None, subject=None, **overrides):
         values = {'day': THURSDAY, 'start': time(16, 0), 'end': time(18, 0), 'description': 'Reunião do projeto.', 'students': 30} | overrides
         return BookingRequest.objects.submit(
             user, self.lab, values['day'], values['start'], values['end'], values['description'],
-            values['students'], semester or self.semester, assignment,
+            values['students'], semester or self.semester, assignment, None, course, subject,
         )
 
     def refused(self, *arguments, **overrides):
@@ -55,15 +55,22 @@ class AssignmentTests(AcademicTestCase):
         self.assertEqual((request.status, request.teaching_assignment), (Status.PENDING, self.networks))
         self.assertFalse(Booking.objects.exists())
 
-    def test_class_group_of_another_teacher(self):
-        error = self.refused(self.ana, self.physics)
-        self.assertEqual(
-            error.message_dict['teaching_assignment'],
-            ['Esta turma não está entre as suas turmas do ensalamento de 2026/2. Escolha uma das suas turmas.'],
-        )
+    def test_class_group_of_another_teacher_is_accepted(self):
+        request = self.submit_as(self.ana, self.physics)
+        self.assertEqual(request.teaching_assignment, self.physics)
+
+    def test_without_class_group(self):
+        request = self.submit_as(self.ana, None)
+        self.assertEqual((request.status, request.teaching_assignment), (Status.PENDING, None))
+        log = AuditLog.objects.get(resource_id=str(request.pk))
+        self.assertNotIn('turma', log.new_values)
 
     def test_class_group_of_another_semester(self):
-        self.assertIn('teaching_assignment', self.refused(self.ana, self.old_physics).message_dict)
+        error = self.refused(self.ana, self.old_physics)
+        self.assertEqual(
+            error.message_dict['teaching_assignment'],
+            ['Esta turma não está entre as turmas do ensalamento de 2026/2. Escolha outra turma.'],
+        )
 
     def test_historical_assignment(self):
         self.networks.is_current = False
@@ -71,13 +78,17 @@ class AssignmentTests(AcademicTestCase):
         self.assertIn('teaching_assignment', self.refused(self.ana, self.networks).message_dict)
 
     def test_user_that_is_not_a_teacher(self):
-        error = self.refused(self.outsider, self.networks)
-        self.assertEqual(error.messages, ['O seu usuário não corresponde a um docente do ensalamento. Só docentes solicitam agendamento.'])
+        request = self.submit_as(self.outsider, self.networks)
+        self.assertEqual(request.requested_by, self.outsider)
 
-    def test_missing_semester_and_class_group(self):
+    def test_without_the_request_permission(self):
+        viewer = user_with('consulta@ifnmg.edu.br', REQUESTER[0])
+        self.assertEqual(self.refused(viewer, None).code, 'permission')
+
+    def test_missing_semester(self):
         with self.assertRaises(ValidationError) as caught:
             BookingRequest.objects.submit(self.ana, self.lab, THURSDAY, time(16, 0), time(18, 0), 'Reunião.', 30, None, None)
-        self.assertEqual(set(caught.exception.message_dict), {'semester', 'teaching_assignment'})
+        self.assertEqual(set(caught.exception.message_dict), {'semester'})
 
     def test_semester_without_period(self):
         no_period = academic(teacher='ana', subject='Estágio', code='2027/1')
@@ -102,6 +113,7 @@ class ScreenTests(AcademicTestCase):
 
     def data(self, **values):
         return {
+            'course': self.networks.offering.class_group.course_id,
             'subject': self.networks.offering.subject_id,
             'teaching_assignment': self.networks.pk,
             'space': self.lab.pk, 'date': '2026-10-15', 'start_time': '16:00', 'end_time': '18:00',
@@ -111,18 +123,19 @@ class ScreenTests(AcademicTestCase):
     def refresh(self, **query):
         return self.client.get(CREATE, query, headers={'HX-Request': 'true'}).content.decode()
 
-    def test_subjects_of_the_logged_teacher(self):
-        content = self.refresh(espaco=self.lab.pk, data='2026-10-15')
+    def test_subjects_of_every_teacher_in_the_course(self):
+        course = self.networks.offering.class_group.course
+        content = self.refresh(espaco=self.lab.pk, data='2026-10-15', course=course.pk)
+        self.assertIn('>INFORMÁTICA</option>', content)
         self.assertIn('>Redes</option>', content)
         self.assertIn('>Banco de Dados</option>', content)
-        self.assertNotIn('>Física</option>', content)
-        self.assertNotIn('name="teacher"', content)
+        self.assertIn('>Física</option>', content)
         self.assertNotIn(f'value="{self.networks.pk}"', content)
 
     def test_class_groups_follow_the_chosen_subject(self):
-        subject = self.networks.offering.subject
-        content = self.refresh(date='2026-10-15', subject=subject.pk)
-        self.assertIn(f'<option value="{self.networks.pk}">2º ANO A (INFORMÁTICA)</option>', content)
+        offering = self.networks.offering
+        content = self.refresh(date='2026-10-15', course=offering.class_group.course_id, subject=offering.subject_id)
+        self.assertIn(f'<option value="{self.networks.pk}">2º ANO A (INFORMÁTICA) · ana</option>', content)
         self.assertNotIn(f'value="{self.databases.pk}"', content)
         self.assertNotIn(f'value="{self.physics.pk}"', content)
         self.assertIn('hx-get', content.split('name="subject"')[1].split('>')[0])
@@ -131,17 +144,20 @@ class ScreenTests(AcademicTestCase):
         previous = self.old_physics.offering.semester
         Semester.objects.filter(pk=previous.pk).update(start_date=date(2026, 2, 2), end_date=date(2026, 10, 9))
         Semester.objects.filter(pk=self.semester.pk).update(start_date=date(2026, 10, 10))
-        content = self.refresh(date='2026-10-05', subject=self.old_physics.offering.subject_id)
+        offering = self.old_physics.offering
+        content = self.refresh(date='2026-10-05', course=offering.class_group.course_id, subject=offering.subject_id)
         self.assertIn('Semestre 2026/1.', content)
         self.assertIn('>Física</option>', content)
         self.assertNotIn('>Redes</option>', content)
-        self.assertIn(f'<option value="{self.old_physics.pk}">2º ANO A (INFORMÁTICA)</option>', content)
+        self.assertIn(f'<option value="{self.old_physics.pk}">2º ANO A (INFORMÁTICA) · ana</option>', content)
         self.assertIn('hx-get', content.split('name="date"')[1].split('>')[0])
 
-    def test_user_that_is_not_a_teacher_sees_the_notice(self):
+    def test_user_that_is_not_a_teacher_requests_without_class_group(self):
         self.client.force_login(self.outsider)
-        response = self.client.get(CREATE)
-        self.assertContains(response, 'O seu usuário não corresponde a um docente do ensalamento.')
+        self.assertNotContains(self.client.get(CREATE), 'não corresponde a um docente')
+        response = self.client.post(CREATE, self.data(course='', subject='', teaching_assignment='', confirmar='1'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BookingRequest.objects.get().teaching_assignment, None)
 
     def test_review_then_submit(self):
         review = self.client.post(CREATE, self.data(), headers={'HX-Request': 'true'})
@@ -155,10 +171,11 @@ class ScreenTests(AcademicTestCase):
         self.assertIn('HX-Redirect', response.headers)
         self.assertEqual(BookingRequest.objects.get().teaching_assignment, self.networks)
 
-    def test_forged_class_group_of_another_teacher(self):
-        response = self.client.post(CREATE, self.data(teaching_assignment=self.physics.pk, confirmar='1'))
-        self.assertContains(response, 'Escolha uma turma da disciplina escolhida.')
-        self.assertFalse(BookingRequest.objects.exists())
+    def test_class_group_of_another_teacher(self):
+        physics = self.physics.offering
+        response = self.client.post(CREATE, self.data(subject=physics.subject_id, teaching_assignment=self.physics.pk, confirmar='1'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BookingRequest.objects.get().teaching_assignment, self.physics)
 
     def test_forged_class_group_of_another_semester(self):
         response = self.client.post(CREATE, self.data(teaching_assignment=self.old_physics.pk, confirmar='1'))
@@ -169,9 +186,9 @@ class ScreenTests(AcademicTestCase):
         self.assertContains(response, 'Escolha uma turma da disciplina escolhida.')
         self.assertFalse(BookingRequest.objects.exists())
 
-    def test_forged_subject_of_another_teacher(self):
-        response = self.client.post(CREATE, self.data(subject=self.physics.offering.subject_id, confirmar='1'))
-        self.assertContains(response, 'Escolha uma das suas disciplinas do semestre.')
+    def test_forged_subject_of_another_semester(self):
+        response = self.client.post(CREATE, self.data(subject=999999, confirmar='1'))
+        self.assertContains(response, 'Escolha uma das disciplinas do curso escolhido.')
         self.assertFalse(BookingRequest.objects.exists())
 
     def test_forged_semester_is_ignored(self):
@@ -199,7 +216,7 @@ class ScreenTests(AcademicTestCase):
 
 
 class SubjectCheckTests(AcademicTestCase):
-    """O fluxo do próprio docente também confere a disciplina no model."""
+    """O model confere curso e disciplina mesmo sem o formulário."""
 
     def test_forged_subject_is_refused_by_the_model(self):
         with self.assertRaises(ValidationError) as caught:

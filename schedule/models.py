@@ -7,9 +7,7 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.db import IntegrityError, models, transaction
-from django.db.models import Exists, OuterRef
 from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.formats import date_format
@@ -1531,17 +1529,6 @@ def teacher_of(user):
     if not user.is_active or not user.username:
         return None
     return Teacher.objects.filter(name__iexact=user.username).first()
-
-
-def teacher_users(semester):
-    """Usuários ativos que correspondem a um docente com vínculo atual no semestre."""
-    if semester is None:
-        return get_user_model().objects.none()
-    return get_user_model().objects.filter(is_active=True).filter(Exists(
-        TeachingAssignment.objects.filter(
-            is_current=True, offering__semester=semester, teacher__name__iexact=OuterRef('username'),
-        )
-    )).order_by('name', 'pk')
 
 
 def manages(user, teacher_names):

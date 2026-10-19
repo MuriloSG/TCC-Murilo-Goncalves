@@ -46,7 +46,7 @@
 \usepackage{longtable}          % Large tables
 \usepackage{fancyvrb}           % Codes and Outputs commands
 \usepackage{listings}           % Codes and Outputs commands
-\usepackage{pdflscape}
+\usepackage[figuresright]{rotating}
 \usepackage{float}
 \usepackage{subfig}             % Subfigures
 \usepackage{latexsym}           % Extra symbols of Latex
@@ -113,6 +113,7 @@
 \renewcommand{\bottomfraction}{0.8}
 \renewcommand{\textfraction}{0.1}
 \renewcommand{\floatpagefraction}{0.8}
+\setlength{\emergencystretch}{2em}
 % ---------------------------------
 %	SEÇÃO DE TÍTULO
 % ---------------------------------
@@ -268,17 +269,13 @@ Quanto ao segundo, o autor descreve atributos que um sistema de software profiss
 
 A \textit{Unified Modeling Language} (UML) é uma linguagem de modelagem padronizada para especificar, visualizar e documentar sistemas de software orientados a objetos \cite{bezerra2007}. \citeonline{bezerra2007} esclarece que a UML não é uma metodologia de desenvolvimento, mas uma notação que pode ser adotada em conjunto com diferentes processos. Ela oferece um conjunto de diagramas que representam aspectos distintos do sistema, como a sua estrutura estática e o seu comportamento dinâmico.
 
-A especificação da UML, mantida pelo \textit{Object Management Group} (OMG), define 14 tipos de diagramas na versão 2.5.1, divididos em dois grupos: os diagramas estruturais, que representam os elementos do sistema e as relações estáticas entre eles, como os diagramas de classes e de implantação; e os diagramas comportamentais, que representam o que acontece no sistema ao longo do tempo, como os diagramas de casos de uso, de sequência, de máquina de estados e de atividades \cite{omg2017uml}. \citeonline{fowler2005} observa que nenhum projeto precisa de todos os diagramas e recomenda empregar apenas aqueles que acrescentam informação útil ao entendimento do sistema. Seguindo essa orientação, este trabalho adota seis diagramas, cada um voltado a uma visão do sistema: funcional (casos de uso), estrutural (classes), comportamental (sequência, máquina de estados e atividades) e física (implantação). Os elementos de cada um são apresentados a seguir.
+A especificação da UML, mantida pelo \textit{Object Management Group} (OMG), define 14 tipos de diagramas na versão 2.5.1, divididos em dois grupos: os diagramas estruturais, que representam os elementos do sistema e as relações estáticas entre eles, como os diagramas de classes e de implantação; e os diagramas comportamentais, que representam o que acontece no sistema ao longo do tempo, como os diagramas de casos de uso, de sequência, de máquina de estados e de atividades \cite{omg2017uml}. \citeonline{fowler2005} observa que nenhum projeto precisa de todos os diagramas e recomenda empregar apenas aqueles que acrescentam informação útil ao entendimento do sistema. Seguindo essa orientação, este trabalho adota quatro diagramas, cada um voltado a uma visão do sistema: funcional (casos de uso), estrutural (classes), comportamental (máquina de estados) e física (implantação). Os elementos de cada um são apresentados a seguir.
 
 O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista de quem interage com ele \cite{booch2006}. Seus elementos são os atores, que representam papéis desempenhados por pessoas ou por outros sistemas, e não indivíduos específicos; os casos de uso, que representam serviços oferecidos pelo sistema e que produzem um resultado de valor para o ator; e os relacionamentos entre eles. A associação liga um ator aos casos de uso de que participa. A generalização entre atores indica que um ator especializado herda os casos de uso do ator mais geral. A inclusão (\guillemotleft include\guillemotright) indica que um caso de uso sempre incorpora o comportamento de outro, enquanto a extensão (\guillemotleft extend\guillemotright) indica um comportamento opcional, que acrescenta passos a um caso de uso base apenas sob determinada condição \cite{bezerra2007}. Como o diagrama apresenta apenas os nomes dos casos de uso, cada um deve ser detalhado em uma descrição textual. \citeonline{cockburn2005} propõe que essa descrição registre o ator principal, as pré-condições, o fluxo principal, isto é, a sequência de passos do cenário de sucesso, os fluxos alternativos, que tratam as variações e os erros, e as pós-condições, ou seja, o estado garantido ao final do caso de uso.
 
 O diagrama de classes representa a estrutura estática do sistema \cite{booch2006}. Cada classe é desenhada como um retângulo dividido em compartimentos com o nome, os atributos e as operações, e cada membro pode indicar a sua visibilidade, como pública (+) ou privada (-). As classes se relacionam por associações, que podem ter nome e multiplicidade em cada extremidade, indicando quantos objetos de uma classe se ligam a um objeto da outra, como 1, 0..1 ou 0..*; por agregação e composição, que são formas de associação do tipo todo-parte, sendo a composição aquela em que a parte não existe sem o todo; e por generalização, que expressa herança entre classes. Quando uma associação tem atributos ou significado próprio, ela pode ser representada por uma classe de associação \cite{bezerra2007}. \citeonline{larman2007} distingue o modelo de domínio, que representa os conceitos do problema sem compromisso com a implementação, do diagrama de classes de projeto, que representa as classes de software, com os tipos dos atributos e as operações que elas efetivamente oferecem; é este último que mais diretamente se relaciona com a estrutura do código.
 
-O diagrama de sequência representa a interação entre objetos ao longo do tempo para realizar um cenário específico, geralmente um caso de uso \cite{larman2007}. Os participantes são dispostos horizontalmente como linhas de vida, e o tempo avança de cima para baixo. As mensagens são setas entre as linhas de vida: as mensagens síncronas, em que o emissor aguarda a resposta, são desenhadas com seta cheia, e os retornos, com linha tracejada. Barras de ativação indicam o período em que um participante está executando uma operação. Para representar condições e repetições, a UML 2 oferece os fragmentos combinados, como \texttt{alt}, para alternativas mutuamente exclusivas, \texttt{opt}, para um trecho opcional, e \texttt{loop}, para repetições \cite{fowler2005}.
-
 O diagrama de máquina de estados descreve os estados pelos quais um objeto passa durante a sua existência e os eventos que provocam a mudança de um estado para outro \cite{booch2006}. Cada transição é rotulada pelo evento que a dispara e pode ter uma condição de guarda, escrita entre colchetes, que precisa ser verdadeira para que a transição ocorra. Um estado pode registrar ações executadas na entrada ou na saída, e o diagrama começa em um pseudoestado inicial e pode terminar em um ou mais estados finais. \citeonline{fowler2005} recomenda esse diagrama para objetos cujo comportamento depende fortemente do estado em que se encontram.
-
-O diagrama de atividades representa o fluxo de um processo, com as ações executadas, os pontos de decisão, nos quais o fluxo segue por um caminho conforme uma condição, e as bifurcações e junções, que representam atividades paralelas. As partições, também chamadas de raias, dividem o diagrama conforme o responsável por cada ação, o que permite visualizar quem faz o quê ao longo do processo \cite{guedes2018}.
 
 O diagrama de implantação representa a arquitetura física do sistema: os nós, que são os recursos computacionais, como servidores, dispositivos ou ambientes de execução; os artefatos, que são os elementos de software instalados em cada nó; e os caminhos de comunicação entre os nós, rotulados pelo protocolo utilizado \cite{guedes2018}. \citeonline{larman2007} destaca que a modelagem com UML permite registrar e comunicar decisões de projeto de forma visual, o que facilita o alinhamento entre desenvolvedores e demais partes envolvidas.
 
@@ -286,7 +283,7 @@ O diagrama de implantação representa a arquitetura física do sistema: os nós
 \subsubsection{Banco de Dados Relacional}
 \label{sec:bd}
 
-Um banco de dados é uma coleção organizada de dados inter-relacionados, gerenciada por um sistema que permite armazená-los, recuperá-los e manipulá-los com eficiência \cite{heuser2009}. \citeonline{heuser2009} apresenta o modelo entidade-relacionamento como a principal ferramenta para o projeto conceitual de bancos de dados, por permitir representar as entidades do domínio e os vínculos entre elas antes de definir como os dados serão fisicamente armazenados. O modelo entidade-relacionamento complementa o diagrama de classes da UML: enquanto este descreve as classes de software, com seus atributos e operações, aquele se concentra nas entidades persistidas e nos relacionamentos entre elas, com as respectivas cardinalidades.
+Um banco de dados é uma coleção organizada de dados inter-relacionados, gerenciada por um sistema que permite armazená-los, recuperá-los e manipulá-los com eficiência \cite{heuser2009}. \citeonline{heuser2009} apresenta o modelo entidade-relacionamento como a principal ferramenta para o projeto conceitual de bancos de dados, por permitir representar as entidades do domínio e os vínculos entre elas antes de definir como os dados serão fisicamente armazenados.
 
 O modelo relacional organiza os dados em tabelas formadas por linhas e colunas, em que cada tabela representa uma entidade e cada linha, um registro dessa entidade. A integridade dos dados é assegurada por restrições como chaves primárias e estrangeiras, que garantem a unicidade dos registros e os vínculos entre tabelas \cite{silberschatz2012}. \citeonline{heuser2009} também descreve o processo de normalização, pelo qual o esquema relacional é reorganizado para eliminar redundâncias e anomalias de atualização. Um banco de dados normalizado armazena cada informação em um único lugar, reduzindo o risco de inconsistências quando os dados precisam ser modificados.
 
@@ -392,7 +389,7 @@ O Django é um \textit{framework} web de código aberto escrito em Python. Ele o
 
 No arquivo \texttt{urls.py}, cada padrão de endereço é associado a uma \textit{view} por meio da função \texttt{path()}. Quando uma requisição chega ao servidor, o \textit{framework} percorre a lista de padrões registrados até encontrar o primeiro que corresponda à URL solicitada e delega o processamento à \textit{view} associada. Esse mecanismo é independente da estrutura de diretórios da aplicação, o que permite organizar as URLs de forma legível e separada da lógica de negócio \cite{djangodocs}.
 
-Cada \textit{model} do Django é uma classe Python que herda de \texttt{django.db.models.Model}. Cada atributo da classe representa uma coluna da tabela correspondente no banco de dados, e o tipo do campo, como \texttt{CharField}, \texttt{DateTimeField} ou \texttt{BooleanField}, determina o tipo de dado armazenado e as validações aplicadas. Relacionamentos entre entidades são representados por campos específicos: \texttt{ForeignKey} para associações muitos-para-um e \texttt{ManyToManyField} para associações muitos-para-muitos. O ORM traduz as operações sobre esses objetos Python em comandos SQL compatíveis com o banco de dados configurado \cite{djangodocs}.
+Cada \textit{model} do Django é uma classe Python que herda de \texttt{django.db.\allowbreak models.\allowbreak Model}. Cada atributo da classe representa uma coluna da tabela correspondente no banco de dados, e o tipo do campo, como \texttt{CharField}, \texttt{DateTimeField} ou \texttt{BooleanField}, determina o tipo de dado armazenado e as validações aplicadas. Relacionamentos entre entidades são representados por campos específicos: \texttt{ForeignKey} para associações muitos-para-um e \texttt{ManyToManyField} para associações muitos-para-muitos. O ORM traduz as operações sobre esses objetos Python em comandos SQL compatíveis com o banco de dados configurado \cite{djangodocs}.
 
 As mudanças nos \textit{models} são controladas pelo sistema de \textit{migrations}. O comando \texttt{makemigrations} gera um arquivo descrevendo as alterações a serem aplicadas no banco; o comando \texttt{migrate} as aplica de forma incremental e rastreável, mantendo um histórico completo das versões do esquema \cite{djangodocs}.
 
@@ -428,7 +425,7 @@ Em sistemas web com regras de negócio definidas, os testes unitários têm pape
 \section{Metodologia}
 \label{sec:metodologia}
 
-Este capítulo descreve a metodologia da pesquisa. A Seção~\ref{sec:tipopesquisa} caracteriza a pesquisa quanto à natureza, aos objetivos e ao procedimento técnico, e a Seção~\ref{sec:procedimentos} descreve as etapas concluídas e as planejadas: o diagnóstico do problema, o levantamento e a análise de requisitos, a modelagem do sistema, a implementação e a verificação. As três primeiras etapas foram realizadas no TCC 1; a implementação, incluindo os diagramas de classes e de sequência, e a verificação do sistema serão conduzidas no TCC 2, conforme o cronograma apresentado no Capítulo~\ref{sec:cronograma}.
+Este capítulo descreve a metodologia da pesquisa. A Seção~\ref{sec:tipopesquisa} caracteriza a pesquisa quanto à natureza, aos objetivos e ao procedimento técnico, e a Seção~\ref{sec:procedimentos} descreve as etapas concluídas e as planejadas: o diagnóstico do problema, o levantamento e a análise de requisitos, a modelagem do sistema, a implementação e a verificação. As três primeiras etapas foram realizadas no TCC 1; a implementação e a verificação do sistema serão conduzidas no TCC 2, conforme o cronograma apresentado no Capítulo~\ref{sec:cronograma}.
 
 %-----------------------------------
 \subsection{Tipo de Pesquisa}
@@ -541,7 +538,7 @@ Para sistematizar a especificação, os requisitos foram consolidados em forma t
 \subsubsection{Modelagem do Sistema}
 \label{sec:modelagem}
 
-A terceira etapa foi a modelagem do sistema com a UML, cujos fundamentos foram apresentados na Seção~\ref{sec:uml}. A modelagem cobre as quatro visões descritas naquela seção: a funcional, com os diagramas e as descrições de casos de uso; a estrutural, com os diagramas de classes; a comportamental, com os diagramas de sequência, de máquina de estados e de atividades; e a física, com o diagrama de implantação. Como o sistema foi refinado ao longo das interações com a Direção de Ensino, os diagramas foram elaborados a partir da versão implementada, de modo a refletir a sua estrutura e o seu comportamento. As subseções a seguir apresentam cada visão.
+A terceira etapa foi a modelagem do sistema com a UML, cujos fundamentos foram apresentados na Seção~\ref{sec:uml}. A modelagem cobre as quatro visões descritas naquela seção: a funcional, com os diagramas e as descrições de casos de uso; a estrutural, com os diagramas de classes; a comportamental, com o diagrama de máquina de estados; e a física, com o diagrama de implantação. Como o sistema foi refinado ao longo das interações com a Direção de Ensino, os diagramas foram elaborados a partir da versão implementada, de modo a refletir a sua estrutura e o seu comportamento. As subseções a seguir apresentam cada visão.
 
 \subsubsubsection{Casos de Uso}
 \label{sec:uc}
@@ -620,25 +617,27 @@ Por fim, a Figura~\ref{fig:uc_acompanhamento} apresenta a consulta pública, ace
 
 Cada caso de uso foi detalhado em uma descrição expandida, no formato proposto por \citeonline{cockburn2005}, com o ator principal, as pré-condições, o fluxo principal, os fluxos alternativos e as pós-condições. A Tabela~\ref{tab:uc_solicitar} apresenta, como exemplo, a descrição do caso de uso Solicitar reserva. Nos fluxos alternativos, o número indica o passo do fluxo principal em que a variação ocorre, e a letra distingue as variações de um mesmo passo. As descrições dos demais casos de uso centrais do sistema encontram-se no Apêndice~A.
 
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
-	\caption{Descrição do caso de uso Solicitar reserva}\label{tab:uc_solicitar} \\
+\begin{table}[htbp]
+	\centering
+	\caption{Descrição do caso de uso Solicitar reserva}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\hline
-	\endfirsthead
-	\hline
-	\endhead
 		\textbf{Requisitos} & RF05, RF06 \\ \hline
 		\textbf{Ator principal} & Solicitante \\ \hline
 		\textbf{Pré-condições} & O usuário está autenticado, ativo e com a permissão \texttt{AGENDA.SOLICITAR}; o semestre da data desejada tem o período letivo definido. \\ \hline
 		\textbf{Fluxo principal} & 1.~O Solicitante seleciona uma faixa livre na grade da Agenda.\newline 2.~O sistema exibe o formulário com o espaço, a data e o horário preenchidos.\newline 3.~O Solicitante informa a descrição da atividade, a quantidade de alunos e, opcionalmente, o curso, a disciplina e a turma.\newline 4.~O sistema verifica a data, o horário e a disponibilidade do espaço.\newline 5.~O sistema exibe a revisão da solicitação, ainda sem gravá-la.\newline 6.~O Solicitante confirma o envio.\newline 7.~O sistema grava a solicitação com a situação PENDENTE, registra a operação na auditoria e notifica os usuários com a permissão de analisar solicitações.\newline 8.~O sistema exibe a confirmação do envio. \\ \hline
 		\textbf{Fluxos alternativos} & 4a.~O espaço está ocupado por uma aula ou por uma reserva aprovada no horário: o sistema informa o conflito e retorna ao passo 3.\newline 4b.~A data é sábado ou domingo, está fora do período do semestre ou o horário já passou, ou o fim é anterior ao início: o sistema informa o erro e retorna ao passo 3.\newline 4c.~O espaço está desativado: o sistema informa que ele não aceita novas solicitações e retorna ao passo 3.\newline 6a.~O Solicitante decide alterar os dados: o sistema retorna ao passo 3. \\ \hline
 		\textbf{Pós-condições} & A solicitação está registrada com a situação PENDENTE, sem reservar o horário, e os responsáveis pela análise foram notificados. \\ \hline
-	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
-\end{longtable}
+	\end{tabular}
+	\caption*{Fonte: Elaborado pelo autor (2026).}
+	\label{tab:uc_solicitar}
+\end{table}
 
 \subsubsubsection{Diagramas de Classes}
 
 Os diagramas de classes apresentados a seguir são diagramas de classes de projeto, no sentido de \citeonline{larman2007}: as classes correspondem aos \textit{models} do Django e mantêm os nomes adotados no código, em inglês, para que os diagramas possam ser confrontados diretamente com a implementação. Por legibilidade, as classes foram distribuídas em quatro diagramas, um por módulo, cada um com os atributos e as operações mais relevantes; as classes de outros módulos aparecem apenas com o nome e, como estereótipo, o módulo de origem. A Tabela~\ref{tab:classes} apresenta o significado de cada classe.
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{6.2cm}@{}}
 	\caption{Classes do sistema e seus significados}\label{tab:classes} \\
 	\hline
@@ -718,47 +717,7 @@ Por fim, a Figura~\ref{fig:cl_suporte} reúne as classes de importação e de su
     \label{fig:cl_suporte}
 \end{figure}
 
-\subsubsubsection{Diagramas de Sequência}
-
-Foram elaborados diagramas de sequência para os três cenários de maior complexidade do sistema: a solicitação de uma reserva, a sua análise e a importação da planilha de horários. Os participantes são as \textit{views}, os gerenciadores (\textit{managers}) e os objetos do Django que efetivamente participam de cada operação, e os nomes das mensagens correspondem aos métodos implementados.
-
-A Figura~\ref{fig:seq_solicitar} apresenta a solicitação de uma reserva, realizada em duas etapas. Na primeira, o método \texttt{prepare} verifica os dados e a disponibilidade sem gravar a solicitação, e o sistema exibe a revisão; na segunda, após a confirmação, o método \texttt{submit} repete a verificação e, em uma única transação, grava a solicitação, registra a auditoria e gera as notificações. O aviso em tempo real é agendado para depois da confirmação da transação (\textit{commit}), de modo que nenhum usuário seja avisado de uma operação que acabou desfeita.
-
-\begin{landscape}
-\begin{figure}[p]
-    \centering
-    \caption{Diagrama de sequência -- Solicitar reserva}
-    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/sequencia-solicitar}
-    \caption*{Fonte: Elaborado pelo autor (2026).}
-    \label{fig:seq_solicitar}
-\end{figure}
-\end{landscape}
-
-A Figura~\ref{fig:seq_analisar} apresenta a aprovação de uma solicitação. Para evitar que duas análises simultâneas confirmem reservas sobrepostas, a solicitação e o espaço são travados no banco de dados (\texttt{select\_for\_update}) e a disponibilidade é verificada novamente antes da gravação. Como garantia final, a criação da reserva está sujeita a uma restrição de exclusão no banco, que recusa intervalos sobrepostos para o mesmo espaço, o que atende ao RNF08. A rejeição e a sugestão de alternativa seguem a mesma estrutura, sem a criação da reserva.
-
-\begin{landscape}
-\begin{figure}[p]
-    \centering
-    \caption{Diagrama de sequência -- Aprovar solicitação}
-    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/sequencia-analisar}
-    \caption*{Fonte: Elaborado pelo autor (2026).}
-    \label{fig:seq_analisar}
-\end{figure}
-\end{landscape}
-
-A Figura~\ref{fig:seq_importar} apresenta a importação da planilha de horários. O processamento ocorre em segundo plano, no processo \texttt{import\_worker}, para não bloquear a interface. A prévia executa as linhas e desfaz as gravações, registrando apenas o plano do que seria criado ou alterado; a confirmação executa as linhas novamente e só aplica o resultado se o plano for idêntico ao da prévia, o que impede que alterações feitas no cadastro entre a prévia e a confirmação passem despercebidas.
-
-\begin{landscape}
-\begin{figure}[p]
-    \centering
-    \caption{Diagrama de sequência -- Importar planilha de horários}
-    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/sequencia-importar}
-    \caption*{Fonte: Elaborado pelo autor (2026).}
-    \label{fig:seq_importar}
-\end{figure}
-\end{landscape}
-
-\subsubsubsection{Diagramas de Máquina de Estados e de Atividades}
+\subsubsubsection{Diagrama de Máquina de Estados}
 \label{sec:comportamento}
 
 A Figura~\ref{fig:estados} apresenta a máquina de estados da solicitação de reserva, objeto cujo comportamento depende da situação em que se encontra. Toda solicitação começa no estado PENDENTE e pode ser aprovada, rejeitada ou receber uma alternativa, que o solicitante aceita ou recusa. As condições de guarda indicam as restrições de cada transição, como a disponibilidade do horário na aprovação e o prazo de até uma hora antes do início para o cancelamento. As ações de entrada mostram que a reserva (\texttt{Booking}) é criada ao entrar no estado APROVADA e excluída ao entrar no estado CANCELADA. Uma operação que o estado atual não admite é recusada pelo sistema.
@@ -770,18 +729,6 @@ A Figura~\ref{fig:estados} apresenta a máquina de estados da solicitação de r
     \caption*{Fonte: Elaborado pelo autor (2026).}
     \label{fig:estados}
 \end{figure}
-
-A Figura~\ref{fig:atividades} apresenta o processo de importação da planilha de horários como diagrama de atividades, com uma partição para cada responsável: o Gestor do Ensalamento, a aplicação web e o processo \texttt{import\_worker}. O diagrama evidencia os pontos de decisão do processo, como a validação da estrutura do arquivo, a decisão sobre os espaços pendentes, que pode se repetir até que não reste nenhum, e a comparação entre o plano da prévia e o da confirmação.
-
-\begin{landscape}
-\begin{figure}[p]
-    \centering
-    \caption{Diagrama de atividades -- Importação da planilha de horários}
-    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/atividades-importacao}
-    \caption*{Fonte: Elaborado pelo autor (2026).}
-    \label{fig:atividades}
-\end{figure}
-\end{landscape}
 
 \subsubsubsection{Diagrama de Implantação}
 
@@ -806,18 +753,6 @@ A linguagem de programação adotada é o Python, e o \textit{framework} web esc
 Uma questão anterior à escolha do SGBD é se o sistema precisa de um banco de dados próprio ou se a planilha de horários seria suficiente. A planilha atende bem à finalidade para a qual é produzida, o planejamento da grade semestral, e continua sendo a fonte da ocupação decorrente das aulas regulares (RF01). Ela não registra, porém, as informações que surgem do processo de agendamento: as solicitações de reserva e a sua situação (pendente, aprovada, rejeitada ou cancelada), quem solicitou, quem analisou e quando, os usuários e os seus papéis, e os ajustes pontuais feitos na grade a partir de uma semana determinada (RF02). Sem esse registro, não haveria histórico para os relatórios de utilização (RF12), que dependem justamente do acúmulo dessas informações ao longo do tempo.
 
 Há também razões de consistência e de segurança. Quando dois docentes solicitam o mesmo espaço no mesmo horário, o sistema precisa garantir que apenas uma das reservas seja confirmada. Uma planilha compartilhada não impede que duas pessoas registrem ao mesmo tempo ocupações conflitantes, enquanto um SGBD executa cada operação como uma transação e aplica restrições de integridade que rejeitam o registro inconsistente \cite{silberschatz2012}. Da mesma forma, a planilha não permite restringir o que cada perfil vê ou altera (RNF01), nem separar a consulta pública de disponibilidade dos dados pessoais dos solicitantes (RF11). Por isso, a planilha é tratada como dado de entrada, lido na importação, e o banco de dados como o registro do sistema, onde ficam a ocupação importada, as reservas e o histórico.
-
-A Figura~\ref{fig:der} apresenta o modelo conceitual dos dados, representado por um diagrama entidade-relacionamento na notação de Peter Chen, com as entidades persistidas pelo sistema, os seus atributos e as cardinalidades dos relacionamentos \cite{heuser2009}. As entidades correspondem às classes apresentadas na Seção~\ref{sec:modelagem}.
-
-\begin{landscape}
-\begin{figure}[p]
-    \centering
-    \caption{Modelo conceitual dos dados (DER)}
-    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/der-conceitual}
-    \caption*{Fonte: Elaborado pelo autor (2026).}
-    \label{fig:der}
-\end{figure}
-\end{landscape}
 
 Para a camada de dados, será utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. A escolha se justifica frente a alternativas como o MySQL e o SQLite: embora o SQLite seja prático para ambientes de desenvolvimento, não é recomendado para aplicações com múltiplos acessos simultâneos em produção; o MySQL, por sua vez, é amplamente difundido, mas o PostgreSQL oferece maior conformidade com o padrão SQL, melhor tratamento de integridade referencial e suporte mais completo a transações complexas, recursos relevantes para a consistência das reservas. Soma-se a isso o suporte nativo e robusto do Django ao PostgreSQL, incluindo recursos como busca textual avançada e transações com alto nível de integridade \cite{djangodocs}. O acesso ao banco será feito exclusivamente por meio do ORM, mantendo a consistência entre o código Python e o esquema relacional ao longo de todo o desenvolvimento.
 
@@ -878,7 +813,7 @@ Os demais requisitos não funcionais não se prestam à verificação por testes
 
 O cronograma apresentado na Tabela~\ref{tab:cronograma} contempla as etapas de implementação e de verificação do sistema, que serão realizadas no segundo semestre de 2026, no TCC 2. O desenvolvimento concentra-se entre agosto e novembro, de modo que a escrita e a entrega do TCC 2 antecedam a defesa, prevista para dezembro. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente, a modelagem e a implementação do banco de dados precedem o desenvolvimento das funcionalidades, e os testes automatizados concentram-se em outubro e novembro, quando os módulos principais estiverem implementados.
 
-\begin{table}[htbp]
+\begin{table}[H]
 	\centering
 	\caption{Cronograma de implementação -- 2\textsuperscript{o} semestre de 2026}
 	\resizebox{\textwidth}{!}{
@@ -892,7 +827,7 @@ O cronograma apresentado na Tabela~\ref{tab:cronograma} contempla as etapas de i
 			\multicolumn{1}{c}{Nov} &
 			\multicolumn{1}{c}{Dez} \\ \hline
 			Configuração do ambiente e estrutura do projeto & X &   &   &   &   \\
-			Diagramas de classes e de sequência, \textit{Models} e banco de dados & X & X &   &   &   \\
+			Diagramas de classes, \textit{Models} e banco de dados & X & X &   &   &   \\
 			Desenvolvimento das \textit{Views} e roteamento de URLs &   & X &   &   &   \\
 			Implementação dos \textit{Templates} e interface &   & X & X &   &   \\
 			Autenticação e controle de acesso (RBAC) &   & X &   &   &   \\
@@ -925,6 +860,7 @@ O cronograma apresentado na Tabela~\ref{tab:cronograma} contempla as etapas de i
 
 Este apêndice reúne as descrições expandidas dos casos de uso centrais do sistema, no mesmo formato da Tabela~\ref{tab:uc_solicitar}, apresentada na Seção~\ref{sec:uc}.
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\caption{Descrição do caso de uso Analisar solicitação}\label{tab:uc_analisar} \\
 	\hline
@@ -940,6 +876,7 @@ Este apêndice reúne as descrições expandidas dos casos de uso centrais do si
 	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
 \end{longtable}
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\caption{Descrição do caso de uso Responder à alternativa}\label{tab:uc_responder} \\
 	\hline
@@ -955,6 +892,7 @@ Este apêndice reúne as descrições expandidas dos casos de uso centrais do si
 	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
 \end{longtable}
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\caption{Descrição do caso de uso Importar planilha de horários}\label{tab:uc_importar} \\
 	\hline
@@ -970,6 +908,7 @@ Este apêndice reúne as descrições expandidas dos casos de uso centrais do si
 	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
 \end{longtable}
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\caption{Descrição do caso de uso Alterar recorrência}\label{tab:uc_alterar} \\
 	\hline
@@ -985,6 +924,7 @@ Este apêndice reúne as descrições expandidas dos casos de uso centrais do si
 	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
 \end{longtable}
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\caption{Descrição do caso de uso Cancelar ocorrência da própria aula}\label{tab:uc_cancelar_ocorrencia} \\
 	\hline
@@ -1000,6 +940,7 @@ Este apêndice reúne as descrições expandidas dos casos de uso centrais do si
 	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
 \end{longtable}
 
+\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
 	\caption{Descrição do caso de uso Manter perfis e permissões}\label{tab:uc_perfis} \\
 	\hline

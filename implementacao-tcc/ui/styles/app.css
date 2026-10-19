@@ -2242,6 +2242,31 @@
     flex-wrap: nowrap;
     align-items: center;
   }
+  .public-head-tools {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+    min-width: 0;
+
+    & .public-group {
+      width: auto;
+      flex: 0 1 auto;
+    }
+  }
+  .public-export {
+    flex-shrink: 0;
+    border: 1px solid var(--color-control-border);
+    color: var(--color-text);
+
+    & .tip {
+      left: auto;
+      right: 0;
+      translate: 0 0;
+      white-space: nowrap;
+    }
+  }
   .public-switch {
     flex-shrink: 0;
     white-space: nowrap;

@@ -41,3 +41,5 @@ Sem biblioteca e sem `style=`: as barras usam as classes `bar-h-*` e `bar-w-*` e
 ## Testes
 
 `panel/tests/test_panel.py`, `reports/tests/test_heatmap.py`, `reports/tests/test_requests.py`.
+
+O que cada classe garante está no catálogo de testes dos apps [`panel` e `reports`](../desenvolvimento/testes/panel-e-reports.md).

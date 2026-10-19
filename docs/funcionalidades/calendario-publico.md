@@ -55,3 +55,5 @@ O alias `public` de `CACHES` aponta para o Redis (`DJANGO_REDIS_URL`). Sem a var
 ## Testes
 
 `schedule/tests/test_public_calendar.py`, `test_public_cache.py`.
+
+O que cada classe garante está no catálogo de testes do app [`schedule`](../desenvolvimento/testes/schedule.md#calendário-público).

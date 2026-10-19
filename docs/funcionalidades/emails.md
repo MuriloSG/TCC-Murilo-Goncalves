@@ -45,3 +45,5 @@ Configurado na interface, em **Configurações > E-mail** (`/configuracoes/email
 ## Testes
 
 `outbox/tests/test_queue.py`, `test_worker.py`; `system_settings/tests/test_models.py`, `test_views.py`; `accounts/tests/test_emails.py`.
+
+O que cada classe garante está no catálogo de testes dos apps [`outbox`](../desenvolvimento/testes/outbox.md), [`system_settings`](../desenvolvimento/testes/system-settings.md) e [`accounts`](../desenvolvimento/testes/accounts.md#test_emailspy).

@@ -37,7 +37,7 @@ Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para 
 ## Desenvolvimento
 
 - Ambiente local: [`README.md`](../README.md) da raiz (pré-requisitos, comandos, variáveis, dependências).
-- [Testes](desenvolvimento/testes.md): como rodar, testes transversais, regras para escrever testes.
+- [Testes](desenvolvimento/testes.md): como rodar, catálogo por app, testes transversais, regras para escrever testes.
 - [Convenções](desenvolvimento/convencoes.md): idioma, documentação, controle de acesso, organização do código, testes, commits, texto e visual da interface, e os pontos a tocar em cada extensão.
 
 ## Operação

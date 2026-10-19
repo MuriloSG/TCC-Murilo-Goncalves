@@ -78,3 +78,5 @@ Geradas na transação de cada transição (`bookings/notifications.py`):
 ## Testes
 
 `bookings/tests/`: `test_models.py`, `test_request_views.py`, `test_review_views.py`, `test_on_behalf_request.py`, `test_academic_request.py`, `test_agenda_grid.py`, `test_notifications.py`, `test_audit.py`.
+
+O que cada classe garante está no catálogo de testes do app [`bookings`](../desenvolvimento/testes/bookings.md).

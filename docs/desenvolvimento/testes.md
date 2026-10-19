@@ -11,7 +11,7 @@ make manage cmd="test bookings.tests.test_models.SubmitTests.test_past_start_is_
 
 Sem `make`: `docker compose run --rm web python manage.py test`.
 
-Situação em 09/10/2026: 1747 testes, todos passando, em cerca de 100 segundos. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
+Situação em 19/10/2026: 1747 testes, todos passando, em cerca de 95 segundos. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
 
 A convenção do projeto é rodar a suíte inteira antes de cada commit. Não há CI no repositório.
 
@@ -19,6 +19,23 @@ A convenção do projeto é rodar a suíte inteira antes de cada commit. Não h�
 
 - Testes em `<app>/tests/test_*.py`. Auxiliares compartilhados: `accounts/tests/roles.py` (perfis montados pelas permissões), `bookings/tests/base.py`, `system_settings/tests/base.py` (`configure_smtp`), `imports/tests/definitions.py` (importação de teste sobre `auth.Group`), `imports/tests/worker.py` (roda o worker nos testes), `ui/tests/files.py` (lista templates e módulos).
 - A planilha real e as sugeridas de `sources/` são lidas pelos testes do ensalamento.
+
+## Catálogo por app
+
+O que cada módulo e cada classe de teste garante, um documento por app:
+
+| Documento | Conteúdo |
+|---|---|
+| [`accounts`](testes/accounts.md) | Autenticação, senha, autorização, continuidade administrativa, perfis, comandos, telas e importação de usuários |
+| [`audit`](testes/audit.md) | Registro de acessos, autenticação e alterações; integridade; consulta |
+| [`bookings`](testes/bookings.md) | Solicitação, conflitos, máquina de estados, turma, criação para outro, notificações e telas da Agenda |
+| [`imports`](testes/imports.md) | Leitura de CSV e XLSX, prévia, confirmação, pendências e worker do motor de importação |
+| [`notices`](testes/notices.md) | Entrega, destinatários, eventos, tempo real, sino e publicação manual |
+| [`outbox`](testes/outbox.md) | Fila de e-mails, worker, tentativas e configuração SMTP |
+| [`panel` e `reports`](testes/panel-e-reports.md) | Painel administrativo, mapa de calor e relatório de solicitações |
+| [`schedule`](testes/schedule.md) | Entidades do ensalamento, recorrências, cancelamentos, importação da planilha, espaços, cadastros acadêmicos, calendário público e cache |
+| [`system_settings`](testes/system-settings.md) | Configuração SMTP cifrada e checagens de deploy |
+| [`ui`](testes/ui.md) | Varreduras de texto, classes e contraste, layout, navegação e componentes |
 
 ## Testes transversais
 

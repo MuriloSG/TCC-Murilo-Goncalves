@@ -54,3 +54,5 @@ Filtros: usuário, ação, módulo (`recurso`), identificador do registro (`regi
 ## Testes
 
 `audit/tests/`: `test_records.py`, `test_changes.py`, `test_access.py`, `test_authentication.py`, `test_query.py`, `test_options.py`. Cada app testa a auditoria das próprias operações.
+
+O que cada classe garante está no catálogo de testes do app [`audit`](../desenvolvimento/testes/audit.md).

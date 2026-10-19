@@ -120,3 +120,5 @@ Gravar ou desfazer uma decisão não altera o cadastro: ela é aplicada na confi
 ## Testes
 
 `schedule/tests/`: `test_models.py`, `test_timetable.py`, `test_occupancy.py`, `test_views.py`, `test_occurrence_cancel.py`, `test_recurrence_change.py`, `test_recurrence_create.py`, `test_recurrence_end.py`, `test_import.py`, `test_import_memory.py`, `test_import_queries.py`, `test_space_import.py`, `test_space_panel.py`, `test_spreadsheet.py`, `test_similarity.py`, `test_class_offering.py`.
+
+O que cada classe garante está no catálogo de testes do app [`schedule`](../desenvolvimento/testes/schedule.md).

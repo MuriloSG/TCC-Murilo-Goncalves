@@ -30,3 +30,5 @@ O espaço não tem capacidade, tipo nem localização.
 ## Testes
 
 `schedule/tests/test_spaces.py`, `test_space_views.py`, `test_space_import.py`, `test_space_panel.py`, `test_similarity.py`.
+
+O que cada classe garante está no catálogo de testes do app [`schedule`](../desenvolvimento/testes/schedule.md#espaços).

@@ -46,3 +46,5 @@ A correspondência entre usuário e docente é `Teacher.name` igual a `User.user
 ## Testes
 
 `schedule/tests/test_academic_views.py`, `test_class_offering.py`, `test_course_views.py`.
+
+O que cada classe garante está no catálogo de testes do app [`schedule`](../desenvolvimento/testes/schedule.md#cursos-disciplinas-e-turmas).

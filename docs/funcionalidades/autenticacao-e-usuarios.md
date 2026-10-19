@@ -80,3 +80,5 @@ Cada linha é identificada pelo e-mail:
 ## Testes
 
 `accounts/tests/`: `test_authentication.py`, `test_password.py`, `test_models.py`, `test_continuity.py`, `test_roles.py`, `test_role_views.py`, `test_user_views.py`, `test_user_search.py`, `test_superadmin_protection.py`, `test_commands.py`, `test_user_import.py`, `test_user_import_views.py`, `test_route_protection.py`.
+
+O que cada classe garante está no catálogo de testes do app [`accounts`](../desenvolvimento/testes/accounts.md).

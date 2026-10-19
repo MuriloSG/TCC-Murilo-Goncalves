@@ -1,5 +1,6 @@
 """Views públicas sem login; isentas de CSRF só para um POST receber 405, e não 403."""
 
+from django.http import Http404, HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -8,6 +9,7 @@ from django.utils.safestring import mark_safe
 from django.views.generic import TemplateView
 
 from schedule import public_cache
+from schedule.ics import export_calendar, filename_of
 from schedule.forms import PublicCalendarFilterForm
 from schedule.public import STAGE_CHOICES, original_timetable, public_calendar
 
@@ -64,6 +66,7 @@ class PublicCalendarView(PublicPageView):
             filter_form=PublicCalendarFilterForm(calendar, STAGE_CHOICES),
             calendar_url=reverse('public_calendar'),
             other_url=url_with_filters('public_original_timetable', self.request.GET, DATE_PARAMS),
+            export_url=url_with_filters('public_calendar_ics', self.request.GET, DATE_PARAMS),
         )
         return context
 
@@ -86,3 +89,14 @@ class OriginalTimetableView(PublicPageView):
             other_url=url_with_filters('public_calendar', self.request.GET, DATE_PARAMS),
         )
         return context
+
+
+def calendar_ics(request):
+    """Semestre inteiro com os filtros da tela em .ics, para baixar ou assinar no Google Agenda."""
+    calendar, content = export_calendar(request.GET, timezone.localdate())
+    if content is None:
+        raise Http404
+    response = HttpResponse(content, content_type='text/calendar; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename_of(calendar)}"'
+    patch_cache_control(response, no_cache=True)
+    return response

@@ -15,6 +15,7 @@
       <div>
         <h2 class="card-title" id="calendario-titulo"><span class="sr-only">Semestre </span>{{ calendar.semester_code }}</h2>
       </div>
+      <div class="public-head-tools">
       {% if calendar.course %}
         {% with field=filter_form.turma %}
           <div class="public-field public-group" data-public-group hx-get="{{ calendar_url }}" hx-include="#filtros-form" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change">
@@ -23,6 +24,10 @@
           </div>
         {% endwith %}
       {% endif %}
+      {% if calendar.has_principal and calendar.dates_enabled %}
+        <a class="icon-btn public-export" href="{{ export_url }}" download aria-label="Baixar o calendário do semestre (.ics)">{% icon "calendar-plus" %}<span class="tip is-below" role="tooltip">Baixar o calendário</span></a>
+      {% endif %}
+      </div>
     </div>
     {% if calendar.date_error %}
       <div class="timetable-notice">

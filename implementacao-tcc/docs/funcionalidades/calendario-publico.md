@@ -1,11 +1,12 @@
 # Calendário público
 
-Consulta sem login da ocupação dos espaços. Implementação: `schedule/public.py` (consulta e montagem), `schedule/public_views.py` (views), `schedule/public_cache.py` (cache) e `ui/layouts/public.html`. Regras em [regras de negócio](../regras/regras-de-negocio.md#calendário-público).
+Consulta sem login da ocupação dos espaços. Implementação: `schedule/public.py` (consulta e montagem), `schedule/public_views.py` (views), `schedule/ics.py` (exportação .ics), `schedule/public_cache.py` (cache) e `ui/layouts/public.html`. Regras em [regras de negócio](../regras/regras-de-negocio.md#calendário-público).
 
 | Tela | Rota | Nome | Conteúdo |
 |---|---|---|---|
 | Calendário | `/` | `public_calendar` | Ocorrências datadas do ensalamento, sem as canceladas, e os agendamentos aprovados |
 | Horário original | `/horario-original/` | `public_original_timetable` | Semana típica só com as alocações importadas, sem versões alteradas, cancelamentos e agendamentos |
+| Exportação | `/calendario.ics` | `public_calendar_ics` | Arquivo iCalendar do semestre inteiro com os filtros da tela |
 
 As duas telas alternam entre si mantendo os filtros (exceto as datas).
 
@@ -17,6 +18,15 @@ As duas telas alternam entre si mantendo os filtros (exceto as datas).
 - Semestre sem período: mostra a semana típica com aviso.
 - Agendamentos entram só na consulta por sala ou por docente, não na consulta por curso ou nível.
 - A célula vazia é "disponível" na consulta só por sala e "sem aula" nas demais.
+
+## Exportação (.ics)
+
+- Ícone de download no cabeçalho da Grade, ao lado do seletor de turma. Só aparece com sala, docente ou curso escolhido e com o período do semestre definido.
+- O link leva os filtros da tela, menos as datas: o arquivo cobre o semestre inteiro.
+- Um `VEVENT` por ocorrência, com `TZID=America/Sao_Paulo`: disciplina no título, sala no local, turma e docentes na descrição. Ocorrências canceladas ficam de fora.
+- Agendamentos aprovados entram nas mesmas condições da tela (filtro por sala ou docente), sem descrição e sem e-mail.
+- Sem filtro principal ou sem período: 404. Só GET e HEAD. Não usa o cache público.
+- Uso típico: o aluno filtra pela turma e o docente pelo próprio nome, e cada um importa o arquivo no Google Agenda ou em outro aplicativo. O arquivo é uma cópia: mudanças posteriores exigem baixar de novo, ou assinar a URL no aplicativo de agenda.
 
 ## O que a página expõe
 
@@ -54,6 +64,6 @@ O alias `public` de `CACHES` aponta para o Redis (`DJANGO_REDIS_URL`). Sem a var
 
 ## Testes
 
-`schedule/tests/test_public_calendar.py`, `test_public_cache.py`.
+`schedule/tests/test_public_calendar.py`, `test_public_cache.py`, `test_public_ics.py`.
 
 O que cada classe garante está no catálogo de testes do app [`schedule`](../desenvolvimento/testes/schedule.md#calendário-público).

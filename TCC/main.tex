@@ -151,7 +151,7 @@ A organização dos espaços físicos num campus universitário pode aparentar s
 
 No IFNMG -- Campus Salinas, o sistema utilizado para os agendamentos exige que os horários já ocupados pelas aulas sejam cadastrados manualmente antes de qualquer reserva, e esse cadastro precisa ser refeito a cada semestre. Os docentes não consultam a disponibilidade nem solicitam reservas sem intermediação, e a instituição não dispõe de registro consolidado sobre a utilização dos laboratórios ao longo do tempo. Esse cenário não é exclusivo do Campus Salinas: estudo de \citeonline{cruz2023gestao} no IFNMG Campus Almenara identificou a ausência de planejamento permanente e de mecanismos para medir a utilização dos laboratórios.
 
-Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. A proposta visa permitir que docentes consultem a disponibilidade e realizem solicitações de reserva de forma autônoma, enquanto o servidor responsável pelos agendamentos acessa ferramentas de aprovação, recebe notificações por e-mail e gera relatórios sobre o uso dos espaços.
+Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. A proposta visa permitir que docentes consultem a disponibilidade e realizem solicitações de reserva de forma autônoma, enquanto o servidor responsável pelos agendamentos acessa ferramentas de aprovação, recebe notificações automáticas e gera relatórios sobre o uso dos espaços.
 
 Antes de optar pelo desenvolvimento de uma solução própria, foram analisados sistemas acadêmicos desenvolvidos por outras instituições de ensino e plataformas comerciais de reserva de espaços, apresentados na Seção~\ref{sec:trabrel}. Nenhuma dessas soluções atende ao requisito central deste contexto: fazer com que a disponibilidade dos espaços reflita automaticamente a grade de horários institucional, sem que a ocupação decorrente das aulas regulares precise ser recadastrada a cada semestre.
 
@@ -232,7 +232,7 @@ O trabalho contribui para a presente pesquisa ao documentar, em outro campus do 
 
 \citeonline{nascimento2020reservas} desenvolveram um sistema web para controlar pedidos de reservas de recursos físicos na Universidade Estadual do Piauí, Campus Parnaíba. Antes da solução, as reservas de espaços e equipamentos eram registradas manualmente por servidores em uma agenda digital, e a demanda tornava o processo oneroso e sujeito a falhas. O sistema desenvolvido pelos autores automatizou o controle das solicitações, disponibilizou uma interface para os usuários da instituição e obteve avaliação positiva quanto à satisfação dos usuários.
 
-O trabalho demonstra que sistemas web de reserva são viáveis em instituições de ensino e trazem ganhos concretos para a gestão. A presente proposta compartilha o mesmo problema central, mas se diferencia principalmente pela importação das planilhas de horários institucionais: em vez de exigir o cadastro manual prévio de todos os horários ocupados, o sistema identifica a ocupação decorrente das aulas regulares a partir da grade horária do campus, com possibilidade de reimportação ou ajuste pontual ao longo do semestre sempre que houver alterações de ensalamento. Além disso, contempla controle de acesso baseado em papéis, notificações automáticas por e-mail no fluxo de aprovação de reservas e a geração de relatórios sobre a utilização dos espaços, funcionalidades que ampliam o escopo em relação ao trabalho referenciado.
+O trabalho demonstra que sistemas web de reserva são viáveis em instituições de ensino e trazem ganhos concretos para a gestão. A presente proposta compartilha o mesmo problema central, mas se diferencia principalmente pela importação das planilhas de horários institucionais: em vez de exigir o cadastro manual prévio de todos os horários ocupados, o sistema identifica a ocupação decorrente das aulas regulares a partir da grade horária do campus, com possibilidade de reimportação ou ajuste pontual ao longo do semestre sempre que houver alterações de ensalamento. Além disso, contempla controle de acesso baseado em papéis, notificações automáticas no fluxo de aprovação de reservas e a geração de relatórios sobre a utilização dos espaços, funcionalidades que ampliam o escopo em relação ao trabalho referenciado.
 
 %-----------------------------------
 \subsubsection{Soluções Existentes de Reserva de Espaços}
@@ -434,33 +434,48 @@ O ponto de partida da especificação foi o principal gargalo identificado no di
 
 Além de usar a grade importada para bloquear os horários ocupados, o sistema também a exibirá, de forma semelhante ao sistema de horários utilizado pelo campus, que apresenta na web a grade montada na planilha pelos servidores do setor responsável. Na consulta pública, sem autenticação, será possível visualizar os horários por sala, por docente, por curso ou por turma, em duas formas: o horário original, que reproduz a semana típica tal como foi importada da planilha, e um calendário por data, que incorpora as alterações feitas ao longo do semestre, as aulas canceladas e as reservas aprovadas. Na área autenticada, o administrador poderá manter essa grade diretamente no sistema: cancelar a ocorrência de uma aula em uma data, alterar o dia, o horário, a sala ou o docente de uma aula a partir de uma data, cadastrar uma nova aula recorrente e encerrar uma aula que deixou de ocorrer. Desse modo, o sistema já oferece as funcionalidades necessárias para que, depois da importação inicial do semestre, a consulta e a manutenção da alocação das salas sejam feitas nele próprio, sem depender da planilha nem do sistema que a exibe. A adoção dessas funcionalidades como forma oficial de gerenciar a alocação das salas depende de decisão da direção do campus. A montagem da grade de cada semestre continua sendo feita pelos servidores do setor responsável, e o sistema não se propõe a gerar os horários automaticamente.
 
-Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, as funções e os serviços que ele precisa oferecer a cada perfil de usuário \cite{sommerville2018}. Eles foram especificados considerando os dois papéis autenticados definidos na Seção~\ref{sec:rbac} e o acesso público de consulta. Ao Administrador cabem as funções de gestão: cadastro e manutenção dos espaços físicos, gerenciamento de usuários, importação e atualização dos horários ocupados, aprovação ou rejeição de solicitações de reserva e geração de relatórios sobre a utilização dos espaços. O Docente consulta a disponibilidade dos espaços e submete solicitações de reserva, recebendo notificação automática sobre o resultado. As necessidades de comunicação automática e de transparência levantadas no diagnóstico deram origem, respectivamente, às notificações por e-mail e à consulta pública de disponibilidade. Os requisitos funcionais foram agrupados por módulo: gestão de usuários e controle de acesso; gerenciamento de espaços físicos com importação de planilhas; agendamento e reservas; notificações automáticas por e-mail; e geração de relatórios de uso.
+Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, as funções e os serviços que ele precisa oferecer a cada perfil de usuário \cite{sommerville2018}. Eles foram especificados considerando os papéis definidos na Seção~\ref{sec:rbac} e o acesso público de consulta, e refinados nas interações com a Direção de Ensino realizadas ao longo da pesquisa. Ao administrador cabem as funções de gestão: cadastro e manutenção dos espaços físicos, dos usuários, dos perfis de acesso e dos cursos, disciplinas e turmas; importação da planilha de horários e manutenção das aulas ao longo do semestre; análise das solicitações de reserva; publicação de comunicados; e acompanhamento do uso dos espaços por meio do painel, dos relatórios e da auditoria. O docente consulta a disponibilidade dos espaços, submete solicitações de reserva, acompanha a própria agenda e é notificado sobre o resultado de cada solicitação. As necessidades de comunicação automática e de transparência levantadas no diagnóstico deram origem, respectivamente, às notificações no próprio sistema e à consulta pública dos horários. Os requisitos funcionais abrangem os seguintes módulos: gestão de usuários e controle de acesso; espaços físicos; ensalamento, com a importação da planilha e a manutenção das aulas; cursos, disciplinas e turmas; agendamento e reservas; notificações; consulta pública; e painel, relatórios e auditoria.
 
 Os requisitos não funcionais estabelecem as restrições de qualidade que o sistema precisa satisfazer, independentemente das funcionalidades que oferece \cite{sommerville2018}. Para defini-los, foram adotados como referência os atributos de qualidade descritos por \citeonline{sommerville2018}: segurança, que implica controlar o acesso de acordo com os papéis definidos e proteger os dados dos usuários contra acessos indevidos; desempenho, que envolve tempo de resposta adequado nas consultas de disponibilidade, mesmo em picos de uso; manutenibilidade, que orienta decisões de projeto para facilitar a evolução do sistema após a implantação; e aceitabilidade, traduzida em requisitos de usabilidade compatíveis com o perfil tecnológico dos docentes do campus. \citeonline{pressman2016} reforçam que os requisitos não funcionais condicionam a arquitetura do sistema e devem ser considerados desde o início do projeto, e não como ajustes posteriores.
 
 Para sistematizar a especificação, os requisitos foram consolidados em forma tabular. A Tabela~\ref{tab:rf} apresenta os requisitos funcionais, identificados pelo prefixo RF, e a Tabela~\ref{tab:rnf} apresenta os requisitos não funcionais, identificados pelo prefixo RNF.
 
-\begin{table}[htbp]
-	\centering
-	\caption{Requisitos funcionais do sistema}
-	\begin{tabular}{@{}p{1.8cm}p{12cm}@{}}
+\begin{longtable}{@{}p{1.8cm}p{12cm}@{}}
+	\caption{Requisitos funcionais do sistema}\label{tab:rf} \\
 	\hline
-		\textbf{Código} & \textbf{Descrição} \\ \hline
-		RF01 & Importar planilhas de horários institucionais para identificar automaticamente os espaços e horários ocupados \\
-		RF02 & Atualizar periodicamente os horários ocupados ao longo do semestre, por reimportação ou edição pontual realizada pelo administrador \\
-		RF03 & Cadastrar e manter o registro dos espaços físicos do campus \\
-		RF04 & Gerenciar usuários e seus perfis de acesso (Administrador, Docente) \\
+	\textbf{Código} & \textbf{Descrição} \\ \hline
+	\endfirsthead
+	\hline
+	\textbf{Código} & \textbf{Descrição} \\ \hline
+	\endhead
+		RF01 & Importar a planilha de horários institucional do semestre, identificando automaticamente os espaços e os horários ocupados pelas aulas, com prévia do resultado e confirmação antes da gravação \\
+		RF02 & Atualizar os horários ocupados ao longo do semestre, por reimportação da planilha ou pela manutenção das aulas no próprio sistema (RF13 a RF16) \\
+		RF03 & Cadastrar e manter os espaços físicos do campus, incluindo os outros nomes pelos quais aparecem na planilha e a desativação de espaços fora de uso \\
+		RF04 & Gerenciar usuários e atribuir a cada um perfil de acesso \\
 		RF05 & Consultar a disponibilidade dos espaços físicos \\
 		RF06 & Submeter solicitações de reserva de espaços físicos \\
 		RF07 & Aprovar ou rejeitar solicitações de reserva \\
-		RF08 & Cancelar reservas já registradas \\
-		RF09 & Notificar automaticamente o administrador, por e-mail, quando uma nova solicitação de reserva for submetida \\
-		RF10 & Notificar automaticamente o docente, por e-mail, sobre o resultado da análise da sua solicitação \\
-		RF11 & Disponibilizar acesso público de consulta à disponibilidade dos espaços, sem autenticação e sem expor dados pessoais de docentes ou detalhes de reservas individuais \\
-		RF12 & Gerar relatórios sobre a utilização dos espaços físicos \\ \hline
-	\end{tabular}
-	\label{tab:rf}
-\end{table}
+		RF08 & Cancelar reservas já aprovadas \\
+		RF09 & Notificar automaticamente, no próprio sistema, os responsáveis pela análise quando uma nova solicitação de reserva for submetida \\
+		RF10 & Notificar automaticamente, no próprio sistema, o solicitante sobre o resultado da análise da sua solicitação \\
+		RF11 & Disponibilizar consulta pública, sem autenticação, aos horários dos espaços por sala, docente, curso ou turma, com o horário original e o calendário por data, sem expor endereços de e-mail nem a descrição das reservas \\
+		RF12 & Gerar relatórios sobre a utilização dos espaços físicos, incluindo o mapa de ocupação por dia e horário e o relatório das solicitações de reserva \\
+		RF13 & Cadastrar aula recorrente, informando turma, disciplina, docentes, espaço, período de vigência, horário e duração \\
+		RF14 & Alterar a recorrência de uma aula (dia, horário, duração, espaço ou docentes) a partir de uma data, sem alterar as ocorrências anteriores \\
+		RF15 & Encerrar a recorrência de uma aula a partir de uma data, preservando o histórico das ocorrências anteriores \\
+		RF16 & Cancelar a ocorrência de uma aula em uma data, sem alterar a recorrência, pelo administrador ou pelo docente da aula \\
+		RF17 & Cadastrar e manter cursos, disciplinas e turmas \\
+		RF18 & Criar perfis de acesso e definir as permissões de cada um \\
+		RF19 & Importar usuários em lote por meio de arquivo CSV \\
+		RF20 & Enviar ao novo usuário, por e-mail, o link para definição da senha, e permitir a recuperação de senha \\
+		RF21 & Sugerir ao solicitante uma alternativa à reserva solicitada (outro espaço, data ou horário), que pode ser aceita ou recusada \\
+		RF22 & Registrar solicitação de reserva em nome de outro usuário \\
+		RF23 & Acompanhar as próprias solicitações e visualizar a própria agenda de aulas e reservas \\
+		RF24 & Publicar comunicados para todos os usuários, para os usuários de um perfil ou para usuários escolhidos \\
+		RF25 & Exibir painel administrativo com as solicitações pendentes, a ocupação dos espaços e as pendências da grade, como aulas sem espaço ou sem docente, conflitos de docente e choques entre aulas e reservas \\
+		RF26 & Registrar em auditoria as ações realizadas no sistema e permitir a sua consulta com filtros \\
+		RF27 & Configurar o servidor de envio de e-mails pela interface do sistema \\ \hline
+\end{longtable}
 
 \begin{table}[htbp]
 	\centering
@@ -469,12 +484,17 @@ Para sistematizar a especificação, os requisitos foram consolidados em forma t
 	\hline
 		\textbf{Código} & \textbf{Descrição} \\ \hline
 		RNF01 & O sistema deve controlar o acesso com base em papéis, conforme o modelo RBAC, restringindo cada funcionalidade ao perfil correspondente \\
-		RNF02 & O sistema deve proteger os dados dos usuários contra acessos indevidos, incluindo proteções contra CSRF, XSS e injeção de SQL \\
+		RNF02 & O sistema deve proteger os dados dos usuários contra acessos indevidos, incluindo proteções contra CSRF, XSS e injeção de SQL, o armazenamento cifrado da senha do servidor de e-mail, a recuperação de senha sem revelar quais e-mails estão cadastrados e o encerramento das sessões de um usuário quando o seu perfil ou e-mail for alterado por outra pessoa \\
 		RNF03 & O sistema deve apresentar tempo de resposta adequado nas consultas de disponibilidade, mesmo em períodos de pico de uso \\
 		RNF04 & O sistema deve ser acessível por meio de navegador web, sem exigir instalação de software nos dispositivos dos usuários \\
 		RNF05 & O sistema deve apresentar usabilidade compatível com o perfil tecnológico dos docentes do campus e manter consistência visual entre suas telas, dispensando treinamento extensivo \\
 		RNF06 & O sistema deve ser manutenível, de modo a permitir sua evolução após a implantação, com separação clara entre as camadas de dados, lógica e apresentação \\
-		RNF07 & O sistema deve operar de forma autônoma em relação à infraestrutura de horários do campus, sem depender de consultas em tempo real a sistemas externos \\ \hline
+		RNF07 & O sistema deve operar de forma autônoma em relação à infraestrutura de horários do campus, sem depender de consultas em tempo real a sistemas externos \\
+		RNF08 & O sistema deve impedir reservas sobrepostas de um mesmo espaço, inclusive quando solicitações forem analisadas simultaneamente, por meio de restrição de integridade no banco de dados \\
+		RNF09 & Os registros de auditoria não devem poder ser alterados nem excluídos \\
+		RNF10 & O envio de e-mails deve ocorrer em segundo plano, com novas tentativas em caso de falha, sem atrasar a resposta ao usuário \\
+		RNF11 & As notificações devem ser exibidas em tempo real, sem que o usuário precise recarregar a página \\
+		RNF12 & O sistema deve ser distribuído em contêineres, de modo a facilitar a sua implantação em diferentes ambientes \\ \hline
 	\end{tabular}
 	\label{tab:rnf}
 \end{table}
@@ -485,7 +505,7 @@ Para sistematizar a especificação, os requisitos foram consolidados em forma t
 
 A terceira etapa foi a modelagem do sistema com a UML, cujos fundamentos foram apresentados na Seção~\ref{sec:uml}. No TCC 1 foi elaborado o diagrama de casos de uso, que delimita o escopo funcional do sistema; os diagramas de classes e de sequência serão construídos no TCC 2, na fase de implementação, a partir desse escopo.
 
-A Figura~\ref{fig:casos_uso} apresenta o diagrama de casos de uso. Os casos de uso associados a cada ator correspondem aos privilégios dos papéis definidos na Seção~\ref{sec:rbac}. O Administrador concentra as operações de gestão: Cadastrar Usuário, Gerenciar Espaços, Definir Horários, que inclui a edição pontual dos horários ocupados, Aprovar/Reprovar Reservas, Importar Planilha e Gerar Relatórios. O Docente pode Visualizar Agenda, Solicitar Reserva e Cancelar Reserva. O ator Visualizador representa o acesso público, sem autenticação, restrito ao caso de uso Visualizar Disponibilidade, sem permissão para solicitar ou alterar qualquer dado. As notificações por e-mail (RF09 e RF10) não aparecem como casos de uso próprios porque são disparadas pelo sistema em decorrência da solicitação e da análise das reservas.
+A Figura~\ref{fig:casos_uso} apresenta o diagrama de casos de uso. Os casos de uso associados a cada ator correspondem aos privilégios dos papéis definidos na Seção~\ref{sec:rbac}. O Administrador concentra as operações de gestão: Cadastrar Usuário, Gerenciar Espaços, Definir Horários, que inclui a edição pontual dos horários ocupados, Aprovar/Reprovar Reservas, Importar Planilha e Gerar Relatórios. O Docente pode Visualizar Agenda, Solicitar Reserva e Cancelar Reserva. O ator Visualizador representa o acesso público, sem autenticação, restrito ao caso de uso Visualizar Disponibilidade, sem permissão para solicitar ou alterar qualquer dado. As notificações (RF09 e RF10) não aparecem como casos de uso próprios porque são disparadas pelo sistema em decorrência da solicitação e da análise das reservas.
 
 \begin{figure}[htbp]
     \centering
@@ -515,9 +535,9 @@ A camada de apresentação será construída com os \textit{templates} do Django
 
 Para a autenticação dos usuários, será utilizada a biblioteca \textit{django-allauth}, escolhida por fornecer prontos os fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso baseado em papéis descrito na Seção~\ref{sec:rbac} será implementado sobre esse mecanismo, associando cada usuário a um dos dois papéis autenticados e condicionando o acesso a cada funcionalidade ao papel atribuído \cite{djangodocs}.
 
-As notificações automáticas serão enviadas por meio do módulo de e-mail nativo do Django, configurado com o protocolo SMTP e o serviço Gmail como servidor de envio \cite{djangodocs}. Ao receber uma solicitação de reserva, o sistema notificará o administrador; após a decisão de aprovação ou rejeição, o docente receberá a confirmação correspondente, sem necessidade de contato manual entre as partes.
+O envio de e-mails utilizará o módulo de e-mail nativo do Django, com o protocolo SMTP \cite{djangodocs}, e os dados do servidor de envio serão configurados pela própria interface do sistema (RF27). O e-mail será usado para enviar ao novo usuário o link de definição da senha e para a recuperação de senha (RF20). Para não atrasar a resposta ao usuário, cada envio será registrado em uma fila e processado em segundo plano, com novas tentativas em caso de falha (RNF10).
 
-Além do e-mail, o sistema exibirá notificações internas, indicadas por um ícone no cabeçalho das telas autenticadas e atualizadas em tempo real, sem que o usuário precise recarregar a página. Para isso, será utilizado o Django Channels, que estende o Django para tratar conexões persistentes do tipo WebSocket, além das requisições HTTP convencionais \cite{channels2024}. Quando uma operação gera uma notificação, o servidor envia um aviso pela conexão aberta com o navegador do destinatário, que então atualiza o contador de notificações. A troca desses avisos entre os processos da aplicação será feita por meio do Redis, um armazenamento de dados em memória \cite{redis2024}, que também será usado como \textit{cache} das telas de consulta pública, reduzindo o número de consultas ao banco de dados nos períodos de maior acesso, em atenção ao requisito de desempenho (RNF03).
+As notificações sobre as solicitações de reserva (RF09 e RF10) serão exibidas no próprio sistema, indicadas por um ícone no cabeçalho das telas autenticadas e atualizadas em tempo real, sem que o usuário precise recarregar a página (RNF11). Ao receber uma solicitação, os responsáveis pela análise serão notificados; após a decisão, o solicitante receberá o resultado, sem necessidade de contato manual entre as partes. Para isso, será utilizado o Django Channels, que estende o Django para tratar conexões persistentes do tipo WebSocket, além das requisições HTTP convencionais \cite{channels2024}. Quando uma operação gera uma notificação, o servidor envia um aviso pela conexão aberta com o navegador do destinatário, que então atualiza o contador de notificações. A troca desses avisos entre os processos da aplicação será feita por meio do Redis, um armazenamento de dados em memória \cite{redis2024}, que também será usado como \textit{cache} das telas de consulta pública, reduzindo o número de consultas ao banco de dados nos períodos de maior acesso, em atenção ao requisito de desempenho (RNF03).
 
 O planejamento contempla ainda a definição da infraestrutura de hospedagem do sistema. Segundo a Direção de Ensino, está em andamento uma articulação da direção do \textit{campus} com a FADETEC e com a Sifsoft, empresa júnior do curso de Bacharelado em Sistemas de Informação do \textit{campus} Salinas. Como essa articulação ainda não foi concretizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
 
@@ -529,30 +549,36 @@ Cabe delimitar o escopo deste ponto: o presente trabalho compreende o desenvolvi
 
 A quinta etapa, também prevista para o TCC 2, é a verificação da versão funcional do sistema. É necessário distinguir duas atividades de natureza diferente. A validação dos requisitos, isto é, a confirmação de que a especificação corresponde às necessidades do processo de agendamento, já foi realizada no TCC 1, nas sessões de novembro de 2025 e abril de 2026 descritas na Seção~\ref{sec:coleta}. A verificação do software, que consiste em comprovar que o sistema implementado se comporta conforme essa especificação \cite{sommerville2018}, será conduzida no TCC 2 por meio de testes automatizados.
 
-Serão adotados testes unitários e de integração, conforme os conceitos apresentados na Seção~\ref{sec:testes}, escritos com o \textit{framework} de testes nativo do Django. Esse \textit{framework} executa os testes sobre um banco de dados criado exclusivamente para esse fim, sem afetar os dados reais, e oferece um cliente que simula requisições HTTP às \textit{views} \cite{djangodocs}. Os testes unitários verificarão as regras de negócio de forma isolada, como a detecção de conflitos de horário e a leitura das planilhas importadas; os testes de integração verificarão fluxos completos, como a solicitação de uma reserva por um docente seguida da sua análise pelo administrador. Para as notificações, o Django retém em memória, durante a execução dos testes, as mensagens de e-mail que seriam enviadas, o que permite conferir destinatário e conteúdo sem envio real \cite{djangodocs}. Os testes serão escritos à medida que os módulos forem concluídos e reexecutados a cada alteração posterior, de modo que uma mudança que quebre um comportamento já verificado seja detectada imediatamente.
+Serão adotados testes unitários e de integração, conforme os conceitos apresentados na Seção~\ref{sec:testes}, escritos com o \textit{framework} de testes nativo do Django. Esse \textit{framework} executa os testes sobre um banco de dados criado exclusivamente para esse fim, sem afetar os dados reais, e oferece um cliente que simula requisições HTTP às \textit{views} \cite{djangodocs}. Os testes unitários verificarão as regras de negócio de forma isolada, como a detecção de conflitos de horário e a leitura das planilhas importadas; os testes de integração verificarão fluxos completos, como a solicitação de uma reserva por um docente seguida da sua análise pelo administrador. Para os e-mails de definição e de recuperação de senha, o Django retém em memória, durante a execução dos testes, as mensagens que seriam enviadas, o que permite conferir destinatário e conteúdo sem envio real \cite{djangodocs}. Os testes serão escritos à medida que os módulos forem concluídos e reexecutados a cada alteração posterior, de modo que uma mudança que quebre um comportamento já verificado seja detectada imediatamente.
 
 A Tabela~\ref{tab:verificacao} relaciona os requisitos especificados às verificações planejadas. Um requisito será considerado atendido quando os testes correspondentes forem executados com sucesso sobre a versão funcional do sistema.
 
-\begin{table}[htbp]
-	\centering
-	\caption{Verificação planejada dos requisitos do sistema}
-	\begin{tabular}{@{}p{2.4cm}p{11.4cm}@{}}
+\begin{longtable}{@{}p{2.4cm}p{11.4cm}@{}}
+	\caption{Verificação planejada dos requisitos do sistema}\label{tab:verificacao} \\
 	\hline
-		\textbf{Requisitos} & \textbf{Verificação planejada} \\ \hline
-		RF01, RF02 & Importação de planilhas de exemplo no formato da grade institucional, conferindo os horários marcados como ocupados; reimportação e edição pontual a partir de uma semana determinada \\
-		RF03, RF04 & Cadastro, edição e remoção de espaços físicos e de usuários, com atribuição dos papéis Administrador e Docente \\
-		RF05, RF06 & Consulta da disponibilidade e submissão de solicitações, incluindo o impedimento de solicitações em horário já ocupado por aula ou por outra reserva \\
-		RF07, RF08 & Aprovação, rejeição e cancelamento de reservas, conferindo a mudança de situação da reserva e a liberação do horário após rejeição ou cancelamento \\
-		RF09, RF10 & Geração das notificações ao administrador na submissão e ao docente após a análise, conferidas no mecanismo de e-mail de testes \\
-		RF11 & Acesso à rota pública sem autenticação, conferindo que a resposta exibe apenas horários livres e ocupados, sem dados pessoais ou detalhes de reservas \\
-		RF12 & Geração de relatórios a partir de um conjunto conhecido de reservas, comparando os totais obtidos com os valores esperados \\
-		RNF01 & Tentativas de acesso a cada funcionalidade restrita por usuário não autenticado e por papel sem permissão, que devem ser recusadas \\
-		RNF02 & Envio de formulário sem o \textit{token} CSRF, que deve ser recusado, e exibição de conteúdo contendo marcação HTML, que deve ser escapado \\ \hline
-	\end{tabular}
-	\label{tab:verificacao}
-\end{table}
+	\textbf{Requisitos} & \textbf{Verificação planejada} \\ \hline
+	\endfirsthead
+	\hline
+	\textbf{Requisitos} & \textbf{Verificação planejada} \\ \hline
+	\endhead
+		RF01, RF02 & Importação de planilhas de exemplo no formato da grade institucional, conferindo os horários marcados como ocupados, e reimportação da planilha alterada \\
+		RF03, RF04, RF17 a RF19 & Cadastro, edição e desativação de espaços, usuários, cursos, disciplinas e turmas; criação de perfis com permissões e importação de usuários em lote \\
+		RF05, RF06, RF22 & Consulta da disponibilidade e submissão de solicitações, inclusive em nome de outro usuário, com o impedimento de solicitações em horário já ocupado por aula ou por outra reserva \\
+		RF07, RF08, RF21 & Aprovação, rejeição, sugestão de alternativa e cancelamento de reservas, conferindo a mudança de situação da solicitação e a liberação do horário após rejeição ou cancelamento \\
+		RF09, RF10, RF24 & Geração das notificações aos responsáveis pela análise e ao solicitante a cada mudança de situação, e publicação de comunicados, conferindo os destinatários alcançados \\
+		RF11 & Acesso às rotas públicas sem autenticação, conferindo que a resposta não expõe endereços de e-mail nem a descrição das reservas \\
+		RF12, RF25 & Geração dos relatórios e dos indicadores do painel a partir de um conjunto conhecido de aulas e reservas, comparando os valores obtidos com os esperados \\
+		RF13 a RF16 & Cadastro, alteração e encerramento de recorrências e cancelamento de ocorrências, conferindo as ocorrências antes e depois da data informada \\
+		RF20, RF27 & Envio do link de definição de senha e da recuperação de senha, conferido no mecanismo de e-mail de testes, e validação da configuração do servidor de envio \\
+		RF23 & Listagem das solicitações e da agenda do usuário, conferindo que cada usuário vê apenas as próprias solicitações \\
+		RF26, RNF09 & Registro das ações em auditoria, conferindo os campos alterados, e tentativa de alterar ou excluir um registro, que deve ser recusada \\
+		RNF01 & Tentativas de acesso a cada funcionalidade restrita por usuário não autenticado e por perfil sem permissão, que devem ser recusadas \\
+		RNF02 & Envio de formulário sem o \textit{token} CSRF, que deve ser recusado, e exibição de conteúdo contendo marcação HTML, que deve ser escapado \\
+		RNF08 & Aprovação de duas solicitações para o mesmo espaço e horário, em que apenas a primeira deve ser confirmada \\
+		RNF10 & Falha simulada no envio de e-mail, conferindo o agendamento de uma nova tentativa \\ \hline
+\end{longtable}
 
-Os demais requisitos não funcionais não se prestam à verificação por testes automatizados da mesma forma. RNF04 (acesso por navegador), RNF06 (manutenibilidade) e RNF07 (autonomia em relação a sistemas externos) são atendidos pelas decisões de arquitetura descritas na Seção~\ref{sec:implementacao}. RNF03 (tempo de resposta) e RNF05 (usabilidade) dependem das condições reais de uso e da percepção dos usuários; no TCC 2, serão tratados por decisões de projeto, como a aplicação das heurísticas de usabilidade discutidas na Seção~\ref{sec:usab}, sem avaliação formal com usuários. Também não integra o escopo deste trabalho a homologação institucional do sistema, que acompanha a implantação definitiva sob responsabilidade da direção do campus.
+Os demais requisitos não funcionais não se prestam à verificação por testes automatizados da mesma forma. RNF04 (acesso por navegador), RNF06 (manutenibilidade), RNF07 (autonomia em relação a sistemas externos), RNF11 (notificações em tempo real) e RNF12 (distribuição em contêineres) são atendidos pelas decisões de arquitetura descritas na Seção~\ref{sec:implementacao}. RNF03 (tempo de resposta) e RNF05 (usabilidade) dependem das condições reais de uso e da percepção dos usuários; no TCC 2, serão tratados por decisões de projeto, como a aplicação das heurísticas de usabilidade discutidas na Seção~\ref{sec:usab}, sem avaliação formal com usuários. Também não integra o escopo deste trabalho a homologação institucional do sistema, que acompanha a implantação definitiva sob responsabilidade da direção do campus.
 
 %---------------------------------
 % SEÇÃO DE CRONOGRAMA
@@ -581,7 +607,7 @@ O cronograma apresentado na Tabela~\ref{tab:cronograma} contempla as etapas de i
 			Implementação dos \textit{Templates} e interface &   & X & X &   &   \\
 			Autenticação e controle de acesso (RBAC) &   & X &   &   &   \\
 			Módulo de importação de planilhas de horários &   &   & X &   &   \\
-			Módulo de notificações automáticas por e-mail &   &   & X &   &   \\
+			Módulo de notificações automáticas &   &   & X &   &   \\
 			Geração de relatórios de uso &   &   &   & X &   \\
 			Testes automatizados e verificação dos requisitos &   &   & X & X &   \\
 			Implantação em ambiente de hospedagem &   &   &   & X &   \\

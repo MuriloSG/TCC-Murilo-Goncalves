@@ -292,9 +292,37 @@ O controle de acesso define quais usuários têm permissão para executar quais 
 
 No modelo RBAC, os direitos de acesso são associados a papéis, e os usuários adquirem esses direitos ao serem atribuídos a um ou mais papéis. \citeonline{sandhu1996rbac} descrevem que essa abordagem simplifica a administração, pois as permissões são definidas no nível do papel e não para cada usuário individualmente. Quando as responsabilidades de um usuário mudam, basta alterar a sua atribuição de papéis, sem necessidade de revisar cada permissão específica.
 
-\citeonline{sandhu1996rbac} definem quatro modelos de referência que compõem a família RBAC. O RBAC0, o modelo base, define os elementos fundamentais: usuários, papéis, permissões e sessões, em que uma sessão corresponde a um período de atividade de um usuário dentro de um subconjunto dos seus papéis. O RBAC1 estende o modelo base com hierarquias de papéis, permitindo que papéis mais abrangentes herdem as permissões de papéis subordinados. O RBAC2 acrescenta restrições ao RBAC0, incluindo o conceito de separação de obrigações, pelo qual um usuário não pode acumular simultaneamente papéis conflitantes. O RBAC3 combina hierarquias e restrições, reunindo as características dos modelos anteriores. Para os fins deste trabalho, o modelo base (RBAC0) é suficiente para atender aos requisitos de controle de acesso identificados.
+\citeonline{sandhu1996rbac} definem quatro modelos de referência que compõem a família RBAC. O RBAC0, o modelo base, define os elementos fundamentais: usuários, papéis, permissões e sessões, em que uma sessão corresponde a um período de atividade de um usuário dentro de um subconjunto dos seus papéis. O RBAC1 estende o modelo base com hierarquias de papéis, permitindo que papéis mais abrangentes herdem as permissões de papéis subordinados. O RBAC2 acrescenta restrições ao RBAC0, incluindo o conceito de separação de obrigações, pelo qual um usuário não pode acumular simultaneamente papéis conflitantes, e restrições de cardinalidade, que limitam, por exemplo, a quantidade de papéis que um usuário pode assumir. O RBAC3 combina hierarquias e restrições, reunindo as características dos modelos anteriores. Para os fins deste trabalho, adota-se o modelo base (RBAC0), acrescido de algumas restrições no sentido do RBAC2, descritas a seguir.
 
-O sistema proposto adota esse modelo com dois papéis autenticados, sem hierarquia entre eles. O papel Administrador reúne as funções de gestão do sistema, dos usuários, dos espaços físicos, dos horários ocupados e das solicitações de reserva; o papel Docente permite consultar a disponibilidade e solicitar reservas para as atividades de ensino. Seguindo o princípio do RBAC de associar permissões a papéis, e não a pessoas, o papel é atribuído conforme a função que o usuário exerce no processo de agendamento, e não conforme o seu cargo: o papel Administrador é atribuído aos servidores responsáveis pela gestão dos agendamentos, sejam eles docentes ou técnicos administrativos, e pode ser transferido a outro servidor quando essa responsabilidade muda, sem alteração nas permissões do papel. Além dos dois papéis autenticados, a consulta de disponibilidade é oferecida por uma rota pública, sem autenticação, que exibe apenas os horários livres e ocupados, sem expor dados pessoais de docentes nem detalhes de reservas individuais; no diagrama de casos de uso, esse acesso é representado pelo ator Visualizador. Essa definição orienta a especificação dos requisitos funcionais (Seção~\ref{sec:requisitos}) e a modelagem do sistema (Seção~\ref{sec:modelagem}).
+No sistema proposto, as permissões são granulares: cada uma corresponde a uma ação sobre um recurso e é identificada por um código no formato \texttt{RECURSO.AÇÃO}, como \texttt{AGENDA.SOLICITAR} ou \texttt{ESPACO.EDITAR}. O sistema reúne 47 permissões, distribuídas nos 13 módulos apresentados na Tabela~\ref{tab:permissoes}. Os papéis recebem no sistema o nome de perfis: cada perfil é um conjunto de permissões, criado pelo superadministrador, que escolhe as permissões que o compõem e pode alterá-las a qualquer momento. Nenhum perfil recebe tratamento especial no código, pois o acesso a cada funcionalidade depende apenas de o perfil do usuário conter a permissão correspondente. A carga inicial do sistema cria dois perfis de exemplo, Administrador, com as permissões de gestão, e Docente, com as permissões de consulta e de solicitação de reservas, que podem ser editados ou excluídos como qualquer outro.
+
+\begin{table}[htbp]
+	\centering
+	\caption{Módulos e permissões do sistema}
+	\begin{tabular}{@{}p{3cm}p{10cm}c@{}}
+	\hline
+		\textbf{Módulo} & \textbf{Ações permitidas} & \textbf{Qtde.} \\ \hline
+		Usuários & Visualizar, criar, editar, alterar perfil, alterar situação, importar e excluir importação & 7 \\
+		Perfis\textsuperscript{*} & Visualizar, criar, editar, alterar permissões e excluir & 5 \\
+		Ensalamento & Visualizar, importar, excluir importação, cancelar ocorrência, criar, alterar e encerrar recorrência & 7 \\
+		Espaços & Visualizar, criar, editar, alterar situação e excluir & 5 \\
+		Cursos & Visualizar, criar, editar e excluir & 4 \\
+		Disciplinas & Visualizar, criar, editar, excluir e acessar todas & 5 \\
+		Turmas & Visualizar, criar, editar, excluir e acessar todas & 5 \\
+		Agenda & Visualizar, solicitar, analisar e criar em nome de outro usuário & 4 \\
+		Notificações & Publicar & 1 \\
+		Painel & Visualizar & 1 \\
+		Relatórios & Visualizar & 1 \\
+		Auditoria & Visualizar & 1 \\
+		Configurações\textsuperscript{*} & Editar o servidor de e-mail & 1 \\ \hline
+	\end{tabular}
+	\caption*{\textsuperscript{*} Permissões reservadas ao superadministrador. Fonte: Elaborado pelo autor (2026).}
+	\label{tab:permissoes}
+\end{table}
+
+Ao modelo base foram acrescentadas três restrições. A primeira é de cardinalidade: cada usuário tem no máximo um perfil, o que deixa explícito, a cada momento, o conjunto de permissões de que ele dispõe. A segunda reserva ao superadministrador as permissões de gestão de perfis e de configuração do servidor de e-mail, que não podem ser concedidas a nenhum perfil; o superadministrador é um atributo do usuário, definido por comando de gerenciamento, e não um perfil, e dispõe de todas as permissões do sistema. A terceira é a continuidade administrativa: nenhuma operação, como desativar um usuário, trocar o seu perfil ou retirar permissões de um perfil, pode deixar o sistema sem ao menos um usuário ativo capaz de gerenciar usuários. Além das permissões, algumas operações consideram o vínculo do usuário com o ensalamento: o docente de uma aula pode cancelar as ocorrências dessa aula sem dispor da permissão geral de cancelamento.
+
+Seguindo o princípio do RBAC de associar permissões a papéis, e não a pessoas, o perfil é atribuído conforme a função que o usuário exerce no processo de agendamento, e não conforme o seu cargo: os servidores responsáveis pela gestão dos agendamentos, sejam eles docentes ou técnicos administrativos, recebem um perfil com as permissões de gestão, que pode ser transferido a outro servidor quando essa responsabilidade muda. A granularidade das permissões permite, ainda, dividir a gestão entre pessoas ou setores, criando, por exemplo, um perfil que apenas analisa as solicitações de reserva ou um que apenas mantém o ensalamento. Por fim, a consulta pública dos horários é oferecida sem autenticação e, portanto, sem perfil, e não expõe endereços de e-mail nem a descrição das reservas. Essa definição orienta a especificação dos requisitos funcionais (Seção~\ref{sec:requisitos}) e a modelagem do sistema (Seção~\ref{sec:modelagem}).
 
 %-----------------------------------
 \subsubsection{Desenvolvimento Web e Arquitetura de Software}
@@ -505,14 +533,76 @@ Para sistematizar a especificação, os requisitos foram consolidados em forma t
 
 A terceira etapa foi a modelagem do sistema com a UML, cujos fundamentos foram apresentados na Seção~\ref{sec:uml}. No TCC 1 foi elaborado o diagrama de casos de uso, que delimita o escopo funcional do sistema; os diagramas de classes e de sequência serão construídos no TCC 2, na fase de implementação, a partir desse escopo.
 
-A Figura~\ref{fig:casos_uso} apresenta o diagrama de casos de uso. Os casos de uso associados a cada ator correspondem aos privilégios dos papéis definidos na Seção~\ref{sec:rbac}. O Administrador concentra as operações de gestão: Cadastrar Usuário, Gerenciar Espaços, Definir Horários, que inclui a edição pontual dos horários ocupados, Aprovar/Reprovar Reservas, Importar Planilha e Gerar Relatórios. O Docente pode Visualizar Agenda, Solicitar Reserva e Cancelar Reserva. O ator Visualizador representa o acesso público, sem autenticação, restrito ao caso de uso Visualizar Disponibilidade, sem permissão para solicitar ou alterar qualquer dado. As notificações (RF09 e RF10) não aparecem como casos de uso próprios porque são disparadas pelo sistema em decorrência da solicitação e da análise das reservas.
+Como os perfis são configuráveis, os atores dos diagramas de casos de uso não representam perfis, mas responsabilidades: cada ator corresponde a um conjunto de permissões relacionadas, e um perfil do sistema pode reunir as permissões de um ou mais atores. A Tabela~\ref{tab:atores} relaciona os atores às permissões que representam. Todos os atores autenticados são especializações do ator Usuário Autenticado, do qual herdam os casos de uso comuns, como entrar no sistema e consultar as notificações, e o Superadmin dispõe de todas as permissões, inclusive as reservadas. Nos perfis criados pela carga inicial, o perfil Docente corresponde ao ator Solicitante, e o perfil Administrador reúne todos os demais atores, exceto as permissões reservadas ao Superadmin.
+
+\begin{table}[htbp]
+	\centering
+	\caption{Atores dos casos de uso e permissões correspondentes}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{9.6cm}@{}}
+	\hline
+		\textbf{Ator} & \textbf{Permissões que representa} \\ \hline
+		Visitante & Nenhuma; acesso público, sem autenticação \\
+		Usuário Autenticado & Nenhuma específica; entrar no sistema, definir ou recuperar a senha e consultar as notificações \\
+		Solicitante & \texttt{AGENDA.VISUALIZAR} e \texttt{AGENDA.SOLICITAR} \\
+		Analista de Reservas & \texttt{AGENDA.ANALISAR} e \texttt{AGENDA.CRIAR} \\
+		Gestor do Ensalamento & Permissões do módulo Ensalamento \\
+		Gestor de Cadastros & Permissões dos módulos Espaços, Cursos, Disciplinas e Turmas \\
+		Gestor de Usuários & Permissões do módulo Usuários \\
+		Supervisor & \texttt{PAINEL.VISUALIZAR}, \texttt{RELATORIO.VISUALIZAR}, \texttt{AUDITORIA.VISUALIZAR} e \texttt{NOTIFICACAO.PUBLICAR} \\
+		Superadmin & Todas, inclusive as reservadas dos módulos Perfis e Configurações \\ \hline
+	\end{tabular}
+	\caption*{Fonte: Elaborado pelo autor (2026).}
+	\label{tab:atores}
+\end{table}
+
+A Figura~\ref{fig:atores} apresenta a hierarquia de atores. O Visitante não é especialização de Usuário Autenticado, pois acessa apenas a consulta pública, sem autenticação.
 
 \begin{figure}[htbp]
     \centering
-    \caption{Diagrama de Casos de Uso do Sistema de Agendamento}
-    \includegraphics[width=0.9\textwidth,trim={20 165 50 145},clip]{Figuras/casos_de_uso}
+    \caption{Hierarquia de atores dos casos de uso}
+    \includegraphics[width=0.9\textwidth]{Figuras/casos-de-uso/atores}
     \caption*{Fonte: Elaborado pelo autor (2026).}
-    \label{fig:casos_uso}
+    \label{fig:atores}
+\end{figure}
+
+Os casos de uso foram organizados em quatro diagramas, um por módulo, e cada caso de uso indica entre parênteses os requisitos funcionais que realiza. A Figura~\ref{fig:uc_acesso} apresenta os casos de uso de acesso e administração: os comuns a todos os usuários autenticados, a gestão de usuários e as operações reservadas ao Superadmin, que são a manutenção de perfis e permissões e a configuração do servidor de e-mail.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de casos de uso -- Acesso e administração}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/casos-de-uso/acesso}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:uc_acesso}
+\end{figure}
+
+A Figura~\ref{fig:uc_ensalamento} reúne os casos de uso do ensalamento e dos cadastros que ele utiliza. O Gestor do Ensalamento importa a planilha de horários, o que pode exigir a decisão sobre os espaços encontrados que não correspondem a um espaço cadastrado, representada por uma relação de extensão (\guillemotleft extend\guillemotright), e mantém as aulas ao longo do semestre por meio das operações sobre as recorrências e as ocorrências. O Gestor de Cadastros mantém os espaços, os cursos, as disciplinas e as turmas.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de casos de uso -- Ensalamento e cadastros}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/casos-de-uso/ensalamento}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:uc_ensalamento}
+\end{figure}
+
+A Figura~\ref{fig:uc_agenda} apresenta a Agenda, dividida entre a solicitação e a análise das reservas. Ao analisar uma solicitação, o Analista de Reservas pode aprová-la, rejeitá-la ou sugerir uma alternativa; quando há alternativa sugerida, o Solicitante pode respondê-la ao acompanhar as próprias solicitações. O caso de uso Cancelar ocorrência da própria aula realiza o RF16 para o docente da aula, conforme o vínculo descrito na Seção~\ref{sec:rbac}.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de casos de uso -- Agenda}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/casos-de-uso/agenda}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:uc_agenda}
+\end{figure}
+
+Por fim, a Figura~\ref{fig:uc_acompanhamento} apresenta a consulta pública, acessível ao Visitante sem autenticação, e os casos de uso de acompanhamento da gestão, atribuídos ao Supervisor. As notificações (RF09 e RF10) não aparecem como casos de uso próprios porque são geradas pelo sistema em decorrência da solicitação e da análise das reservas; para o usuário, elas se manifestam no caso de uso Consultar notificações.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de casos de uso -- Acompanhamento e consulta pública}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/casos-de-uso/acompanhamento}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:uc_acompanhamento}
 \end{figure}
 
 O diagrama de classes, a ser elaborado no TCC 2, terá como entidades centrais do domínio \textit{EspaçoFísico}, \textit{Horário}, \textit{Solicitação}, \textit{Reserva} e \textit{Usuário}. Os relacionamentos entre essas entidades, como a associação entre \textit{Usuário} e \textit{Reserva} ou entre \textit{EspaçoFísico} e \textit{Horário}, definirão as regras de integridade que orientam a estrutura do banco de dados; \citeonline{larman2007} destaca que esse é o artefato de modelagem mais diretamente relacionado à estrutura do código. O diagrama de sequência, também previsto para o TCC 2, ilustrará a interação entre os objetos nas operações de solicitação e aprovação de reservas, o que, segundo \citeonline{larman2007}, permite antecipar pontos de decisão e exceções no fluxo de execução.
@@ -533,7 +623,7 @@ Para a camada de dados, será utilizado o PostgreSQL como sistema gerenciador de
 
 A camada de apresentação será construída com os \textit{templates} do Django combinados ao Tailwind CSS. Essa escolha agiliza o desenvolvimento da interface, mantém a consistência visual entre as telas e reduz o custo de manutenção, permitindo ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}. Para as interações que não exigem recarregar a página inteira, como a abertura de formulários em janelas modais e a atualização de trechos da grade após um filtro, será utilizada a biblioteca htmx, que permite que elementos HTML disparem requisições ao servidor e substituam apenas a parte da página que mudou, a partir de atributos declarados no próprio \textit{template} \cite{htmx2024}. Com isso, a lógica continua concentrada nas \textit{views} do Django, que devolvem fragmentos de \textit{template}, sem a necessidade de uma aplicação \textit{front-end} separada nem de uma API.
 
-Para a autenticação dos usuários, será utilizada a biblioteca \textit{django-allauth}, escolhida por fornecer prontos os fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso baseado em papéis descrito na Seção~\ref{sec:rbac} será implementado sobre esse mecanismo, associando cada usuário a um dos dois papéis autenticados e condicionando o acesso a cada funcionalidade ao papel atribuído \cite{djangodocs}.
+Para a autenticação dos usuários, será utilizada a biblioteca \textit{django-allauth}, escolhida por fornecer prontos os fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso baseado em papéis descrito na Seção~\ref{sec:rbac} será implementado sobre esse mecanismo, associando cada usuário a um perfil e condicionando o acesso a cada funcionalidade às permissões desse perfil \cite{djangodocs}.
 
 O envio de e-mails utilizará o módulo de e-mail nativo do Django, com o protocolo SMTP \cite{djangodocs}, e os dados do servidor de envio serão configurados pela própria interface do sistema (RF27). O e-mail será usado para enviar ao novo usuário o link de definição da senha e para a recuperação de senha (RF20). Para não atrasar a resposta ao usuário, cada envio será registrado em uma fila e processado em segundo plano, com novas tentativas em caso de falha (RNF10).
 

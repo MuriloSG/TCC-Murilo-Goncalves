@@ -1,0 +1,13 @@
+skinparam dpi 300
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 14
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actorStyle stickman
+left to right direction
+skinparam legendBackgroundColor white

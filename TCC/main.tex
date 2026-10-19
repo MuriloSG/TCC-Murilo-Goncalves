@@ -168,8 +168,8 @@ Desenvolver um sistema web para o gerenciamento de reservas de espaços físicos
 \begin{itemize}
     \item Levantar o processo atual de agendamento e identificar as necessidades dos perfis de usuários envolvidos;
     \item Especificar os requisitos funcionais e não funcionais do sistema;
-    \item Disponibilizar ao administrador ferramentas para a gestão dos agendamentos e o acompanhamento do uso dos espaços;
-    \item Planejar a implementação do sistema web, definindo as tecnologias e a arquitetura técnica a serem adotadas, com base nos requisitos especificados.
+    \item Planejar a implementação do sistema web, definindo as tecnologias e a arquitetura técnica a serem adotadas, com base nos requisitos especificados;
+    \item Disponibilizar ao administrador ferramentas para a gestão dos agendamentos e o acompanhamento do uso dos espaços.
 \end{itemize}
 \subsection{Estrutura do Trabalho}
 Este trabalho está estruturado da seguinte forma: no Capítulo 2 é apresentada a revisão bibliográfica, que abrange o contexto institucional, os trabalhos relacionados e a fundamentação tecnológica; no Capítulo 3, a metodologia utilizada na condução da pesquisa; no Capítulo 4, o cronograma de execução das etapas previstas; e, por fim, as referências bibliográficas consultadas.
@@ -420,31 +420,25 @@ Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinaç�
 \subsection{Procedimentos Metodológicos}
 \label{sec:procedimentos}
 
-Esta pesquisa tem o seu desenvolvimento, no âmbito do TCC 1, organizado em quatro etapas encadeadas, cada uma condicionada pelos resultados da anterior. Cada etapa produziu um resultado concreto, indicado a seguir, que serviu de insumo para a etapa seguinte. Ao final do TCC 1, foram concluídos o diagnóstico do processo atual de agendamento, a especificação dos requisitos funcionais e não funcionais, a modelagem do escopo funcional por meio do diagrama de casos de uso e o planejamento da implementação, com a definição das tecnologias e da arquitetura. Permanecem para o TCC 2 a implementação propriamente dita do sistema, ou seja, a codificação das funcionalidades especificadas, a elaboração dos diagramas de classes e de sequência e a realização dos testes, conforme o cronograma.
-
-A primeira foi o diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a profissional responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos perfis envolvidos: Administrador e Docente, além do acesso público de consulta (Visualizador), disponível sem autenticação. Essa etapa produziu o insumo necessário para a especificação dos requisitos. O resultado foi o mapeamento do processo atual de agendamento e das necessidades de cada perfil de usuário, detalhado na Seção~\ref{sec:processo}.
-
-A segunda etapa foi o levantamento e a análise de requisitos. Com base nos dados coletados nas entrevistas e no referencial teórico consultado, foram especificados os requisitos funcionais e não funcionais do sistema. \citeonline{pressman2016} descrevem a engenharia de requisitos como um processo contínuo de identificação, análise, especificação e validação das necessidades dos envolvidos, e ressaltam que a qualidade dessa etapa determina a qualidade do que será desenvolvido depois. O resultado dessa etapa são os requisitos funcionais e não funcionais consolidados nas Tabelas~\ref{tab:rf} e~\ref{tab:rnf}, apresentadas na Seção~\ref{sec:requisitos}.
-
-A terceira etapa foi a modelagem do sistema. Com os requisitos definidos, foi elaborado o diagrama de casos de uso, que delimita o escopo funcional da solução; os diagramas de classes e de sequência serão construídos no TCC 2. O resultado dessa etapa é apresentado na Seção~\ref{sec:modelagem}.
-
-A quarta etapa, ainda no escopo deste trabalho, corresponde ao planejamento da implementação. Nela foram definidas as tecnologias que serão adotadas no desenvolvimento: a linguagem Python com o \textit{framework} Django, o banco de dados PostgreSQL, o Tailwind CSS na construção da interface e a biblioteca \textit{django-allauth} para a autenticação. Definiu-se também a arquitetura técnica da aplicação, baseada no padrão MTV em três camadas. A justificativa de cada uma dessas escolhas, em comparação com as alternativas disponíveis, é apresentada na Seção~\ref{sec:implementacao}. O sistema não foi implementado nesta fase; o que se apresenta é o planejamento que fundamenta a implementação futura.
+Esta pesquisa, no âmbito do TCC, está organizada em quatro etapas encadeadas, cada uma condicionada pelos resultados da etapa anterior: o diagnóstico do problema, o levantamento e a análise de requisitos, a modelagem do sistema e a implementação. Atualmente, já foram realizadas as três primeiras etapas: o diagnóstico do processo atual de agendamento, a especificação dos requisitos funcionais e não funcionais e a modelagem do escopo funcional por meio do diagrama de casos de uso. A quarta e última etapa é a implementação, que permanece para o TCC 2 e compreende a codificação das funcionalidades especificadas, a elaboração dos diagramas de classes e de sequência e a realização dos testes, conforme o cronograma. Logo abaixo, é descrito o detalhamento de cada uma das etapas citadas.
 
 %-----------------------------------
-\subsection{Coleta de Dados}
+\subsubsection{Diagnóstico do Problema}
 \label{sec:coleta}
+
+A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a profissional responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos perfis envolvidos: Administrador e Docente, além do acesso público de consulta (Visualizador), disponível sem autenticação. Essa etapa produziu o insumo necessário para a especificação dos requisitos, com o mapeamento do processo atual de agendamento detalhado na Seção~\ref{sec:processo}.
 
 Os dados desta pesquisa são primários, coletados diretamente junto à fonte por meio de um levantamento iterativo de requisitos, conduzido na forma de conversas semiestruturadas, interações técnicas informais, trocas de mensagens e discussões recorrentes sobre o processo de agendamento, além de validações contínuas da proposta ao longo do desenvolvimento. \citeonline{gil2008} aponta a entrevista como uma das técnicas de coleta de dados mais utilizadas nas ciências sociais por permitir que o entrevistador obtenha informações sobre fatos, opiniões, percepções e necessidades de forma direta, com abertura para explorar aspectos não previstos no roteiro inicial. Neste trabalho, essa característica foi estendida para um formato iterativo, em que o diálogo com a fonte se prolongou para além de sessões pontuais.
 
-As interações foram conduzidas com Jéssica Glória, Coordenadora de Ensino Técnico do IFNMG -- Campus Salinas e coorientadora deste trabalho, que responde pela gestão dos agendamentos de espaços físicos no campus. Como marcos desse processo, foram realizadas três sessões mais estruturadas ao longo da pesquisa: em julho de 2025, novembro de 2025 e abril de 2026. Cada sessão cumpriu objetivos distintos. A primeira, em julho de 2025, teve como foco o mapeamento do processo atual de agendamento: como as reservas são feitas, quem as gerencia, quais conflitos ocorrem com mais frequência e que informações os usuários precisam acessar. A segunda, em novembro de 2025, foi dedicada à validação dos requisitos preliminares levantados: as informações coletadas inicialmente foram apresentadas de forma estruturada para que a coorientadora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira, em abril de 2026, serviu para confirmar os requisitos finais e verificar aspectos que surgiram durante a modelagem e ainda careciam de esclarecimento. Entre essas sessões, manteve-se interação técnica informal contínua -- por mensagens e reuniões breves -- para esclarecer dúvidas pontuais sobre o funcionamento do processo e validar decisões de modelagem à medida que surgiam.
+As interações foram conduzidas com Jéssica Glória, Diretora de Ensino Técnico do IFNMG -- Campus Salinas e coorientadora deste trabalho, que responde pela gestão dos agendamentos de espaços físicos no campus. Como marcos desse processo, foram realizadas três sessões mais estruturadas ao longo da pesquisa: em julho de 2025, novembro de 2025 e abril de 2026. Cada sessão cumpriu objetivos distintos. A primeira, em julho de 2025, teve como foco o mapeamento do processo atual de agendamento: como as reservas são feitas, quem as gerencia, quais conflitos ocorrem com mais frequência e que informações os usuários precisam acessar. A segunda, em novembro de 2025, foi dedicada à validação dos requisitos preliminares levantados: as informações coletadas inicialmente foram apresentadas de forma estruturada para que a coorientadora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira, em abril de 2026, serviu para confirmar os requisitos finais e verificar aspectos que surgiram durante a modelagem e ainda careciam de esclarecimento. Entre essas sessões, manteve-se interação técnica informal contínua -- por mensagens e reuniões breves -- para esclarecer dúvidas pontuais sobre o funcionamento do processo e validar decisões de modelagem à medida que surgiam.
 
 A opção por esse formato semiestruturado e iterativo se justifica metodologicamente porque o roteiro funcionou como guia, sem impedir que temas relevantes surgidos no decorrer das conversas fossem explorados em profundidade, e porque permitiu que a compreensão do processo se refinasse de forma incremental, acompanhando o avanço da modelagem. Esse formato é mais adequado do que questionários fechados ou entrevistas rigidamente estruturadas quando o objetivo é compreender um processo operacional concreto, com suas particularidades e exceções, cujas nuances só emergem na medida em que a proposta de solução se concretiza.
 
 %-----------------------------------
-\subsection{Levantamento e Análise de Requisitos}
+\subsubsection{Levantamento e Análise de Requisitos}
 \label{sec:requisitos}
 
-A especificação de requisitos foi elaborada a partir das informações coletadas nas entrevistas e do referencial bibliográfico consultado, e organizada em duas categorias: requisitos funcionais e requisitos não funcionais.
+A segunda etapa foi o levantamento e a análise de requisitos. \citeonline{pressman2016} descrevem a engenharia de requisitos como um processo contínuo de identificação, análise, especificação e validação das necessidades dos envolvidos, e ressaltam que a qualidade dessa etapa determina a qualidade do que será desenvolvido depois. A especificação de requisitos foi elaborada a partir das informações coletadas nas entrevistas e do referencial bibliográfico consultado, e organizada em duas categorias: requisitos funcionais e requisitos não funcionais.
 
 Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, as funções e os serviços que ele precisa oferecer a cada perfil de usuário \cite{sommerville2018}. Para a especificação dessas funções, foram considerados os dois perfis autenticados identificados no diagnóstico, além do acesso público de consulta. O perfil Administrador concentra as funções de gestão: cadastro e manutenção de espaços físicos, gerenciamento de usuários, importação das planilhas de horários institucionais e atualização periódica dos horários ocupados, aprovação ou rejeição de solicitações de reserva e geração de relatórios sobre a utilização dos espaços. O perfil Docente pode consultar a disponibilidade dos espaços e submeter solicitações de reserva, recebendo notificação automática sobre o resultado. A consulta de disponibilidade é acessível publicamente, sem necessidade de autenticação, exibindo apenas os horários livres e ocupados de cada espaço. Os requisitos funcionais foram agrupados por módulo: gestão de usuários e controle de acesso; gerenciamento de espaços físicos com importação de planilhas; agendamento e reservas; notificações automáticas por e-mail; e geração de relatórios de uso.
 
@@ -512,10 +506,10 @@ O diagrama de classes será elaborado no TCC 2 e terá como entidades centrais d
 O diagrama de sequência, também previsto para o TCC 2, ilustrará como os objetos do sistema interagem ao longo do tempo para realizar uma operação. \citeonline{larman2007} aponta que esse artefato é útil para antecipar pontos de decisão e exceções no fluxo de execução, articulando a lógica das operações de solicitação e aprovação de reservas com as classes que compõem o domínio.
 
 %-----------------------------------
-\subsection{Implementação}
+\subsubsection{Implementação}
 \label{sec:implementacao}
 
-O sistema será desenvolvido como uma aplicação web, com arquitetura e tecnologias definidas a seguir. A escolha de cada componente foi orientada pelos requisitos especificados e pela necessidade de produzir uma solução manutenível, segura e acessível a partir de qualquer navegador, sem instalação de software nos dispositivos dos usuários.
+A quarta e última etapa é a implementação. Nesta fase do trabalho apresenta-se o seu planejamento, com a definição das tecnologias e da arquitetura, enquanto a codificação propriamente dita será realizada no TCC 2. O sistema será desenvolvido como uma aplicação web, com arquitetura e tecnologias definidas a seguir.
 
 A linguagem de programação adotada é o Python e o \textit{framework} web escolhido é o Django. Seu funcionamento, que abrange os princípios \textit{batteries included} e DRY, o roteamento de URLs, o ORM, as \textit{migrations}, o sistema de \textit{templates} e as proteções de segurança nativas, está detalhado na Seção~\ref{sec:django}. A opção pelo Django se justifica por reunir nativamente os componentes necessários ao sistema proposto, o que reduz a dependência de bibliotecas externas e o esforço de infraestrutura, permitindo que o desenvolvimento se concentre nas regras de negócio da aplicação.
 
@@ -529,16 +523,16 @@ Para a autenticação dos usuários, será utilizada a biblioteca \textit{django
 
 As notificações automáticas serão enviadas por meio do módulo de e-mail nativo do Django, configurado com o protocolo SMTP e o serviço Gmail como servidor de envio \cite{djangodocs}. Ao receber uma solicitação de reserva, o sistema notificará o administrador; após a decisão de aprovação ou rejeição, o docente receberá a confirmação correspondente, sem necessidade de contato manual entre as partes. 
 
-O planejamento da implementação contempla ainda a definição da infraestrutura de hospedagem do sistema. Essa questão foi levantada junto à coorientadora, que informou estar em andamento, por intermédio do professor Leo Humberto, uma articulação com a FADETEC para envolver a Empresa Júnior do campus, à qual caberiam o espaço de hospedagem e a manutenção do software após a entrega\footnote{Informação verbal fornecida por Jessica Gloria, Coordenadora de Ensino Técnico do IFNMG -- Campus Salinas, em maio de 2026.}. Como essa articulação ainda não está formalizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
+O planejamento da implementação contempla ainda a definição da infraestrutura de hospedagem do sistema. Essa questão foi levantada junto à  diretora de Ensino Técnico, Jessica Glória, que informou estar em andamento, há uma articulação da direção do \textit{campus} junto à FADETEC  e Sifsoft empresa Jr do curso de Bacharel em Sistemas de Informação do \textit{campus} Salinas.  Como essa articulação ainda não está concretizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
 
-Cabe esclarecer o escopo deste ponto: o presente trabalho compreende o desenvolvimento e a disponibilização de uma versão funcional do sistema em ambiente acessível por navegador. A implantação definitiva na infraestrutura institucional fica condicionada à definição, pela direção do campus e pelos setores envolvidos, do ambiente de hospedagem e do responsável pela manutenção, articulação que segue em curso e cujo desfecho não depende exclusivamente do autor.
+Cabe esclarecer o escopo deste ponto: o presente trabalho compreende o desenvolvimento e a disponibilização de uma versão funcional do sistema em ambiente acessível por navegador. A implantação definitiva na infraestrutura institucional ficará sob responsabilidade da direção do campus e pelos setores envolvidos.
 %---------------------------------
 % SEÇÃO DE CRONOGRAMA
 %---------------------------------
 \section{Cronograma}
 \label{sec:cronograma}
 
-O cronograma a seguir organiza as etapas de implementação do sistema ao longo do segundo semestre de 2026. O desenvolvimento concentra-se entre agosto e novembro, de modo que a escrita e a entrega do TCC 2 ocorram com a antecedência exigida em relação à defesa, prevista para dezembro. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precedem o desenvolvimento das funcionalidades, que por sua vez antecedem os testes e os ajustes finais.
+O cronograma a seguir contempla apenas a quarta e última etapa da pesquisa de implementação do sistema ao longo do segundo semestre de 2026. O desenvolvimento concentra-se entre agosto e novembro, de modo que a escrita e a entrega do TCC ocorram com a defesa, prevista para dezembro. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precedem o desenvolvimento das funcionalidades, que por sua vez antecedem os testes e os ajustes finais.
 
 \begin{table}[!htb]
 	\centering
@@ -557,9 +551,9 @@ O cronograma a seguir organiza as etapas de implementação do sistema ao longo 
 			Implementação dos \textit{Models} e banco de dados & X & X &   &   &   \\
 			Desenvolvimento das \textit{Views} e roteamento de URLs &   & X &   &   &   \\
 			Implementação dos \textit{Templates} e interface &   & X & X &   &   \\
-			Autenticação e controle de acesso (RBAC) &   &   & X &   &   \\
-			Módulo de importação de planilhas de horários &   &   & X & X &   \\
-			Módulo de notificações automáticas por e-mail &   &   &   & X &   \\
+			Autenticação e controle de acesso (RBAC) &   & X &   &   &   \\
+			Módulo de importação de planilhas de horários &   &   & X &   &   \\
+			Módulo de notificações automáticas por e-mail &   &   & X &   &   \\
 			Geração de relatórios de uso &   &   &   & X &   \\
 			Testes unitários e de integração &   &   & X & X &   \\
             Implantação em ambiente de hospedagem &   &   &   & X &   \\
@@ -569,6 +563,7 @@ O cronograma a seguir organiza as etapas de implementação do sistema ao longo 
 	}
 	\label{tab:cronograma}
 \end{table}
+
 % ----------------------------------------------------------
 % Referências bibliográficas
 % ----------------------------------------------------------

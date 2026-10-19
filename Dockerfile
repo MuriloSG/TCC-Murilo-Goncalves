@@ -1,3 +1,11 @@
+FROM debian:12-slim AS diagrams
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends graphviz fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
 FROM node:22.23.2-slim AS tailwind
 
 WORKDIR /app

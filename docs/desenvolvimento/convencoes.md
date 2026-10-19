@@ -56,6 +56,7 @@ A referência de implementação é o app `accounts`.
 
 ## 7. Testes
 
+- Toda alteração de model regenera os diagramas (`make er-diagram && make er-images`) no mesmo commit. Se mudar uma entidade, um atributo ou um relacionamento do domínio, atualiza também a especificação do DER conceitual em `export_er_diagram` ([diagramas](../diagramas/README.md)).
 - Os testes ficam em `<app>/tests/test_*.py` e rodam com `make test` no PostgreSQL. A suíte inteira deve passar antes de cada commit.
 - A proteção das rotas é testada num só lugar, em `accounts/tests/test_route_protection.py`. Para todas as rotas, ele confere três situações: anônimo redirecionado ao login com `next`, autenticado sem a permissão com 403 e POST sem CSRF com 403. Toda rota nova entra na tabela `PROTECTED_ROUTES`, com a permissão que exige, ou em `PUBLIC_ROUTES`. Uma rota fora da tabela faz o teste falhar.
 - O teste do app cobre só a rota executando com a permissão, além das checagens que a view faz por conta própria, como uma segunda permissão ou o vínculo do docente.

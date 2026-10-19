@@ -2,6 +2,8 @@
 
 PostgreSQL 17 (`postgres:17` no `compose.yaml`), acessado só pelo ORM. É a única fonte de verdade: o Redis guarda apenas cache das telas públicas, e as filas de e-mail e de importação são tabelas.
 
+O modelo de dados está nos [diagramas](../diagramas/README.md): DER conceitual, DER físico e restrições, gerados por `make er-diagram`.
+
 ## Recursos do PostgreSQL usados
 
 O sistema depende do PostgreSQL e não roda em outro banco:

@@ -82,6 +82,14 @@ services:
       timeout: 3s
       retries: 10
 
+  diagrams:
+    build:
+      context: .
+      target: diagrams
+    profiles: [tools]
+    volumes:
+      - .:/app
+
   tailwind:
     build:
       context: .

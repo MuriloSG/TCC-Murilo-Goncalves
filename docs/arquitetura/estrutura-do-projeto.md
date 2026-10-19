@@ -79,6 +79,7 @@
 | `delete_users [--yes]` | `accounts` | Exclui os usuários que não são superadmin e os registros que dependem deles. Exige um superadmin ativo |
 | `set_passwords [--password X] [--yes]` | `accounts` | Define a mesma senha (padrão `DEFAULT_PASSWORD` do comando) para todos os usuários |
 | `flush` | `accounts` | Substitui o `flush` do Django, com a mesma trava dos comandos acima |
+| `export_er_diagram [--output dir]` | `accounts` | Gera os DERs conceitual e físico (Graphviz) e as restrições (`make er-diagram`) |
 | `process_outbox` | `outbox` | Laço do worker de e-mails |
 | `process_imports` | `imports` | Laço do worker de importações |
 

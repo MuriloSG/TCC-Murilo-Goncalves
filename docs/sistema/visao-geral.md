@@ -59,36 +59,7 @@ Não há API REST, front-end separado nem `django.contrib.admin`.
 
 ## Entidades principais
 
-```mermaid
-erDiagram
-    User ||--o| UserRole : "perfil (o superadmin pode não ter)"
-    Role ||--o{ UserRole : ""
-    Role ||--o{ RolePermission : ""
-    Permission ||--o{ RolePermission : ""
-
-    Semester ||--o{ TimeSlot : "faixas"
-    Semester ||--o{ Allocation : ""
-    Semester ||--o{ ClassOffering : ""
-    Course ||--o{ ClassGroup : "turmas"
-    ClassGroup ||--o{ Allocation : ""
-    Subject ||--o{ Allocation : ""
-    TimeSlot ||--o{ Allocation : ""
-    Space |o--o{ Allocation : "pode faltar"
-    Teacher }o--o{ Allocation : "docentes"
-    Allocation ||--o{ AllocationException : "ocorrências canceladas"
-    Space ||--o{ SpaceName : "nome atual e outros nomes"
-    ClassOffering ||--o{ TeachingAssignment : ""
-    Teacher ||--o{ TeachingAssignment : ""
-
-    User ||--o{ BookingRequest : "solicita"
-    TeachingAssignment |o--o{ BookingRequest : "vínculo acadêmico"
-    Space ||--o{ BookingRequest : ""
-    BookingRequest ||--o| Booking : "gera ao aprovar"
-    Space ||--o{ Booking : ""
-
-    Import ||--o{ ImportRow : "linhas e plano"
-    Import ||--o{ SpaceDecision : "decisões de espaço"
-```
+Os relacionamentos e as tabelas estão nos [diagramas](../diagramas/README.md) (DER conceitual e DER físico).
 
 | Grupo | Models | App |
 |---|---|---|

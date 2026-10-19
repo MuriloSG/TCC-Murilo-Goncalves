@@ -126,6 +126,12 @@ Regra de continuidade administrativa: sempre resta alguém ativo com a capacidad
 | `DeleteUsersTests` | Apaga usuários e vínculos mantendo perfis e superadmins; recusa sem superadmin ativo; resposta diferente de "sim" não apaga |
 | `SetPasswordsTests` | Define a senha padrão de todos; resposta diferente de "sim" mantém as senhas |
 
+### `test_er_diagram.py`
+
+| Classe | O que garante |
+|---|---|
+| `ExportErDiagramTests` | Gera conceitual, físico e restrições; o conceitual usa losangos e cardinalidade (mín,máx) e lista no rodapé as entidades marcadas; o físico lista só as tabelas do projeto, com tipos e chaves, e a cardinalidade segue `null` e `unique` da FK; restrições saem como SQL; saída igual entre execuções |
+
 ### `test_command_environment.py`
 
 Trava dos comandos destrutivos, descrita em [testes transversais](../testes.md#testes-transversais).

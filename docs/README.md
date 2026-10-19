@@ -44,6 +44,10 @@ Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para 
 
 - [Configuração](operacao/configuracao.md): variáveis obrigatórias, configuração no banco, o que não está configurado.
 - [Banco de dados](operacao/banco-de-dados.md): recursos do PostgreSQL usados, migrations, comandos de dados.
+
+## Diagramas
+
+- [Diagramas](diagramas/README.md): DER conceitual e DER físico no padrão do brModelo, com SVG e PNG, e as restrições do banco.
 - [Deploy](operacao/deploy.md): o que existe, o que falta, passos depois de subir uma instância.
 
 ## Decisões

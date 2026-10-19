@@ -46,8 +46,8 @@
 \usepackage{longtable}          % Large tables
 \usepackage{fancyvrb}           % Codes and Outputs commands
 \usepackage{listings}           % Codes and Outputs commands
-\usepackage[figuresright]{rotating}
 \usepackage{float}
+\usepackage{placeins}
 \usepackage{subfig}             % Subfigures
 \usepackage{latexsym}           % Extra symbols of Latex
 \usepackage{booktabs}
@@ -114,6 +114,11 @@
 \renewcommand{\textfraction}{0.1}
 \renewcommand{\floatpagefraction}{0.8}
 \setlength{\emergencystretch}{2em}
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpsep}{12pt plus 1fil}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
 % ---------------------------------
 %	SEÇÃO DE TÍTULO
 % ---------------------------------
@@ -633,11 +638,11 @@ Cada caso de uso foi detalhado em uma descrição expandida, no formato proposto
 	\label{tab:uc_solicitar}
 \end{table}
 
+\FloatBarrier
 \subsubsubsection{Diagramas de Classes}
 
 Os diagramas de classes apresentados a seguir são diagramas de classes de projeto, no sentido de \citeonline{larman2007}: as classes correspondem aos \textit{models} do Django e mantêm os nomes adotados no código, em inglês, para que os diagramas possam ser confrontados diretamente com a implementação. Por legibilidade, as classes foram distribuídas em quatro diagramas, um por módulo, cada um com os atributos e as operações mais relevantes; as classes de outros módulos aparecem apenas com o nome e, como estereótipo, o módulo de origem. A Tabela~\ref{tab:classes} apresenta o significado de cada classe.
 
-\needspace{0.5\textheight}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{6.2cm}@{}}
 	\caption{Classes do sistema e seus significados}\label{tab:classes} \\
 	\hline
@@ -679,7 +684,7 @@ Os diagramas de classes apresentados a seguir são diagramas de classes de proje
 
 A Figura~\ref{fig:cl_acesso} apresenta as classes do controle de acesso. As associações entre usuário e perfil e entre perfil e permissão são representadas por classes de associação, \texttt{UserRole} e \texttt{RolePermission}, que correspondem às tabelas intermediárias do banco de dados. A multiplicidade 0..1 no lado de \texttt{Role} expressa a restrição de cardinalidade descrita na Seção~\ref{sec:rbac}, pela qual cada usuário tem no máximo um perfil.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \caption{Diagrama de classes -- Controle de acesso}
     \includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{Figuras/uml/classes-acesso}
@@ -689,7 +694,7 @@ A Figura~\ref{fig:cl_acesso} apresenta as classes do controle de acesso. As asso
 
 A Figura~\ref{fig:cl_ensalamento} apresenta o ensalamento. As classes \texttt{Space}, \texttt{Teacher}, \texttt{Course} e \texttt{Subject} especializam a classe abstrata \texttt{NamedRecord}, que concentra o atributo nome. A aula recorrente é representada por \texttt{Allocation}, que relaciona semestre, turma, disciplina, faixa de horário, espaço e docentes. A ocorrência de uma aula em uma data não é armazenada, mas calculada a partir dessa regra semanal pela operação \texttt{occurs\_on}, e apenas as ocorrências canceladas são registradas, em \texttt{AllocationException}. A composição entre \texttt{Space} e \texttt{SpaceName} indica que os nomes de um espaço são excluídos junto com ele.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \caption{Diagrama de classes -- Ensalamento}
     \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/uml/classes-ensalamento}
@@ -699,7 +704,7 @@ A Figura~\ref{fig:cl_ensalamento} apresenta o ensalamento. As classes \texttt{Sp
 
 A Figura~\ref{fig:cl_agenda} apresenta a Agenda e as notificações. A classe \texttt{BookingRequest} guarda a solicitação, a análise e a eventual alternativa sugerida, e as suas operações correspondem às transições da máquina de estados apresentada na Seção~\ref{sec:comportamento}. A classe \texttt{Booking} existe apenas enquanto a reserva aprovada vale e é excluída no cancelamento, o que explica a multiplicidade 0..1 na associação com a solicitação.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \caption{Diagrama de classes -- Agenda e notificações}
     \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{Figuras/uml/classes-agenda}
@@ -709,7 +714,7 @@ A Figura~\ref{fig:cl_agenda} apresenta a Agenda e as notificações. A classe \t
 
 Por fim, a Figura~\ref{fig:cl_suporte} reúne as classes de importação e de suporte: a importação e as suas linhas, as decisões sobre os espaços encontrados, o registro de auditoria, a fila de e-mails e as configurações do sistema. As composições indicam que as linhas e as decisões de uma importação não existem sem ela.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \caption{Diagrama de classes -- Importações e suporte}
     \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/uml/classes-suporte}

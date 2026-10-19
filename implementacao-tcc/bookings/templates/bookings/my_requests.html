@@ -1,0 +1,27 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Minhas solicitações{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  {% if perms.AGENDA.VISUALIZAR %}<li>{% icon "chevron-right" "size-4" %}<a href="{% url 'agenda_grid' %}">Agenda</a></li>{% endif %}
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Minhas solicitações</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Minhas solicitações</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-solicitacoes">
+    <div class="card-head">
+      <h2 class="card-title" id="lista-solicitacoes">Solicitações de agendamento <span class="count">{{ page.paginator.count }}</span></h2>
+    </div>
+    {% include "bookings/partials/request_table.html" with detail_url="agenda_my_request" empty="Nenhuma solicitação de agendamento enviada." %}
+  </section>
+{% endblock %}

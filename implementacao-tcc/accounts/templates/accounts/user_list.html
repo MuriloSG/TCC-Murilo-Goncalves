@@ -1,0 +1,49 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Usuários{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Usuários</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Usuários</h1>
+    </div>
+    <div class="page-actions">
+      {% if perms.USUARIO.IMPORTAR %}
+        <a class="btn-secondary" href="{% url 'user_import_list' %}">{% icon "history" %}Importações</a>
+      {% endif %}
+      {% if perms.USUARIO.CRIAR %}
+        <a class="btn-primary" href="{% url 'user_create' %}" hx-get="{% url 'user_create' %}" hx-target="#modal">{% icon "user-plus" %}Cadastrar usuário</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-usuarios">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-usuarios">Todos os usuários <span class="count">{{ total }}</span></h2>
+      </div>
+      <form class="filters" method="get" action="{% url 'user_list' %}" role="search" hx-get="{% url 'user_list' %}" hx-target="#{{ table_target }}" hx-push-url="true" hx-history="false" hx-trigger="submit, input changed delay:300ms from:input[name=busca], search from:input[name=busca], change from:select[name=situacao]">
+        <div class="control">
+          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar por nome, e-mail ou nome de usuário</label>
+          {% icon "search" %}{{ filters.busca }}
+        </div>
+        <div>
+          <label class="sr-only" id="{{ filters.situacao.auto_id }}_rotulo" for="{{ filters.situacao.id_for_label }}">Situação</label>
+          {% include "ui/components/select.html" with field=filters.situacao %}
+        </div>
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Buscar</button></noscript>
+      </form>
+    </div>
+    <div id="{{ table_target }}">
+      {% include "accounts/partials/user_table.html" %}
+    </div>
+  </section>
+{% endblock %}

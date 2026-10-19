@@ -1,0 +1,9 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}{{ title }}{% endblock %}
+
+
+{% block body %}{% if in_use %}<div class="alert tone-info" role="status">{% icon "info" %}<p>A disciplina {{ target.name }} tem ofertas ou aulas no ensalamento e não pode ser renomeada, porque a próxima importação criaria outro cadastro com o nome da planilha.</p></div>{% endif %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{{ submit_label }}</button>{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Solicitação de agendamento{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'agenda_my_requests' %}">Minhas solicitações</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Solicitação {{ target.pk }}</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Solicitação de agendamento</h1>
+    </div>
+    {% if can_cancel %}
+      <div class="page-actions">
+        <a class="btn-danger" href="{% url 'agenda_my_request_cancel' target.pk %}" hx-get="{% url 'agenda_my_request_cancel' target.pk %}" hx-target="#modal">{% icon "calendar-x" %}Cancelar agendamento</a>
+      </div>
+    {% endif %}
+    {% if target.awaits_response %}
+      <div class="page-actions">
+        <a class="btn-secondary" href="{% url 'agenda_my_request_decline' target.pk %}" hx-get="{% url 'agenda_my_request_decline' target.pk %}" hx-target="#modal">{% icon "x" %}Recusar alternativa</a>
+        <a class="btn-primary" href="{% url 'agenda_my_request_accept' target.pk %}" hx-get="{% url 'agenda_my_request_accept' target.pk %}" hx-target="#modal">{% icon "check" %}Aceitar alternativa</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  {% include "bookings/partials/request_record.html" %}
+{% endblock %}

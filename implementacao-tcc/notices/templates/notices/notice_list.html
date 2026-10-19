@@ -1,0 +1,56 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Notificações{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Notificações</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Notificações</h1>
+    </div>
+    <a class="btn-primary" href="{% url 'notice_create' %}">{% icon "bell" %}Nova notificação</a>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="notificacoes-publicadas">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="notificacoes-publicadas">Publicadas para todos os usuários</h2>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Título</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Destinatários</th>
+          <th scope="col">Publicada por</th>
+          <th scope="col">Data e hora</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for notice in page %}
+          <tr>
+            <td class="cell-primary" data-label="Título">
+              {{ notice.title }}
+              <span class="person-detail">{{ notice.message }}</span>
+            </td>
+            <td data-label="Tipo">{% include "ui/components/badge.html" with tone=notice.tone icon=notice.icon label=notice.label %}</td>
+            <td data-label="Destinatários">{{ notice.recipients_count }} usuário{{ notice.recipients_count|pluralize }}</td>
+            <td data-label="Publicada por">{{ notice.published_by.name|default:"Sistema" }}</td>
+            <td data-label="Data e hora">{{ notice.created_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+          </tr>
+        {% empty %}
+          {% include "ui/components/empty_row.html" with colspan=5 message="Nenhuma notificação publicada para todos os usuários." %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "ui/components/pagination.html" with noun="notificação" noun_plural="notificações" %}
+  </section>
+{% endblock %}

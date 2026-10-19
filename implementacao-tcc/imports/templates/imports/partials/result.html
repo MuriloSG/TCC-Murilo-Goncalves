@@ -1,0 +1,1 @@
+{% if errors %}{{ errors }} linha{{ errors|pluralize }} com erro{% elif pending %}{{ pending }} linha{{ pending|pluralize }} com decisão por tomar{% else %}{{ created }} cadastro{{ created|pluralize }}, {{ updated }} atualiza{{ updated|pluralize:"ção,ções" }} e {{ unchanged }} sem alteração{% endif %}

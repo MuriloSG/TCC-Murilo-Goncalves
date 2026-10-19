@@ -1,0 +1,22 @@
+{% load ui %}<div class="row-actions">
+  {% for action in visible %}{% include "ui/components/icon_action.html" %}{% endfor %}
+  {% if more %}
+    <details class="menu more">
+      <summary class="icon-btn" aria-label="Mais ações">{% icon "ellipsis" %}<span class="tip" role="tooltip">Mais ações</span></summary>
+      <div class="menu-list">
+        {% for action in more %}{% include "ui/components/menu_action.html" %}{% endfor %}
+      </div>
+    </details>
+    <div class="more-flat">
+      {% for action in more %}{% include "ui/components/icon_action.html" %}{% endfor %}
+    </div>
+  {% endif %}
+  {% if compact %}
+    <details class="menu row-menu">
+      <summary class="icon-btn" aria-label="Mais ações">{% icon "ellipsis-vertical" %}</summary>
+      <div class="menu-list">
+        {% for action in compact %}{% include "ui/components/menu_action.html" %}{% endfor %}
+      </div>
+    </details>
+  {% endif %}
+</div>

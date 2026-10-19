@@ -1,0 +1,67 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ target.name }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'courses_list' %}">Cursos</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ target.name }}</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">{{ target.name }}</h1>
+    </div>
+    <div class="page-actions">
+      {% if history %}<a class="btn-secondary" href="{{ history.url }}">{% icon "scroll-text" %}Ver auditoria</a>{% endif %}
+      {% if perms.CURSO.EXCLUIR and not class_groups %}<a class="btn-danger" href="{% url 'courses_delete' target.pk %}" hx-get="{% url 'courses_delete' target.pk %}" hx-target="#modal">{% icon "trash-2" %}Excluir curso</a>{% endif %}
+      {% if perms.CURSO.EDITAR %}<a class="btn-primary" href="{% url 'courses_update' target.pk %}" hx-get="{% url 'courses_update' target.pk %}" hx-target="#modal">{% icon "pencil" %}Editar curso</a>{% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <details class="card detail-card">
+    <summary>
+      <span class="detail-card-heading">
+        <span class="card-title">Dados do curso</span>
+        <span class="detail-card-summary">{{ target.get_stage_display }}, {{ class_groups|length }} turma{{ class_groups|length|pluralize }}</span>
+      </span>
+      {% icon "chevron-down" %}
+    </summary>
+    <dl class="detail-grid">
+      <div><dt>Nome</dt><dd>{{ target.name }}</dd></div>
+      <div><dt>Etapa de ensino</dt><dd>{{ target.get_stage_display }}</dd></div>
+    </dl>
+  </details>
+
+  <section class="card" aria-labelledby="turmas-curso">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="turmas-curso">Turmas <span class="count">{{ class_groups|length }}</span></h2>
+      </div>
+    </div>
+    <table class="data-table compact-rows">
+      <thead>
+        <tr>
+          <th scope="col">Turma</th>
+          <th scope="col">Ofertas</th>
+          <th scope="col">Aulas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in class_groups %}
+          <tr>
+            <td class="cell-primary" data-label="Turma">{{ group.label }}</td>
+            <td class="cell-meta" data-label="Ofertas">{{ group.offering_count }}</td>
+            <td class="cell-meta" data-label="Aulas">{{ group.lesson_count }}</td>
+          </tr>
+        {% empty %}
+          {% include "ui/components/empty_row.html" with colspan=3 message="Nenhuma turma neste curso." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

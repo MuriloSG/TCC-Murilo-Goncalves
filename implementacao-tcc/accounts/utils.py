@@ -1,0 +1,70 @@
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.core.management import CommandError
+from django.db import DEFAULT_DB_ALIAS, connections
+
+from config import test_runner
+
+LOCAL_ENVIRONMENT = 'local'
+LOCAL_DATABASE_MARK = 'ifagenda.environment'
+INVALID_TYPED_EMAIL = 'valor que não é e-mail'
+
+
+def typed_email(value):
+    """E-mail digitado numa tela pública, para a auditoria; o que não é e-mail pode ser uma senha e não é gravado."""
+    value = (value or '').strip()
+    try:
+        validate_email(value)
+    except ValidationError:
+        return INVALID_TYPED_EMAIL if value else ''
+    return value
+
+
+def add_operation_error(form, error):
+    """Leva para o formulário o ValidationError lançado por uma operação do model."""
+    if hasattr(error, 'error_dict'):
+        for field, errors in error.error_dict.items():
+            form.add_error(field if field in form.fields else None, errors)
+    else:
+        form.add_error(None, error)
+
+
+def require_safe_database(command, alias=DEFAULT_DB_ALIAS):
+    """Recusa o comando se o banco não for comprovadamente o local ou um banco de teste deste runner."""
+    connection = connections[alias]
+    config = connection.settings_dict
+    if (alias, config['NAME']) in test_runner.created_test_databases:
+        return
+    refusal = (
+        f'O comando {command} só pode ser executado no banco da máquina de desenvolvimento. Nada foi alterado. '
+    )
+    if getattr(settings, 'ENVIRONMENT', None) != LOCAL_ENVIRONMENT:
+        raise CommandError(
+            refusal + 'Esta instalação não está declarada como local. '
+            'Na máquina de desenvolvimento, defina DJANGO_ENVIRONMENT=local no arquivo .env.'
+        )
+    expected = getattr(settings, 'LOCAL_DATABASE', None)
+    if not isinstance(expected, str) or not expected or expected != database_identity(config):
+        raise CommandError(
+            refusal + 'O banco configurado não é o declarado em DJANGO_LOCAL_DATABASE, ou a variável está vazia. '
+            'Confira POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB e DJANGO_LOCAL_DATABASE no arquivo .env.'
+        )
+    name, mark = connected_database(connection)
+    if name != config['NAME'] or mark != LOCAL_ENVIRONMENT:
+        raise CommandError(
+            refusal + 'O banco conectado não está marcado como banco local. '
+            'Se for mesmo o banco de desenvolvimento, marque-o com make mark-local-db.'
+        )
+
+
+def database_identity(config):
+    """Identidade `host:porta/nome` de uma conexão, comparada com `DJANGO_LOCAL_DATABASE`."""
+    return f"{config['HOST']}:{config['PORT']}/{config['NAME']}"
+
+
+def connected_database(connection):
+    """Nome e marca de ambiente do banco a que a conexão de fato chegou, numa só leitura."""
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT current_database(), current_setting('{LOCAL_DATABASE_MARK}', true)")
+        return cursor.fetchone()

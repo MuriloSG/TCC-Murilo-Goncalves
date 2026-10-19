@@ -1,0 +1,24 @@
+{% extends "ui/layouts/auth.html" %}
+{% load ui %}
+
+{% block title %}Entrar{% endblock %}
+
+{% block content %}
+  <div class="auth-heading">
+    <h1>Entrar</h1>
+    <p>Use o e-mail institucional e a senha cadastrados no sistema.</p>
+  </div>
+  <form class="form-fields" method="post" action="{% url 'account_login' %}">
+    {% csrf_token %}
+    {% include "ui/forms/form_errors.html" %}
+    {% include "ui/forms/field.html" with field=form.login icon="mail" %}
+    {% include "ui/forms/field.html" with field=form.password icon="lock" %}
+    <div class="row-between">
+      {% include "ui/forms/field.html" with field=form.remember %}
+      <a class="link" href="{% url 'account_reset_password' %}">Esqueci minha senha</a>
+    </div>
+    {{ redirect_field }}
+    <button class="btn-primary" type="submit">{% icon "arrow-right" %}Entrar</button>
+  </form>
+  <p class="note">Para obter acesso, procure um administrador do sistema.</p>
+{% endblock %}

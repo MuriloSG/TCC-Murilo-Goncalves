@@ -1,0 +1,216 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Relatório de solicitações de agendamento{% endblock %}
+
+{% block crumbs %}
+  <li><span>Relatórios</span></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Solicitações de agendamento</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Relatório de solicitações de agendamento</h1>
+      <p class="page-description">Demanda por agendamento no período do semestre e como ela foi atendida.</p>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="panel">
+    <form class="card heatmap-filters" method="get" action="{% url 'report_requests' %}" hx-get="{% url 'report_requests' %}" hx-target="#conteudo" hx-select="#conteudo" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select">
+      {% if filters.fields.semestre.choices %}
+        <div class="field">
+          <label id="{{ filters.semestre.auto_id }}_rotulo" for="{{ filters.semestre.id_for_label }}">Semestre</label>
+          {% include "ui/components/select.html" with field=filters.semestre %}
+        </div>
+      {% endif %}
+      <div class="field">
+        <label id="{{ filters.etapa.auto_id }}_rotulo" for="{{ filters.etapa.id_for_label }}">Etapa de ensino</label>
+        {% include "ui/components/select.html" with field=filters.etapa %}
+      </div>
+      <div class="field">
+        <label id="{{ filters.curso.auto_id }}_rotulo" for="{{ filters.curso.id_for_label }}">Curso</label>
+        {% include "ui/components/select.html" with field=filters.curso %}
+      </div>
+      <div class="field">
+        <label id="{{ filters.espacos.auto_id }}_rotulo" for="{{ filters.espacos.id_for_label }}">Espaços</label>
+        {% include "ui/components/select.html" with field=filters.espacos %}
+      </div>
+      <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+    </form>
+    {% if filters.academic_filtered %}<p class="help heatmap-help">Com a etapa ou o curso escolhidos, as solicitações sem disciplina e turma ficam de fora.</p>{% endif %}
+
+    {% if semester is None %}
+      <section class="card"><div class="card-body"><p>Nenhum semestre importado.</p></div></section>
+    {% elif report is None %}
+      <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>O semestre {{ semester.code }} não tem período definido. Defina o período na importação do ensalamento.</p></div>
+    {% else %}
+      <section class="panel-kpis heatmap-kpis" aria-label="Indicadores">
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-total">
+          <span class="panel-icon">{% icon "inbox" %}</span>
+          <span class="panel-kpi-text"><span class="panel-kpi-value">{{ report.total }}</span><span class="panel-kpi-label">Solicitações</span><span class="heatmap-kpi-detail">{% if report.on_behalf %}{{ report.on_behalf }} criada{{ report.on_behalf|pluralize }} em nome de outro usuário{% else %}De {{ semester.start_date|date:"SHORT_DATE_FORMAT" }} a {{ semester.end_date|date:"SHORT_DATE_FORMAT" }}{% endif %}</span></span>{% include "ui/components/hint.html" with hint_id="dica-total" title="Solicitações no período" text="Solicitações de agendamento com data de uso dentro do período do semestre, em qualquer situação." %}
+        </div>
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-aprovacao">
+          <span class="panel-icon panel-icon-success">{% icon "circle-check" %}</span>
+          <span class="panel-kpi-text">{% if report.decided %}<span class="panel-kpi-value">{{ report.approval_percent }}%</span><span class="panel-kpi-label">Aprovação</span><span class="heatmap-kpi-detail">{{ report.approved }} de {{ report.decided }} decidida{{ report.decided|pluralize }}</span>{% else %}<span class="panel-kpi-value">Nenhuma</span><span class="panel-kpi-label">Aprovação</span><span class="heatmap-kpi-detail">Nenhuma solicitação decidida</span>{% endif %}</span>{% include "ui/components/hint.html" with hint_id="dica-aprovacao" title="Taxa de aprovação" text="Aprovadas sobre as decididas: aprovadas, canceladas, rejeitadas e de alternativa recusada. A aprovada depois de aceitar uma alternativa e a cancelada depois de aprovada contam como aprovadas." %}
+        </div>
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-tempo">
+          <span class="panel-icon panel-icon-neutral">{% icon "history" %}</span>
+          <span class="panel-kpi-text">{% if report.decision_time %}<span class="panel-kpi-value">{{ report.decision_time }}</span>{% else %}<span class="panel-kpi-value">Nenhuma</span>{% endif %}<span class="panel-kpi-label">Até a decisão</span><span class="heatmap-kpi-detail">{% if report.decision_time %}Mediana, em tempo corrido{% else %}Nenhuma solicitação decidida{% endif %}</span></span>{% include "ui/components/hint.html" with hint_id="dica-tempo" title="Tempo até a decisão" text="Mediana do tempo corrido entre a criação da solicitação e a aprovação, a rejeição ou a alternativa sugerida. Fins de semana e feriados entram na conta." %}
+        </div>
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-pendentes">
+          <span class="panel-icon panel-icon-warning">{% icon "clock" %}</span>
+          <span class="panel-kpi-text"><span class="panel-kpi-value">{{ report.pending }}</span><span class="panel-kpi-label">Pendentes</span><span class="heatmap-kpi-detail">{% if report.pending %}A mais antiga criada {{ report.oldest_pending }}{% else %}Nenhuma solicitação para decidir{% endif %}</span></span>{% include "ui/components/hint.html" with hint_id="dica-pendentes" align="end" title="Pendentes" text="Solicitações pendentes e com alternativa sugerida, que ainda esperam a decisão ou a resposta de quem solicitou." %}
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="por-semana">
+        <div class="card-head">
+          <h2 class="card-title" id="por-semana">Solicitações por semana</h2>
+          {% if report.total %}
+            <dl class="report-chart-summary">
+              <div><dt>Média por semana</dt><dd>{{ report.week_average|floatformat:1 }}</dd></div>
+              <div><dt>Semana de pico</dt><dd>{{ report.peak.label }} <span class="report-chart-summary-detail">com {{ report.peak.total }}</span></dd></div>
+            </dl>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if report.total %}
+            <div class="report-plot">
+              <ol class="report-axis" aria-hidden="true">{% for tick in report.axis %}<li>{{ tick }}</li>{% endfor %}</ol>
+              <div class="report-chart-scroll" tabindex="0" role="region" aria-label="Solicitações por semana em {{ semester.code }}">
+                <div class="report-chart-frame">
+                  <div class="report-grid" aria-hidden="true">{% for tick in report.axis %}<span></span>{% endfor %}</div>
+                  <ol class="report-chart">
+                    {% for week in report.weeks %}
+                      <li class="report-week hint-anchor{% if week.is_peak %} is-peak{% endif %}{% if week.is_current %} is-current{% endif %}" tabindex="0" aria-label="{{ week.title }}" aria-describedby="{{ week.hint_id }}">
+                        <span class="report-week-plot">{% if week.total %}<span class="report-column bar-h-{{ week.height }}"><span class="report-week-value" aria-hidden="true">{{ week.total }}</span></span>{% endif %}</span>
+                        <span class="report-week-label" aria-hidden="true">{% if week.show_label or week.is_current %}{{ week.label }}{% endif %}</span>
+                        {% include "ui/components/hint.html" with hint_id=week.hint_id align=week.hint_align title=week.title text=week.detail %}
+                      </li>
+                    {% endfor %}
+                  </ol>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <p>Nenhuma solicitação de agendamento no período.</p>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="mais-solicitados">
+        <div class="card-head">
+          <h2 class="card-title" id="mais-solicitados">Espaços mais solicitados</h2>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Espaço</th>
+                <th scope="col">Solicitações</th>
+                <th scope="col">Aprovadas</th>
+                <th scope="col">Rejeitadas</th>
+                <th scope="col">Taxa de rejeição</th>
+                <th scope="col" class="cell-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in report.spaces %}
+                <tr>
+                  <td class="cell-primary" data-label="Espaço">{{ item.space.name }}</td>
+                  <td class="cell-meta" data-label="Solicitações"><span class="report-meter"><span class="panel-track" aria-hidden="true"><span class="report-fill bar-w-{{ item.width }}"></span></span><span class="report-meter-value">{{ item.total }}</span></span></td>
+                  <td class="cell-meta" data-label="Aprovadas">{{ item.approved }}</td>
+                  <td class="cell-meta" data-label="Rejeitadas">{{ item.rejected }}</td>
+                  <td class="cell-meta" data-label="Taxa de rejeição">{{ item.rejection_percent }}%</td>
+                  <td class="cell-actions" data-label="Ações">
+                    {% action_list item.action as visible %}
+                    {% include "ui/components/row_actions.html" %}
+                  </td>
+                </tr>
+              {% empty %}
+                {% include "ui/components/empty_row.html" with colspan=6 message="Nenhuma solicitação de agendamento no período." %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="situacao">
+        <div class="card-head">
+          <h2 class="card-title" id="situacao">Situação das solicitações</h2>
+          <a class="btn-secondary btn-go" href="{% url 'agenda_review_list' %}">Analisar{% icon "arrow-right" %}</a>
+        </div>
+        <div class="card-body report-situation">
+          <ul class="report-statuses" aria-label="Solicitações por situação">
+            {% for row in report.statuses %}
+              <li class="report-status tone-{{ row.badge.0 }}{% if not row.count %} is-empty{% endif %}">
+                <span class="report-status-icon">{% icon row.badge.1 %}</span>
+                <span class="report-status-body">
+                  <span class="report-status-head">
+                    <span class="report-status-label">{{ row.badge.2 }}</span>
+                    <span class="report-status-figures"><span class="report-status-count">{{ row.count }}</span><span class="report-status-percent">{{ row.percent }}%</span></span>
+                  </span>
+                  <span class="panel-track report-status-track" aria-hidden="true">{% if row.width %}<span class="report-status-fill bar-w-{{ row.width }}"></span>{% endif %}</span>
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+          <div class="report-alternatives">
+            <h3 class="sr-only">Alternativas sugeridas</h3>
+            {% if report.suggested %}
+              <ul class="report-outcomes" aria-label="Desfecho das alternativas sugeridas">
+                {% for outcome in outcomes %}
+                  <li class="report-outcome tone-{{ outcome.tone }}{% if not outcome.count %} is-empty{% endif %}">
+                    <span class="report-outcome-head">{% icon outcome.icon %}<span class="report-outcome-count">{{ outcome.count }}</span></span>
+                    <span class="report-outcome-label">{{ outcome.label }}</span>
+                    <span class="report-outcome-percent">{{ outcome.percent }}% das sugeridas</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="panel-notice">Nenhuma alternativa sugerida no período.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="rejeicoes">
+        <div class="card-head">
+          <h2 class="card-title" id="rejeicoes">Rejeições recentes</h2>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Data e horário</th>
+                <th scope="col">Espaço</th>
+                <th scope="col">Solicitante</th>
+                <th scope="col">Motivo da rejeição</th>
+                <th scope="col" class="cell-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in report.rejections %}
+                <tr>
+                  <td class="cell-primary" data-label="Data e horário">{{ item.schedule_text }}</td>
+                  <td class="cell-meta" data-label="Espaço">{{ item.space.name }}</td>
+                  <td class="cell-meta" data-label="Solicitante">{{ item.requested_by.name }}</td>
+                  <td class="cell-meta" data-label="Motivo da rejeição">{{ item.rejection_reason }}</td>
+                  <td class="cell-actions" data-label="Ações">
+                    {% action_list item.detail_action as visible %}
+                    {% include "ui/components/row_actions.html" %}
+                  </td>
+                </tr>
+              {% empty %}
+                {% include "ui/components/empty_row.html" with colspan=5 message="Nenhuma solicitação rejeitada no período." %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

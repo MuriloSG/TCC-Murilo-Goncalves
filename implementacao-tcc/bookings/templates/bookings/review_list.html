@@ -1,0 +1,35 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Solicitações para análise{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  {% if perms.AGENDA.VISUALIZAR %}<li>{% icon "chevron-right" "size-4" %}<a href="{% url 'agenda_grid' %}">Agenda</a></li>{% endif %}
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Solicitações para análise</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Solicitações para análise</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-analise">
+    <div class="card-head">
+      <h2 class="card-title" id="lista-analise">{% if only_open %}Para decidir{% else %}Todas as solicitações{% endif %} <span class="count">{{ page.paginator.count }}</span></h2>
+      <form class="filters" method="get" action="{% url 'agenda_review_list' %}" hx-get="{% url 'agenda_review_list' %}" hx-target="#conteudo" hx-select="#conteudo" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=situacao]">
+        <div>
+          <label class="sr-only" id="{{ filters.situacao.auto_id }}_rotulo" for="{{ filters.situacao.id_for_label }}">Situação</label>
+          {% include "ui/components/select.html" with field=filters.situacao %}
+        </div>
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+      </form>
+    </div>
+    {% if only_open %}{% firstof "Nenhuma solicitação de agendamento para decidir." as empty %}{% else %}{% firstof "Nenhuma solicitação de agendamento enviada." as empty %}{% endif %}
+    {% include "bookings/partials/request_table.html" with detail_url="agenda_review_detail" show_requester=True %}
+  </section>
+{% endblock %}

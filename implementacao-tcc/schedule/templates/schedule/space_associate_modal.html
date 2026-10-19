@@ -1,0 +1,8 @@
+{% extends "ui/components/modal.html" %}
+
+{% block title %}Escolher o espaço de {{ found_name }}{% endblock %}
+
+
+{% block body %}<input type="hidden" name="nome" value="{{ found_name }}">{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">Associar</button>{% endblock %}

@@ -1,0 +1,25 @@
+{% load ui %}{% if request.htmx %}<dialog class="modal{% block modal_class %}{% endblock %}" aria-labelledby="modal-title"{% block modal_attributes %}{% endblock %}>{% else %}<section class="modal modal-page{% block page_class %}{% endblock %}" aria-labelledby="modal-title">{% endif %}
+  <form method="post" action="{{ request.get_full_path }}"{% block form_attributes %} hx-post="{{ request.get_full_path }}" hx-target="#modal"{% endblock %}>
+    {% csrf_token %}
+    <div class="modal-head">
+      <div>
+        {% block step %}{% endblock %}
+        <h1 class="modal-title" id="modal-title">{% block title %}{% endblock %}</h1>
+      </div>
+      {% if request.htmx %}
+        <button class="icon-btn" type="button" data-modal-close aria-label="Fechar">{% icon "x" %}<span class="tip" role="tooltip">Fechar</span></button>
+      {% else %}
+        <a class="icon-btn" href="{{ close_url }}" aria-label="Fechar">{% icon "x" %}<span class="tip" role="tooltip">Fechar</span></a>
+      {% endif %}
+    </div>
+    <div class="modal-body">{% block body %}{% endblock %}</div>
+    <div class="modal-foot">
+      {% if request.htmx %}
+        <button class="btn-secondary" type="button" data-modal-close>Fechar</button>
+      {% else %}
+        <a class="btn-secondary" href="{{ close_url }}">Fechar</a>
+      {% endif %}
+      {% block submit %}{% endblock %}
+    </div>
+  </form>
+{% if request.htmx %}</dialog>{% else %}</section>{% endif %}

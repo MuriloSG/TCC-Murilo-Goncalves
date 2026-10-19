@@ -1,0 +1,8 @@
+{% extends "ui/components/modal.html" %}
+
+{% block title %}Cadastrar aula no semestre {{ semester.code }}{% endblock %}
+
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{{ submit_label }}</button>{% endblock %}

@@ -1,0 +1,26 @@
+{% load ui %}
+<div class="card public-filters" id="filtros">
+  <form class="public-form" id="filtros-form" method="get" action="{{ calendar_url }}" role="search" hx-get="{{ calendar_url }}" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, change[target.tagName=='SELECT']" data-public-form>
+    {% for field in filter_form %}
+      {% if field.widget_type == "select" and field.name != "turma" %}
+        <div class="public-field{% if field.name == "sala" or field.name == "docente" or field.name == "curso" %} is-wide{% endif %}">
+          <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% include "ui/components/select.html" %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% if "inicio" in filter_form.fields %}
+      <div class="public-dates">
+        <div class="public-field">
+          <label for="{{ filter_form.inicio.id_for_label }}">{{ filter_form.inicio.label }}</label>
+          {{ filter_form.inicio }}
+        </div>
+        <div class="public-field">
+          <label for="{{ filter_form.fim.id_for_label }}">{{ filter_form.fim.label }}</label>
+          {{ filter_form.fim }}
+        </div>
+      </div>
+    {% endif %}
+    <button class="btn-primary public-submit" type="submit">{% icon "search" %}Mostrar</button>
+  </form>
+</div>

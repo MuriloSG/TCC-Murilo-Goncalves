@@ -1,0 +1,13 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'role_list' %}">Perfis</a></li>
+  {% if target %}<li>{% icon "chevron-right" "size-4" %}<a href="{% url 'role_detail' target.pk %}">{{ target.name }}</a></li>{% endif %}
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ title }}</span></li>
+{% endblock %}
+
+{% block content %}{% include "accounts/role_form_modal.html" %}{% endblock %}

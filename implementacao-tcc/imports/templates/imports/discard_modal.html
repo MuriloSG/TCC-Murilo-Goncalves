@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Descartar a importação de {{ target.file_name }}?{% endblock %}
+
+{% block consequence %}A prévia é descartada e nenhum dado é gravado. A importação continua no histórico como descartada.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "x" %}Descartar importação</button>{% endblock %}

@@ -1,0 +1,8 @@
+{% load ui %}<ol class="steps" aria-label="Etapas da publicação">
+  <li class="step{% if step == 'criar' %} is-current{% else %} is-done{% endif %}"{% if step == 'criar' %} aria-current="step"{% endif %}>
+    <span class="step-mark">{% if step == 'criar' %}1{% else %}{% icon "check" "size-4" %}{% endif %}</span>Criar
+  </li>
+  <li class="step{% if step == 'revisar' %} is-current{% endif %}"{% if step == 'revisar' %} aria-current="step"{% endif %}>
+    <span class="step-mark">2</span>Revisar
+  </li>
+</ol>

@@ -1,0 +1,9 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Sugerir alternativa{% endblock %}
+
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "arrow-left-right" %}Sugerir alternativa</button>{% endblock %}

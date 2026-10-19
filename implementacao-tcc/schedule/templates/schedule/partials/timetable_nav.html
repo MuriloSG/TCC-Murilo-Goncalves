@@ -1,0 +1,17 @@
+{% load ui %}<nav class="timetable-nav" aria-label="{% if is_month %}Meses{% else %}Semanas{% endif %}">
+  {% if previous_url %}
+    <a class="btn-secondary" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" %}{% if is_month %}Mês anterior{% else %}Semana anterior{% endif %}</a>
+  {% else %}
+    <span class="btn-secondary" aria-disabled="true">{% icon "chevron-left" %}{% if is_month %}Mês anterior{% else %}Semana anterior{% endif %}</span>
+  {% endif %}
+  {% if is_month %}
+    <a class="btn-secondary" href="{{ today_url }}">Hoje</a>
+  {% else %}
+    <a class="btn-secondary" href="{{ today_url }}" hx-get="{{ today_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">Hoje</a>
+  {% endif %}
+  {% if following_url %}
+    <a class="btn-secondary" href="{{ following_url }}" hx-get="{{ following_url }}" hx-target="#grade" hx-select="#grade" hx-swap="outerHTML" hx-push-url="true">{% if is_month %}Próximo mês{% else %}Próxima semana{% endif %}{% icon "chevron-right" %}</a>
+  {% else %}
+    <span class="btn-secondary" aria-disabled="true">{% if is_month %}Próximo mês{% else %}Próxima semana{% endif %}{% icon "chevron-right" %}</span>
+  {% endif %}
+</nav>

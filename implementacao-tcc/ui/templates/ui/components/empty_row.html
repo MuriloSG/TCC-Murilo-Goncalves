@@ -1,0 +1,8 @@
+{% load ui %}<tr class="empty-row">
+  <td colspan="{{ colspan }}">
+    <div class="empty-state">
+      <p>{{ message }}</p>
+      {% if clear_url %}<a class="btn-secondary" href="{{ clear_url }}">{% icon "x" %}{{ clear_label }}</a>{% endif %}
+    </div>
+  </td>
+</tr>

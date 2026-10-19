@@ -1,0 +1,10 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block form_attributes %}{% endblock %}
+
+{% block title %}Sair do sistema?{% endblock %}
+
+{% block consequence %}A sessão neste navegador é encerrada. Para voltar, entre de novo com o e-mail e a senha.{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "log-out" %}Sair</button>{% endblock %}

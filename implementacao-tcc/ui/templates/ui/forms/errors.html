@@ -1,0 +1,5 @@
+{% load ui %}{% if field.errors %}
+  <div class="error" id="{{ field.auto_id }}_error">
+    {% for error in field.errors %}<p>{% icon "circle-x" "size-4" %}{{ error }}</p>{% endfor %}
+  </div>
+{% endif %}

@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}{{ action|capfirst }} {{ target.name }}?{% endblock %}
+
+{% block consequence %}{% if action == 'desativar' %}O espaço {{ target.name }} continua no histórico e na Grade dos semestres em que tem aulas. Uma aula da planilha num espaço inativo vai precisar de decisão na importação.{% elif action == 'reativar' %}O espaço {{ target.name }} volta a ser reconhecido pela importação do ensalamento.{% else %}O espaço {{ target.name }} e os outros nomes dele deixam de existir. A exclusão não pode ser desfeita.{% endif %}{% endblock %}
+
+{% block submit %}{% if action == 'desativar' %}<button class="btn-danger" type="submit">{% icon "circle-minus" %}Desativar espaço</button>{% elif action == 'reativar' %}<button class="btn-primary" type="submit">{% icon "circle-check" %}Reativar espaço</button>{% else %}<button class="btn-danger" type="submit">{% icon "trash-2" %}Excluir espaço</button>{% endif %}{% endblock %}

@@ -1,0 +1,38 @@
+{% load ui %}<table class="data-table compact-rows">
+  <thead>
+    <tr>
+      <th scope="col">Turma</th>
+      <th scope="col">Curso</th>
+      <th scope="col">Etapa de ensino</th>
+      <th scope="col">Ofertas</th>
+      <th scope="col">Aulas</th>
+      <th scope="col" class="cell-actions">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in class_groups %}
+      <tr>
+        <td class="cell-primary" data-label="Turma"><a class="link person-name" href="{% url 'class_groups_detail' item.pk %}">{{ item.label }}</a></td>
+        <td class="cell-meta" data-label="Curso">{{ item.course.name }}</td>
+        <td class="cell-meta" data-label="Etapa de ensino">{{ item.course.get_stage_display }}</td>
+        <td class="cell-meta" data-label="Ofertas">{{ item.offering_count }}</td>
+        <td class="cell-meta" data-label="Aulas">{{ item.lesson_count }}</td>
+        <td class="cell-actions" data-label="Ações">
+          {% row_action "class_groups_update" item.pk "Editar" "pencil" when=perms.TURMA.EDITAR as edit %}
+          {% row_action "class_groups_delete" item.pk "Excluir turma" "trash-2" when=item.deletable danger=True as delete %}
+          {% action_list edit as visible %}
+          {% action_list delete item.history_action as more %}
+          {% action_list edit delete item.history_action as compact %}
+          {% include "ui/components/row_actions.html" %}
+        </td>
+      </tr>
+    {% empty %}
+      {% if filtered %}{% url 'class_groups_list' as clear_url %}
+        {% include "ui/components/empty_row.html" with colspan=6 message="Nenhuma turma encontrada." clear_url=clear_url clear_label="Limpar busca" %}
+      {% else %}
+        {% include "ui/components/empty_row.html" with colspan=6 message="Nenhuma turma cadastrada." %}
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+{% include "ui/components/pagination.html" with noun="turma" noun_plural="turmas" hx_target=table_target %}

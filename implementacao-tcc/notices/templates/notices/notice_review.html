@@ -1,0 +1,70 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Revisar notificação{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'notice_list' %}">Notificações</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Revisar notificação</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Revisar notificação</h1>
+    </div>
+    {% include "notices/partials/steps.html" %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="page-columns">
+    <section class="card" aria-labelledby="previa-da-notificacao">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title" id="previa-da-notificacao">Prévia</h2>
+          <p class="card-description">Assim a notificação aparece no sino de cada destinatário.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="notice-preview">
+          <span class="notification-icon tone-{{ preview.tone }}">{% icon preview.icon %}</span>
+          <div class="notification-body">
+            <p class="notification-title">{{ preview.title }}</p>
+            <p class="notification-text">{{ preview.message }}</p>
+            <p class="notification-time">Agora</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="resumo-da-publicacao">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title" id="resumo-da-publicacao">Resumo</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        {% include "ui/forms/form_errors.html" %}
+        <dl class="summary-list">
+          <div><dt>Tipo</dt><dd>{{ preview.label }}</dd></div>
+          <div><dt>Destinatários</dt><dd>{{ destination_label }}</dd></div>
+          <div><dt>Total estimado</dt><dd>{{ reached }} usuário{{ reached|pluralize }} ativo{{ reached|pluralize }}</dd></div>
+        </dl>
+      </div>
+      <div class="card-foot card-actions">
+        <form method="post" action="{{ back_url }}">
+          {% csrf_token %}
+          {% for name, value in values %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+          <button class="btn-secondary" type="submit" name="voltar" value="1">{% icon "arrow-left" %}Voltar</button>
+        </form>
+        <form method="post" action="{{ publish_url }}">
+          {% csrf_token %}
+          {% for name, value in values %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+          <button class="btn-primary" type="submit">{% icon "check" %}Publicar notificação</button>
+        </form>
+      </div>
+    </section>
+  </div>
+{% endblock %}

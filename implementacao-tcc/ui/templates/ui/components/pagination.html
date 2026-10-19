@@ -1,0 +1,10 @@
+{% load ui %}{% if page.paginator.count %}<nav class="card-foot pagination" aria-label="Paginação">
+  <p>Exibindo <strong>{{ page.start_index }}</strong> a <strong>{{ page.end_index }}</strong> de <strong>{{ page.paginator.count }}</strong> {% if page.paginator.count == 1 %}{{ noun }}{% else %}{{ noun_plural }}{% endif %}</p>
+  {% if page.paginator.num_pages > 1 %}
+    <div class="pagination-controls">
+      {% if page.has_previous %}{% page_url page.previous_page_number as previous_url %}<a class="btn-secondary" href="{{ previous_url }}" rel="prev"{% if hx_target %} hx-get="{{ previous_url }}" hx-target="#{{ hx_target }}" hx-swap="innerHTML show:top" hx-push-url="true"{% endif %}>Anterior</a>{% else %}<span class="btn-secondary" aria-disabled="true">Anterior</span>{% endif %}
+      <span aria-current="page">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}{% page_url page.next_page_number as next_url %}<a class="btn-secondary" href="{{ next_url }}" rel="next"{% if hx_target %} hx-get="{{ next_url }}" hx-target="#{{ hx_target }}" hx-swap="innerHTML show:top" hx-push-url="true"{% endif %}>Próxima</a>{% else %}<span class="btn-secondary" aria-disabled="true">Próxima</span>{% endif %}
+    </div>
+  {% endif %}
+</nav>{% endif %}

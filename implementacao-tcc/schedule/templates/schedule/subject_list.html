@@ -1,0 +1,42 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Disciplinas{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Disciplinas</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Disciplinas</h1>
+    </div>
+    {% if perms.DISCIPLINA.CRIAR %}
+      <div class="page-actions">
+        <a class="btn-primary" href="{% url 'subjects_create' %}" hx-get="{% url 'subjects_create' %}" hx-target="#modal">{% icon "graduation-cap" %}Cadastrar disciplina</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-disciplinas">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-disciplinas">Disciplinas <span class="count">{{ total }}</span></h2>
+      </div>
+      <form class="filters" method="get" action="{% url 'subjects_list' %}" role="search" hx-get="{% url 'subjects_list' %}" hx-target="#{{ table_target }}" hx-push-url="true" hx-history="false" hx-trigger="submit, input changed delay:300ms from:input[name=busca], search from:input[name=busca]">
+        <div class="control">
+          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar pelo nome</label>
+          {% icon "search" %}{{ filters.busca }}
+        </div>
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Buscar</button></noscript>
+      </form>
+    </div>
+    <div id="{{ table_target }}">
+      {% include "schedule/partials/subject_table.html" %}
+    </div>
+  </section>
+{% endblock %}

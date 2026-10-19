@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Mapa de calor dos espaços{% endblock %}
+
+{% block crumbs %}
+  <li><span>Relatórios</span></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ close_url }}">Mapa de calor dos espaços</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ cell.weekday.label }}, {{ cell.slot_obj.label }}</span></li>
+{% endblock %}
+
+{% block content %}{% include "reports/cell_modal.html" %}{% endblock %}

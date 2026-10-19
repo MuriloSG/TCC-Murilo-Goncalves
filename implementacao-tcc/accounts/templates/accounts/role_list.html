@@ -1,0 +1,63 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Perfis{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Perfis</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Perfis</h1>
+    </div>
+    {% if perms.PERFIL.CRIAR %}
+      <a class="btn-primary" href="{% url 'role_create' %}" hx-get="{% url 'role_create' %}" hx-target="#modal">{% icon "shield-plus" %}Criar perfil</a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-perfis">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-perfis">Todos os perfis <span class="count">{{ page.paginator.count }}</span></h2>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Perfil</th>
+          <th scope="col">Usuários vinculados</th>
+          <th scope="col">Código</th>
+          <th scope="col" class="cell-actions">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for role in roles %}
+          <tr>
+            <td class="cell-primary" data-label="Perfil">
+              <span class="person-detail">{{ role.name }}</span>
+            </td>
+            <td data-label="Usuários vinculados">{{ role.user_count }}</td>
+            <td data-label="Código">
+              <a class="person-name link" href="{% url 'role_detail' role.pk %}">{{ role.code }}</a>
+            </td>
+            <td class="cell-actions" data-label="Ações">
+              {% row_action "role_update" role.pk "Editar" "pencil" when=perms.PERFIL.EDITAR as edit %}
+              {% row_action "role_permissions" role.pk "Alterar permissões" "list-checks" when=perms.PERFIL.ALTERAR_PERMISSOES as change_permissions %}
+              {% row_action "role_delete" role.pk "Excluir perfil" "trash-2" when=perms.PERFIL.EXCLUIR danger=True as delete %}
+              {% action_list edit change_permissions delete as visible %}
+              {% include "ui/components/row_actions.html" with more=None %}
+            </td>
+          </tr>
+        {% empty %}
+          {% include "ui/components/empty_row.html" with colspan=4 message="Nenhum perfil cadastrado." %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "ui/components/pagination.html" with noun="perfil" noun_plural="perfis" %}
+  </section>
+{% endblock %}

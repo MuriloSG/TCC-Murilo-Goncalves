@@ -1,0 +1,46 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Turmas{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Turmas</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Turmas</h1>
+    </div>
+    {% if perms.TURMA.CRIAR %}
+      <div class="page-actions">
+        <a class="btn-primary" href="{% url 'class_groups_create' %}" hx-get="{% url 'class_groups_create' %}" hx-target="#modal">{% icon "school" %}Cadastrar turma</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-turmas">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-turmas">Turmas <span class="count">{{ total }}</span></h2>
+      </div>
+      <form class="filters" method="get" action="{% url 'class_groups_list' %}" role="search" hx-get="{% url 'class_groups_list' %}" hx-target="#{{ table_target }}" hx-push-url="true" hx-history="false" hx-trigger="submit, input changed delay:300ms from:input[name=busca], search from:input[name=busca], change from:select[name=curso]">
+        <div class="control">
+          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar pelo rótulo ou pelo curso</label>
+          {% icon "search" %}{{ filters.busca }}
+        </div>
+        <div>
+          <label class="sr-only" id="{{ filters.curso.auto_id }}_rotulo" for="{{ filters.curso.id_for_label }}">Curso</label>
+          {% include "ui/components/select.html" with field=filters.curso %}
+        </div>
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Buscar</button></noscript>
+      </form>
+    </div>
+    <div id="{{ table_target }}">
+      {% include "schedule/partials/class_group_table.html" %}
+    </div>
+  </section>
+{% endblock %}

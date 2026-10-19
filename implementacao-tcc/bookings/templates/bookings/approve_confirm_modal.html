@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Aprovar a solicitação de {{ target.space.name }}?{% endblock %}
+
+{% block consequence %}O agendamento de {{ target.space.name }} em {{ target.schedule_text }} é criado para {{ target.requested_by.name }}, se o horário continuar disponível.{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "check" %}Aprovar solicitação</button>{% endblock %}

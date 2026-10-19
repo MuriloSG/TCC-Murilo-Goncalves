@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Registro de auditoria{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'audit_log_list' %}">Auditoria</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Registro {{ entry.pk }}</span></li>
+{% endblock %}
+
+{% block content %}{% include "audit/log_detail_modal.html" %}{% endblock %}

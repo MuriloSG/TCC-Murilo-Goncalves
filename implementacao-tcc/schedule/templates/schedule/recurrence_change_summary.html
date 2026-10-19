@@ -1,0 +1,18 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Alterar a recorrência de {{ lesson.subject.name }}?{% endblock %}
+
+
+{% block body %}
+  {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <input type="hidden" name="confirmar" value="1">
+  <dl class="record-pairs">
+    <div><dt>Antes</dt><dd>{{ plan.before.text }}{% if plan.before.teachers %}<span class="request-detail">{{ plan.before.teachers|join:", " }}</span>{% endif %}</dd></div>
+    <div><dt>A partir de</dt><dd>{{ plan.cut|date:"SHORT_DATE_FORMAT" }}</dd></div>
+    <div><dt>Depois</dt><dd>{{ plan.after.text }}{% if plan.after.teachers %}<span class="request-detail">{{ plan.after.teachers|join:", " }}</span>{% endif %}</dd></div>
+    {% if plan.moved_dates %}<div><dt>Canceladas</dt><dd>{% for day in plan.moved_dates %}{{ day|date:"SHORT_DATE_FORMAT" }}{% if not forloop.last %}, {% endif %}{% endfor %} continuam canceladas na nova recorrência.</dd></div>{% endif %}
+  </dl>
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "pencil" %}Alterar recorrência</button>{% endblock %}

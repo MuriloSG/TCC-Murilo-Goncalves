@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Excluir a importação de {{ target.file_name }}?{% endblock %}
+
+{% block consequence %}A importação e todas as linhas dela saem do histórico. Nenhum outro dado do sistema é alterado. Esta ação não pode ser desfeita.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "trash-2" %}Excluir importação</button>{% endblock %}

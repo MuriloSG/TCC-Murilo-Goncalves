@@ -1,0 +1,28 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Enviar a solicitação de {{ prepared.space.name }}?{% endblock %}
+
+
+{% block body %}
+  {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <input type="hidden" name="confirmar" value="1">
+  <dl class="record-pairs">
+    {% if prepared.created_by %}
+      <div><dt>Solicitante</dt><dd>{{ prepared.requested_by.name }}</dd></div>
+      <div><dt>Criada por</dt><dd>{{ prepared.created_by.name }}</dd></div>
+    {% endif %}
+    {% with link=prepared.teaching_assignment %}{% if link %}
+      <div><dt>Semestre</dt><dd>{{ link.offering.semester.code }}</dd></div>
+      <div><dt>Docente</dt><dd>{{ link.teacher.name }}</dd></div>
+      <div><dt>Turma</dt><dd>{{ link.offering.class_group }}</dd></div>
+      <div><dt>Disciplina</dt><dd>{{ link.offering.subject.name }}</dd></div>
+    {% endif %}{% endwith %}
+    <div><dt>Espaço</dt><dd>{{ prepared.space.name }}</dd></div>
+    <div><dt>Data e horário</dt><dd>{{ prepared.schedule_text }}</dd></div>
+    <div><dt>Descrição</dt><dd>{{ prepared.description }}</dd></div>
+    <div><dt>Quantidade de alunos</dt><dd>{{ prepared.student_count }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "calendar-plus" %}Enviar solicitação</button>{% endblock %}

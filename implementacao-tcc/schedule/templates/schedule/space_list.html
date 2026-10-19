@@ -1,0 +1,50 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Espaços{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Espaços</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Espaços</h1>
+    </div>
+    {% if perms.ESPACO.CRIAR %}
+      <div class="page-actions">
+        <a class="btn-primary" href="{% url 'spaces_create' %}" hx-get="{% url 'spaces_create' %}" hx-target="#modal">{% icon "door-open" %}Cadastrar espaço</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="lista-espacos">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="lista-espacos">Todos os espaços <span class="count">{{ total }}</span></h2>
+      </div>
+      <form class="filters" method="get" action="{% url 'spaces_list' %}" role="search" hx-get="{% url 'spaces_list' %}" hx-target="#{{ table_target }}" hx-push-url="true" hx-history="false" hx-trigger="submit, input changed delay:300ms from:input[name=busca], search from:input[name=busca], change from:select[name=situacao], change from:select[name=origem]">
+        <div class="control">
+          <label class="sr-only" for="{{ filters.busca.id_for_label }}">Buscar pelo nome ou por outro nome</label>
+          {% icon "search" %}{{ filters.busca }}
+        </div>
+        <div>
+          <label class="sr-only" id="{{ filters.situacao.auto_id }}_rotulo" for="{{ filters.situacao.id_for_label }}">Situação</label>
+          {% include "ui/components/select.html" with field=filters.situacao %}
+        </div>
+        <div>
+          <label class="sr-only" id="{{ filters.origem.auto_id }}_rotulo" for="{{ filters.origem.id_for_label }}">Origem</label>
+          {% include "ui/components/select.html" with field=filters.origem %}
+        </div>
+        <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Buscar</button></noscript>
+      </form>
+    </div>
+    <div id="{{ table_target }}">
+      {% include "schedule/partials/space_table.html" %}
+    </div>
+  </section>
+{% endblock %}

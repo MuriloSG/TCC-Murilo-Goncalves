@@ -1,0 +1,47 @@
+{% load ui %}<table class="data-table compact-rows">
+  <thead>
+    <tr>
+      <th scope="col">Espaço</th>
+      <th scope="col">Outros nomes</th>
+      <th scope="col">Origem</th>
+      <th scope="col">Situação</th>
+      <th scope="col" class="cell-actions">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in spaces %}
+      <tr>
+        <td class="cell-primary" data-label="Espaço"><span class="person-name">{{ item.name }}</span></td>
+        <td class="cell-meta" data-label="Outros nomes">{{ item.other_names|join:", "|default:"Sem outros nomes" }}</td>
+        <td class="cell-meta" data-label="Origem">{{ item.get_origin_display }}{% if item.source_import %}<span class="person-detail">{{ item.source_import.file_name }}, {{ item.source_import.created_at|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</td>
+        <td class="cell-meta" data-label="Situação">
+          {% if item.is_active %}
+            {% include "ui/components/badge.html" with tone="success" icon="check" label="Ativo" %}
+          {% else %}
+            {% include "ui/components/badge.html" with tone="info" icon="circle-minus" label="Inativo" %}
+          {% endif %}
+        </td>
+        <td class="cell-actions" data-label="Ações">
+          {% row_action "spaces_update" item.pk "Editar" "pencil" when=perms.ESPACO.EDITAR as edit %}
+          {% if item.is_active %}
+            {% row_action "spaces_deactivate" item.pk "Desativar espaço" "circle-minus" when=perms.ESPACO.ALTERAR_SITUACAO danger=True as change_status %}
+          {% else %}
+            {% row_action "spaces_reactivate" item.pk "Reativar espaço" "circle-check" when=perms.ESPACO.ALTERAR_SITUACAO as change_status %}
+          {% endif %}
+          {% row_action "spaces_delete" item.pk "Excluir espaço" "trash-2" when=item.deletable danger=True as delete %}
+          {% action_list edit as visible %}
+          {% action_list change_status delete item.history_action as more %}
+          {% action_list edit change_status delete item.history_action as compact %}
+          {% include "ui/components/row_actions.html" %}
+        </td>
+      </tr>
+    {% empty %}
+      {% if filtered %}{% url 'spaces_list' as clear_url %}
+        {% include "ui/components/empty_row.html" with colspan=5 message="Nenhum espaço encontrado para a busca." clear_url=clear_url clear_label="Limpar busca" %}
+      {% else %}
+        {% include "ui/components/empty_row.html" with colspan=5 message="Nenhum espaço cadastrado." %}
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+{% include "ui/components/pagination.html" with noun="espaço" noun_plural="espaços" hx_target=table_target %}

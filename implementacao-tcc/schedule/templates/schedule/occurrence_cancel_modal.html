@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}Cancelar a ocorrência de {{ day|date:"SHORT_DATE_FORMAT" }}?{% endblock %}
+
+{% block consequence %}A aula de {{ lesson.subject.name }} da turma {{ lesson.class_group }}, das {{ start|time:"H:i" }} às {{ end|time:"H:i" }}{% if lesson.space %} em {{ lesson.space.name }}{% endif %}, não acontece nesta data e o espaço fica disponível. A recorrência continua normalmente nas próximas datas.{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "calendar-x" %}Cancelar ocorrência</button>{% endblock %}

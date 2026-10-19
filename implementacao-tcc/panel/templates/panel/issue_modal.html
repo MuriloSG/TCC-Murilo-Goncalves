@@ -1,0 +1,40 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+{% block title %}{{ group.label }}{% endblock %}
+{% block form_attributes %}{% endblock %}
+{% block body %}
+  <div id="painel-itens">
+    {% if page.object_list %}
+      <div class="panel-table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">{% if group.key == 'sem-ocupacao' %}Espaço{% elif group.key == 'choque' %}Agendamento{% else %}Aula{% endif %}</th>
+            <th scope="col" class="cell-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in page.object_list %}
+            <tr>
+              <td class="cell-primary" data-label="{% if group.key == 'sem-ocupacao' %}Espaço{% elif group.key == 'choque' %}Agendamento{% else %}Aula{% endif %}">{{ item.text }}</td>
+              <td class="cell-actions" data-label="Ações">{% if item.action %}{% include "ui/components/icon_action.html" with action=item.action %}{% else %}Sem espaço{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <p>{% if group.key == 'sem-ocupacao' %}Todos os espaços ativos têm ocupação no período.{% else %}Nenhuma pendência de {{ semester.code }}.{% endif %}</p>
+    {% endif %}
+    {% if page.paginator.num_pages > 1 %}
+      <nav class="pagination panel-modal-pages" aria-label="Paginação">
+        <p>Exibindo <strong>{{ page.start_index }}</strong> a <strong>{{ page.end_index }}</strong> de <strong>{{ page.paginator.count }}</strong></p>
+        <div class="pagination-controls">
+          {% if page.has_previous %}<a class="btn-secondary" href="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.previous_page_number }}" hx-get="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.previous_page_number }}" hx-target="#painel-itens" hx-select="#painel-itens" hx-swap="outerHTML" rel="prev">Anterior</a>{% else %}<span class="btn-secondary" aria-disabled="true">Anterior</span>{% endif %}
+          <span aria-current="page">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+          {% if page.has_next %}<a class="btn-secondary" href="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.next_page_number }}" hx-get="{{ request.path }}?{% if query %}{{ query }}&amp;{% endif %}pagina={{ page.next_page_number }}" hx-target="#painel-itens" hx-select="#painel-itens" hx-swap="outerHTML" rel="next">Próxima</a>{% else %}<span class="btn-secondary" aria-disabled="true">Próxima</span>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  </div>
+{% endblock %}

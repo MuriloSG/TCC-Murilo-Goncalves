@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ action|capfirst }} {{ target.name }}?{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'spaces_list' %}">Espaços</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ action|capfirst }} espaço</span></li>
+{% endblock %}
+
+{% block content %}{% include "schedule/space_confirm_modal.html" %}{% endblock %}

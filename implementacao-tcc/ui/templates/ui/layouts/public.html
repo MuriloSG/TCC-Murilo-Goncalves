@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static ui %}
+
+{% block head %}<script src="{% static 'ui/js/theme.js' %}"></script>{{ block.super }}{% endblock %}
+
+{% block body %}
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+  <div class="public-shell" id="publico">
+    <header class="public-header">
+      <div class="public-bar">
+        <a class="brand" href="{% url 'public_calendar' %}">
+          <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+          <span class="brand-name">IFAgenda</span>
+        </a>
+        <div class="public-actions">
+          {% block header_actions %}{% endblock %}
+          <button class="icon-btn public-theme" type="button" data-theme-toggle aria-label="Trocar o modo de exibição" hidden>{% icon "sun" "theme-sun" %}{% icon "moon" "theme-moon" %}<span class="tip is-below" role="tooltip">Trocar o modo de exibição</span></button>
+        </div>
+      </div>
+    </header>
+    <main class="public-main" id="conteudo" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script src="{% static 'ui/js/calendar.js' %}" defer></script>
+{% endblock %}

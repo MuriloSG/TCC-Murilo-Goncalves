@@ -1,0 +1,109 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Mapa de calor dos espaços{% endblock %}
+
+{% block crumbs %}
+  <li><span>Relatórios</span></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Mapa de calor dos espaços</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Mapa de calor dos espaços</h1>
+      <p class="page-description">Ocupação dos espaços por dia e faixa de horário na semana típica do semestre.</p>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="panel">
+    <form class="card heatmap-filters" method="get" action="{% url 'report_heatmap' %}" hx-get="{% url 'report_heatmap' %}" hx-target="#conteudo" hx-select="#conteudo" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select">
+      {% if filters.fields.semestre.choices %}
+        <div class="field">
+          <label id="{{ filters.semestre.auto_id }}_rotulo" for="{{ filters.semestre.id_for_label }}">Semestre</label>
+          {% include "ui/components/select.html" with field=filters.semestre %}
+        </div>
+      {% endif %}
+      <div class="field">
+        <label id="{{ filters.origem.auto_id }}_rotulo" for="{{ filters.origem.id_for_label }}">Origem</label>
+        {% include "ui/components/select.html" with field=filters.origem %}
+      </div>
+      {% if filters.lessons_filtered %}
+        <div class="field">
+          <label id="{{ filters.etapa.auto_id }}_rotulo" for="{{ filters.etapa.id_for_label }}">Etapa de ensino</label>
+          {% include "ui/components/select.html" with field=filters.etapa %}
+        </div>
+        <div class="field">
+          <label id="{{ filters.curso.auto_id }}_rotulo" for="{{ filters.curso.id_for_label }}">Curso</label>
+          {% include "ui/components/select.html" with field=filters.curso %}
+        </div>
+      {% endif %}
+      <div class="field">
+        <label id="{{ filters.espacos.auto_id }}_rotulo" for="{{ filters.espacos.id_for_label }}">Espaços</label>
+        {% include "ui/components/select.html" with field=filters.espacos %}
+      </div>
+      <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Mostrar</button></noscript>
+    </form>
+      {% if filters.lessons_filtered and filters.data.origem == "todos" %}
+        {% if filters.data.etapa or filters.data.curso %}<p class="help heatmap-help">A etapa e o curso filtram só as aulas. Os agendamentos entram todos.</p>{% endif %}
+      {% endif %}
+
+    {% if semester is None %}
+      <section class="card"><div class="card-body"><p>Nenhum semestre importado.</p></div></section>
+    {% elif heatmap is None %}
+      <div class="alert tone-warning" role="status">{% icon "triangle-alert" %}<p>O semestre {{ semester.code }} não tem período definido. Defina o período na importação do ensalamento.</p></div>
+    {% elif not heatmap.slots or not heatmap.space_count %}
+      <section class="card"><div class="card-body"><p>{% if not heatmap.slots %}O semestre {{ semester.code }} não tem faixas de horário.{% else %}Nenhum espaço ativo.{% endif %}</p></div></section>
+    {% else %}
+      <section class="panel-kpis heatmap-kpis" aria-label="Indicadores">
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-taxa">
+          <span class="panel-icon">{% icon "chart-column" %}</span>
+          <span class="panel-kpi-text"><span class="panel-kpi-value">{{ heatmap.rate }}%</span><span class="panel-kpi-label">Ocupação média</span><span class="heatmap-kpi-detail">{{ heatmap.occupied_hours }} de {{ heatmap.available_hours }} horas</span></span>{% include "ui/components/hint.html" with hint_id="dica-taxa" title="Taxa média de ocupação" text="Horas ocupadas nas faixas do semestre sobre as horas disponíveis de todos os espaços filtrados, de segunda a sexta." %}
+        </div>
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-pico">
+          <span class="panel-icon panel-icon-warning">{% icon "triangle-alert" %}</span>
+          <span class="panel-kpi-text">{% if heatmap.peak %}{% with cell=heatmap.peak %}<span class="panel-kpi-value">{{ cell.day_short }} {{ cell.slot_obj.start|time:"H:i" }}</span><span class="panel-kpi-label">Horário de pico</span><span class="heatmap-kpi-detail">{{ cell.average }} de {{ heatmap.space_count }} espaços ({{ cell.percent }}%)</span>{% endwith %}{% else %}<span class="panel-kpi-value">Nenhum</span><span class="panel-kpi-label">Horário de pico</span>{% endif %}</span>{% include "ui/components/hint.html" with hint_id="dica-pico" title="Horário de pico" text="A faixa com a maior média de espaços ocupados nas semanas do semestre." %}
+        </div>
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-menor">
+          <span class="panel-icon panel-icon-neutral">{% icon "clock" %}</span>
+          <span class="panel-kpi-text">{% if heatmap.quietest %}{% with cell=heatmap.quietest %}<span class="panel-kpi-value">{{ cell.day_short }} {{ cell.slot_obj.start|time:"H:i" }}</span><span class="panel-kpi-label">Menor ocupação</span><span class="heatmap-kpi-detail">{{ cell.average }} de {{ heatmap.space_count }} espaços ({{ cell.percent }}%)</span>{% endwith %}{% else %}<span class="panel-kpi-value">Nenhum</span><span class="panel-kpi-label">Menor ocupação</span>{% endif %}</span>{% include "ui/components/hint.html" with hint_id="dica-menor" title="Horário de menor ocupação" text="A faixa com a menor média de espaços ocupados, entre os dias que têm alguma ocupação." %}
+        </div>
+        <div class="panel-kpi hint-anchor" tabindex="0" aria-describedby="dica-origem">
+          <span class="panel-icon panel-icon-booking">{% icon "arrow-left-right" %}</span>
+          <span class="panel-kpi-text"><span class="panel-kpi-value">{{ heatmap.lesson_percent }}% · {{ heatmap.booking_percent }}%</span><span class="panel-kpi-label">Aulas · agendamentos</span></span>{% include "ui/components/hint.html" with hint_id="dica-origem" align="end" title="Aulas e agendamentos" text="Parte das horas ocupadas que vem das aulas e parte que vem dos agendamentos. O agendamento sobre uma aula conta como aula." %}
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="mapa">
+        <div class="card-head">
+          <h2 class="card-title" id="mapa">Espaços ocupados por faixa</h2>
+          <p class="panel-notice">Selecione uma célula para ver os espaços.</p>
+        </div>
+        <div class="card-body">
+          <div class="heatmap-scroll">
+            <table class="heatmap">
+              <caption class="sr-only">Percentual médio de espaços ocupados por dia da semana e faixa de horário em {{ semester.code }}</caption>
+              <thead>
+                <tr><td></td>{% for day in heatmap.days %}<th scope="col">{{ day }}</th>{% endfor %}</tr>
+              </thead>
+              <tbody>
+                {% for row in heatmap.rows %}
+                  <tr>
+                    <th scope="row">{{ row.0.slot_obj.label }}</th>
+                    {% for cell in row %}
+                      {% url 'report_heatmap_cell' cell.slug cell.slot as cell_url %}
+                      <td><a class="heatmap-cell heat-{{ cell.level }}" href="{{ cell_url }}{% if query %}?{{ query }}{% endif %}" hx-get="{{ cell_url }}{% if query %}?{{ query }}{% endif %}" hx-target="#modal" aria-label="{{ cell.weekday.label }}, {{ cell.slot_obj.label }}: {{ cell.average }} de {{ heatmap.space_count }} espaços ocupados em média, {{ cell.percent }}%">{{ cell.percent }}%</a></td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="heatmap-legend" aria-hidden="true">Menos<span class="heat-0"></span><span class="heat-1"></span><span class="heat-2"></span><span class="heat-3"></span><span class="heat-4"></span><span class="heat-5"></span>Mais</div>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "ui/components/modal.html" %}
+
+{% block modal_class %}{% if user_count is not None %} modal-wide{% endif %}{% endblock %}
+
+{% block modal_attributes %}{% if step == 2 %} data-reload-on-close{% endif %}{% endblock %}
+
+{% block step %}{% if step %}<p class="modal-step">Etapa {{ step }} de 2</p>{% endif %}{% endblock %}
+
+{% block title %}{% if step == 2 %}Permissões do perfil {{ target.name }}{% else %}{{ title }}{% endif %}{% endblock %}
+
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{{ submit_label }}</button>{% endblock %}

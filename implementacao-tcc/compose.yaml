@@ -1,0 +1,103 @@
+x-postgres-env: &postgres-env
+  POSTGRES_DB: ${POSTGRES_DB:-agendamento}
+  POSTGRES_USER: ${POSTGRES_USER:-agendamento}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agendamento}
+
+x-app-env: &app-env
+  <<: *postgres-env
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-somente-para-desenvolvimento-local}
+  DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+  DJANGO_ENVIRONMENT: ${DJANGO_ENVIRONMENT:-}
+  DJANGO_LOCAL_DATABASE: ${DJANGO_LOCAL_DATABASE:-}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-}
+  DJANGO_SITE_URL: ${DJANGO_SITE_URL:-http://localhost:8000}
+  DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+  DJANGO_CREDENTIALS_KEY: ${DJANGO_CREDENTIALS_KEY:-chave-de-credenciais-somente-para-desenvolvimento-local}
+  DJANGO_REDIS_URL: ${DJANGO_REDIS_URL-redis://:${REDIS_PASSWORD:-redis-somente-para-desenvolvimento-local}@redis:6379/0}
+  DJANGO_REDIS_TIMEOUT: ${DJANGO_REDIS_TIMEOUT:-0.1}
+  DJANGO_CACHE_KEY_PREFIX: ${DJANGO_CACHE_KEY_PREFIX:-ifagenda}
+
+services:
+  db:
+    image: postgres:17
+    environment: *postgres-env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build: .
+    command: python manage.py process_outbox
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  import_worker:
+    build: .
+    command: python manage.py process_imports
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  redis:
+    image: redis:8-alpine
+    command: ["sh", "-c", "exec redis-server --save '' --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis-somente-para-desenvolvimento-local}
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  diagrams:
+    build:
+      context: .
+      target: diagrams
+    profiles: [tools]
+    volumes:
+      - .:/app
+
+  tailwind:
+    build:
+      context: .
+      target: tailwind
+    command: npx @tailwindcss/cli -i ui/styles/app.css -o ui/static/ui/css/app.css --watch=always
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:

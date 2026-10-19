@@ -1,0 +1,9 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Rejeitar a solicitação de {{ target.space.name }}?{% endblock %}
+
+
+{% block body %}{{ form }}{% endblock %}
+
+{% block submit %}<button class="btn-danger" type="submit">{% icon "x" %}Rejeitar solicitação</button>{% endblock %}

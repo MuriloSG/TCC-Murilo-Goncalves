@@ -1,0 +1,7 @@
+{% load ui %}<div class="timetable-card is-booking">
+  <p class="timetable-kind">{% icon "calendar-clock" "size-4" %}Agendamento</p>
+  {% if entry.subject %}<p class="timetable-subject">{{ entry.subject }}</p>{% endif %}
+  {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
+  {% if entry.group %}{% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group %}{% endif %}
+  {% if entry.teacher %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=entry.teacher %}{% endif %}
+</div>

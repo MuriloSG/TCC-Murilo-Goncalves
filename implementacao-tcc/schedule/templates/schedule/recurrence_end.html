@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Encerrar recorrência{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{{ section_url }}">{{ section_title }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Encerrar recorrência</span></li>
+{% endblock %}
+
+{% block content %}{% include "schedule/recurrence_end_modal.html" %}{% endblock %}

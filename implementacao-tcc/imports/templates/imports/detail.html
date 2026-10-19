@@ -1,0 +1,63 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Importação de {{ importation.file_name }}{% endblock %}
+
+{% block crumbs %}
+{% include "imports/partials/detail_crumbs.html" %}{% endblock %}
+
+{% block page_head %}
+{% include "imports/partials/detail_title.html" %}{% endblock %}
+
+{% block content %}
+{% include "imports/partials/detail_summary.html" %}
+{% if screens.panel_template %}{% include screens.panel_template %}{% endif %}
+{% if importation.status != "RECEBIDA" and importation.status != "FALHOU" %}
+  <section class="card" id="linhas-secao" aria-labelledby="linhas-importacao">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="linhas-importacao">{{ rows_title }} <span class="count">{{ page.paginator.count }}</span></h2>
+        {% if numbers %}<a class="link" href="{{ detail_url }}">Mostrar todas as linhas</a>{% endif %}
+      </div>
+      {% if row_filter.fields.linhas.choices|length > 1 %}
+        <form class="filters row-filter" method="get" action="{{ detail_url }}" role="search" hx-get="{{ detail_url }}" hx-target="#linhas-secao" hx-select="#linhas-secao" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change from:select[name=linhas]">
+          <div>
+            <label class="sr-only" id="{{ row_filter.linhas.auto_id }}_rotulo" for="{{ row_filter.linhas.id_for_label }}">Mostrar</label>
+            {% include "ui/components/select.html" with field=row_filter.linhas %}
+          </div>
+          <noscript><button class="btn-secondary" type="submit">{% icon "search" %}Filtrar</button></noscript>
+        </form>
+      {% endif %}
+    </div>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Linhas da importação">
+      <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Linha</th>
+          {% for column in columns %}<th scope="col">{{ column }}</th>{% endfor %}
+          <th scope="col">Resultado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="cell-primary" data-label="Linha">{{ row.line_number }}</td>
+            {% for label, value in row.cells %}<td data-label="{{ label }}">{{ value|default:"Vazio" }}</td>{% endfor %}
+            <td data-label="Resultado">
+              <div class="line-result">
+                <p class="line-action">{{ row.action }}</p>
+                {% for change in row.changes %}<p>{{ change }}</p>{% endfor %}
+                {% for warning in row.warnings %}<p class="line-note">{% icon "triangle-alert" %}{{ warning }}</p>{% endfor %}
+                {% for item in row.pending %}<p class="line-note">{% icon "triangle-alert" %}{{ item }}</p>{% endfor %}
+                {% for error in row.errors %}<p class="line-error">{% icon "circle-x" %}{{ error }}</p>{% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      </table>
+    </div>
+    {% include "ui/components/pagination.html" with noun="linha" noun_plural="linhas" %}
+  </section>
+{% endif %}
+{% endblock %}

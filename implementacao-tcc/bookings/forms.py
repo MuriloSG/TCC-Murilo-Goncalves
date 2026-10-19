@@ -1,0 +1,315 @@
+"""Formulários da Agenda, com os nomes dos campos do model para o `add_operation_error`."""
+
+from django import forms
+
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.utils.formats import date_format
+
+from accounts import permissions
+from bookings.models import (
+    DESCRIPTION_MAX_LENGTH,
+    DESCRIPTION_REQUIRED_MESSAGE,
+    REASON_MAX_LENGTH,
+    REASON_REQUIRED_MESSAGE,
+    REQUESTER_REQUIRED_MESSAGE,
+    STUDENT_COUNT_MAX,
+    STUDENT_COUNT_RANGE_MESSAGE,
+    STUDENT_COUNT_REQUIRED_MESSAGE,
+)
+from schedule.forms import GridFilterForm
+from accounts.models import User
+from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot
+from ui.forms import DateInput
+
+DATE_REQUIRED_MESSAGE = 'Informe a data.'
+START_REQUIRED_MESSAGE = 'Informe o início.'
+END_REQUIRED_MESSAGE = 'Informe o fim.'
+
+
+def date_field(label):
+    return forms.DateField(
+        label=label,
+        widget=DateInput(attrs={'class': 'input', 'data-weekdays-only': ''}),
+        error_messages={'required': DATE_REQUIRED_MESSAGE, 'invalid': 'Informe a data no formato dd/mm/aaaa.'},
+    )
+
+
+def time_field(label, required_message):
+    return forms.TimeField(
+        label=label,
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'input'}, format='%H:%M'),
+        error_messages={'required': required_message, 'invalid': 'Informe a hora no formato 14:00.'},
+    )
+
+
+def semester_options(today):
+    """Semestres que aceitam solicitação: com período e que ainda não terminaram."""
+    return Semester.objects.filter(start_date__isnull=False, end_date__gte=today).order_by('-code')
+
+
+def semester_of(value, today):
+    """Semestre da Agenda para a data informada: o que a tem no período, ou None."""
+    day = value if hasattr(value, 'isoformat') else parse_date(value or '')
+    if day is None:
+        return None
+    return semester_options(today).filter(start_date__lte=day, end_date__gte=day).first()
+
+
+def chosen(form, name):
+    """Valor escolhido no campo, do envio ou do preenchimento inicial, como texto."""
+    value = form.data.get(name) if form.is_bound else form.initial.get(name)
+    value = getattr(value, 'pk', value)
+    return str(value) if value not in (None, '') else ''
+
+
+class AssignmentChoiceField(forms.ModelChoiceField):
+    """Turma da disciplina escolhida; o docente distingue os vínculos da mesma turma."""
+
+    def label_from_instance(self, obj):
+        return f'{obj.offering.class_group} · {obj.teacher.name}'
+
+
+class BookingRequestForm(forms.Form):
+    """Solicitação com turma opcional; as opções só orientam, e o model confere a turma de novo."""
+
+    DEPENDENTS = {
+        'course': ('subject', 'teaching_assignment'),
+        'subject': ('teaching_assignment',),
+    }
+
+    course = forms.ModelChoiceField(
+        label='Curso',
+        required=False,
+        queryset=Course.objects.none(),
+        empty_label='Sem curso',
+        error_messages={'invalid_choice': 'Escolha um dos cursos do semestre.'},
+    )
+    subject = forms.ModelChoiceField(
+        label='Disciplina',
+        required=False,
+        queryset=Subject.objects.none(),
+        empty_label='Sem disciplina',
+        error_messages={'invalid_choice': 'Escolha uma das disciplinas do curso escolhido.'},
+    )
+    teaching_assignment = AssignmentChoiceField(
+        label='Turma',
+        required=False,
+        queryset=TeachingAssignment.objects.none(),
+        empty_label='Sem turma',
+        help_text='Opcional. Informe quando o uso for de uma turma do semestre.',
+        error_messages={'invalid_choice': 'Escolha uma turma da disciplina escolhida.'},
+    )
+    space = forms.ModelChoiceField(
+        label='Espaço',
+        queryset=Space.objects.none(),
+        empty_label='Escolha o espaço',
+        error_messages={'required': 'Escolha o espaço.', 'invalid_choice': 'Escolha um espaço ativo.'},
+    )
+    date = date_field('Data')
+    start_time = time_field('Início', START_REQUIRED_MESSAGE)
+    end_time = time_field('Fim', END_REQUIRED_MESSAGE)
+    description = forms.CharField(
+        label='Descrição',
+        max_length=DESCRIPTION_MAX_LENGTH,
+        help_text='O que será feito no espaço, em uma ou duas frases.',
+        widget=forms.Textarea(attrs={'rows': 3}),
+        error_messages={'required': DESCRIPTION_REQUIRED_MESSAGE},
+    )
+    student_count = forms.IntegerField(
+        label='Quantidade de alunos',
+        min_value=1,
+        max_value=STUDENT_COUNT_MAX,
+        widget=forms.NumberInput(attrs={'class': 'input', 'inputmode': 'numeric'}),
+        error_messages={
+            'required': STUDENT_COUNT_REQUIRED_MESSAGE,
+            'invalid': STUDENT_COUNT_RANGE_MESSAGE,
+            'min_value': STUDENT_COUNT_RANGE_MESSAGE,
+            'max_value': STUDENT_COUNT_RANGE_MESSAGE,
+        },
+    )
+
+    def __init__(self, *args, refresh_url='', today=None, trigger='', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.clear_after(trigger)
+        self.refresh = {
+            'hx-get': refresh_url,
+            'hx-trigger': 'change',
+            'hx-include': '#request-fields',
+            'hx-target': '#request-fields',
+            'hx-select': '#request-fields',
+            'hx-swap': 'outerHTML',
+        } if refresh_url else {}
+        self.semester = semester_of(chosen(self, 'date'), today or timezone.localdate())
+        semester = self.semester
+        assignments = list(TeachingAssignment.objects.available(semester)) if semester is not None else []
+        self.fields['date'].widget.attrs.update(self.refresh)
+        self.fields['date'].help_text = f'Semestre {semester.code}.' if semester else 'A data define o semestre da Agenda.'
+        self.build_chain(assignments)
+        self.fields['space'].queryset = Space.objects.filter(is_active=True).order_by('name')
+        self.fields['space'].widget.attrs['class'] = 'input'
+        slots = sorted(TimeSlot.objects.filter(semester=semester), key=lambda slot: slot.start_time) if semester else []
+        self.slot_starts = sorted({f'{slot.start_time:%H:%M}' for slot in slots})
+        self.slot_ends = sorted({f'{slot.end_time:%H:%M}' for slot in slots})
+        self.fields['start_time'].widget.attrs['list'] = 'horarios-inicio'
+        self.fields['end_time'].widget.attrs['list'] = 'horarios-fim'
+        self.fields['start_time'].help_text = 'Os horários das aulas do semestre aparecem como sugestão.' if slots else ''
+
+    def clear_after(self, trigger):
+        """Limpa os campos dependentes do trocado (`HX-Trigger-Name`) para não manter valor não conferido."""
+        names = self.DEPENDENTS.get(trigger, ())
+        if not names:
+            return
+        if self.is_bound:
+            self.data = self.data.copy()
+            for name in names:
+                self.data.pop(name, None)
+        else:
+            self.initial = {key: value for key, value in self.initial.items() if key not in names}
+
+    def build_chain(self, assignments):
+        """Cursos das turmas do semestre, e disciplina e turma só do curso e da disciplina escolhidos."""
+        courses = {item.offering.class_group.course.pk: item.offering.class_group.course for item in assignments}
+        field = self.fields['course']
+        field.queryset = Course.objects.filter(pk__in=courses)
+        field.choices = [
+            ('', field.empty_label),
+            *((item.pk, item.name) for item in sorted(courses.values(), key=lambda item: item.name.casefold())),
+        ]
+        field.widget.attrs.update({'class': 'input', **self.refresh})
+        course_id = chosen(self, 'course')
+        of_course = [item for item in assignments if str(item.offering.class_group.course_id) == course_id]
+        subjects = {item.offering.subject.pk: item.offering.subject for item in of_course}
+        field = self.fields['subject']
+        field.queryset = Subject.objects.filter(pk__in=subjects)
+        field.choices = [
+            ('', field.empty_label),
+            *((item.pk, item.name) for item in sorted(subjects.values(), key=lambda item: item.name.casefold())),
+        ]
+        field.widget.attrs.update({'class': 'input', **self.refresh})
+        subject_id = chosen(self, 'subject')
+        of_subject = sorted(
+            (item for item in of_course if str(item.offering.subject_id) == subject_id),
+            key=lambda item: (str(item.offering.class_group).casefold(), item.teacher.name.casefold()),
+        )
+        field = self.fields['teaching_assignment']
+        field.queryset = TeachingAssignment.objects.filter(pk__in=[item.pk for item in of_subject])
+        field.widget.attrs['class'] = 'input'
+        field.choices = [('', field.empty_label), *((item.pk, field.label_from_instance(item)) for item in of_subject)]
+
+    def clean(self):
+        cleaned = super().clean()
+        day = cleaned.get('date')
+        if day is not None and self.semester is None:
+            self.add_error('date', ValidationError(
+                f'A data {date_format(day, "SHORT_DATE_FORMAT")} não está no período de nenhum semestre da Agenda. '
+                'Escolha outra data.',
+                code='outside',
+            ))
+        return cleaned
+
+    def add_error(self, field, error):
+        super().add_error(field if field in self.fields or field is None else None, error)
+
+
+class UserChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return f'{obj.name} ({obj.username or obj.email})'
+
+
+class BookingOnBehalfForm(BookingRequestForm):
+    """Solicitação em nome de quem tem `AGENDA.SOLICITAR`; o model confere a permissão de novo."""
+
+    requested_for = UserChoiceField(
+        label='Usuário',
+        queryset=User.objects.none(),
+        empty_label='Escolha o usuário',
+        error_messages={'required': REQUESTER_REQUIRED_MESSAGE, 'invalid_choice': 'Escolha um dos usuários que solicitam agendamento.'},
+    )
+
+    field_order = [
+        'requested_for', 'course', 'subject', 'teaching_assignment', 'space', 'date', 'start_time', 'end_time', 'description', 'student_count',
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        field = self.fields['requested_for']
+        field.queryset = User.objects.with_permission(permissions.BOOKING_REQUEST).order_by('name', 'pk')
+        field.widget.attrs['class'] = 'input'
+
+
+class ReviewFilterForm(forms.Form):
+    """Recorte da lista de análise pela URL: as que precisam de decisão ou todas."""
+
+    CHOICES = [('decidir', 'Para decidir'), ('todas', 'Todas')]
+
+    situacao = forms.ChoiceField(label='Situação', required=False, choices=CHOICES, widget=forms.Select(attrs={'class': 'input'}))
+
+    def only_open(self):
+        return not (self.is_valid() and self.cleaned_data['situacao'] == 'todas')
+
+
+class RejectForm(forms.Form):
+    rejection_reason = forms.CharField(
+        label='Motivo da rejeição',
+        max_length=REASON_MAX_LENGTH,
+        help_text='O motivo aparece para quem solicitou.',
+        widget=forms.Textarea(attrs={'rows': 3}),
+        error_messages={'required': REASON_REQUIRED_MESSAGE},
+    )
+
+
+class CancelForm(forms.Form):
+    cancellation_reason = forms.CharField(
+        label='Motivo do cancelamento',
+        required=False,
+        max_length=REASON_MAX_LENGTH,
+        help_text='Opcional. O motivo aparece no detalhe da solicitação.',
+        widget=forms.Textarea(attrs={'rows': 3}),
+    )
+
+
+class SuggestForm(forms.Form):
+    """Outro espaço, outra data, outro horário ou a combinação deles, com a mensagem opcional."""
+
+    suggested_space = forms.ModelChoiceField(
+        label='Espaço sugerido',
+        queryset=Space.objects.none(),
+        widget=forms.Select(attrs={'class': 'input'}),
+        error_messages={'required': 'Escolha o espaço sugerido.', 'invalid_choice': 'Escolha um espaço ativo.'},
+    )
+    suggested_date = date_field('Data sugerida')
+    suggested_start_time = time_field('Início sugerido', START_REQUIRED_MESSAGE)
+    suggested_end_time = time_field('Fim sugerido', END_REQUIRED_MESSAGE)
+    suggestion_message = forms.CharField(
+        label='Mensagem para quem solicitou',
+        max_length=REASON_MAX_LENGTH,
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3}),
+    )
+
+    def __init__(self, *args, target=None, **kwargs):
+        if target is not None:
+            kwargs['initial'] = {
+                'suggested_space': target.suggested_space_id or target.space_id,
+                'suggested_date': target.suggested_date or target.date,
+                'suggested_start_time': target.suggested_start_time or target.start_time,
+                'suggested_end_time': target.suggested_end_time or target.end_time,
+                'suggestion_message': target.suggestion_message,
+            } | (kwargs.get('initial') or {})
+        super().__init__(*args, **kwargs)
+        field = self.fields['suggested_space']
+        field.queryset = Space.objects.filter(is_active=True).order_by('name')
+
+
+ALL_AGENDAS = 'todas'
+OWN_AGENDA = 'minha'
+
+
+class AgendaFilterForm(GridFilterForm):
+    """Filtros da Grade da Agenda: os da Grade do ensalamento e a escolha entre todas as agendas ou só a do usuário."""
+
+    AGENDAS = [(ALL_AGENDAS, 'Todas as agendas'), (OWN_AGENDA, 'Minha agenda')]
+
+    agenda = forms.ChoiceField(label='Agenda', required=False, choices=AGENDAS, widget=forms.Select(attrs={'class': 'input'}))

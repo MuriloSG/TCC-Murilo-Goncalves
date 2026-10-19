@@ -1,0 +1,31 @@
+{% load ui %}<div class="checklist" data-checklist{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
+  <div class="checklist-top">
+    <div class="checklist-summary">
+      <p><strong><span data-checklist-selected>{{ widget.selected_count }}</span> de {{ widget.total_count }}</strong> permissões selecionadas</p>
+      <p class="checklist-unsaved" data-checklist-unsaved hidden><span class="checklist-dot" aria-hidden="true"></span>Alterações não salvas</p>
+    </div>
+    <div class="checklist-tools" data-checklist-tools hidden>
+      <div class="control">
+        <label class="sr-only" for="{{ widget.name }}-busca">Buscar permissão</label>
+        {% icon "search" %}<input class="input" type="search" id="{{ widget.name }}-busca" placeholder="Buscar permissão" data-checklist-search>
+      </div>
+      <button class="btn-secondary" type="button" data-checklist-toggle data-state="none"><span class="when-none">Selecionar todas</span><span class="when-all">Limpar seleção</span></button>
+    </div>
+  </div>
+  {% for group in widget.groups %}
+    <details class="checklist-group">
+      <summary>
+        <span class="checklist-group-name">{{ group.name }}</span>
+        <span class="count" data-checklist-group-count>{{ group.selected }}/{{ group.total }}</span>
+        <input class="checklist-group-toggle" type="checkbox" data-checklist-group-toggle aria-label="Selecionar todas as permissões de {{ group.name }}">
+        {% icon "chevron-down" %}
+      </summary>
+      <div class="checklist-options">
+        {% for option in group.options %}
+          <label class="check-option"><input type="{{ option.type }}" name="{{ option.name }}" value="{{ option.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" with widget=option %}><span><strong>{{ option.value }}</strong> <span class="perm-description">{{ option.label }}</span></span></label>
+        {% endfor %}
+      </div>
+    </details>
+  {% endfor %}
+  <p class="checklist-empty" data-checklist-empty hidden>Nenhuma permissão encontrada para a busca.</p>
+</div>

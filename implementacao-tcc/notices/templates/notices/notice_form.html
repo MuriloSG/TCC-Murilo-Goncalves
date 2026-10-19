@@ -1,0 +1,70 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Nova notificação{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'notice_list' %}">Notificações</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Nova notificação</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Nova notificação</h1>
+    </div>
+    {% include "notices/partials/steps.html" %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <form method="post" action="{% url 'notice_create' %}">
+    {% csrf_token %}
+    <section class="card" aria-labelledby="detalhes-da-comunicacao">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title" id="detalhes-da-comunicacao">{% icon "bell" %}Detalhes da comunicação</h2>
+          <p class="card-description">O conteúdo que será exibido a cada destinatário.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        {% include "ui/forms/form_errors.html" %}
+        <div class="form-fields">
+          {% include "ui/forms/field.html" with field=form.title %}
+          <div class="field">
+            <label id="{{ form.message.auto_id }}_rotulo" for="{{ form.message.id_for_label }}">{{ form.message.label }}</label>
+            {{ form.message }}
+            <p class="field-count" data-counter="{{ form.message.id_for_label }}"><span data-counter-value>{{ message_length }}</span>/{{ message_limit }}</p>
+            {% include "ui/forms/errors.html" with field=form.message %}
+          </div>
+          <fieldset class="field">
+            <legend>{{ form.type.label }}</legend>
+            <div class="type-options">
+              {% for option in form.type_options %}
+                <label class="type-option">
+                  {{ option.field.tag }}
+                  <span class="type-option-name">{{ option.field.choice_label }}</span>
+                  <span class="type-option-hint">{{ option.description }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            {% include "ui/forms/errors.html" with field=form.type %}
+          </fieldset>
+          <div class="reveal" data-reveal="{{ form.destination.id_for_label }}">
+            {% include "ui/forms/field.html" with field=form.destination %}
+            <div data-reveal-when="TODOS">
+              <p class="recipients-count">{% icon "users" "size-4" %}{{ active_users }} usuário{{ active_users|pluralize }} ativo{{ active_users|pluralize }}</p>
+            </div>
+            <div data-reveal-when="PERFIL">{% include "ui/forms/field.html" with field=form.role %}</div>
+            <div data-reveal-when="USUARIOS">{% include "ui/forms/field.html" with field=form.users %}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot card-actions">
+        <a class="btn-secondary" href="{% url 'notice_list' %}">{% icon "x" %}Fechar</a>
+        <button class="btn-primary" type="submit">{% icon "arrow-right" %}Continuar para revisão</button>
+      </div>
+    </section>
+  </form>
+{% endblock %}

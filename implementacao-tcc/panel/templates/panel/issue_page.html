@@ -1,0 +1,11 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ group.label }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'panel' %}">Painel</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ group.label }}</span></li>
+{% endblock %}
+
+{% block content %}{% include "panel/issue_modal.html" %}{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Cadastrar {{ plan.lesson_summary.subject }} para {{ plan.lesson_summary.group }}?{% endblock %}
+
+
+{% block body %}
+  {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <input type="hidden" name="confirmar" value="1">
+  <dl class="record-pairs">
+    <div><dt>A aula</dt><dd>{{ plan.lesson_summary.subject }}<span class="request-detail">{{ plan.lesson_summary.group }}</span>{% if plan.after.teachers %}<span class="request-detail">{{ plan.after.teachers|join:", " }}</span>{% endif %}</dd></div>
+    <div><dt>Quando</dt><dd>{{ plan.after.text_without_space }}<span class="request-detail">{{ plan.period_text }}</span></dd></div>
+    <div><dt>Onde</dt><dd>{{ plan.after.space|default:"Sem espaço" }}</dd></div>
+    <div><dt>Ocorrências</dt><dd>{{ plan.occurrence_text }}</dd></div>
+  </dl>
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{% icon "calendar-plus" %}Cadastrar aula</button>{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static notices ui %}
+
+{% block body_attributes %} hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endblock %}
+
+{% block body %}{% with user_role=user.role %}
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+  <div class="app-shell{% if request.COOKIES.menu_lateral == "recolhido" %} is-collapsed{% endif %}">
+    <aside class="sidebar" id="menu-lateral">
+      <a class="brand" href="{% url 'home' %}">
+        <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+        <span class="brand-name">Agenda</span>
+      </a>
+      {% include "ui/components/navigation.html" %}
+      {% if user.is_authenticated %}
+        <div class="sidebar-footer">
+          <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+          <span class="who"><span class="who-name" title="{{ user.name }}">{{ user.name|first_name }}</span><span class="who-role">{{ user_role.name|default:"Sem perfil" }}</span></span>
+          <a class="icon-btn" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal" aria-label="Sair">{% icon "log-out" %}<span class="tip" role="tooltip">Sair</span></a>
+        </div>
+      {% endif %}
+    </aside>
+
+    <div class="topbar">
+      <details class="topbar-menu">
+        <summary class="icon-btn" aria-label="Menu">{% icon "menu" %}</summary>
+        <div class="topbar-panel">
+          <div class="topbar-panel-head">
+            <a class="brand" href="{% url 'home' %}">
+              <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+              <span class="brand-name">IFAgenda</span>
+            </a>
+            <button class="icon-btn" type="button" data-drawer-close aria-label="Fechar menu" hidden>{% icon "x" %}</button>
+          </div>
+          {% include "ui/components/navigation.html" %}
+          {% if user.is_authenticated %}
+            <div class="topbar-user">
+              <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+              <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user_role.name|default:"Sem perfil" }}</span></span>
+              <a class="icon-btn" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal" aria-label="Sair">{% icon "log-out" %}</a>
+            </div>
+          {% endif %}
+        </div>
+      </details>
+      <a class="brand" href="{% url 'home' %}">
+        <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
+        <span class="brand-name">IFAgenda</span>
+      </a>
+      {% if user.is_authenticated %}{% notifications %}{% endif %}
+    </div>
+
+    <div>
+      <header class="header">
+        <button class="icon-btn" type="button" data-sidebar-toggle aria-controls="menu-lateral" aria-expanded="true" aria-label="Recolher menu lateral" hidden>
+          <span class="when-expanded">{% icon "panel-left-close" %}</span>
+          <span class="when-collapsed">{% icon "panel-left-open" %}</span>
+          <span class="tip tip-below" role="tooltip"><span class="when-expanded">Recolher menu lateral</span><span class="when-collapsed">Expandir menu lateral</span></span>
+        </button>
+        <nav class="crumbs" aria-label="Trilha de navegação">
+          <ol>
+            {% block crumbs %}<li><span aria-current="page">Início</span></li>{% endblock %}
+          </ol>
+        </nav>
+        {% if user.is_authenticated %}
+          {% notifications %}
+          <details class="menu user-menu">
+            <summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">{{ user.name|initials }}</span></summary>
+            <div class="menu-list">
+              <span class="who menu-head"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user_role.name|default:"Sem perfil" }}</span></span>
+              <a href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal">{% icon "log-out" %}Sair</a>
+            </div>
+          </details>
+        {% endif %}
+      </header>
+
+      <main class="page" id="conteudo" tabindex="-1">
+        {% block page_head %}{% endblock %}
+        {% include "ui/components/messages.html" %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+{% endwith %}{% endblock %}

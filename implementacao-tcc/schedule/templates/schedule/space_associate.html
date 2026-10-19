@@ -1,0 +1,12 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Escolher o espaço de {{ found_name }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'space_allocation_import_detail' importation.pk %}">Importação de {{ importation.file_name }}</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Escolher o espaço</span></li>
+{% endblock %}
+
+{% block content %}{% include "schedule/space_associate_modal.html" %}{% endblock %}

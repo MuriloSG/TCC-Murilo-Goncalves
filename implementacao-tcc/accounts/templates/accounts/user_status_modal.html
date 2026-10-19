@@ -1,0 +1,8 @@
+{% extends "ui/components/confirm_modal.html" %}
+{% load ui %}
+
+{% block title %}{{ action|capfirst }} {{ target.name }}?{% endblock %}
+
+{% block consequence %}{% if action == 'desativar' %}O usuário {{ target.email }} deixa de conseguir entrar no sistema. Os dados dele continuam guardados, e ele pode ser reativado depois.{% else %}O usuário {{ target.email }} volta a poder entrar no sistema com a senha que já tinha.{% endif %}{% endblock %}
+
+{% block submit %}{% if action == 'desativar' %}<button class="btn-danger" type="submit">{% icon "user-x" %}Desativar usuário</button>{% else %}<button class="btn-primary" type="submit">{% icon "user-check" %}Reativar usuário</button>{% endif %}{% endblock %}

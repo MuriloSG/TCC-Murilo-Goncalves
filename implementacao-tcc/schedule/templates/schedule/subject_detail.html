@@ -1,0 +1,73 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}{{ target.name }}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<a href="{% url 'subjects_list' %}">Disciplinas</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">{{ target.name }}</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">{{ target.name }}</h1>
+    </div>
+    <div class="page-actions">
+      {% if history %}<a class="btn-secondary" href="{{ history.url }}">{% icon "scroll-text" %}Ver auditoria</a>{% endif %}
+      {% if perms.DISCIPLINA.EXCLUIR and not in_use %}<a class="btn-danger" href="{% url 'subjects_delete' target.pk %}" hx-get="{% url 'subjects_delete' target.pk %}" hx-target="#modal">{% icon "trash-2" %}Excluir disciplina</a>{% endif %}
+      {% if perms.DISCIPLINA.EDITAR %}<a class="btn-primary" href="{% url 'subjects_update' target.pk %}" hx-get="{% url 'subjects_update' target.pk %}" hx-target="#modal">{% icon "pencil" %}Editar disciplina</a>{% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <details class="card detail-card">
+    <summary>
+      <span class="detail-card-heading">
+        <span class="card-title">Dados da disciplina</span>
+        <span class="detail-card-summary">{{ offerings|length }} oferta{{ offerings|length|pluralize }}, {{ lessons }} aula{{ lessons|pluralize }} no ensalamento</span>
+      </span>
+      {% icon "chevron-down" %}
+    </summary>
+    <dl class="detail-grid">
+      <div><dt>Nome</dt><dd>{{ target.name }}</dd></div>
+      <div><dt>Aulas no ensalamento</dt><dd>{{ lessons }}</dd></div>
+    </dl>
+  </details>
+
+  <section class="card" aria-labelledby="ofertas-registro">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="ofertas-registro">Ofertas por semestre <span class="count">{{ offerings|length }}</span></h2>
+      </div>
+    </div>
+    <table class="data-table compact-rows">
+      <thead>
+        <tr>
+          <th scope="col">Semestre</th>
+          <th scope="col">Turma</th>
+          <th scope="col">Docentes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for offering in offerings %}
+          <tr>
+            <td class="cell-primary" data-label="Semestre">{{ offering.semester.code }}</td>
+            <td class="cell-meta" data-label="Turma">{{ offering.class_group }}</td>
+            <td class="cell-meta" data-label="Docentes">
+              {% for assignment in offering.assignments.all %}
+                <span class="person-detail">{{ assignment.teacher.name }}{% if not assignment.is_current %}, histórico{% endif %}</span>
+              {% empty %}
+                Sem docente
+              {% endfor %}
+            </td>
+          </tr>
+        {% empty %}
+          {% include "ui/components/empty_row.html" with colspan=3 message="Nenhuma oferta no ensalamento." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

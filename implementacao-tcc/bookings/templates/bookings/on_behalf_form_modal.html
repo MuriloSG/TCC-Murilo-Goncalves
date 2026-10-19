@@ -1,0 +1,15 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Criar solicitação para outro usuário{% endblock %}
+
+
+{% block body %}
+  <div id="request-fields">
+    {{ form }}
+    <datalist id="horarios-inicio">{% for value in form.slot_starts %}<option value="{{ value }}"></option>{% endfor %}</datalist>
+    <datalist id="horarios-fim">{% for value in form.slot_ends %}<option value="{{ value }}"></option>{% endfor %}</datalist>
+  </div>
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">Revisar solicitação</button>{% endblock %}

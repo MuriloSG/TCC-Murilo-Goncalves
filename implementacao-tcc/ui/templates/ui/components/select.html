@@ -1,0 +1,26 @@
+{% load ui %}<div class="select{% if field.widget_type == "selectmultiple" %} select-many{% endif %}" data-select>
+  <div class="select-native select-wrap">{{ field }}{% icon "chevron-down" %}</div>
+  {% if field.widget_type == "selectmultiple" %}
+    <div class="select-control" hidden data-select-control>
+      <ul class="select-chips" role="list" data-select-chips></ul>
+      <button class="select-trigger" type="button" id="{{ field.auto_id }}_gatilho" aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field.auto_id }}_painel" aria-labelledby="{{ field.auto_id }}_rotulo {{ field.auto_id }}_gatilho" data-select-trigger>
+        <span class="select-value" data-select-value></span>{% icon "chevron-down" %}
+      </button>
+    </div>
+  {% else %}
+    <button class="select-trigger" type="button" id="{{ field.auto_id }}_gatilho" aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ field.auto_id }}_painel" aria-labelledby="{{ field.auto_id }}_rotulo {{ field.auto_id }}_gatilho" hidden data-select-trigger>
+      <span class="select-value" data-select-value></span>{% icon "chevron-down" %}
+    </button>
+  {% endif %}
+  <div class="select-panel" id="{{ field.auto_id }}_painel" hidden data-select-panel>
+    <div class="select-search" hidden data-select-search-wrap>
+      {% icon "search" %}
+      <input class="select-search-input" type="search" id="{{ field.auto_id }}_busca" placeholder="Buscar" autocomplete="off" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="{{ field.auto_id }}_lista" aria-label="Buscar opção" data-select-search>
+    </div>
+    <ul class="select-options" id="{{ field.auto_id }}_lista" role="listbox" aria-labelledby="{{ field.auto_id }}_rotulo"{% if field.widget_type == "selectmultiple" %} aria-multiselectable="true"{% endif %} data-select-options></ul>
+    <p class="select-empty" hidden data-select-empty>Nenhuma opção encontrada.</p>
+    <button class="select-more" type="button" hidden data-select-more>Mostrar mais</button>
+  </div>
+  <template data-select-check>{% icon "check" "size-4" %}</template>
+  <template data-select-remove>{% icon "x" "size-4" %}</template>
+</div>

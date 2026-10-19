@@ -1,0 +1,3 @@
+{% load ui %}{% if form.non_field_errors %}
+  <div class="alert tone-error" role="alert">{% icon "circle-x" %}<div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div></div>
+{% endif %}

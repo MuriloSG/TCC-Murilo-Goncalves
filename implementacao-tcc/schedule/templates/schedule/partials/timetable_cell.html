@@ -1,0 +1,21 @@
+{% load ui %}{% if cell.kind == "joint" %}<div class="timetable-group is-joint"><p class="timetable-group-flag">{% icon "users" "size-4" %}{{ cell.group_count }} turmas juntas</p>{% elif cell.kind == "clash" %}<div class="timetable-group is-clash"><p class="timetable-group-flag">{% icon "triangle-alert" "size-4" %}Choque: {{ cell.group_count }} turmas neste horário</p>{% endif %}
+{% for entry in cell.entries %}
+  {% if entry.is_booking %}
+    {% include "schedule/partials/timetable_booking.html" %}
+  {% else %}
+  <div class="timetable-card {% if entry.is_undergraduate %}is-undergraduate{% else %}is-secondary{% endif %}">
+    {% if lesson_kind_label %}<p class="timetable-kind">{% icon "graduation-cap" "size-4" %}Ensalamento</p>{% endif %}
+    <p class="timetable-subject">{{ entry.subject }}</p>
+    {% if not hide_time %}<p class="timetable-line is-time">{% icon "clock" "size-4" %}<span><span class="sr-only">Horário </span>{{ cell.start|time:"H:i" }} às {{ cell.end|time:"H:i" }}</span></p>{% endif %}
+    {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
+    {% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group|default:entry.group_label %}
+    {% for teacher in entry.teachers %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=teacher muted=True %}{% endfor %}
+    {% if entry.cancel_url or entry.change_url or entry.end_url %}<div class="timetable-card-actions">
+      {% if entry.cancel_url %}<a class="icon-btn" href="{{ entry.cancel_url }}" hx-get="{{ entry.cancel_url }}" hx-target="#modal" aria-label="Cancelar esta ocorrência">{% icon "calendar-x" %}<span class="tip" role="tooltip">Cancelar esta ocorrência</span></a>{% endif %}
+      {% if entry.change_url %}<a class="icon-btn" href="{{ entry.change_url }}" hx-get="{{ entry.change_url }}" hx-target="#modal" aria-label="Alterar recorrência">{% icon "pencil" %}<span class="tip" role="tooltip">Alterar recorrência</span></a>{% endif %}
+      {% if entry.end_url %}<a class="icon-btn" href="{{ entry.end_url }}" hx-get="{{ entry.end_url }}" hx-target="#modal" aria-label="Encerrar recorrência">{% icon "circle-minus" %}<span class="tip" role="tooltip">Encerrar recorrência</span></a>{% endif %}
+    </div>{% endif %}
+  </div>
+  {% endif %}
+{% endfor %}
+{% if cell.kind != "single" %}</div>{% endif %}

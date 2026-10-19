@@ -1,0 +1,214 @@
+from django.test import Client, TestCase
+
+from accounts import permissions
+from accounts.models import Permission, Role, User
+from accounts.tests.roles import management_role, requester_role
+
+ROUTES = {
+    'list': '/perfis/',
+    'create': '/perfis/novo/',
+    'detail': '/perfis/{pk}/',
+    'update': '/perfis/{pk}/editar/',
+    'permissions': '/perfis/{pk}/permissoes/',
+    'delete': '/perfis/{pk}/excluir/',
+}
+
+
+class RoleViewsTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.administrator = management_role()
+        cls.teacher = requester_role()
+        cls.coordination = Role.objects.create_role(
+            code='COORDENACAO', name='Coordenação', permissions=[permissions.USER_VIEW],
+        )
+        cls.superadmin = User.objects.register(email='super@ifnmg.edu.br', name='Super', role=cls.teacher)
+        cls.superadmin.set_superadmin(True)
+        cls.admin = User.objects.register(email='admin@ifnmg.edu.br', name='Admin', role=cls.administrator)
+
+    def setUp(self):
+        self.client.force_login(self.superadmin)
+
+    def url(self, route, role=None):
+        return ROUTES[route].format(pk=(role or self.coordination).pk)
+
+    def codes(self, role):
+        return set(Role.objects.get(pk=role.pk).permissions.values_list('code', flat=True))
+
+
+class AccessTests(RoleViewsTestCase):
+    def test_denial_comes_before_the_business_rules(self):
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(self.url('delete', self.teacher))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Role.objects.filter(pk=self.teacher.pk).exists())
+
+    def test_active_superadmin_with_teacher_role_has_access(self):
+        for route in ROUTES:
+            with self.subTest(route):
+                self.assertEqual(self.client.get(self.url(route)).status_code, 200)
+
+
+class ListAndDetailTests(RoleViewsTestCase):
+    def test_list_shows_all_roles_with_type_and_linked_users(self):
+        User.objects.register(email='a@ifnmg.edu.br', name='A', role=self.coordination)
+        inactive = User.objects.register(email='b@ifnmg.edu.br', name='B', role=self.coordination)
+        User.objects.filter(pk=inactive.pk).update(is_active=False)
+        response = self.client.get('/perfis/')
+        roles = {role.code: role for role in response.context['roles']}
+        self.assertEqual(set(roles), {'ADMINISTRADOR', 'DOCENTE', 'GESTAO', 'SOLICITACAO', 'COORDENACAO'})
+        self.assertEqual(roles['COORDENACAO'].user_count, 2)
+
+    def test_detail_shows_exactly_the_granted_permissions_by_resource(self):
+        self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT])
+        response = self.client.get(self.url('detail'))
+        self.assertEqual(
+            [permission.code for permission in response.context['permissions']],
+            [permissions.USER_EDIT, permissions.USER_VIEW],
+        )
+        self.assertContains(response, '<span class="perm-group-name">Usuários</span>', html=True)
+        self.assertNotContains(response, 'USUARIO.CRIAR')
+
+
+class CreateTests(RoleViewsTestCase):
+    def post(self, **data):
+        return self.client.post('/perfis/novo/', {'code': 'SECRETARIA', 'name': 'Secretaria'} | data)
+
+    def test_form_offers_only_grantable_permissions(self):
+        response = self.client.get('/perfis/novo/')
+        self.assertEqual(set(response.context['form'].fields), {'code', 'name', 'description', 'permissions'})
+        self.assertNotContains(response, 'type="checkbox"')
+        self.post()
+        response = self.client.get(f'/perfis/{Role.objects.get(code="SECRETARIA").pk}/permissoes/?etapa=2')
+        for code in permissions.ADMINISTRATIVE_CAPABILITY:
+            self.assertContains(response, f'value="{code}"')
+        for code in permissions.SUPERADMIN_RESERVED_PERMISSIONS:
+            self.assertNotContains(response, f'value="{code}"')
+
+    def test_creates_custom_role_without_permissions(self):
+        response = self.post()
+        role = Role.objects.get(code='SECRETARIA')
+        self.assertRedirects(response, f'/perfis/{role.pk}/permissoes/?etapa=2')
+        self.assertEqual(self.codes(role), set())
+
+    def test_creates_role_with_chosen_permissions(self):
+        self.post(permissions=[permissions.USER_VIEW, permissions.USER_EDIT])
+        role = Role.objects.get(code='SECRETARIA')
+        self.assertEqual(self.codes(role), {permissions.USER_VIEW, permissions.USER_EDIT})
+
+    def test_refuses_invalid_data(self):
+        cases = {
+            'missing code': ('code', {'code': ''}),
+            'lowercase code': ('code', {'code': 'secretaria'}),
+            'code with digits': ('code', {'code': 'COORD-1'}),
+            'repeated code': ('code', {'code': 'COORDENACAO'}),
+            'missing name': ('name', {'name': ''}),
+        }
+        count = Role.objects.count()
+        for case, (field, data) in cases.items():
+            with self.subTest(case):
+                response = self.post(**data)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(field, response.context['form'].errors)
+        self.assertEqual(Role.objects.count(), count)
+
+    def test_reserved_permission_is_refused_with_the_reason(self):
+        response = self.post(permissions=[permissions.USER_VIEW, permissions.ROLE_CHANGE_PERMISSIONS])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Permissões reservadas ao superadmin não podem ser concedidas')
+        self.assertFalse(Role.objects.filter(code='SECRETARIA').exists())
+
+
+class UpdateTests(RoleViewsTestCase):
+    def test_code_is_shown_but_not_editable(self):
+        response = self.client.get(self.url('update'))
+        self.assertEqual(set(response.context['form'].fields), {'name', 'description'})
+
+    def test_changes_name_and_description_only(self):
+        response = self.client.post(
+            self.url('update'),
+            {'name': 'Coordenação de Curso', 'description': 'Coordena o curso.', 'code': 'SECRETARIA'},
+        )
+        self.assertRedirects(response, self.url('detail'))
+        role = Role.objects.get(pk=self.coordination.pk)
+        self.assertEqual((role.code, role.name, role.description), ('COORDENACAO', 'Coordenação de Curso', 'Coordena o curso.'))
+        self.assertEqual(self.codes(role), {permissions.USER_VIEW})
+
+    def test_refuses_empty_name_and_name_of_another_role(self):
+        for name in ['', 'solicitação']:
+            with self.subTest(name):
+                response = self.client.post(self.url('update'), {'name': name, 'description': ''})
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context['form'].errors)
+        self.assertEqual(Role.objects.get(pk=self.coordination.pk).name, 'Coordenação')
+        self.assertEqual(Role.objects.get(pk=self.teacher.pk).name, 'Solicitação')
+
+
+class PermissionsTests(RoleViewsTestCase):
+    def post(self, role=None, codes=()):
+        return self.client.post(self.url('permissions', role), {'permissions': list(codes)})
+
+    def test_form_offers_only_grantable_permissions_and_shows_linked_users(self):
+        User.objects.register(email='a@ifnmg.edu.br', name='A', role=self.coordination)
+        response = self.client.get(self.url('permissions'))
+        self.assertEqual(set(response.context['form'].fields), {'permissions'})
+        for code in permissions.SUPERADMIN_RESERVED_PERMISSIONS:
+            self.assertNotContains(response, f'value="{code}"')
+        self.assertContains(response, f'value="{permissions.USER_CREATE}"')
+
+    def test_grants_and_revokes_in_the_same_request(self):
+        self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT])
+        response = self.post(codes=[permissions.USER_VIEW, permissions.USER_CREATE])
+        self.assertRedirects(response, self.url('detail'))
+        self.assertEqual(self.codes(self.coordination), {permissions.USER_VIEW, permissions.USER_CREATE})
+
+    def test_reserved_permission_is_refused_with_the_reason(self):
+        for role in (self.coordination, self.administrator):
+            with self.subTest(role.code):
+                before = self.codes(role)
+                response = self.post(role, [permissions.USER_CREATE, permissions.ROLE_DELETE])
+                self.assertContains(response, 'Permissões reservadas ao superadmin não podem ser concedidas')
+                self.assertEqual(self.codes(role), before)
+
+    def test_superadmin_removes_a_capability_permission_from_administrator(self):
+        remaining = permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_EDIT}
+        self.assertRedirects(self.post(self.administrator, remaining), self.url('detail', self.administrator))
+        self.assertFalse(User.objects.get(pk=self.admin.pk).has_administrative_capability())
+
+    def test_change_applies_on_the_next_request_of_linked_users(self):
+        member = User.objects.register(email='membro@ifnmg.edu.br', name='Membro', role=self.coordination)
+        client = Client()
+        client.force_login(member)
+        self.assertEqual(client.get('/usuarios/').status_code, 200)
+        self.post(codes=[])
+        self.assertEqual(client.get('/usuarios/').status_code, 403)
+        self.post(codes=[permissions.USER_VIEW])
+        self.assertEqual(client.get('/usuarios/').status_code, 200)
+
+
+class DeleteTests(RoleViewsTestCase):
+    def test_get_only_asks_for_confirmation(self):
+        response = self.client.get(self.url('delete'))
+        self.assertContains(response, 'O perfil COORDENACAO é excluído')
+        self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
+
+    def test_deletes_custom_role_without_users_keeping_the_catalog(self):
+        response = self.client.post(self.url('delete'))
+        self.assertRedirects(response, '/perfis/')
+        self.assertFalse(Role.objects.filter(pk=self.coordination.pk).exists())
+        self.assertTrue(Permission.objects.filter(code=permissions.USER_VIEW).exists())
+
+    def test_initial_role_without_users_is_deleted_like_any_other(self):
+        teacher = Role.objects.get(code='DOCENTE')
+        response = self.client.post(self.url('delete', teacher))
+        self.assertRedirects(response, '/perfis/')
+        self.assertFalse(Role.objects.filter(pk=teacher.pk).exists())
+
+    def test_role_in_use_reports_how_many_users_are_linked(self):
+        inactive = User.objects.register(email='a@ifnmg.edu.br', name='A', role=self.coordination)
+        User.objects.filter(pk=inactive.pk).update(is_active=False)
+        response = self.client.post(self.url('delete'), follow=True)
+        self.assertContains(response, '1 usuário vinculado')
+        self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
+        self.assertEqual(User.objects.get(pk=inactive.pk).role, self.coordination)

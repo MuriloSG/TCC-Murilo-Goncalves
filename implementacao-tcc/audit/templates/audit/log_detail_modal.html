@@ -1,0 +1,60 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}Registro de auditoria{% endblock %}
+
+
+{% block form_attributes %}{% endblock %}
+
+{% block body %}
+  <div class="record-sections">
+    <section class="record-section">
+      <h2>Usuário</h2>
+      <dl class="record-fields">
+        <div><dt>Nome</dt><dd>{{ entry.user.name|default:"Sistema" }}</dd></div>
+        <div><dt>E-mail</dt><dd>{{ entry.user.email|default:"Não informado" }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="record-section">
+      <h2>Ação</h2>
+      <dl class="record-fields">
+        <div><dt>Tipo de ação</dt><dd><span class="chip">{{ entry.action_label }}</span></dd></div>
+        <div><dt>Módulo</dt><dd><span class="chip">{{ entry.resource_label }}</span></dd></div>
+        <div><dt>Identificador do registro</dt><dd>{{ entry.resource_id|default:"Sem identificador" }}</dd></div>
+        <div><dt>Data e hora</dt><dd>{{ entry.created_at|date:"DATETIME_FORMAT" }}</dd></div>
+      </dl>
+    </section>
+
+    {% if entry.changes %}
+      <section class="record-section record-panel">
+        <h2>Valores alterados</h2>
+        <dl class="record-pairs">
+          {% for change in entry.changes %}
+            <div><dt>{{ change.label }}</dt><dd><span class="pair-before">{{ change.before }}</span>{% icon "arrow-right" "size-4" %}{{ change.after }}</dd></div>
+          {% endfor %}
+        </dl>
+      </section>
+    {% endif %}
+
+    {% if entry.details %}
+      <section class="record-section record-panel">
+        <h2>Informações adicionais</h2>
+        <dl class="record-pairs">
+          {% for detail in entry.details %}
+            <div><dt>{{ detail.label }}</dt><dd>{{ detail.value }}</dd></div>
+          {% endfor %}
+        </dl>
+      </section>
+    {% endif %}
+
+    <section class="record-section record-panel">
+      <h2>Informações de rede</h2>
+      <dl class="record-fields">
+        <div><dt>Origem</dt><dd>{{ entry.origin_label }}</dd></div>
+        <div><dt>Endereço IP</dt><dd>{{ entry.ip_address|default:"Não informado" }}</dd></div>
+        <div class="record-wide"><dt>Cliente</dt><dd class="record-technical">{{ entry.user_agent|default:"Não informado" }}</dd></div>
+      </dl>
+    </section>
+  </div>
+{% endblock %}

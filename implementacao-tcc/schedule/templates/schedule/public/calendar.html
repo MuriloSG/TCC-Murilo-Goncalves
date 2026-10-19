@@ -1,0 +1,42 @@
+{% extends "ui/layouts/public.html" %}
+{% load ui %}
+
+{% block title %}Horários do campus{% endblock %}
+
+{% block head %}{{ block.super }}<meta name="robots" content="noindex">{% endblock %}
+
+{% block header_actions %}<a class="btn-secondary public-switch" href="{{ other_url }}">{% icon "history" %}<span class="public-switch-label">Ver horário original</span></a>{% endblock %}
+
+{% block content %}
+  <h1 class="sr-only">Horários do campus</h1>
+  {% include "schedule/public/filters.html" %}
+  <section class="card timetable public-calendar" id="calendario" aria-labelledby="calendario-titulo" data-public-calendar>
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="calendario-titulo"><span class="sr-only">Semestre </span>{{ calendar.semester_code }}</h2>
+      </div>
+      {% if calendar.course %}
+        {% with field=filter_form.turma %}
+          <div class="public-field public-group" data-public-group hx-get="{{ calendar_url }}" hx-include="#filtros-form" hx-target="#publico" hx-select="#publico" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change">
+            <label class="sr-only" id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% include "ui/components/select.html" %}
+          </div>
+        {% endwith %}
+      {% endif %}
+    </div>
+    {% if calendar.date_error %}
+      <div class="timetable-notice">
+        <div class="alert tone-error" role="alert" id="erro-datas">{% icon "circle-x" %}<p>{{ calendar.date_error }}</p></div>
+      </div>
+    {% endif %}
+    {% if calendar.notice %}
+      <div class="timetable-notice">
+        <div class="alert tone-info" role="status">{% icon "info" %}<p>{{ calendar.notice }}</p></div>
+      </div>
+    {% endif %}
+    {% if calendar.message %}
+      <p class="timetable-empty" role="status">{{ calendar.message }}</p>
+    {% endif %}
+    {{ grid_html }}
+  </section>
+{% endblock %}

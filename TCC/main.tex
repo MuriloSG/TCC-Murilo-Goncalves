@@ -268,15 +268,25 @@ Quanto ao segundo, o autor descreve atributos que um sistema de software profiss
 
 A \textit{Unified Modeling Language} (UML) é uma linguagem de modelagem padronizada para especificar, visualizar e documentar sistemas de software orientados a objetos \cite{bezerra2007}. \citeonline{bezerra2007} esclarece que a UML não é uma metodologia de desenvolvimento, mas uma notação que pode ser adotada em conjunto com diferentes processos. Ela oferece um conjunto de diagramas que representam aspectos distintos do sistema, como a sua estrutura estática e o seu comportamento dinâmico.
 
-Entre esses diagramas, três são amplamente utilizados na modelagem de sistemas de informação. O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista de quem interage com ele: representa os atores (usuários ou sistemas externos), os casos de uso (as funções que o sistema oferece) e os relacionamentos entre eles, delimitando o escopo funcional sem detalhar como cada função é implementada. O diagrama de classes representa a estrutura estática do sistema, descrevendo as classes do domínio, seus atributos, métodos e relacionamentos, como associação, herança e agregação; é o diagrama mais próximo da estrutura do código. O diagrama de sequência representa o comportamento dinâmico, mostrando a troca de mensagens entre os objetos ao longo do tempo para a realização de um processo específico, o que permite visualizar a ordem das interações e os pontos de decisão de um fluxo \cite{larman2007}.
+A especificação da UML, mantida pelo \textit{Object Management Group} (OMG), define 14 tipos de diagramas na versão 2.5.1, divididos em dois grupos: os diagramas estruturais, que representam os elementos do sistema e as relações estáticas entre eles, como os diagramas de classes e de implantação; e os diagramas comportamentais, que representam o que acontece no sistema ao longo do tempo, como os diagramas de casos de uso, de sequência, de máquina de estados e de atividades \cite{omg2017uml}. \citeonline{fowler2005} observa que nenhum projeto precisa de todos os diagramas e recomenda empregar apenas aqueles que acrescentam informação útil ao entendimento do sistema. Seguindo essa orientação, este trabalho adota seis diagramas, cada um voltado a uma visão do sistema: funcional (casos de uso), estrutural (classes), comportamental (sequência, máquina de estados e atividades) e física (implantação). Os elementos de cada um são apresentados a seguir.
 
-\citeonline{larman2007} destaca que a modelagem com UML permite registrar e comunicar decisões de projeto de forma visual antes de qualquer implementação, o que facilita o alinhamento entre desenvolvedores e demais partes envolvidas.
+O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista de quem interage com ele \cite{booch2006}. Seus elementos são os atores, que representam papéis desempenhados por pessoas ou por outros sistemas, e não indivíduos específicos; os casos de uso, que representam serviços oferecidos pelo sistema e que produzem um resultado de valor para o ator; e os relacionamentos entre eles. A associação liga um ator aos casos de uso de que participa. A generalização entre atores indica que um ator especializado herda os casos de uso do ator mais geral. A inclusão (\guillemotleft include\guillemotright) indica que um caso de uso sempre incorpora o comportamento de outro, enquanto a extensão (\guillemotleft extend\guillemotright) indica um comportamento opcional, que acrescenta passos a um caso de uso base apenas sob determinada condição \cite{bezerra2007}. Como o diagrama apresenta apenas os nomes dos casos de uso, cada um deve ser detalhado em uma descrição textual. \citeonline{cockburn2005} propõe que essa descrição registre o ator principal, as pré-condições, o fluxo principal, isto é, a sequência de passos do cenário de sucesso, os fluxos alternativos, que tratam as variações e os erros, e as pós-condições, ou seja, o estado garantido ao final do caso de uso.
+
+O diagrama de classes representa a estrutura estática do sistema \cite{booch2006}. Cada classe é desenhada como um retângulo dividido em compartimentos com o nome, os atributos e as operações, e cada membro pode indicar a sua visibilidade, como pública (+) ou privada (-). As classes se relacionam por associações, que podem ter nome e multiplicidade em cada extremidade, indicando quantos objetos de uma classe se ligam a um objeto da outra, como 1, 0..1 ou 0..*; por agregação e composição, que são formas de associação do tipo todo-parte, sendo a composição aquela em que a parte não existe sem o todo; e por generalização, que expressa herança entre classes. Quando uma associação tem atributos ou significado próprio, ela pode ser representada por uma classe de associação \cite{bezerra2007}. \citeonline{larman2007} distingue o modelo de domínio, que representa os conceitos do problema sem compromisso com a implementação, do diagrama de classes de projeto, que representa as classes de software, com os tipos dos atributos e as operações que elas efetivamente oferecem; é este último que mais diretamente se relaciona com a estrutura do código.
+
+O diagrama de sequência representa a interação entre objetos ao longo do tempo para realizar um cenário específico, geralmente um caso de uso \cite{larman2007}. Os participantes são dispostos horizontalmente como linhas de vida, e o tempo avança de cima para baixo. As mensagens são setas entre as linhas de vida: as mensagens síncronas, em que o emissor aguarda a resposta, são desenhadas com seta cheia, e os retornos, com linha tracejada. Barras de ativação indicam o período em que um participante está executando uma operação. Para representar condições e repetições, a UML 2 oferece os fragmentos combinados, como \texttt{alt}, para alternativas mutuamente exclusivas, \texttt{opt}, para um trecho opcional, e \texttt{loop}, para repetições \cite{fowler2005}.
+
+O diagrama de máquina de estados descreve os estados pelos quais um objeto passa durante a sua existência e os eventos que provocam a mudança de um estado para outro \cite{booch2006}. Cada transição é rotulada pelo evento que a dispara e pode ter uma condição de guarda, escrita entre colchetes, que precisa ser verdadeira para que a transição ocorra. Um estado pode registrar ações executadas na entrada ou na saída, e o diagrama começa em um pseudoestado inicial e pode terminar em um ou mais estados finais. \citeonline{fowler2005} recomenda esse diagrama para objetos cujo comportamento depende fortemente do estado em que se encontram.
+
+O diagrama de atividades representa o fluxo de um processo, com as ações executadas, os pontos de decisão, nos quais o fluxo segue por um caminho conforme uma condição, e as bifurcações e junções, que representam atividades paralelas. As partições, também chamadas de raias, dividem o diagrama conforme o responsável por cada ação, o que permite visualizar quem faz o quê ao longo do processo \cite{guedes2018}.
+
+O diagrama de implantação representa a arquitetura física do sistema: os nós, que são os recursos computacionais, como servidores, dispositivos ou ambientes de execução; os artefatos, que são os elementos de software instalados em cada nó; e os caminhos de comunicação entre os nós, rotulados pelo protocolo utilizado \cite{guedes2018}. \citeonline{larman2007} destaca que a modelagem com UML permite registrar e comunicar decisões de projeto de forma visual, o que facilita o alinhamento entre desenvolvedores e demais partes envolvidas.
 
 %-----------------------------------
 \subsubsection{Banco de Dados Relacional}
 \label{sec:bd}
 
-Um banco de dados é uma coleção organizada de dados inter-relacionados, gerenciada por um sistema que permite armazená-los, recuperá-los e manipulá-los com eficiência \cite{heuser2009}. \citeonline{heuser2009} apresenta o modelo entidade-relacionamento como a principal ferramenta para o projeto conceitual de bancos de dados, por permitir representar as entidades do domínio e os vínculos entre elas antes de definir como os dados serão fisicamente armazenados.
+Um banco de dados é uma coleção organizada de dados inter-relacionados, gerenciada por um sistema que permite armazená-los, recuperá-los e manipulá-los com eficiência \cite{heuser2009}. \citeonline{heuser2009} apresenta o modelo entidade-relacionamento como a principal ferramenta para o projeto conceitual de bancos de dados, por permitir representar as entidades do domínio e os vínculos entre elas antes de definir como os dados serão fisicamente armazenados. O modelo entidade-relacionamento complementa o diagrama de classes da UML: enquanto este descreve as classes de software, com seus atributos e operações, aquele se concentra nas entidades persistidas e nos relacionamentos entre elas, com as respectivas cardinalidades.
 
 O modelo relacional organiza os dados em tabelas formadas por linhas e colunas, em que cada tabela representa uma entidade e cada linha, um registro dessa entidade. A integridade dos dados é assegurada por restrições como chaves primárias e estrangeiras, que garantem a unicidade dos registros e os vínculos entre tabelas \cite{silberschatz2012}. \citeonline{heuser2009} também descreve o processo de normalização, pelo qual o esquema relacional é reorganizado para eliminar redundâncias e anomalias de atualização. Um banco de dados normalizado armazena cada informação em um único lugar, reduzindo o risco de inconsistências quando os dados precisam ser modificados.
 
@@ -434,7 +444,7 @@ Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinaç�
 \subsection{Procedimentos Metodológicos}
 \label{sec:procedimentos}
 
-A pesquisa está organizada em cinco etapas encadeadas, cada uma condicionada pelos resultados da anterior: o diagnóstico do problema, o levantamento e a análise de requisitos, a modelagem do sistema, a implementação e a verificação. As três primeiras foram concluídas no TCC 1 e resultaram no mapeamento do processo atual de agendamento, na especificação dos requisitos funcionais e não funcionais e no diagrama de casos de uso. A implementação e a verificação serão realizadas no TCC 2. As subseções a seguir detalham cada etapa.
+A pesquisa está organizada em cinco etapas encadeadas, cada uma condicionada pelos resultados da anterior: o diagnóstico do problema, o levantamento e a análise de requisitos, a modelagem do sistema, a implementação e a verificação. As três primeiras foram concluídas no TCC 1 e resultaram no mapeamento do processo atual de agendamento, na especificação dos requisitos funcionais e não funcionais e na modelagem do sistema com a UML. A implementação e a verificação serão realizadas no TCC 2. As subseções a seguir detalham cada etapa.
 
 %-----------------------------------
 \subsubsection{Diagnóstico do Problema}
@@ -531,7 +541,10 @@ Para sistematizar a especificação, os requisitos foram consolidados em forma t
 \subsubsection{Modelagem do Sistema}
 \label{sec:modelagem}
 
-A terceira etapa foi a modelagem do sistema com a UML, cujos fundamentos foram apresentados na Seção~\ref{sec:uml}. No TCC 1 foi elaborado o diagrama de casos de uso, que delimita o escopo funcional do sistema; os diagramas de classes e de sequência serão construídos no TCC 2, na fase de implementação, a partir desse escopo.
+A terceira etapa foi a modelagem do sistema com a UML, cujos fundamentos foram apresentados na Seção~\ref{sec:uml}. A modelagem cobre as quatro visões descritas naquela seção: a funcional, com os diagramas e as descrições de casos de uso; a estrutural, com os diagramas de classes; a comportamental, com os diagramas de sequência, de máquina de estados e de atividades; e a física, com o diagrama de implantação. Como o sistema foi refinado ao longo das interações com a Direção de Ensino, os diagramas foram elaborados a partir da versão implementada, de modo a refletir a sua estrutura e o seu comportamento. As subseções a seguir apresentam cada visão.
+
+\subsubsubsection{Casos de Uso}
+\label{sec:uc}
 
 Como os perfis são configuráveis, os atores dos diagramas de casos de uso não representam perfis, mas responsabilidades: cada ator corresponde a um conjunto de permissões relacionadas, e um perfil do sistema pode reunir as permissões de um ou mais atores. A Tabela~\ref{tab:atores} relaciona os atores às permissões que representam. Todos os atores autenticados são especializações do ator Usuário Autenticado, do qual herdam os casos de uso comuns, como entrar no sistema e consultar as notificações, e o Superadmin dispõe de todas as permissões, inclusive as reservadas. Nos perfis criados pela carga inicial, o perfil Docente corresponde ao ator Solicitante, e o perfil Administrador reúne todos os demais atores, exceto as permissões reservadas ao Superadmin.
 
@@ -605,7 +618,182 @@ Por fim, a Figura~\ref{fig:uc_acompanhamento} apresenta a consulta pública, ace
     \label{fig:uc_acompanhamento}
 \end{figure}
 
-O diagrama de classes, a ser elaborado no TCC 2, terá como entidades centrais do domínio \textit{EspaçoFísico}, \textit{Horário}, \textit{Solicitação}, \textit{Reserva} e \textit{Usuário}. Os relacionamentos entre essas entidades, como a associação entre \textit{Usuário} e \textit{Reserva} ou entre \textit{EspaçoFísico} e \textit{Horário}, definirão as regras de integridade que orientam a estrutura do banco de dados; \citeonline{larman2007} destaca que esse é o artefato de modelagem mais diretamente relacionado à estrutura do código. O diagrama de sequência, também previsto para o TCC 2, ilustrará a interação entre os objetos nas operações de solicitação e aprovação de reservas, o que, segundo \citeonline{larman2007}, permite antecipar pontos de decisão e exceções no fluxo de execução.
+Cada caso de uso foi detalhado em uma descrição expandida, no formato proposto por \citeonline{cockburn2005}, com o ator principal, as pré-condições, o fluxo principal, os fluxos alternativos e as pós-condições. A Tabela~\ref{tab:uc_solicitar} apresenta, como exemplo, a descrição do caso de uso Solicitar reserva. Nos fluxos alternativos, o número indica o passo do fluxo principal em que a variação ocorre, e a letra distingue as variações de um mesmo passo. As descrições dos demais casos de uso centrais do sistema encontram-se no Apêndice~A.
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Solicitar reserva}\label{tab:uc_solicitar} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF05, RF06 \\ \hline
+		\textbf{Ator principal} & Solicitante \\ \hline
+		\textbf{Pré-condições} & O usuário está autenticado, ativo e com a permissão \texttt{AGENDA.SOLICITAR}; o semestre da data desejada tem o período letivo definido. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Solicitante seleciona uma faixa livre na grade da Agenda.\newline 2.~O sistema exibe o formulário com o espaço, a data e o horário preenchidos.\newline 3.~O Solicitante informa a descrição da atividade, a quantidade de alunos e, opcionalmente, o curso, a disciplina e a turma.\newline 4.~O sistema verifica a data, o horário e a disponibilidade do espaço.\newline 5.~O sistema exibe a revisão da solicitação, ainda sem gravá-la.\newline 6.~O Solicitante confirma o envio.\newline 7.~O sistema grava a solicitação com a situação PENDENTE, registra a operação na auditoria e notifica os usuários com a permissão de analisar solicitações.\newline 8.~O sistema exibe a confirmação do envio. \\ \hline
+		\textbf{Fluxos alternativos} & 4a.~O espaço está ocupado por uma aula ou por uma reserva aprovada no horário: o sistema informa o conflito e retorna ao passo 3.\newline 4b.~A data é sábado ou domingo, está fora do período do semestre ou o horário já passou, ou o fim é anterior ao início: o sistema informa o erro e retorna ao passo 3.\newline 4c.~O espaço está desativado: o sistema informa que ele não aceita novas solicitações e retorna ao passo 3.\newline 6a.~O Solicitante decide alterar os dados: o sistema retorna ao passo 3. \\ \hline
+		\textbf{Pós-condições} & A solicitação está registrada com a situação PENDENTE, sem reservar o horário, e os responsáveis pela análise foram notificados. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+\subsubsubsection{Diagramas de Classes}
+
+Os diagramas de classes apresentados a seguir são diagramas de classes de projeto, no sentido de \citeonline{larman2007}: as classes correspondem aos \textit{models} do Django e mantêm os nomes adotados no código, em inglês, para que os diagramas possam ser confrontados diretamente com a implementação. Por legibilidade, as classes foram distribuídas em quatro diagramas, um por módulo, cada um com os atributos e as operações mais relevantes; as classes de outros módulos aparecem apenas com o nome e, como estereótipo, o módulo de origem. A Tabela~\ref{tab:classes} apresenta o significado de cada classe.
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{6.2cm}@{}}
+	\caption{Classes do sistema e seus significados}\label{tab:classes} \\
+	\hline
+	\textbf{Classe} & \textbf{Módulo} & \textbf{Significado} \\ \hline
+	\endfirsthead
+	\hline
+	\textbf{Classe} & \textbf{Módulo} & \textbf{Significado} \\ \hline
+	\endhead
+		\texttt{User} & \texttt{accounts} & Usuário do sistema; o atributo \texttt{is\_superadmin} identifica o superadministrador \\
+		\texttt{Role} & \texttt{accounts} & Perfil de acesso \\
+		\texttt{Permission} & \texttt{accounts} & Permissão no formato \texttt{RECURSO.AÇÃO} \\
+		\texttt{UserRole} & \texttt{accounts} & Atribuição de um perfil a um usuário \\
+		\texttt{RolePermission} & \texttt{accounts} & Concessão de uma permissão a um perfil \\
+		\texttt{NamedRecord} & \texttt{schedule} & Classe abstrata dos cadastros identificados pelo nome \\
+		\texttt{Space} & \texttt{schedule} & Espaço físico, como sala ou laboratório \\
+		\texttt{SpaceName} & \texttt{schedule} & Nome atual ou outro nome pelo qual o espaço aparece na planilha \\
+		\texttt{Teacher} & \texttt{schedule} & Docente, como consta na planilha de horários \\
+		\texttt{Course} & \texttt{schedule} & Curso, com a etapa de ensino \\
+		\texttt{Subject} & \texttt{schedule} & Disciplina \\
+		\texttt{ClassGroup} & \texttt{schedule} & Turma de um curso \\
+		\texttt{Semester} & \texttt{schedule} & Semestre letivo e o seu período \\
+		\texttt{TimeSlot} & \texttt{schedule} & Faixa de horário de um semestre \\
+		\texttt{Allocation} & \texttt{schedule} & Aula recorrente: regra semanal com turma, disciplina, dia, faixa, espaço, docentes e vigência \\
+		\texttt{AllocationException} & \texttt{schedule} & Ocorrência de aula cancelada em uma data \\
+		\texttt{ClassOffering} & \texttt{schedule} & Oferta de uma disciplina a uma turma em um semestre \\
+		\texttt{TeachingAssignment} & \texttt{schedule} & Vínculo de um docente com uma oferta \\
+		\texttt{SpaceDecision} & \texttt{schedule} & Decisão sobre um nome de espaço encontrado na importação \\
+		\texttt{BookingRequest} & \texttt{bookings} & Solicitação de reserva, com a análise e a eventual alternativa sugerida \\
+		\texttt{Booking} & \texttt{bookings} & Reserva aprovada, enquanto vigente \\
+		\texttt{Notice} & \texttt{notices} & Comunicado publicado manualmente \\
+		\texttt{Notification} & \texttt{notices} & Notificação entregue a um usuário \\
+		\texttt{Import} & \texttt{imports} & Importação de planilha de horários ou de usuários \\
+		\texttt{ImportRow} & \texttt{imports} & Linha lida de uma importação, com o resultado previsto \\
+		\texttt{AuditLog} & \texttt{audit} & Registro de auditoria \\
+		\texttt{OutboxEntry} & \texttt{outbox} & Envio de e-mail na fila \\
+		\texttt{SystemSetting} & \texttt{system\_settings} & Configuração do sistema, como o servidor de e-mail \\ \hline
+	\multicolumn{3}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+A Figura~\ref{fig:cl_acesso} apresenta as classes do controle de acesso. As associações entre usuário e perfil e entre perfil e permissão são representadas por classes de associação, \texttt{UserRole} e \texttt{RolePermission}, que correspondem às tabelas intermediárias do banco de dados. A multiplicidade 0..1 no lado de \texttt{Role} expressa a restrição de cardinalidade descrita na Seção~\ref{sec:rbac}, pela qual cada usuário tem no máximo um perfil.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de classes -- Controle de acesso}
+    \includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{Figuras/uml/classes-acesso}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:cl_acesso}
+\end{figure}
+
+A Figura~\ref{fig:cl_ensalamento} apresenta o ensalamento. As classes \texttt{Space}, \texttt{Teacher}, \texttt{Course} e \texttt{Subject} especializam a classe abstrata \texttt{NamedRecord}, que concentra o atributo nome. A aula recorrente é representada por \texttt{Allocation}, que relaciona semestre, turma, disciplina, faixa de horário, espaço e docentes. A ocorrência de uma aula em uma data não é armazenada, mas calculada a partir dessa regra semanal pela operação \texttt{occurs\_on}, e apenas as ocorrências canceladas são registradas, em \texttt{AllocationException}. A composição entre \texttt{Space} e \texttt{SpaceName} indica que os nomes de um espaço são excluídos junto com ele.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de classes -- Ensalamento}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/uml/classes-ensalamento}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:cl_ensalamento}
+\end{figure}
+
+A Figura~\ref{fig:cl_agenda} apresenta a Agenda e as notificações. A classe \texttt{BookingRequest} guarda a solicitação, a análise e a eventual alternativa sugerida, e as suas operações correspondem às transições da máquina de estados apresentada na Seção~\ref{sec:comportamento}. A classe \texttt{Booking} existe apenas enquanto a reserva aprovada vale e é excluída no cancelamento, o que explica a multiplicidade 0..1 na associação com a solicitação.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de classes -- Agenda e notificações}
+    \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{Figuras/uml/classes-agenda}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:cl_agenda}
+\end{figure}
+
+Por fim, a Figura~\ref{fig:cl_suporte} reúne as classes de importação e de suporte: a importação e as suas linhas, as decisões sobre os espaços encontrados, o registro de auditoria, a fila de e-mails e as configurações do sistema. As composições indicam que as linhas e as decisões de uma importação não existem sem ela.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de classes -- Importações e suporte}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{Figuras/uml/classes-suporte}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:cl_suporte}
+\end{figure}
+
+\subsubsubsection{Diagramas de Sequência}
+
+Foram elaborados diagramas de sequência para os três cenários de maior complexidade do sistema: a solicitação de uma reserva, a sua análise e a importação da planilha de horários. Os participantes são as \textit{views}, os gerenciadores (\textit{managers}) e os objetos do Django que efetivamente participam de cada operação, e os nomes das mensagens correspondem aos métodos implementados.
+
+A Figura~\ref{fig:seq_solicitar} apresenta a solicitação de uma reserva, realizada em duas etapas. Na primeira, o método \texttt{prepare} verifica os dados e a disponibilidade sem gravar a solicitação, e o sistema exibe a revisão; na segunda, após a confirmação, o método \texttt{submit} repete a verificação e, em uma única transação, grava a solicitação, registra a auditoria e gera as notificações. O aviso em tempo real é agendado para depois da confirmação da transação (\textit{commit}), de modo que nenhum usuário seja avisado de uma operação que acabou desfeita.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de sequência -- Solicitar reserva}
+    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/sequencia-solicitar}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:seq_solicitar}
+\end{figure}
+\end{landscape}
+
+A Figura~\ref{fig:seq_analisar} apresenta a aprovação de uma solicitação. Para evitar que duas análises simultâneas confirmem reservas sobrepostas, a solicitação e o espaço são travados no banco de dados (\texttt{select\_for\_update}) e a disponibilidade é verificada novamente antes da gravação. Como garantia final, a criação da reserva está sujeita a uma restrição de exclusão no banco, que recusa intervalos sobrepostos para o mesmo espaço, o que atende ao RNF08. A rejeição e a sugestão de alternativa seguem a mesma estrutura, sem a criação da reserva.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de sequência -- Aprovar solicitação}
+    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/sequencia-analisar}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:seq_analisar}
+\end{figure}
+\end{landscape}
+
+A Figura~\ref{fig:seq_importar} apresenta a importação da planilha de horários. O processamento ocorre em segundo plano, no processo \texttt{import\_worker}, para não bloquear a interface. A prévia executa as linhas e desfaz as gravações, registrando apenas o plano do que seria criado ou alterado; a confirmação executa as linhas novamente e só aplica o resultado se o plano for idêntico ao da prévia, o que impede que alterações feitas no cadastro entre a prévia e a confirmação passem despercebidas.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de sequência -- Importar planilha de horários}
+    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/sequencia-importar}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:seq_importar}
+\end{figure}
+\end{landscape}
+
+\subsubsubsection{Diagramas de Máquina de Estados e de Atividades}
+\label{sec:comportamento}
+
+A Figura~\ref{fig:estados} apresenta a máquina de estados da solicitação de reserva, objeto cujo comportamento depende da situação em que se encontra. Toda solicitação começa no estado PENDENTE e pode ser aprovada, rejeitada ou receber uma alternativa, que o solicitante aceita ou recusa. As condições de guarda indicam as restrições de cada transição, como a disponibilidade do horário na aprovação e o prazo de até uma hora antes do início para o cancelamento. As ações de entrada mostram que a reserva (\texttt{Booking}) é criada ao entrar no estado APROVADA e excluída ao entrar no estado CANCELADA. Uma operação que o estado atual não admite é recusada pelo sistema.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de máquina de estados -- Solicitação de reserva}
+    \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{Figuras/uml/estados-solicitacao}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:estados}
+\end{figure}
+
+A Figura~\ref{fig:atividades} apresenta o processo de importação da planilha de horários como diagrama de atividades, com uma partição para cada responsável: o Gestor do Ensalamento, a aplicação web e o processo \texttt{import\_worker}. O diagrama evidencia os pontos de decisão do processo, como a validação da estrutura do arquivo, a decisão sobre os espaços pendentes, que pode se repetir até que não reste nenhum, e a comparação entre o plano da prévia e o da confirmação.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de atividades -- Importação da planilha de horários}
+    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/uml/atividades-importacao}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:atividades}
+\end{figure}
+\end{landscape}
+
+\subsubsubsection{Diagrama de Implantação}
+
+A Figura~\ref{fig:implantacao} apresenta o diagrama de implantação. O sistema é distribuído em contêineres orquestrados pelo Docker Compose, o que atende ao RNF12: o contêiner \texttt{web} executa a aplicação Django sobre o servidor Daphne, que atende às requisições HTTP e às conexões WebSocket; os contêineres \texttt{worker} e \texttt{import\_worker} executam, em segundo plano, o envio de e-mails e o processamento das importações; o contêiner \texttt{db} executa o PostgreSQL; e o contêiner \texttt{redis} mantém o \textit{cache} das telas públicas e a camada de comunicação do Django Channels, pela qual os avisos em tempo real chegam ao navegador, inclusive quando gerados pelo \texttt{import\_worker}. O envio de e-mails depende de um servidor SMTP externo, configurado pela interface do sistema. Os contêineres usados apenas no desenvolvimento, para compilar o CSS e gerar diagramas, não fazem parte da implantação e foram omitidos.
+
+\begin{figure}[htbp]
+    \centering
+    \caption{Diagrama de implantação}
+    \includegraphics[width=\textwidth,height=0.5\textheight,keepaspectratio]{Figuras/uml/implantacao}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:implantacao}
+\end{figure}
 
 %-----------------------------------
 \subsubsection{Implementação}
@@ -618,6 +806,18 @@ A linguagem de programação adotada é o Python, e o \textit{framework} web esc
 Uma questão anterior à escolha do SGBD é se o sistema precisa de um banco de dados próprio ou se a planilha de horários seria suficiente. A planilha atende bem à finalidade para a qual é produzida, o planejamento da grade semestral, e continua sendo a fonte da ocupação decorrente das aulas regulares (RF01). Ela não registra, porém, as informações que surgem do processo de agendamento: as solicitações de reserva e a sua situação (pendente, aprovada, rejeitada ou cancelada), quem solicitou, quem analisou e quando, os usuários e os seus papéis, e os ajustes pontuais feitos na grade a partir de uma semana determinada (RF02). Sem esse registro, não haveria histórico para os relatórios de utilização (RF12), que dependem justamente do acúmulo dessas informações ao longo do tempo.
 
 Há também razões de consistência e de segurança. Quando dois docentes solicitam o mesmo espaço no mesmo horário, o sistema precisa garantir que apenas uma das reservas seja confirmada. Uma planilha compartilhada não impede que duas pessoas registrem ao mesmo tempo ocupações conflitantes, enquanto um SGBD executa cada operação como uma transação e aplica restrições de integridade que rejeitam o registro inconsistente \cite{silberschatz2012}. Da mesma forma, a planilha não permite restringir o que cada perfil vê ou altera (RNF01), nem separar a consulta pública de disponibilidade dos dados pessoais dos solicitantes (RF11). Por isso, a planilha é tratada como dado de entrada, lido na importação, e o banco de dados como o registro do sistema, onde ficam a ocupação importada, as reservas e o histórico.
+
+A Figura~\ref{fig:der} apresenta o modelo conceitual dos dados, representado por um diagrama entidade-relacionamento na notação de Peter Chen, com as entidades persistidas pelo sistema, os seus atributos e as cardinalidades dos relacionamentos \cite{heuser2009}. As entidades correspondem às classes apresentadas na Seção~\ref{sec:modelagem}.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Modelo conceitual dos dados (DER)}
+    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{Figuras/der-conceitual}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:der}
+\end{figure}
+\end{landscape}
 
 Para a camada de dados, será utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. A escolha se justifica frente a alternativas como o MySQL e o SQLite: embora o SQLite seja prático para ambientes de desenvolvimento, não é recomendado para aplicações com múltiplos acessos simultâneos em produção; o MySQL, por sua vez, é amplamente difundido, mas o PostgreSQL oferece maior conformidade com o padrão SQL, melhor tratamento de integridade referencial e suporte mais completo a transações complexas, recursos relevantes para a consistência das reservas. Soma-se a isso o suporte nativo e robusto do Django ao PostgreSQL, incluindo recursos como busca textual avançada e transações com alto nível de integridade \cite{djangodocs}. O acesso ao banco será feito exclusivamente por meio do ORM, mantendo a consistência entre o código Python e o esquema relacional ao longo de todo o desenvolvimento.
 
@@ -714,4 +914,104 @@ O cronograma apresentado na Tabela~\ref{tab:cronograma} contempla as etapas de i
 \openany
 \clearpage
 \bibliography{referencias}
+
+% ----------------------------------------------------------
+% Apêndice
+% ----------------------------------------------------------
+\clearpage
+\section*{APÊNDICE A -- DESCRIÇÕES EXPANDIDAS DOS CASOS DE USO}
+\addcontentsline{toc}{section}{APÊNDICE A -- DESCRIÇÕES EXPANDIDAS DOS CASOS DE USO}
+\label{apendice:uc}
+
+Este apêndice reúne as descrições expandidas dos casos de uso centrais do sistema, no mesmo formato da Tabela~\ref{tab:uc_solicitar}, apresentada na Seção~\ref{sec:uc}.
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Analisar solicitação}\label{tab:uc_analisar} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF07, RF10, RF21 \\ \hline
+		\textbf{Ator principal} & Analista de Reservas \\ \hline
+		\textbf{Pré-condições} & O usuário está autenticado, ativo e com a permissão \texttt{AGENDA.ANALISAR}; existe uma solicitação com a situação PENDENTE ou ALTERNATIVA\_SUGERIDA. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Analista abre a lista de solicitações para análise.\newline 2.~O Analista seleciona uma solicitação.\newline 3.~O sistema exibe os dados da solicitação e do solicitante.\newline 4.~O Analista escolhe aprovar a solicitação.\newline 5.~O sistema trava a solicitação e o espaço, verifica novamente a disponibilidade, altera a situação para APROVADA e cria a reserva.\newline 6.~O sistema registra a operação na auditoria e notifica o solicitante. \\ \hline
+		\textbf{Fluxos alternativos} & 4a.~O Analista escolhe rejeitar: informa o motivo, obrigatório, e o sistema altera a situação para REJEITADA e notifica o solicitante.\newline 4b.~O Analista escolhe sugerir uma alternativa: informa outro espaço, data ou horário disponível e, opcionalmente, uma mensagem; o sistema altera a situação para ALTERNATIVA\_SUGERIDA, sem reservar o horário, e notifica o solicitante.\newline 5a.~O horário deixou de estar disponível: o sistema recusa a aprovação e informa o conflito.\newline 5b.~A solicitação já foi analisada por outro usuário: o sistema recusa a operação e informa a situação atual. \\ \hline
+		\textbf{Pós-condições} & A solicitação está APROVADA, com a reserva criada, REJEITADA ou com uma alternativa sugerida; a operação está registrada na auditoria e o solicitante foi notificado. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Responder à alternativa}\label{tab:uc_responder} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF21, RF23 \\ \hline
+		\textbf{Ator principal} & Solicitante \\ \hline
+		\textbf{Pré-condições} & O usuário é o autor da solicitação, que está com a situação ALTERNATIVA\_SUGERIDA. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Solicitante abre a lista das próprias solicitações.\newline 2.~O Solicitante seleciona a solicitação com alternativa sugerida.\newline 3.~O sistema exibe a alternativa e a mensagem do Analista.\newline 4.~O Solicitante aceita a alternativa.\newline 5.~O sistema verifica novamente a disponibilidade, cria a reserva com o espaço, a data e o horário sugeridos e altera a situação para APROVADA.\newline 6.~O sistema notifica o Analista que sugeriu a alternativa. \\ \hline
+		\textbf{Fluxos alternativos} & 4a.~O Solicitante recusa a alternativa: o sistema altera a situação para ALTERNATIVA\_RECUSADA, sem criar reserva, e notifica o Analista.\newline 5a.~O horário sugerido deixou de estar disponível: o sistema recusa o aceite e informa o conflito. \\ \hline
+		\textbf{Pós-condições} & A solicitação está APROVADA, com a reserva criada, ou ALTERNATIVA\_RECUSADA; o Analista foi notificado. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Importar planilha de horários}\label{tab:uc_importar} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF01, RF02 \\ \hline
+		\textbf{Ator principal} & Gestor do Ensalamento \\ \hline
+		\textbf{Pré-condições} & O usuário tem a permissão \texttt{ENSALAMENTO.IMPORTAR}; a planilha está no formato XLSX da grade institucional, com as abas de horários e de validação de dados. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Gestor envia a planilha e informa o semestre e o seu período.\newline 2.~O sistema valida o tamanho e a estrutura do arquivo e registra a importação.\newline 3.~O sistema processa a prévia em segundo plano: executa as linhas, desfaz as gravações e classifica os nomes de espaços encontrados.\newline 4.~O sistema exibe a prévia, com o que será criado ou alterado, os avisos e os erros de cada linha.\newline 5.~O Gestor confirma a importação.\newline 6.~O sistema executa as linhas novamente e, sendo o resultado idêntico ao da prévia, grava as aulas, os espaços, os cursos, as disciplinas e as turmas, marca a importação como CONCLUIDA e registra o resumo na auditoria. \\ \hline
+		\textbf{Fluxos alternativos} & 2a.~O arquivo não tem a estrutura esperada: o sistema recusa o arquivo inteiro e informa os erros.\newline 4a.~Há nomes de espaços que precisam de decisão: o Gestor indica, para cada um, se é um espaço novo, outro nome de um espaço cadastrado ou um espaço a reativar, e o sistema refaz a prévia; o passo se repete até não restarem pendências.\newline 4b.~Há linhas com erro: a confirmação não é permitida; o Gestor corrige a planilha e reinicia o caso de uso.\newline 5a.~O Gestor descarta a importação: o sistema a marca como DESCARTADA, sem alterar o cadastro.\newline 6a.~O resultado difere da prévia, por alterações feitas no cadastro nesse intervalo: o sistema desfaz a execução, grava a nova prévia e retorna ao passo 4. \\ \hline
+		\textbf{Pós-condições} & As aulas do semestre estão cadastradas ou atualizadas, sem exclusão de registros anteriores, e a importação está registrada na auditoria. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Alterar recorrência}\label{tab:uc_alterar} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF02, RF14 \\ \hline
+		\textbf{Ator principal} & Gestor do Ensalamento \\ \hline
+		\textbf{Pré-condições} & O usuário tem a permissão \texttt{ENSALAMENTO.ALTERAR\_RECORRENCIA}; a aula existe em um semestre com o período definido. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Gestor seleciona a aula na grade do ensalamento e escolhe alterar a recorrência.\newline 2.~O sistema exibe os dados atuais da aula.\newline 3.~O Gestor informa a data de corte e os novos valores de dia, horário de início, duração, espaço ou docentes.\newline 4.~O sistema verifica os dados e exibe o resumo da alteração.\newline 5.~O Gestor confirma.\newline 6.~O sistema encerra a versão atual da aula na véspera da data de corte, cria a nova versão a partir dessa data, transfere para ela os cancelamentos posteriores ao corte e registra a operação na auditoria. \\ \hline
+		\textbf{Fluxos alternativos} & 4a.~A data de corte é anterior a hoje, está fora do período do semestre ou não é uma ocorrência da aula: o sistema informa o erro e retorna ao passo 3.\newline 4b.~Nenhum dado foi alterado: o sistema informa e retorna ao passo 3.\newline 4c.~A nova versão ocuparia o espaço em horário de outra aula ou de uma reserva aprovada, ou repetiria outra aula vigente: o sistema informa o conflito e retorna ao passo 3. \\ \hline
+		\textbf{Pós-condições} & As ocorrências anteriores à data de corte permanecem inalteradas, e as posteriores seguem a nova versão da aula. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Cancelar ocorrência da própria aula}\label{tab:uc_cancelar_ocorrencia} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF16 \\ \hline
+		\textbf{Ator principal} & Solicitante, na condição de docente da aula \\ \hline
+		\textbf{Pré-condições} & O usuário tem a permissão \texttt{AGENDA.VISUALIZAR} e corresponde ao docente da aula; a data é uma ocorrência da aula, de hoje em diante. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Solicitante seleciona a própria aula na grade da Agenda.\newline 2.~O Solicitante escolhe cancelar a ocorrência daquela data.\newline 3.~O sistema pede a confirmação.\newline 4.~O Solicitante confirma.\newline 5.~O sistema registra o cancelamento da ocorrência, sem alterar a recorrência da aula, e registra a operação na auditoria. \\ \hline
+		\textbf{Fluxos alternativos} & 1a.~A aula não é do usuário: a opção de cancelamento não é oferecida.\newline 4a.~A ocorrência já foi cancelada ou a data não é uma ocorrência da aula: o sistema recusa a operação. \\ \hline
+		\textbf{Pós-condições} & A aula não ocorre na data cancelada, e as demais ocorrências permanecem inalteradas. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{10.7cm}@{}}
+	\caption{Descrição do caso de uso Manter perfis e permissões}\label{tab:uc_perfis} \\
+	\hline
+	\endfirsthead
+	\hline
+	\endhead
+		\textbf{Requisitos} & RF18 \\ \hline
+		\textbf{Ator principal} & Superadmin \\ \hline
+		\textbf{Pré-condições} & O usuário é superadministrador e está ativo. \\ \hline
+		\textbf{Fluxo principal} & 1.~O Superadmin abre a lista de perfis e escolhe criar um perfil.\newline 2.~O Superadmin informa o código, o nome e a descrição do perfil.\newline 3.~O sistema valida os dados e grava o perfil, ainda sem permissões.\newline 4.~O sistema exibe as permissões disponíveis, agrupadas por módulo.\newline 5.~O Superadmin seleciona as permissões do perfil.\newline 6.~O sistema grava as permissões e registra a operação na auditoria. \\ \hline
+		\textbf{Fluxos alternativos} & 1a.~O Superadmin escolhe excluir um perfil que tem usuários vinculados: o sistema recusa a exclusão.\newline 3a.~O código ou o nome já existe, ou o código não segue o formato exigido: o sistema informa o erro e retorna ao passo 2.\newline 5a.~Ao editar um perfil existente, a retirada de permissões deixaria o sistema sem nenhum usuário ativo capaz de gerenciar usuários: o sistema recusa a alteração. \\ \hline
+		\textbf{Pós-condições} & O perfil está cadastrado com as permissões escolhidas; as permissões reservadas ao superadministrador não podem ser concedidas a nenhum perfil. \\ \hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).}
+\end{longtable}
 \end{document}

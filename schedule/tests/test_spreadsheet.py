@@ -1,9 +1,9 @@
-"""Leitura de `sources/planilha_example.xlsx`, com números que acusam mudança de comportamento diante do arquivo real."""
+"""Leitura de `schedule/tests/fixtures/planilha_example.xlsx`, com números que acusam mudança de comportamento diante do arquivo real."""
 
 import collections
+from pathlib import Path
 from unittest.mock import patch
 
-from django.conf import settings
 from django.test import SimpleTestCase
 from openpyxl import Workbook, load_workbook
 
@@ -39,7 +39,8 @@ from schedule.sheets import (
     user_entries,
 )
 
-SPREADSHEET = settings.BASE_DIR / 'sources' / 'planilha_example.xlsx'
+FIXTURES = Path(__file__).parent / 'fixtures'
+SPREADSHEET = FIXTURES / 'planilha_example.xlsx'
 IGNORED_SHEETS = (
     'Ensalamento - Geral',
     'Horário - Professor',

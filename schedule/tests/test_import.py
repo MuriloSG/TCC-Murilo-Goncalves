@@ -2,9 +2,9 @@
 
 import io
 from datetime import date, time
+from pathlib import Path
 from unittest.mock import patch
 
-from django.conf import settings
 from django.db import DatabaseError
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -40,8 +40,9 @@ from schedule.models import (
 )
 from schedule.sheets import CATALOG_SHEET, SECONDARY_SHEET, UNDERGRADUATE_SHEET, USER_COLUMNS, USERS_SHEET
 
-SPREADSHEET = settings.BASE_DIR / 'sources' / 'planilha_example.xlsx'
-SUGGESTED_SPREADSHEET = settings.BASE_DIR / 'sources' / 'planilha_example_sugerida.xlsx'
+FIXTURES = Path(__file__).parent / 'fixtures'
+SPREADSHEET = FIXTURES / 'planilha_example.xlsx'
+SUGGESTED_SPREADSHEET = FIXTURES / 'planilha_example_sugerida.xlsx'
 CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 TEACHERS = ['Viviane', 'Elza', 'Eduardo Garrido', 'Thaís Rios', 'Gera Jr.', 'Érica']

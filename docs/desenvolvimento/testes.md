@@ -18,7 +18,7 @@ A convenção do projeto é rodar a suíte inteira antes de cada commit. Não h�
 ## Organização
 
 - Testes em `<app>/tests/test_*.py`. Auxiliares compartilhados: `accounts/tests/roles.py` (perfis montados pelas permissões), `bookings/tests/base.py`, `system_settings/tests/base.py` (`configure_smtp`), `imports/tests/definitions.py` (importação de teste sobre `auth.Group`), `imports/tests/worker.py` (roda o worker nos testes), `ui/tests/files.py` (lista templates e módulos).
-- A planilha real e as sugeridas de `sources/` são lidas pelos testes do ensalamento.
+- Os testes do ensalamento leem cópias da planilha real e das sugeridas em `schedule/tests/fixtures/`, e não `sources/`, para rodarem também dentro da imagem de produção, que não leva `sources/`.
 
 ## Catálogo por app
 

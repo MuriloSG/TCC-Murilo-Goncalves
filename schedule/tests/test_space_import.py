@@ -1,7 +1,7 @@
 """Espaços na importação de ensalamento: classificação, decisões, permissões e confirmação."""
 
+from pathlib import Path
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -15,7 +15,7 @@ from schedule.models import Allocation, Space, SpaceDecision
 from schedule.spaces import CELLS_ONLY, CREATE, INACTIVE, PENDING, SIMILAR, classify_import
 from schedule.tests.test_import import CONTENT_TYPE, ImportTestCase, space_manager, workbook_file
 
-SOURCES = settings.BASE_DIR / 'sources'
+FIXTURES = Path(__file__).parent / 'fixtures'
 CORRECTED = 'planilha_example_sugerida_corrigida.xlsx'
 SECONDARY_CELL = ('SEGUNDA-FEIRA', '13:20 - 14:10', 0)
 
@@ -32,7 +32,7 @@ def secondary(text):
 
 
 def real(name):
-    return SimpleUploadedFile(name, (SOURCES / name).read_bytes(), content_type=CONTENT_TYPE)
+    return SimpleUploadedFile(name, (FIXTURES / name).read_bytes(), content_type=CONTENT_TYPE)
 
 
 class SpaceImportTestCase(ImportTestCase):

@@ -105,7 +105,7 @@ Alteração da recorrência a partir de uma data.
 
 ### `test_spreadsheet.py`
 
-Leitura de `sources/planilha_example.xlsx`, com números que acusam mudança diante do arquivo real.
+Leitura de `schedule/tests/fixtures/planilha_example.xlsx`, com números que acusam mudança diante do arquivo real.
 
 | Classe | O que garante |
 |---|---|

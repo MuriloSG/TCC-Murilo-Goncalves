@@ -219,3 +219,4 @@ Sempre o mesmo termo para a mesma coisa, termos do mundo real do campus (princí
 | Cor nova | Token em `ui/styles/app.css` e par em `ui/contrast.py` |
 | Ícone | SVG do Lucide em `ui/templates/ui/icons/`, sem `width`, `height` e comentários |
 | Tela nova | Imagem de referência do autor antes de desenhar (seção 9.8) |
+| Mudança numa tela explicada pela central de ajuda | Substituir as imagens dos passos afetados, só com dados fictícios; funcionalidade nova entra em `tutorials/catalog.py` com as imagens (ver [central de ajuda](../funcionalidades/central-de-ajuda.md)) |

@@ -25,6 +25,7 @@ Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para 
 | [Agenda](funcionalidades/agenda.md) | Solicitações, análise, alternativa, cancelamento, criação para outro usuário |
 | [Calendário público](funcionalidades/calendario-publico.md) | Telas sem login, filtros, cache |
 | [Painel e relatórios](funcionalidades/painel-e-relatorios.md) | Painel administrativo, mapa de calor, relatório de solicitações |
+| [Central de ajuda](funcionalidades/central-de-ajuda.md) | Passos com capturas de cada funcionalidade, por permissão, e a geração das imagens |
 | [Notificações](funcionalidades/notificacoes.md) | Sino, tempo real, publicação manual |
 | [Auditoria](funcionalidades/auditoria.md) | O que é registrado, origem, consulta |
 | [E-mails e servidor SMTP](funcionalidades/emails.md) | Outbox, worker, configuração do servidor |

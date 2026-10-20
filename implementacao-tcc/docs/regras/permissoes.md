@@ -99,6 +99,7 @@ Risco aceito: quem cobre as permissões das duas contas pode mover o vínculo de
 | Solicitar agendamento | `AGENDA.SOLICITAR` | Nenhuma ligada ao docente: a turma é opcional e, quando informada, precisa ser vínculo atual do semestre da data |
 | Cancelar agendamento | `AGENDA.SOLICITAR` (próprio) ou `AGENDA.ANALISAR` | O model aceita quem solicitou ou quem analisa |
 | Notificações (sino, abrir, marcar) | só login | Só as do próprio usuário |
+| Central de ajuda (`/ajuda/`, `?tela=`) | só login | Cada funcionalidade e cada passo só aparecem, e só chegam ao HTML, com as permissões declaradas em `tutorials/catalog.py`; a ajuda da tela mostra só as funcionalidades da opção do menu de origem |
 
 ## Menu
 
@@ -118,6 +119,8 @@ Risco aceito: quem cobre as permissões das duas contas pode mover o vínculo de
 | Configurações | E-mail | `CONFIGURACAO.EDITAR` |
 
 As importações de usuários abrem pelo botão "Importações" da lista de usuários, mostrado com `USUARIO.IMPORTAR`, ou pelo item Usuários do menu para quem tem `USUARIO.IMPORTAR` sem `USUARIO.VISUALIZAR`. O menu só indica o caminho: cada tela exige a própria permissão no servidor. `USUARIO.IMPORTAR` não libera a lista nem o cadastro de usuários, e excluir uma importação exige `USUARIO.EXCLUIR_IMPORTACAO`.
+
+A central de ajuda abre pelo ícone do cabeçalho e da barra do celular, fora do `MENU`, para todo usuário autenticado; por isso não muda a página aberta por `/inicio/`.
 
 ## Permissão nova
 

@@ -35,6 +35,7 @@ O detalhamento está em [permissões](../regras/permissoes.md).
 | Notificações | sino no cabeçalho, `/notificacoes/` | [notificacoes.md](../funcionalidades/notificacoes.md) |
 | Auditoria | `/auditoria/` | [auditoria.md](../funcionalidades/auditoria.md) |
 | E-mails e servidor SMTP | `/configuracoes/email/` | [emails.md](../funcionalidades/emails.md) |
+| Central de ajuda | `/ajuda/` | [central-de-ajuda.md](../funcionalidades/central-de-ajuda.md) |
 
 Depois do login, `/inicio/` redireciona para o primeiro item do menu liberado ao usuário (`ui/navigation.py`). Sem nenhum item liberado, mostra o aviso de acesso restrito.
 

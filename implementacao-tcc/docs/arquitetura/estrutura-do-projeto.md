@@ -20,6 +20,7 @@
 ├── bookings/               Agenda: solicitações e agendamentos
 ├── panel/                  painel administrativo
 ├── reports/                mapa de calor e relatório de solicitações
+├── tutorials/              central de ajuda: catálogo, página e imagens
 ├── docs/                   esta documentação
 ├── sources/                texto do TCC, logotipos e planilhas de referência
 └── .claude/                configuração local do Claude Code
@@ -59,6 +60,7 @@
 | `bookings/notifications.py` | Notificações das transições da Agenda |
 | `panel/indicators.py`, `reports/heatmap.py`, `reports/requests.py` | Cálculo dos indicadores e relatórios |
 | `ui/navigation.py` | Menu lateral e página inicial depois do login |
+| `tutorials/catalog.py` | Conteúdo da central de ajuda: módulos, funcionalidades, passos e permissões |
 | `ui/text_rules.py`, `ui/class_rules.py`, `ui/contrast.py` | Regras verificadas pelas varreduras de texto, de classes e de contraste |
 
 ## Interface

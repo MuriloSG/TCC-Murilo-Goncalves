@@ -177,6 +177,6 @@ No macOS e no Windows com Docker Desktop, isso não é necessário.
 
 ## Organização do repositório
 
-Apps Django: `accounts`, `ui`, `audit`, `outbox`, `system_settings`, `notices`, `imports`, `schedule`, `bookings`, `panel` e `reports`. A configuração fica em `config/`, a documentação em `docs/` e o texto do TCC com as planilhas de referência em `sources/`. Detalhes em [docs/arquitetura/estrutura-do-projeto.md](docs/arquitetura/estrutura-do-projeto.md).
+Apps Django: `accounts`, `ui`, `audit`, `outbox`, `system_settings`, `notices`, `imports`, `schedule`, `bookings`, `panel`, `reports` e `tutorials`. A configuração fica em `config/`, a documentação em `docs/` e o texto do TCC com as planilhas de referência em `sources/`. Detalhes em [docs/arquitetura/estrutura-do-projeto.md](docs/arquitetura/estrutura-do-projeto.md).
 
 As convenções de código estão em [docs/desenvolvimento/convencoes.md](docs/desenvolvimento/convencoes.md).

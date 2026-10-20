@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import patch_cache_control
 from django.utils.safestring import mark_safe
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, View
 
 from schedule import public_cache
 from schedule.ics import export_calendar, filename_of
@@ -91,12 +91,16 @@ class OriginalTimetableView(PublicPageView):
         return context
 
 
-def calendar_ics(request):
+class CalendarIcsView(View):
     """Semestre inteiro com os filtros da tela em .ics, para baixar ou assinar no Google Agenda."""
-    calendar, content = export_calendar(request.GET, timezone.localdate())
-    if content is None:
-        raise Http404
-    response = HttpResponse(content, content_type='text/calendar; charset=utf-8')
-    response['Content-Disposition'] = f'attachment; filename="{filename_of(calendar)}"'
-    patch_cache_control(response, no_cache=True)
-    return response
+
+    http_method_names = ['get', 'head']
+
+    def get(self, request, *args, **kwargs):
+        calendar, content = export_calendar(request.GET, timezone.localdate())
+        if content is None:
+            raise Http404
+        response = HttpResponse(content, content_type='text/calendar; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename_of(calendar)}"'
+        patch_cache_control(response, no_cache=True)
+        return response

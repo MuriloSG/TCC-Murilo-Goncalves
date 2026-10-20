@@ -1,7 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_safe
 
 from schedule import public_views, views
 
@@ -12,7 +11,7 @@ urlpatterns = [
         csrf_exempt(public_views.OriginalTimetableView.as_view()),
         name='public_original_timetable',
     ),
-    path('calendario.ics', require_safe(public_views.calendar_ics), name='public_calendar_ics'),
+    path('calendario.ics', csrf_exempt(public_views.CalendarIcsView.as_view()), name='public_calendar_ics'),
     path('espacos/', login_required(views.SpaceListView.as_view()), name='spaces_list'),
     path('espacos/novo/', login_required(views.SpaceCreateView.as_view()), name='spaces_create'),
     path('espacos/<int:pk>/editar/', login_required(views.SpaceUpdateView.as_view()), name='spaces_update'),

@@ -46,7 +46,7 @@
         <img src="{% static 'ui/img/simbolo-if.png' %}" alt="" width="158" height="213">
         <span class="brand-name">IFAgenda</span>
       </a>
-      {% if user.is_authenticated %}{% notifications %}{% endif %}
+      {% if user.is_authenticated %}{% url 'help_center' as help_url %}<a class="icon-btn help-link" href="{{ help_url }}?tela={{ request.resolver_match.url_name|urlencode }}" aria-label="Abrir a central de ajuda"{% if request.path == help_url %} aria-current="page"{% endif %}>{% icon "circle-help" %}<span class="tip is-below" role="tooltip">Abrir a central de ajuda</span></a>{% notifications %}{% endif %}
     </div>
 
     <div>
@@ -62,6 +62,7 @@
           </ol>
         </nav>
         {% if user.is_authenticated %}
+          {% url 'help_center' as help_url %}<a class="icon-btn help-link" href="{{ help_url }}?tela={{ request.resolver_match.url_name|urlencode }}" aria-label="Abrir a central de ajuda"{% if request.path == help_url %} aria-current="page"{% endif %}>{% icon "circle-help" %}<span class="tip is-below" role="tooltip">Abrir a central de ajuda</span></a>
           {% notifications %}
           <details class="menu user-menu">
             <summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">{{ user.name|initials }}</span></summary>

@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'panel',
     'reports',
     'system_settings',
+    'tutorials',
     'allauth',
     'allauth.account',
 ]

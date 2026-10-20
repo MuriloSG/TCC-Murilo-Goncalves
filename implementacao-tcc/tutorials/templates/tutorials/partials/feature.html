@@ -1,0 +1,37 @@
+{% load static ui %}{% with feature=entry.feature %}<article class="card guide-feature" id="{{ feature.slug }}" aria-labelledby="titulo-{{ feature.slug }}">
+  <div class="card-head">
+    <div>
+      {% if top_level %}<h2 class="card-title" id="titulo-{{ feature.slug }}">{{ feature.title }}</h2>{% else %}<h3 class="card-title" id="titulo-{{ feature.slug }}">{{ feature.title }}</h3>{% endif %}
+      <p class="card-description">{{ feature.goal }}</p>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if feature.note %}<div class="alert tone-info" role="note">{% icon "info" %}<p>{{ feature.note }}</p></div>{% endif %}
+    <ol class="guide-steps">
+      {% for item in entry.steps %}
+        <li class="guide-step">
+          <div class="guide-step-text">
+            <span class="step-mark" aria-hidden="true">{{ forloop.counter }}</span>
+            <p>{{ item.step.text }}</p>
+          </div>
+          {% if item.step.marks %}
+            <ol class="guide-legend" aria-label="Marcadores da imagem do passo {{ forloop.counter }}">
+              {% for mark in item.step.marks %}<li><span class="guide-legend-mark" aria-hidden="true">{{ forloop.counter }}</span>{{ mark }}</li>{% endfor %}
+            </ol>
+          {% endif %}
+          <a class="guide-figure" href="{% static item.desktop %}" target="_blank" rel="noopener" data-guide-figure>
+            <picture>
+              <source media="(max-width: 39.99rem)" srcset="{% static item.mobile %}" width="390" height="844">
+              <img src="{% static item.desktop %}" alt="{{ item.step.alt }}" width="1280" height="800" loading="lazy" decoding="async">
+            </picture>
+          </a>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% if feature.screen %}
+    <div class="card-foot guide-feature-foot">
+      <a class="btn-secondary btn-go" href="{% url feature.screen %}">{{ feature.screen_label }}{% icon "arrow-right" %}</a>
+    </div>
+  {% endif %}
+</article>{% endwith %}

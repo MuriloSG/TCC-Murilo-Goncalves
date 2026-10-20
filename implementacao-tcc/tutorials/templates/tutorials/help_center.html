@@ -1,0 +1,57 @@
+{% extends "ui/layouts/app.html" %}
+{% load static ui %}
+
+{% block head %}<script src="{% static 'tutorials/js/guide.js' %}" defer></script>{% endblock %}
+
+{% block title %}{% if screen %}{{ screen.title }}{% else %}Central de ajuda{% endif %}{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  {% if screen %}
+    <li>{% icon "chevron-right" "size-4" %}{% if screen_url %}<a href="{{ screen_url }}">{{ screen_label }}</a>{% else %}<span>{{ screen_label }}</span>{% endif %}</li>
+    <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Ajuda</span></li>
+  {% else %}
+    <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Central de ajuda</span></li>
+  {% endif %}
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">{% if screen %}{{ screen.title }}{% else %}Central de ajuda{% endif %}</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  {% if screen %}
+    {% if entries %}
+      <div class="guide-layout">
+        {% if entries|length > 1 %}{% include "tutorials/partials/nav.html" with groups=nav_groups %}{% endif %}
+        <div class="guide">
+          {% for entry in entries %}{% include "tutorials/partials/feature.html" with top_level=True %}{% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <section class="card">
+        <div class="card-head"><p>Nenhuma ajuda desta tela liberada para o seu perfil.</p></div>
+      </section>
+    {% endif %}
+  {% elif not modules %}
+    <section class="card">
+      <div class="card-head"><p>Nenhuma funcionalidade com ajuda liberada para o seu perfil.</p></div>
+    </section>
+  {% else %}
+    <div class="guide-layout">
+      {% include "tutorials/partials/nav.html" with groups=modules %}
+      <div class="guide">
+        {% for module in modules %}
+          <section class="guide-module" aria-labelledby="modulo-{{ module.slug }}">
+            <h2 class="guide-module-title" id="modulo-{{ module.slug }}">{{ module.label }}</h2>
+            {% for entry in module.features %}{% include "tutorials/partials/feature.html" %}{% endfor %}
+          </section>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

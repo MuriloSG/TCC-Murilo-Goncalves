@@ -1,0 +1,17 @@
+{% load ui %}<nav class="guide-nav" aria-label="Funcionalidades da ajuda">
+  <details class="guide-nav-panel" open data-guide-nav>
+    <summary class="guide-nav-summary"><span>Funcionalidades</span><span class="guide-nav-current" data-guide-current></span>{% icon "chevron-down" "size-4 guide-nav-chevron" %}</summary>
+    <div class="guide-nav-body">
+      {% for group in groups %}
+        <div class="guide-nav-group">
+          {% if group.label %}<p class="eyebrow">{{ group.label }}</p>{% endif %}
+          <ul>
+            {% for entry in group.features %}
+              <li><a class="guide-nav-link" href="#{{ entry.feature.slug }}">{{ entry.feature.title }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  </details>
+</nav>

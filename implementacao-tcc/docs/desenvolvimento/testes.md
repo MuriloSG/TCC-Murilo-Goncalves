@@ -11,7 +11,7 @@ make manage cmd="test bookings.tests.test_models.SubmitTests.test_past_start_is_
 
 Sem `make`: `docker compose run --rm web python manage.py test`.
 
-Situação em 19/10/2026: 1747 testes, todos passando, em cerca de 95 segundos. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
+Situação em 20/10/2026: 1780 testes, todos passando, em cerca de 100 segundos. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
 
 A convenção do projeto é rodar a suíte inteira antes de cada commit. Não há CI no repositório.
 
@@ -35,6 +35,7 @@ O que cada módulo e cada classe de teste garante, um documento por app:
 | [`panel` e `reports`](testes/panel-e-reports.md) | Painel administrativo, mapa de calor e relatório de solicitações |
 | [`schedule`](testes/schedule.md) | Entidades do ensalamento, recorrências, cancelamentos, importação da planilha, espaços, cadastros acadêmicos, calendário público e cache |
 | [`system_settings`](testes/system-settings.md) | Configuração SMTP cifrada e checagens de deploy |
+| [`tutorials`](testes/tutorials.md) | Catálogo e imagens da central de ajuda e visibilidade por permissão |
 | [`ui`](testes/ui.md) | Varreduras de texto, classes e contraste, layout, navegação e componentes |
 
 ## Testes transversais

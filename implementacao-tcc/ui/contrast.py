@@ -79,6 +79,7 @@ CONTRAST_PAIRS = [
     ('warning-text', 'warning-bg', 3, 'Ícone das de alternativa sugerida no relatório'),
     ('text-muted', 'hover', 3, 'Ícone da situação sem solicitação no relatório'),
     ('text-muted', 'page', 4.5, 'Desfecho sem alternativa no relatório'),
+    ('on-fill', 'guide-mark', 4.5, 'Número da legenda dos marcadores na central de ajuda'),
 ]
 
 EXEMPT = {

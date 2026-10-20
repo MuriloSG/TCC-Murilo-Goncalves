@@ -21,6 +21,7 @@ Os registros originais, com as alternativas avaliadas, ficaram no histórico do 
 | 13 | [Servidor SMTP configurado no banco, senha cifrada](#13-servidor-smtp-configurado-no-banco-senha-cifrada) |
 | 14 | [Interface sem dependências externas em tempo de execução](#14-interface-sem-dependências-externas-em-tempo-de-execução) |
 | 15 | [Comandos destrutivos só no banco local comprovado](#15-comandos-destrutivos-só-no-banco-local-comprovado) |
+| 16 | [Central de ajuda em catálogo Python, com capturas feitas num banco próprio](#16-central-de-ajuda-em-catálogo-python-com-capturas-feitas-num-banco-próprio) |
 
 ## 1. Monólito Django com regras de negócio no model
 
@@ -123,3 +124,11 @@ Os registros originais, com as alternativas avaliadas, ficaram no histórico do 
 **Consequência.** Na máquina de desenvolvimento, `DJANGO_ENVIRONMENT=local` precisa estar no `.env`. Em 08/10/2026 o `flush` ganhou a mesma trava, por um comando do projeto que o substitui; o banco de teste criado pelo runner (`config/test_runner.py`) fica dispensado, porque o `TransactionTestCase` o usa a cada teste.
 
 **Revisão em 08/10/2026.** O ambiente identificava a instalação, e não o banco: com `local` no `.env` e `POSTGRES_HOST` apontando para outro servidor, os quatro comandos rodavam. A trava passou a ser `accounts.utils.require_safe_database`, que exige também `DJANGO_LOCAL_DATABASE` igual a `host:porta/nome` da conexão e, no banco conectado, o mesmo nome e a marca `ifagenda.environment = 'local'` (`make mark-local-db`). A marca fica no próprio banco, e não em convenção de nome, para que um banco operacional nunca seja tomado por local. O runner continua liberando só os bancos que criou. Detalhes em [configuração](../operacao/configuracao.md#identificação-da-instalação-e-do-banco-local).
+
+## 16. Central de ajuda em catálogo Python, com capturas feitas num banco próprio
+
+**Decisão.** Uma página `/ajuda/`, só com login, montada de `tutorials/catalog.py`, sem model, migration nem permissão nova. As imagens ficam versionadas em `tutorials/static/`. Detalhes em [central de ajuda](../funcionalidades/central-de-ajuda.md).
+
+**Motivo registrado.** O conteúdo muda junto com a interface, então fica no código e passa pelas varreduras de texto. Um painel administrativo ou um model só serviriam a quem já edita o código. A filtragem pelas permissões, e não pelo perfil, segue a decisão 3. O banco de desenvolvimento tem dados reais, por isso as capturas foram feitas num projeto Compose separado, com banco vazio e só dados fictícios.
+
+**Revisão em 20/10/2026.** As 184 imagens foram geradas por um roteiro com o Playwright, num estágio próprio do `Dockerfile`. Depois da geração, o roteiro, o comando `capture_tutorials`, o `compose.tutorials.yaml`, o estágio e os alvos do `Makefile` foram retirados por decisão do autor. Novas imagens são feitas à mão, no padrão descrito na documentação da central.

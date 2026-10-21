@@ -1,0 +1,80 @@
+% Diagrama de sequência: solicitar e aprovar uma reserva.
+% Fonte: bookings/models.py (submit, approve, Booking.objects.book) e notices/events.py (announce).
+\begin{tikzpicture}[
+    font=\scriptsize,
+    obj/.style={draw, fill=black!8, minimum height=0.6cm, inner sep=3pt, font=\footnotesize},
+    life/.style={dashed, black!55},
+    call/.style={-{Latex[length=2mm]}},
+    ret/.style={dashed, -{Stealth[open, length=2mm]}},
+    async/.style={-{Stealth[open, length=2mm]}},
+    lab/.style={above, inner sep=1.5pt, fill=white, fill opacity=0.9, text opacity=1},
+    frag/.style={draw, black!70},
+    guard/.style={font=\scriptsize\itshape, anchor=north west, inner sep=2pt},
+    actor/.pic={
+        \draw (0,0.55) circle (0.17);
+        \draw (0,0.38) -- (0,-0.1) (-0.3,0.22) -- (0.3,0.22)
+              (0,-0.1) -- (-0.25,-0.5) (0,-0.1) -- (0.25,-0.5);
+    },
+]
+\def\xs{0.8}\def\xa{2.8}\def\xi{5.0}\def\xq{7.6}\def\xo{10.2}\def\xg{12.6}\def\xn{15.0}
+\def\ytop{0}\def\ybot{-17.6}
+
+% ---------- quadro sd ----------
+\draw[frag] (-0.2,2.0) rectangle (16.2,\ybot-0.3);
+\node[anchor=north west, inner sep=2pt, font=\scriptsize\bfseries] (sd) at (-0.2,2.0) {sd Solicitar e aprovar reserva};
+\draw[frag] (sd.south west) -| ([xshift=2mm]sd.east) -- ([xshift=2mm]sd.north east);
+
+% ---------- participantes ----------
+\pic at (\xs,0.55) {actor}; \node at (\xs,-0.15) {Solicitante};
+\pic at (\xa,0.55) {actor}; \node at (\xa,-0.15) {Analista};
+\node[obj] at (\xi,0.5) {Interface web};
+\node[obj] at (\xq,0.5) {:Solicitação};
+\node[obj] at (\xo,0.5) {:Ocupação};
+\node[obj] at (\xg,0.5) {:Agendamento};
+\node[obj] at (\xn,0.5) {:Notificações};
+\foreach \x/\y in {\xs/-0.4,\xa/-0.4,\xi/0.2,\xq/0.2,\xo/0.2,\xg/0.2,\xn/0.2}
+    \draw[life] (\x,\y) -- (\x,\ybot);
+
+% ================= 1. solicitação =================
+\draw[call] (\xs,-1.0) -- node[lab] {solicitar(espaço, data, horário)} (\xi,-1.0);
+\draw[call] (\xi,-1.6) -- node[lab] {submeter(dados)} (\xq,-1.6);
+\draw[call] (\xq,-2.1) -- ++(0.6,0) -- ++(0,-0.4) node[right, midway, inner sep=2pt] {verificar permissão} -- (\xq+0.08,-2.5);
+\draw[call] (\xq,-3.1) -- node[lab] {verificar\_conflito(espaço, horário)} (\xo,-3.1);
+\draw[ret]  (\xo,-3.7) -- node[lab] {resultado} (\xq,-3.7);
+
+% alt: conflito na solicitação
+\draw[frag] (0.1,-4.0) rectangle (15.9,-8.7);
+\node[draw, frag, fill=white, anchor=north west, inner sep=2pt, font=\scriptsize\bfseries] at (0.1,-4.0) {alt};
+\node[guard] at (1.0,-4.0) {[horário ocupado]};
+\draw[ret] (\xq,-4.6) -- node[lab] {erro: horário ocupado} (\xi,-4.6);
+\draw[ret] (\xi,-5.1) -- node[lab] {mensagem de erro} (\xs,-5.1);
+\draw[frag, dashed] (0.1,-5.4) -- (15.9,-5.4);
+\node[guard] at (1.0,-5.4) {[horário livre]};
+\draw[call] (\xq,-5.9) -- ++(0.6,0) -- ++(0,-0.4) node[right, midway, inner sep=2pt] {gravar como PENDENTE e auditar} -- (\xq+0.08,-6.3);
+\draw[call] (\xq,-6.9) -- node[lab] {anunciar(SOLICITADA)} (\xn,-6.9);
+\draw[async] (\xn,-7.5) -- node[lab, pos=0.75] {aviso em tempo real} (\xa,-7.5);
+\draw[ret] (\xq,-8.0) -- node[lab] {solicitação} (\xi,-8.0);
+\draw[ret] (\xi,-8.4) -- node[lab] {enviada} (\xs,-8.4);
+
+% ================= 2. análise =================
+\draw[call] (\xa,-9.3) -- node[lab] {aprovar(solicitação)} (\xi,-9.3);
+\draw[call] (\xi,-9.9) -- node[lab] {aprovar(analista)} (\xq,-9.9);
+\draw[call] (\xq,-10.4) -- ++(0.6,0) -- ++(0,-0.4) node[right, midway, inner sep=2pt] {verificar permissão e bloquear registro} -- (\xq+0.08,-10.8);
+\draw[call] (\xq,-11.4) -- node[lab] {verificar\_conflito(espaço, horário)} (\xo,-11.4);
+\draw[ret]  (\xo,-12.0) -- node[lab] {livre} (\xq,-12.0);
+\draw[call] (\xq,-12.6) -- node[lab] {criar(espaço, início, fim)} (\xg,-12.6);
+
+% alt: restrição do banco
+\draw[frag] (0.1,-12.9) rectangle (15.9,-17.3);
+\node[draw, frag, fill=white, anchor=north west, inner sep=2pt, font=\scriptsize\bfseries] at (0.1,-12.9) {alt};
+\node[guard] at (1.0,-12.9) {[restrição de sobreposição violada]};
+\draw[ret] (\xg,-13.5) -- node[lab] {horário indisponível} (\xq,-13.5);
+\draw[ret] (\xq,-14.0) -- node[lab] {erro} (\xi,-14.0);
+\draw[ret] (\xi,-14.5) -- node[lab] {mensagem de erro} (\xa,-14.5);
+\draw[frag, dashed] (0.1,-14.8) -- (15.9,-14.8);
+\node[guard] at (1.0,-14.8) {[agendamento criado]};
+\draw[ret] (\xg,-15.3) -- node[lab] {agendamento} (\xq,-15.3);
+\draw[call] (\xq,-15.9) -- node[lab] {anunciar(APROVADA)} (\xn,-15.9);
+\draw[async] (\xn,-16.5) -- node[lab, pos=0.85] {aviso em tempo real} (\xs,-16.5);
+\draw[ret] (\xi,-17.0) -- node[lab] {aprovada} (\xa,-17.0);
+\end{tikzpicture}

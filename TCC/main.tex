@@ -57,9 +57,18 @@
 \usepackage[portuguese, ruled, linesnumbered]{algorithm2e}
 \usepackage[noend]{algpseudocode}
 \usepackage{url}
+% permite quebrar links longos em qualquer letra, evitando espaços largos nas referências
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks
+  \do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m
+  \do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z
+  \do\0\do\1\do\2\do\3\do\4\do\5\do\6\do\7\do\8\do\9}
 \let\realurl\url
 \renewcommand{\url}[1]{\realurl{#1}\wlog{URLX #1}}
-\usepackage{lipsum}				% To generate dummy text
+\usepackage{lipsum}
+\usepackage{needspace}           % mantém título, texto e tabela do cronograma na mesma página
+\usepackage{afterpage}           % insere a página em paisagem sem deixar espaço em branco
+\usepackage{tikz}                % diagramas UML desenhados no próprio documento
+\usetikzlibrary{positioning,shapes.geometric,shapes.multipart,arrows.meta,fit,calc}				% To generate dummy text
 % ---------------------------------
 % Pacotes de citações
 % ---------------------------------
@@ -155,7 +164,7 @@ Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento d
 
 Antes de optar pelo desenvolvimento de uma solução própria, foram investigadas alternativas já disponíveis no mercado e na comunidade de software livre, incluindo plataformas comerciais de reserva de espaços, como o Skedda \cite{skedda2025} e o Microsoft Bookings \cite{microsoft2025bookings}, além de sistemas acadêmicos desenvolvidos por outras instituições de ensino \cite{cruz2023gestao,nascimento2020reservas}. Essa investigação evidenciou que nenhuma dessas soluções atende ao requisito central apontado pela Direção de Ensino Técnico do campus: fazer com que a disponibilidade dos espaços reflita automaticamente a grade de horários institucional.
 
-A necessidade de uma solução específica foi expressa pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, setor responsável pela gestão dos agendamentos, que destacou\footnote{Informação verbal fornecida pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, em reuniões remotas realizadas em julho de 2025, novembro de 2025 e abril de 2026.}:
+A necessidade de uma solução específica foi expressa pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, setor responsável pela gestão dos agendamentos, que destacou\footnote{Informação verbal fornecida pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, em reuniões remotas realizadas entre julho de 2025 e setembro de 2026.}:
 
 \begin{citacao}
 Precisamos de um software que forneça um mapa de utilização dos espaços do campus e permita que horários livres dos espaços sejam agendados pelos docentes, aprovados pelos administradores e visualizados por todos.
@@ -173,8 +182,9 @@ Desenvolver um sistema web para o gerenciamento de reservas de espaços físicos
 \begin{itemize}
     \item Levantar o processo atual de agendamento e identificar as necessidades dos perfis de usuários envolvidos;
     \item Especificar os requisitos funcionais e não funcionais do sistema;
-    \item Planejar a implementação do sistema web, definindo as tecnologias e a arquitetura técnica a serem adotadas, com base nos requisitos especificados;
-    \item Disponibilizar ao administrador ferramentas para a gestão dos agendamentos e o acompanhamento do uso dos espaços.
+    \item Implementar o sistema web com as tecnologias e a arquitetura definidas a partir dos requisitos especificados;
+    \item Disponibilizar ao administrador ferramentas para a gestão dos agendamentos e o acompanhamento do uso dos espaços;
+    \item Verificar o funcionamento do sistema por meio de testes automatizados.
 \end{itemize}
 \subsection{Estrutura do Trabalho}
 Este trabalho está estruturado da seguinte forma: no Capítulo 2 é apresentada a revisão bibliográfica, que abrange o contexto institucional, os trabalhos relacionados e a fundamentação tecnológica; no Capítulo 3, a metodologia utilizada na condução da pesquisa; no Capítulo 4, o cronograma de execução das etapas previstas; e, por fim, as referências bibliográficas consultadas.
@@ -282,7 +292,11 @@ Um conceito central dessa disciplina é a especificação de requisitos. \citeon
 
 A \textit{Unified Modeling Language} (UML) é uma linguagem de modelagem padronizada para especificar, visualizar e documentar sistemas de software orientados a objetos \cite{bezerra2007}. \citeonline{bezerra2007} esclarece que a UML não é uma metodologia de desenvolvimento, mas uma notação que pode ser adotada em conjunto com diferentes processos. Ela oferece um conjunto de diagramas que representam aspectos distintos do sistema, como a sua estrutura estática e o seu comportamento dinâmico.
 
-Entre os diagramas oferecidos pela UML, três são amplamente utilizados na modelagem de sistemas de informação. O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista de quem interage com ele: representa os atores (usuários ou sistemas externos), os casos de uso (as funções que o sistema oferece) e os relacionamentos entre eles, delimitando o escopo funcional do sistema sem detalhar como cada função é implementada. O diagrama de classes representa a estrutura estática do sistema, descrevendo as classes do domínio, seus atributos, métodos e os relacionamentos entre elas, como associação, herança e agregação; é o diagrama mais próximo da estrutura do código. O diagrama de sequência representa o comportamento dinâmico do sistema, mostrando a troca de mensagens entre os objetos ao longo do tempo para a realização de um processo específico, o que permite visualizar a ordem das interações e os pontos de decisão de um fluxo \cite{larman2007}.
+O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista de quem interage com ele. Seus elementos são os atores, que representam papéis desempenhados por usuários ou sistemas externos, e os casos de uso, que representam as funções oferecidas. Um ator pode especializar outro por generalização, herdando suas interações. Entre casos de uso, a relação «include» indica um comportamento sempre incorporado ao caso base, e a relação «extend», um comportamento opcional que o estende \cite{bezerra2007}.
+
+O diagrama de classes representa a estrutura estática do sistema. Cada classe reúne atributos e operações, e as associações entre classes indicam, pela multiplicidade, quantos objetos de uma se relacionam com os da outra. A composição é uma associação em que a parte não existe sem o todo \cite{larman2007}.
+
+O diagrama de sequência representa o comportamento dinâmico, mostrando as mensagens trocadas entre os participantes ao longo do tempo. Cada participante tem uma linha de vida vertical, as mensagens aparecem de cima para baixo na ordem em que ocorrem, e o fragmento \textit{alt} representa caminhos alternativos condicionados a uma guarda \cite{larman2007}.
 
 \citeonline{larman2007} destaca que a modelagem com UML permite registrar e comunicar decisões de projeto de forma visual antes de qualquer implementação, o que facilita o alinhamento entre desenvolvedores e demais partes envolvidas.
 %-----------------------------------
@@ -421,7 +435,7 @@ Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinaç�
 \subsection{Procedimentos Metodológicos}
 \label{sec:procedimentos}
 
-Esta pesquisa está organizada em cinco etapas encadeadas, cada uma condicionada pelos resultados da anterior: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. As três primeiras foram realizadas no TCC 1; a implementação e a validação são conduzidas no TCC 2, conforme o cronograma da Seção~\ref{sec:cronograma}.
+Esta pesquisa está organizada em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. As etapas foram conduzidas de forma iterativa: a cada reunião com a Direção de Ensino, os requisitos eram refinados e incorporados ao sistema em desenvolvimento. No TCC 1 foram concluídas as quatro primeiras etapas e parte da validação; o TCC 2 compreende a conclusão da validação, a implantação e a análise dos resultados.
 
 %-----------------------------------
 \subsubsection{Diagnóstico do Problema}
@@ -431,7 +445,9 @@ A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas se
 
 Os dados desta pesquisa são primários, coletados diretamente junto à fonte por meio de um levantamento iterativo de requisitos, conduzido na forma de conversas semiestruturadas, interações técnicas informais, trocas de mensagens e discussões recorrentes sobre o processo de agendamento, além de validações contínuas da proposta ao longo do desenvolvimento. \citeonline{gil2008} aponta a entrevista como uma das técnicas de coleta de dados mais utilizadas nas ciências sociais por permitir que o entrevistador obtenha informações sobre fatos, opiniões, percepções e necessidades de forma direta, com abertura para explorar aspectos não previstos no roteiro inicial. Neste trabalho, essa característica foi estendida para um formato iterativo, em que o diálogo com a fonte se prolongou para além de sessões pontuais.
 
-As interações foram conduzidas com a Diretora de Ensino Técnico do IFNMG -- Campus Salinas, que responde pela gestão dos agendamentos de espaços físicos no campus. Como marcos desse processo, foram realizadas três sessões remotas mais estruturadas ao longo da pesquisa: em julho de 2025, novembro de 2025 e abril de 2026. Cada sessão cumpriu objetivos distintos. A primeira, em julho de 2025, teve como foco o mapeamento do processo atual de agendamento: como as reservas são feitas, quem as gerencia, quais conflitos ocorrem com mais frequência e que informações os usuários precisam acessar. A segunda, em novembro de 2025, foi dedicada à validação dos requisitos preliminares levantados: as informações coletadas inicialmente foram apresentadas de forma estruturada para que a Diretora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira, em abril de 2026, serviu para confirmar os requisitos finais e verificar aspectos que surgiram durante a modelagem e ainda careciam de esclarecimento. Entre essas sessões, manteve-se interação técnica informal contínua -- por mensagens e reuniões breves -- para esclarecer dúvidas pontuais sobre o funcionamento do processo e validar decisões de modelagem à medida que surgiam.
+As interações foram conduzidas com a Diretora de Ensino Técnico do IFNMG -- Campus Salinas, que responde pela gestão dos agendamentos de espaços físicos no campus. Como marcos desse processo, foram realizadas três sessões remotas mais estruturadas na fase de especificação: em julho de 2025, novembro de 2025 e abril de 2026. Cada sessão cumpriu objetivos distintos. A primeira, em julho de 2025, teve como foco o mapeamento do processo atual de agendamento: como as reservas são feitas, quem as gerencia, quais conflitos ocorrem com mais frequência e que informações os usuários precisam acessar. A segunda, em novembro de 2025, foi dedicada à validação dos requisitos preliminares levantados: as informações coletadas inicialmente foram apresentadas de forma estruturada para que a Diretora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira, em abril de 2026, serviu para confirmar os requisitos finais e verificar aspectos que surgiram durante a modelagem e ainda careciam de esclarecimento. Entre essas sessões, manteve-se interação técnica informal contínua -- por mensagens e reuniões breves -- para esclarecer dúvidas pontuais sobre o funcionamento do processo e validar decisões de modelagem à medida que surgiam.
+
+Durante o desenvolvimento, foram realizadas mais três reuniões remotas. Em agosto de 2026, a planilha de horários do campus foi apresentada e os requisitos foram refinados. Em setembro de 2026, uma reunião tratou de novos refinamentos, e outra apresentou o sistema em funcionamento à Direção de Ensino.
 
 A opção por esse formato semiestruturado e iterativo se justifica metodologicamente porque o roteiro funcionou como guia, sem impedir que temas relevantes surgidos no decorrer das conversas fossem explorados em profundidade, e porque permitiu que a compreensão do processo se refinasse de forma incremental, acompanhando o avanço da modelagem. Esse formato é mais adequado do que questionários fechados ou entrevistas rigidamente estruturadas quando o objetivo é compreender um processo operacional concreto, com suas particularidades e exceções, cujas nuances só emergem na medida em que a proposta de solução se concretiza.
 
@@ -519,27 +535,47 @@ Os requisitos não funcionais estabelecem as restrições de qualidade que o sis
 \subsubsection{Modelagem do Sistema}
 \label{sec:modelagem}
 
-A modelagem adotou a \textit{Unified Modeling Language} (UML) para representar, de forma padronizada, a estrutura e o comportamento da solução antes da implementação. Conforme \citeonline{bezerra2007}, a UML não é uma metodologia de desenvolvimento, mas uma notação que pode ser usada com diferentes processos; ela oferece um conjunto de diagramas que cobrem aspectos distintos do sistema. Nesta etapa do trabalho (TCC 1), foi elaborado o diagrama de casos de uso, que delimita o escopo funcional do sistema. Os diagramas de classes e de sequência serão construídos no TCC 2, na fase de implementação, a partir do escopo aqui definido.
+A modelagem utilizou três diagramas da UML: casos de uso, classes e sequência. Os diagramas refletem a versão implementada do sistema.
 
-O diagrama de casos de uso descreve as funcionalidades do sistema do ponto de vista dos atores que interagem com ele. Para os dois perfis autenticados (Administrador e Docente) foram associados os casos de uso correspondentes aos seus privilégios de acesso, com base no modelo RBAC descrito na Seção~\ref{sec:rbac}; o Visualizador representa o acesso público de consulta, sem autenticação. O Administrador concentra as operações de gestão: cadastrar usuários, gerenciar espaços físicos, definir horários, aprovar ou reprovar reservas, importar planilhas de horários institucionais e atualizar periodicamente os horários ocupados, e gerar relatórios de uso. O Docente pode visualizar a agenda, solicitar reservas e cancelar reservas já registradas. A consulta de disponibilidade é acessível por qualquer usuário sem autenticação, por meio de rota pública, sem permissão para solicitar ou alterar qualquer dado. O diagrama completo é apresentado na Figura~\ref{fig:casos_uso}.
+O diagrama de casos de uso (Figura~\ref{fig:casos_uso}) organiza as funcionalidades em módulos. Como os perfis do sistema são configuráveis (Seção~\ref{sec:rbac}), cada ator representa um conjunto de permissões, e não um perfil fixo: Solicitante, Analista de reservas, Gestor do ensalamento e Administrador especializam o Usuário autenticado, e o Superadministrador especializa o Administrador. O Visitante representa a consulta pública, sem autenticação.
 
 \begin{figure}[!htb]
     \centering
     \caption{Diagrama de Casos de Uso do Sistema de Agendamento}
-    \includegraphics[width=0.95\textwidth, trim=10 165 10 140, clip]{Figuras/casos_de_uso}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-casos-de-uso}}
     \caption*{Fonte: Elaborado pelo autor (2026).}
     \label{fig:casos_uso}
 \end{figure}
 
-O diagrama de classes será elaborado no TCC 2 e terá como entidades centrais do domínio \textit{EspaçoFísico}, \textit{Horário}, \textit{Solicitação}, \textit{Reserva} e \textit{Usuário}. Os relacionamentos entre essas entidades, como a associação entre \textit{Usuário} e \textit{Reserva} ou entre \textit{EspaçoFísico} e \textit{Horário}, definirão as regras de integridade que orientam a estrutura do banco de dados. \citeonline{larman2007} destaca que o diagrama de classes é o artefato de modelagem mais diretamente relacionado à estrutura do código, uma vez que suas entidades correspondem às classes que materializam o domínio na solução desenvolvida.
+O diagrama de classes (Figura~\ref{fig:classes}) apresenta as 18 classes do domínio, com seus atributos principais e as multiplicidades das associações. Classes de apoio, como importação, auditoria e fila de e-mails, foram omitidas para preservar a legibilidade.
 
-O diagrama de sequência, também previsto para o TCC 2, ilustrará como os objetos do sistema interagem ao longo do tempo para realizar uma operação. \citeonline{larman2007} aponta que esse artefato é útil para antecipar pontos de decisão e exceções no fluxo de execução, articulando a lógica das operações de solicitação e aprovação de reservas com as classes que compõem o domínio.
+O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e a aprovação de uma reserva. Os fragmentos \textit{alt} mostram as duas verificações de conflito de horário: a primeira na solicitação e a segunda na aprovação, quando a restrição do banco de dados impede agendamentos sobrepostos (RNF08).
+
+
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de classes do sistema}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-classes}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:classes}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de sequência da solicitação e aprovação de reserva}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-sequencia}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:sequencia}
+\end{figure}
+
 
 %-----------------------------------
 \subsubsection{Implementação}
 \label{sec:implementacao}
 
-A quarta etapa é a implementação. Nesta fase do trabalho apresenta-se o seu planejamento, com a definição das tecnologias e da arquitetura, enquanto a codificação propriamente dita será realizada no TCC 2. O sistema será desenvolvido como uma aplicação web, com arquitetura e tecnologias definidas a seguir.
+A quarta etapa foi a implementação. O sistema foi desenvolvido como uma aplicação web, com as tecnologias e a arquitetura descritas a seguir, e encontra-se em versão funcional, executada em ambiente local e distribuída em contêineres.
+
+\clearpage  % as figuras da modelagem entram aqui, depois de um parágrafo completo
 
 A linguagem de programação adotada é o Python, com o \textit{framework} Django, cujo padrão arquitetural MTV e funcionamento estão descritos nas Seções~\ref{sec:mvc_mtv} e~\ref{sec:django}. A escolha se justifica por reunir nativamente os componentes necessários ao sistema, o que reduz a dependência de bibliotecas externas e permite que o desenvolvimento se concentre nas regras de negócio, e pela separação entre dados, lógica e apresentação, que facilita a manutenção do código.
 
@@ -566,24 +602,24 @@ A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupad
 	\label{tab:funcionalidades}
 \end{table}
 
-Para a camada de dados, será utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. A escolha se justifica frente a alternativas como o MySQL e o SQLite: embora o SQLite seja prático para ambientes de desenvolvimento, não é recomendado para aplicações com múltiplos acessos simultâneos em produção; o MySQL, por sua vez, é amplamente difundido, mas o PostgreSQL oferece maior conformidade com o padrão SQL, melhor tratamento de integridade referencial e suporte mais completo a transações complexas, recursos relevantes para a consistência das reservas. Soma-se a isso o suporte nativo e robusto do Django ao PostgreSQL, incluindo recursos como busca textual avançada e transações com alto nível de integridade \cite{djangodocs}. O acesso ao banco será feito exclusivamente por meio do ORM, mantendo consistência entre o código Python e o esquema relacional ao longo de todo o ciclo de desenvolvimento.
+Para a camada de dados, foi utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. A escolha se justifica frente a alternativas como o MySQL e o SQLite: embora o SQLite seja prático para ambientes de desenvolvimento, não é recomendado para aplicações com múltiplos acessos simultâneos em produção; o MySQL, por sua vez, é amplamente difundido, mas o PostgreSQL oferece maior conformidade com o padrão SQL, melhor tratamento de integridade referencial e suporte mais completo a transações complexas, recursos relevantes para a consistência das reservas. Soma-se a isso o suporte nativo e robusto do Django ao PostgreSQL, incluindo recursos como busca textual avançada e transações com alto nível de integridade \cite{djangodocs}. O acesso ao banco é feito exclusivamente por meio do ORM, mantendo consistência entre o código Python e o esquema relacional ao longo de todo o ciclo de desenvolvimento.
 
-A camada de apresentação será construída com os \textit{templates} do Django combinados ao Tailwind CSS. Essa escolha agiliza o desenvolvimento da interface, mantém a consistência visual entre as telas e reduz o custo de manutenção, permitindo ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}.
+A camada de apresentação foi construída com os \textit{templates} do Django combinados ao Tailwind CSS. Essa escolha agiliza o desenvolvimento da interface, mantém a consistência visual entre as telas e reduz o custo de manutenção, permitindo ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}.
 
-Para a autenticação dos usuários, será utilizada a biblioteca \textit{django-allauth}, escolhida por fornecer prontos os fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso descrito na Seção~\ref{sec:rbac} será implementado com perfis configuráveis. Cada permissão corresponde a uma ação sobre um recurso do sistema, como solicitar uma reserva ou editar um espaço, e o sistema define 47 permissões, distribuídas em 13 módulos. Um perfil é um conjunto dessas permissões, montado pelo superadministrador. Os perfis Administrador e Docente vêm na carga inicial apenas como exemplo e podem ser alterados. Outras categorias, como os técnicos administrativos, recebem um perfil com as permissões de que precisam. A verificação ocorre sempre no servidor, e a consulta pública dispensa autenticação.
+Para a autenticação dos usuários, foi utilizada a biblioteca \textit{django-allauth}, escolhida por fornecer prontos os fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso descrito na Seção~\ref{sec:rbac} foi implementado com perfis configuráveis. Cada permissão corresponde a uma ação sobre um recurso do sistema, como solicitar uma reserva ou editar um espaço, e o sistema define 47 permissões, distribuídas em 13 módulos. Um perfil é um conjunto dessas permissões, montado pelo superadministrador. Os perfis Administrador e Docente vêm na carga inicial apenas como exemplo e podem ser alterados. Outras categorias, como os técnicos administrativos, recebem um perfil com as permissões de que precisam. A verificação ocorre sempre no servidor, e a consulta pública dispensa autenticação.
 
-As notificações automáticas serão exibidas no próprio sistema, em um ícone no cabeçalho que se atualiza em tempo real, sem recarregar a página (RNF11). Ao receber uma solicitação de reserva, o sistema notificará os responsáveis pela análise; após a decisão, o solicitante receberá o resultado (RF09 e RF10). O e-mail será usado apenas para a definição e a recuperação de senha, com o servidor de envio configurado pela interface (RF27) e as mensagens enviadas em segundo plano (RNF10) \cite{djangodocs}.
+As notificações automáticas são exibidas no próprio sistema, em um ícone no cabeçalho que se atualiza em tempo real, sem recarregar a página (RNF11). Ao receber uma solicitação de reserva, o sistema notifica os responsáveis pela análise; após a decisão, o solicitante recebe o resultado (RF09 e RF10). O e-mail é usado apenas para a definição e a recuperação de senha, com o servidor de envio configurado pela interface (RF27) e as mensagens enviadas em segundo plano (RNF10) \cite{djangodocs}.
 
-As notificações em tempo real serão implementadas com o Django Channels, extensão que permite ao Django manter conexões WebSocket com o navegador \cite{channelsdocs}. Tarefas demoradas, como a importação da planilha e o envio de e-mails, serão executadas por um processo próprio em segundo plano, que lê uma fila registrada no banco e repete o envio em caso de falha. A aplicação, o banco de dados e esse processo serão distribuídos em contêineres orquestrados pelo Docker Compose, o que facilita a implantação em ambientes diferentes \cite{dockerdocs}. 
+As notificações em tempo real foram implementadas com o Django Channels, extensão que permite ao Django manter conexões WebSocket com o navegador \cite{channelsdocs}. Tarefas demoradas, como a importação da planilha e o envio de e-mails, são executadas por um processo próprio em segundo plano, que lê uma fila registrada no banco e repete o envio em caso de falha. A aplicação, o banco de dados e esse processo são distribuídos em contêineres orquestrados pelo Docker Compose, o que facilita a implantação em ambientes diferentes \cite{dockerdocs}. 
 
-O planejamento da implementação contempla ainda a definição da infraestrutura de hospedagem do sistema. Segundo a Diretora de Ensino Técnico, está em andamento uma articulação da direção do \textit{campus} com a FADETEC e com a Sifsoft, empresa júnior do curso de Bacharelado em Sistemas de Informação do \textit{campus} Salinas. Como essa articulação ainda não está concretizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
+Resta definir a infraestrutura de hospedagem do sistema. Segundo a Diretora de Ensino Técnico, está em andamento uma articulação da direção do \textit{campus} com a FADETEC e com a Sifsoft, empresa júnior do curso de Bacharelado em Sistemas de Informação do \textit{campus} Salinas. Como essa articulação ainda não está concretizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
 
 Cabe esclarecer o escopo deste ponto: o presente trabalho compreende o desenvolvimento e a disponibilização de uma versão funcional do sistema em ambiente acessível por navegador. A implantação definitiva na infraestrutura institucional ficará sob responsabilidade da direção do campus e pelos setores envolvidos.
 %-----------------------------------
 \subsubsection{Validação}
 \label{sec:validacao}
 
-A validação do sistema será feita por testes técnicos automatizados, unitários e de integração, conforme os conceitos da Seção~\ref{sec:testes}. Os testes serão escritos com o \textit{framework} de testes do Django, que executa cada caso sobre um banco de dados temporário \cite{djangodocs}, e cobrirão as regras de negócio críticas listadas na Tabela~\ref{tab:testes}. O critério de aceite é a execução de todos os testes sem falhas. A validação com usuários finais e a homologação institucional não fazem parte do escopo deste trabalho.
+A validação do sistema é feita por testes técnicos automatizados, unitários e de integração, conforme os conceitos da Seção~\ref{sec:testes}. Os testes são escritos com o \textit{framework} de testes do Django, que executa cada caso sobre um banco de dados temporário \cite{djangodocs}. A versão atual conta com mais de 1.700 casos de teste, que cobrem, entre outras, as regras de negócio críticas listadas na Tabela~\ref{tab:testes}. O critério de aceite é a execução de todos os testes sem falhas. No TCC 2, o sistema passará ainda por homologação com a Direção de Ensino, com dados reais do semestre; testes formais de usabilidade com usuários finais não fazem parte do escopo deste trabalho.
 
 \begin{table}[!htb]
 	\centering
@@ -605,12 +641,13 @@ A validação do sistema será feita por testes técnicos automatizados, unitár
 %---------------------------------
 % SEÇÃO DE CRONOGRAMA
 %---------------------------------
+\needspace{9\baselineskip}
 \section{Cronograma}
 \label{sec:cronograma}
 
-O cronograma da Tabela~\ref{tab:cronograma} contempla apenas a quarta e última etapa da pesquisa de implementação do sistema ao longo do segundo semestre de 2026. O desenvolvimento concentra-se entre agosto e novembro, de modo que a escrita e a entrega do TCC ocorram com a defesa, prevista para dezembro. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precedem o desenvolvimento das funcionalidades, que por sua vez antecedem os testes e os ajustes finais.
+O cronograma da Tabela~\ref{tab:cronograma} abrange o segundo semestre de 2026. As etapas de agosto a outubro, referentes ao desenvolvimento das funcionalidades, já foram concluídas; as de novembro e dezembro correspondem ao TCC 2: conclusão dos testes, implantação, homologação com a Direção de Ensino, escrita e defesa. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precedem o desenvolvimento das funcionalidades, que por sua vez antecedem os testes e os ajustes finais.
 
-\begin{table}[!htb]
+\begin{table}[H]
 	\centering
 	\caption{Cronograma de implementação -- 2º semestre de 2026}
 	\resizebox{\textwidth}{!}{
@@ -630,10 +667,12 @@ O cronograma da Tabela~\ref{tab:cronograma} contempla apenas a quarta e última 
 			Autenticação e controle de acesso (RBAC) &   & X &   &   &   \\
 			Módulo de importação de planilhas de horários &   &   & X &   &   \\
 			Módulo de notificações em tempo real &   &   & X &   &   \\
-			Geração de relatórios de uso &   &   &   & X &   \\
+			Geração de relatórios de uso &   &   & X &   &   \\
 			Testes unitários e de integração &   &   & X & X &   \\
+			Ajustes a partir da avaliação do TCC 1 &   &   &   & X &   \\
             Implantação em ambiente de hospedagem &   &   &   & X &   \\
-			Ajustes finais e escrita do TCC 2 &   &   &   & X &   \\
+			Homologação com a Direção de Ensino &   &   &   & X & X \\
+			Ajustes finais e escrita do TCC 2 &   &   &   & X & X \\
 			Defesa &   &   &   &   & X \\ \hline
 		\end{tabular}
 	}

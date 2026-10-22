@@ -4,7 +4,7 @@
 
 Sistema web para agendamento de espaços físicos do IFNMG – Campus Salinas, desenvolvido com Django e PostgreSQL como Trabalho de Conclusão de Curso do Bacharelado em Sistemas de Informação.
 
-A documentação do sistema (funcionalidades, regras, arquitetura, operação e decisões) está em [`docs/`](docs/README.md). Este arquivo cobre o ambiente de desenvolvimento.
+A documentação do sistema (funcionalidades, regras, arquitetura, operação e decisões) está em [`docs/`](docs/README.md). Este arquivo cobre o ambiente de desenvolvimento. O contexto do trabalho está no [README do repositório](../README.md) e o texto do TCC em [`TCC/main.pdf`](../TCC/main.pdf).
 
 Todo o ambiente roda em Docker. Não é preciso instalar Python, Node.js nem PostgreSQL na máquina.
 

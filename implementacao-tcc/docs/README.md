@@ -2,7 +2,7 @@
 
 Sistema web de agendamento de espaços físicos do IFNMG – Campus Salinas: ensalamento importado da planilha institucional, solicitações de uso eventual e calendário público. Django 5.2, PostgreSQL 17, Docker.
 
-Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para subir o ambiente, comece pelo [`README.md`](../README.md) da raiz.
+Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para subir o ambiente, comece pelo [`README.md`](../README.md) do projeto. O contexto do TCC está no [README do repositório](../../README.md).
 
 ## Sistema
 
@@ -37,7 +37,7 @@ Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para 
 
 ## Desenvolvimento
 
-- Ambiente local: [`README.md`](../README.md) da raiz (pré-requisitos, comandos, variáveis, dependências).
+- Ambiente local: [`README.md`](../README.md) do projeto (pré-requisitos, comandos, variáveis, dependências).
 - [Testes](desenvolvimento/testes.md): como rodar, catálogo por app, testes transversais, regras para escrever testes.
 - [Convenções](desenvolvimento/convencoes.md): idioma, documentação, controle de acesso, organização do código, testes, commits, texto e visual da interface, e os pontos a tocar em cada extensão.
 
@@ -61,3 +61,5 @@ Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para 
 |---|---|
 | [Princípios do TCC](sistema/visao-geral.md#princípios-do-tcc) | Princípios e requisitos não funcionais extraídos do TCC |
 | `sources/TCC_REVISADO (1).pdf` | Texto do TCC, fonte do escopo |
+| [`TCC/main.pdf`](../../TCC/main.pdf) | Versão atual do texto do TCC, versionada no repositório |
+| [README do repositório](../../README.md) | Contexto do trabalho, autoria e compilação do texto |

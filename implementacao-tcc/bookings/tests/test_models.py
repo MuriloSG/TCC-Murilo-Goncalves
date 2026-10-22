@@ -175,6 +175,23 @@ class ConflictTests(BookingTestCase):
         self.assertEqual(Booking.objects.count(), 2)
         self.assertIsNone(find_conflict(self.other_lab, THURSDAY, time(13, 0), time(14, 0)))
 
+    def test_end_extended_into_the_next_booking_conflicts(self):
+        self.approved(time(15, 0), time(17, 0), target=self.other_lab)
+        self.assertEqual(submit(self.ana, self.other_lab, start=time(13, 0), end=time(15, 0)).status, Status.PENDING)
+        for end in (time(15, 1), time(16, 0), time(17, 0), time(18, 0)):
+            with self.subTest(end=end), self.assert_refused(SlotUnavailable) as caught:
+                submit(self.ana, self.other_lab, start=time(13, 0), end=end)
+            self.assertEqual(caught.exception.messages, ['Este espaço está ocupado das 15:00 às 17:00. Escolha outro horário.'])
+
+    def test_approval_refuses_a_pending_request_extended_into_an_approved_one(self):
+        longer = submit(self.ana, self.other_lab, start=time(13, 0), end=time(16, 0))
+        self.approved(time(15, 0), time(17, 0), target=self.other_lab)
+        with self.assert_refused(SlotUnavailable):
+            longer.approve(self.reviewer)
+        longer.refresh_from_db()
+        self.assertEqual(longer.status, Status.PENDING)
+        self.assertEqual(Booking.objects.count(), 1)
+
     def test_touching_the_space_allocation_does_not_conflict(self):
         self.assertIsNone(find_conflict(self.lab, THURSDAY, time(15, 0), time(16, 0)))
         self.assertIsNone(find_conflict(self.lab, THURSDAY, time(13, 0), time(14, 10)))

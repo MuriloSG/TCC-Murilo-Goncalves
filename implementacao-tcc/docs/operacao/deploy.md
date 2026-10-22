@@ -2,7 +2,7 @@
 
 **Situação: o sistema ainda não foi implantado.** Não existe instalação de homologação ou de produção, pipeline de CI/CD nem rotina de backup. O TCC (princípio P12) deixa a implantação definitiva com a direção do campus e os setores envolvidos, e a hospedagem não está definida.
 
-O repositório já entrega uma imagem Docker autossuficiente, que roda em qualquer host com Docker (VPS, servidor do campus, PaaS que aceite imagem). Este documento descreve essa imagem, o que a instalação precisa fornecer e o que continua pendente.
+O repositório já entrega uma imagem Docker autossuficiente, que roda em qualquer host com Docker (VPS, servidor do campus, PaaS que aceite imagem). Este documento descreve essa imagem, o que a instalação precisa fornecer e o que continua pendente. A lista de requisitos da hospedagem e do envio de e-mails está em [requisitos de deploy](requisitos-de-deploy.md).
 
 ## A imagem
 

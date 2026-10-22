@@ -45,6 +45,7 @@ Os documentos descrevem o comportamento do código revisado em 09/10/2026. Para 
 
 - [Configuração](operacao/configuracao.md): variáveis obrigatórias, configuração no banco, o que não está configurado.
 - [Banco de dados](operacao/banco-de-dados.md): recursos do PostgreSQL usados, migrations, comandos de dados.
+- [Requisitos de deploy e de e-mails](operacao/requisitos-de-deploy.md): o que a hospedagem precisa oferecer, o que é preciso para os e-mails saírem e a situação no Railway.
 
 ## Diagramas
 

@@ -36,7 +36,7 @@ A documentação completa fica em [`implementacao-tcc/docs/`](implementacao-tcc/
 - [Arquitetura](implementacao-tcc/docs/arquitetura/visao-geral.md): apps, padrões e [motor de importação](implementacao-tcc/docs/arquitetura/motor-de-importacao.md) das planilhas.
 - [Diagramas](implementacao-tcc/docs/diagramas/README.md): DER conceitual e DER físico, com as restrições do banco.
 - [Testes](implementacao-tcc/docs/desenvolvimento/testes.md) e [convenções](implementacao-tcc/docs/desenvolvimento/convencoes.md) de desenvolvimento.
-- [Configuração](implementacao-tcc/docs/operacao/configuracao.md), [banco de dados](implementacao-tcc/docs/operacao/banco-de-dados.md) e [deploy](implementacao-tcc/docs/operacao/deploy.md).
+- [Configuração](implementacao-tcc/docs/operacao/configuracao.md), [banco de dados](implementacao-tcc/docs/operacao/banco-de-dados.md) e [deploy](implementacao-tcc/docs/operacao/deploy.md), com os [requisitos de deploy e de e-mails](implementacao-tcc/docs/operacao/requisitos-de-deploy.md).
 - [Decisões técnicas](implementacao-tcc/docs/decisoes/README.md): o motivo registrado de cada escolha que dá forma ao sistema.
 
 ## Tecnologias

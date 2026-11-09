@@ -40,7 +40,6 @@
 \usepackage{color}				% Controle das cores
 \usepackage{graphicx}			% Inclusão de gráficos
 \usepackage{microtype} 			% para melhorias de justificação
-\usepackage{multirow}
 \usepackage{amsmath,amsfonts,amssymb}
 \usepackage[table]{xcolor}
 \usepackage{multirow}           % Merge rows and columns in tables
@@ -158,19 +157,19 @@
 \label{Introducao}
 A organização dos espaços físicos num campus universitário pode aparentar simplicidade, mas revela-se complexa na prática. Quando laboratórios e salas especiais são compartilhados por vários docentes sem um sistema de agendamento adequado, surgem conflitos de horário e a tarefa de controlar quem usa o quê e quando recai sobre servidores que já têm outras atribuições.
 
-No IFNMG -- Campus Salinas, esse problema tem contorno específico. O sistema utilizado para agendamentos exige que todos os horários já ocupados sejam cadastrados manualmente antes de qualquer reserva, um processo que precisa ser refeito a cada troca de semestre, uma vez que as atividades dos espaços variam significativamente ao longo do período letivo. Além do retrabalho contínuo, os docentes não têm autonomia para consultar disponibilidade ou solicitar reservas sem intermediação, e a instituição não dispõe de registro consolidado sobre a utilização dos laboratórios ao longo do tempo. Esse cenário não é exclusivo do Campus Salinas: estudo de \citeonline{cruz2023gestao} no IFNMG Campus Almenara identificou a ausência de planejamento permanente e de mecanismos para medir a utilização dos laboratórios.
+No IFNMG -- Campus Salinas, esse problema tem contorno específico. O sistema utilizado para agendamentos exige o cadastro manual dos horários ocupados antes de qualquer reserva. Como as atividades dos espaços mudam a cada semestre, o procedimento precisa ser repetido periodicamente. Os docentes também não consultam a disponibilidade nem solicitam reservas sem a intermediação de um servidor. Além disso, a instituição não dispõe de um registro consolidado da utilização dos laboratórios. Esse cenário não é exclusivo do Campus Salinas: estudo de \citeonline{cruz2023gestao} no IFNMG Campus Almenara identificou a ausência de planejamento permanente e de mecanismos para medir a utilização dos laboratórios.
 
-Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. A proposta visa permitir que docentes consultem a disponibilidade e realizem solicitações de reserva de forma autônoma, enquanto o servidor responsável pelos agendamentos acessa ferramentas de aprovação, recebe notificações e gera relatórios sobre o uso dos espaços.
+Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. O sistema permite que docentes consultem a disponibilidade e solicitem reservas sem intermediação. Também oferece ao servidor responsável ferramentas para aprovar solicitações, acompanhar notificações e gerar relatórios sobre o uso dos espaços.
 
 Antes de optar pelo desenvolvimento de uma solução própria, foram investigadas alternativas já disponíveis no mercado e na comunidade de software livre, incluindo plataformas comerciais de reserva de espaços, como o Skedda \cite{skedda2025} e o Microsoft Bookings \cite{microsoft2025bookings}, além de sistemas acadêmicos desenvolvidos por outras instituições de ensino \cite{cruz2023gestao,nascimento2020reservas}. Essa investigação evidenciou que nenhuma dessas soluções atende ao requisito central apontado pela Direção de Ensino Técnico do campus: fazer com que a disponibilidade dos espaços reflita automaticamente a grade de horários institucional.
 
-A necessidade de uma solução específica foi expressa pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, setor responsável pela gestão dos agendamentos, que destacou\footnote{Informação verbal fornecida pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, em reuniões remotas realizadas entre julho de 2025 e setembro de 2026.}:
+A necessidade de uma solução específica foi expressa pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, responsável pela gestão dos agendamentos. Em reunião, ela destacou\footnote{Informação verbal fornecida pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, em reuniões remotas realizadas entre julho de 2025 e setembro de 2026.}:
 
 \begin{citacao}
 Precisamos de um software que forneça um mapa de utilização dos espaços do campus e permita que horários livres dos espaços sejam agendados pelos docentes, aprovados pelos administradores e visualizados por todos.
 \end{citacao}
 
-Espera-se que o sistema contribua para a otimização do uso dos espaços físicos, a redução de conflitos de agendamento e a melhoria na gestão institucional do campus.
+Com esses recursos, o sistema deverá reduzir o cadastro manual dos horários, registrar o histórico das reservas e apoiar a administração na identificação de conflitos e na consulta da ocupação dos espaços.
 %---------------------------------
 % SEÇÃO DE OBJETIVOS
 %---------------------------------
@@ -232,7 +231,7 @@ Esta seção apresenta trabalhos e soluções que trataram de problemas semelhan
 
 Além dos trabalhos acadêmicos, foram analisadas soluções de software já disponíveis para a reserva de espaços, com o objetivo de verificar se alguma delas resolveria o problema do Campus Salinas sem a necessidade de desenvolvimento de um sistema específico. A análise concentrou-se em duas plataformas comerciais representativas: o Skedda e o Microsoft Bookings.
 
-O Skedda é uma plataforma web dedicada à reserva de espaços físicos, como salas, escritórios e laboratórios, que oferece autoatendimento aos usuários, definição de regras de reserva e visualização de disponibilidade em formato de agenda \cite{skedda2025}. O Microsoft Bookings, integrante do pacote Microsoft 365, é voltado ao agendamento de compromissos e ao gerenciamento de calendários, com reserva de recursos por meio de caixas de correio associadas a salas \cite{microsoft2025bookings}. Ambas as ferramentas cobrem funcionalidades que também são esperadas do sistema proposto, como a consulta de disponibilidade, a solicitação de reserva pelo próprio usuário e a notificação automática das partes envolvidas, o que demonstra a maturidade desse tipo de aplicação no mercado.
+O Skedda é uma plataforma web dedicada à reserva de espaços físicos, como salas, escritórios e laboratórios, que oferece autoatendimento aos usuários, definição de regras de reserva e visualização de disponibilidade em formato de agenda \cite{skedda2025}. O Microsoft Bookings, integrante do pacote Microsoft 365, é voltado ao agendamento de compromissos e ao gerenciamento de calendários, com reserva de recursos por meio de caixas de correio associadas a salas \cite{microsoft2025bookings}. As duas plataformas possuem funções presentes também no sistema proposto: consulta de disponibilidade, solicitação de reserva pelo próprio usuário e notificação das partes envolvidas.
 
 Nenhuma das duas, contudo, resolve o problema central do campus: fazer a disponibilidade refletir a grade de horários institucional. Como não importam as planilhas de horários, a ocupação das aulas teria de ser cadastrada manualmente a cada semestre, exatamente o retrabalho que motiva esta proposta. Além disso, são soluções proprietárias, pagas por assinatura e hospedadas em servidores externos, o que gera custos recorrentes e reduz o controle da instituição sobre os próprios dados.
 
@@ -242,7 +241,7 @@ Nenhuma das duas, contudo, resolve o problema central do campus: fazer a disponi
 
 \citeonline{cruz2023gestao} conduziram uma pesquisa de campo no IFNMG Campus Almenara com o objetivo de analisar a utilização dos espaços e equipamentos dos laboratórios educacionais daquela unidade. O estudo adotou abordagem qualitativa e quantitativa, com coleta de dados por meio de questionários aplicados a servidores e docentes do campus. Os resultados revelaram que a gestão dos laboratórios ocorre de forma informal, baseada exclusivamente em reservas pontuais feitas com antecedência, sem planejamento oficial permanente e sem qualquer mecanismo para medir o desempenho ou a eficiência no uso desses espaços.
 
-O trabalho de \citeonline{cruz2023gestao} contribui para a presente pesquisa ao documentar, em um campus do próprio IFNMG, a mesma ausência de ferramentas de gestão identificada no Campus Salinas. A semelhança entre os dois contextos reforça que o problema não é localizado e que a carência de soluções tecnológicas adequadas é uma realidade institucional mais ampla. No entanto, o trabalho desses autores se limita ao diagnóstico: não propõe nem desenvolve qualquer solução de software para o problema identificado. O presente trabalho avança nessa direção ao propor um sistema que automatiza o controle de disponibilidade e registra o histórico de uso dos espaços.
+O trabalho de \citeonline{cruz2023gestao} é relevante para esta pesquisa porque documenta, em outro campus do IFNMG, uma dificuldade semelhante à observada em Salinas. Os autores concentram-se no diagnóstico e não apresentam uma solução de software. Neste trabalho, essa lacuna é abordada com um sistema que importa os horários das aulas, controla a disponibilidade e registra o histórico de uso dos espaços.
 
 %-----------------------------------
 \subsubsection{Sistema Web de Reservas na UESPI -- Parnaíba}
@@ -250,7 +249,7 @@ O trabalho de \citeonline{cruz2023gestao} contribui para a presente pesquisa ao 
 
 \citeonline{nascimento2020reservas} desenvolveram um sistema web para controlar pedidos de reservas de recursos físicos na Universidade Estadual do Piauí, Campus Parnaíba. O contexto era semelhante ao do presente trabalho: as reservas de espaços e equipamentos eram registradas manualmente por servidores em uma agenda digital, e a demanda tornava o processo oneroso e sujeito a falhas. A solução desenvolvida pelos autores automatizou o controle das solicitações, disponibilizou a interface para os usuários da instituição e obteve avaliação positiva quanto à satisfação dos usuários com o sistema.
 
-O trabalho de \citeonline{nascimento2020reservas} demonstra que o desenvolvimento de sistemas web de reserva em instituições de ensino é viável e resulta em ganhos concretos para a gestão. A presente proposta compartilha o mesmo problema central, mas apresenta características que a diferenciam. A principal delas é a importação das planilhas de horários institucionais, com reimportação ou ajuste pontual ao longo do semestre. Além disso, oferece consulta pública da ocupação, sem autenticação, e relatórios de uso dos espaços, recursos não descritos no trabalho referenciado. A Tabela~\ref{tab:comparativo} resume essa comparação.
+O trabalho de \citeonline{nascimento2020reservas} apresenta uma aplicação de reservas para uma instituição de ensino e relata avaliação positiva dos usuários. O sistema deste trabalho trata do mesmo tipo de demanda, mas acrescenta a importação das planilhas de horários institucionais, com possibilidade de reimportação ou ajuste pontual ao longo do semestre. Também oferece consulta pública da ocupação, sem autenticação, e relatórios de uso dos espaços, recursos que não são descritos no trabalho referenciado. A Tabela~\ref{tab:comparativo} resume essa comparação.
 
 \begin{table}[!htb]
 	\centering
@@ -266,7 +265,7 @@ O trabalho de \citeonline{nascimento2020reservas} demonstra que o desenvolviment
 		Relatórios de uso dos espaços & $\checkmark$ & $\checkmark$ & -- & $\checkmark$ \\
 		Sem custo de assinatura & $\times$ & $\times$ & $\checkmark$ & $\checkmark$ \\ \hline
 	\end{tabular}
-	\caption*{\footnotesize Legenda: $\checkmark$ atende; P atende parcialmente; $\times$ não atende; -- não informado. \citeonline{cruz2023gestao} não constam por se tratar de estudo diagnóstico, sem sistema desenvolvido.\\ Fonte: Elaborado pelo autor (2026).}
+	\caption*{\footnotesize Legenda: $\checkmark$ atende; P atende parcialmente; $\times$ não atende; -- não informado. \citeonline{cruz2023gestao} não consta na comparação por se tratar de estudo diagnóstico, sem sistema desenvolvido.\\ Fonte: Elaborado pelo autor (2026).}
 	\label{tab:comparativo}
 \end{table}
 
@@ -331,7 +330,7 @@ Duas regras do sistema complementam o modelo por papéis. A primeira trata de qu
 
 Um sistema web é uma aplicação de software acessada por meio de um navegador, que utiliza a infraestrutura da internet para a comunicação entre clientes e servidores. \citeonline{tanenbaum2011} descrevem a \textit{World Wide Web} como um sistema de documentos interconectados distribuídos pela internet, baseado no protocolo HTTP para a troca de informações. Esse modelo de comunicação é a base sobre a qual sistemas web são construídos.
 
-Do ponto de vista arquitetural, \citeonline{laudon2014} descrevem que sistemas de informação baseados na web se organizam tipicamente em três camadas: a de apresentação, responsável pela interface com o usuário no navegador; a de aplicação, onde ficam as regras de negócio; e a de dados, onde as informações são armazenadas. Essa separação em camadas facilita a manutenção e permite que cada parte do sistema seja modificada sem afetar diretamente as demais.
+Do ponto de vista arquitetural, \citeonline{laudon2014} descrevem que sistemas de informação baseados na web se organizam tipicamente em três camadas: a de apresentação, responsável pela interface com o usuário no navegador; a de aplicação, onde ficam as regras de negócio; e a de dados, onde as informações são armazenadas. No sistema proposto, essa divisão separa as telas, as regras de reserva e o armazenamento dos registros, evitando que uma alteração visual exija mudanças diretas no esquema do banco de dados.
 
 \citeonline{tanenbaum2011} descrevem o protocolo HTTP como uma especificação sem estado (\textit{stateless}), o que significa que cada requisição do cliente ao servidor é tratada de forma independente, sem que o servidor retenha informações sobre interações anteriores. Essa característica simplifica a arquitetura dos servidores web, mas exige que o estado da aplicação, como a sessão do usuário autenticado, seja gerenciado explicitamente pela camada de aplicação, por meio de mecanismos como \textit{tokens} de autenticação.
 
@@ -345,7 +344,7 @@ Para o sistema proposto, a arquitetura em três camadas é adequada porque isola
 
 O padrão \textit{Model-View-Controller} (MVC) é uma abordagem arquitetural consolidada para organizar o código de aplicações interativas em três componentes com responsabilidades bem delimitadas. O \textit{Model} gerencia os dados e as regras de negócio da aplicação. A \textit{View} é responsável pela apresentação das informações ao usuário. O \textit{Controller} recebe as ações do usuário, processa as entradas e coordena a interação entre \textit{Model} e \textit{View} \cite{djangodocs}. Essa separação permite que cada componente seja desenvolvido e testado de forma independente.
 
-O \textit{framework} Django adota uma variação desse padrão denominada MTV (\textit{Model-Template-View}), que redistribui as responsabilidades de forma distinta. O \textit{Model} cumpre a mesma função do MVC: representa as entidades de dados e encapsula as regras de negócio associadas ao banco de dados. O \textit{Template} substitui a \textit{View} do MVC e se ocupa exclusivamente da renderização da interface, gerando o HTML entregue ao navegador. A \textit{View} do MTV, por sua vez, assume o papel que no MVC pertenceria ao \textit{Controller}: ela recebe a requisição HTTP, aciona os \textit{Models} necessários e seleciona o \textit{Template} adequado para compor a resposta \cite{treinaweb2023mtv}. A Figura~\ref{fig:mtv} ilustra essa organização.
+O \textit{framework} Django adota uma variação desse padrão denominada MTV (\textit{Model-Template-View}). Nela, o \textit{Model} representa as entidades de dados e concentra as operações relacionadas ao banco. O \textit{Template} cuida da apresentação e gera o HTML entregue ao navegador. A \textit{View} recebe a requisição HTTP, aciona os \textit{Models} necessários e seleciona o \textit{Template} que compõe a resposta \cite{treinaweb2023mtv}. A Figura~\ref{fig:mtv} ilustra essa organização.
 
 \begin{figure}[!htb]
     \centering
@@ -379,7 +378,7 @@ O fluxo de uma requisição no Django, representado na Figura~\ref{fig:fluxo-mtv
 \subsubsection{O Framework Django}
 \label{sec:django}
 
-O Django é um \textit{framework} web de código aberto escrito em Python. Ele opera segundo o princípio \textit{batteries included}: disponibiliza nativamente os componentes mais comuns no desenvolvimento web, como ORM, sistema de autenticação, roteamento de URLs, mecanismo de \textit{templates} e envio de e-mails, sem dependência de bibliotecas externas para essas funções \cite{djangodocs}. Outro princípio central do \textit{framework} é o \textit{Don't Repeat Yourself} (DRY), que orienta o reaproveitamento de código e a centralização de lógicas que, se duplicadas, aumentariam o custo de manutenção ao longo do tempo \cite{djangodocs}.
+O Django é um \textit{framework} web de código aberto escrito em Python. Seu conjunto de recursos inclui ORM, autenticação, roteamento de URLs, mecanismo de \textit{templates} e envio de e-mails, embora cada aplicação possa utilizar bibliotecas adicionais conforme suas necessidades \cite{djangodocs}. O \textit{framework} também segue o princípio \textit{Don't Repeat Yourself} (DRY), que orienta o reaproveitamento de código e a centralização de lógicas que, se duplicadas, aumentariam o custo de manutenção \cite{djangodocs}.
 
 O roteamento de URLs é configurado no arquivo \texttt{urls.py}, que associa cada padrão de endereço a uma \textit{view} específica por meio da função \texttt{path()}. Quando uma requisição chega ao servidor, o \textit{framework} percorre a lista de padrões registrados até encontrar o primeiro que corresponda à URL solicitada e delega o processamento à \textit{view} associada. Esse mecanismo é independente da estrutura de diretórios da aplicação, o que permite organizar as URLs de forma legível e separada da lógica de negócio \cite{djangodocs}.
 
@@ -387,10 +386,9 @@ Cada \textit{model} do Django é uma classe Python que herda de \texttt{django.d
 
 As mudanças nos \textit{models} são controladas pelo sistema de \textit{migrations}. O comando \texttt{makemigrations} gera um arquivo descrevendo as alterações a serem aplicadas no banco; o comando \texttt{migrate} as aplica de forma incremental e rastreável, mantendo um histórico completo de todas as versões do esquema \cite{djangodocs}.
 
-O sistema de \textit{templates} do Django utiliza a \textit{Django Template Language} (DTL), que insere dados dinâmicos nas páginas HTML por meio de variáveis e \textit{tags} de controle. A herança de \textit{templates}, obtida com as \textit{tags} \texttt{\{\% extends \%\}} e \texttt{\{\% block \%\}}, permite que um \textit{template} base defina a estrutura comum a todas as páginas, como cabeçalho, menu e rodapé, e que os demais \textit{templates} sobrescrevam apenas os blocos de conteúdo específicos \cite{djangodocs}. Esse recurso elimina duplicação de HTML e garante consistência visual em toda a aplicação.
+O sistema de \textit{templates} do Django utiliza a \textit{Django Template Language} (DTL), que insere dados dinâmicos nas páginas HTML por meio de variáveis e \textit{tags} de controle. Com a herança de \textit{templates}, obtida pelas \textit{tags} \texttt{\{\% extends \%\}} e \texttt{\{\% block \%\}}, um arquivo base define elementos comuns, como cabeçalho, menu e rodapé. Os demais arquivos sobrescrevem apenas os blocos específicos de cada página \cite{djangodocs}.
 
-O Django oferece proteções de segurança ativas por padrão. A proteção contra \textit{Cross-Site Request Forgery} (CSRF) é implementada por um \textit{middleware} que exige um \textit{token} válido em todas as requisições que modificam dados no servidor; a \textit{tag} \texttt{\{\% csrf\_token \%\}} insere esse \textit{token} automaticamente nos formulários. A proteção contra \textit{Cross-Site Scripting} (XSS) é garantida pelo sistema de \textit{templates}, que escapa automaticamente todo conteúdo dinâmico antes de inseri-lo no HTML. A proteção contra injeção de SQL é inerente ao ORM, que parametriza internamente as consultas geradas, de modo que dados fornecidos pelo usuário nunca são interpolados diretamente no SQL \cite{djangodocs}.
-
+O Django inclui mecanismos de segurança que precisam ser habilitados e utilizados conforme a documentação. A proteção contra \textit{Cross-Site Request Forgery} (CSRF) usa um \textit{middleware} e o \textit{token} inserido pela \textit{tag} \texttt{\{\% csrf\_token \%\}} nos formulários. O sistema de \textit{templates} realiza escape automático do conteúdo dinâmico, reduzindo o risco de \textit{Cross-Site Scripting} (XSS) quando os mecanismos padrão não são desativados. Nas consultas feitas pelo ORM, os parâmetros são separados do comando SQL, o que reduz o risco de injeção; consultas SQL escritas manualmente ainda precisam seguir as práticas de segurança recomendadas \cite{djangodocs}.
 
 %-----------------------------------
 \subsubsection{Usabilidade e Interface do Usuário}
@@ -445,11 +443,15 @@ A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas se
 
 Os dados desta pesquisa são primários, coletados diretamente junto à fonte por meio de um levantamento iterativo de requisitos, conduzido na forma de conversas semiestruturadas, interações técnicas informais, trocas de mensagens e discussões recorrentes sobre o processo de agendamento, além de validações contínuas da proposta ao longo do desenvolvimento. \citeonline{gil2008} aponta a entrevista como uma das técnicas de coleta de dados mais utilizadas nas ciências sociais por permitir que o entrevistador obtenha informações sobre fatos, opiniões, percepções e necessidades de forma direta, com abertura para explorar aspectos não previstos no roteiro inicial. Neste trabalho, essa característica foi estendida para um formato iterativo, em que o diálogo com a fonte se prolongou para além de sessões pontuais.
 
-As interações foram conduzidas com a Diretora de Ensino Técnico do IFNMG -- Campus Salinas, que responde pela gestão dos agendamentos de espaços físicos no campus. Como marcos desse processo, foram realizadas três sessões remotas mais estruturadas na fase de especificação: em julho de 2025, novembro de 2025 e abril de 2026. Cada sessão cumpriu objetivos distintos. A primeira, em julho de 2025, teve como foco o mapeamento do processo atual de agendamento: como as reservas são feitas, quem as gerencia, quais conflitos ocorrem com mais frequência e que informações os usuários precisam acessar. A segunda, em novembro de 2025, foi dedicada à validação dos requisitos preliminares levantados: as informações coletadas inicialmente foram apresentadas de forma estruturada para que a Diretora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira, em abril de 2026, serviu para confirmar os requisitos finais e verificar aspectos que surgiram durante a modelagem e ainda careciam de esclarecimento. Entre essas sessões, manteve-se interação técnica informal contínua -- por mensagens e reuniões breves -- para esclarecer dúvidas pontuais sobre o funcionamento do processo e validar decisões de modelagem à medida que surgiam.
+As interações foram conduzidas com a Diretora de Ensino Técnico do IFNMG -- Campus Salinas, responsável pela gestão dos agendamentos de espaços físicos no campus. Na fase de especificação, foram realizadas três sessões remotas: em julho de 2025, novembro de 2025 e abril de 2026.
+
+A primeira sessão mapeou o processo atual de agendamento, incluindo a forma de solicitar reservas, os responsáveis pelo controle, os conflitos mais frequentes e as informações consultadas pelos usuários. A segunda foi dedicada à validação dos requisitos preliminares. As informações levantadas foram apresentadas de forma organizada para que a Diretora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira sessão confirmou os requisitos finais e esclareceu questões surgidas durante a modelagem.
+
+Entre essas sessões, houve comunicação técnica por mensagens e reuniões breves. Esses contatos foram usados para esclarecer dúvidas sobre o processo e validar decisões de modelagem à medida que surgiam.
 
 Durante o desenvolvimento, foram realizadas mais três reuniões remotas. Em agosto de 2026, a planilha de horários do campus foi apresentada e os requisitos foram refinados. Em setembro de 2026, uma reunião tratou de novos refinamentos, e outra apresentou o sistema em funcionamento à Direção de Ensino.
 
-A opção por esse formato semiestruturado e iterativo se justifica metodologicamente porque o roteiro funcionou como guia, sem impedir que temas relevantes surgidos no decorrer das conversas fossem explorados em profundidade, e porque permitiu que a compreensão do processo se refinasse de forma incremental, acompanhando o avanço da modelagem. Esse formato é mais adequado do que questionários fechados ou entrevistas rigidamente estruturadas quando o objetivo é compreender um processo operacional concreto, com suas particularidades e exceções, cujas nuances só emergem na medida em que a proposta de solução se concretiza.
+A opção pelo formato semiestruturado permitiu seguir um roteiro comum sem limitar a discussão aos temas previstos inicialmente. O caráter iterativo foi necessário porque novas dúvidas surgiram durante a modelagem e precisaram ser confirmadas com a responsável pelo processo. Por isso, o levantamento não se limitou a uma única entrevista ou a um questionário fechado.
 
 O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os horários ocupados antes de qualquer reserva, e esse cadastro é refeito a cada semestre. Os docentes não consultam a disponibilidade nem solicitam reservas sem passar por um servidor, o que concentra todo o controle em um único ponto. Também não há registro consolidado do uso dos espaços que apoie o planejamento da administração.
 
@@ -551,7 +553,6 @@ O diagrama de classes (Figura~\ref{fig:classes}) apresenta as 18 classes do dom�
 
 O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e a aprovação de uma reserva. Os fragmentos \textit{alt} mostram as duas verificações de conflito de horário: a primeira na solicitação e a segunda na aprovação, quando a restrição do banco de dados impede agendamentos sobrepostos (RNF08).
 
-
 \begin{figure}[p]
     \centering
     \caption{Diagrama de classes do sistema}
@@ -568,16 +569,14 @@ O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e 
     \label{fig:sequencia}
 \end{figure}
 
-
 %-----------------------------------
+\clearpage
 \subsubsection{Implementação}
 \label{sec:implementacao}
 
 A quarta etapa foi a implementação. O sistema foi desenvolvido como uma aplicação web, com as tecnologias e a arquitetura descritas a seguir, e encontra-se em versão funcional, executada em ambiente local e distribuída em contêineres.
 
-\clearpage  % as figuras da modelagem entram aqui, depois de um parágrafo completo
-
-A linguagem de programação adotada é o Python, com o \textit{framework} Django, cujo padrão arquitetural MTV e funcionamento estão descritos nas Seções~\ref{sec:mvc_mtv} e~\ref{sec:django}. A escolha se justifica por reunir nativamente os componentes necessários ao sistema, o que reduz a dependência de bibliotecas externas e permite que o desenvolvimento se concentre nas regras de negócio, e pela separação entre dados, lógica e apresentação, que facilita a manutenção do código.
+A implementação utiliza Python e o \textit{framework} Django, cujo padrão arquitetural MTV e funcionamento estão descritos nas Seções~\ref{sec:mvc_mtv} e~\ref{sec:django}. O framework fornece o ORM, o sistema de autenticação, o roteamento e o mecanismo de \textit{templates} utilizados no projeto. A separação entre dados, lógica e apresentação também organiza o código e concentra as regras de reserva em componentes próprios.
 
 A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupadas pelos mesmos módulos dos requisitos funcionais.
 
@@ -602,7 +601,7 @@ A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupad
 	\label{tab:funcionalidades}
 \end{table}
 
-Para a camada de dados, foi utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. A escolha se justifica frente a alternativas como o MySQL e o SQLite: embora o SQLite seja prático para ambientes de desenvolvimento, não é recomendado para aplicações com múltiplos acessos simultâneos em produção; o MySQL, por sua vez, é amplamente difundido, mas o PostgreSQL oferece maior conformidade com o padrão SQL, melhor tratamento de integridade referencial e suporte mais completo a transações complexas, recursos relevantes para a consistência das reservas. Soma-se a isso o suporte nativo e robusto do Django ao PostgreSQL, incluindo recursos como busca textual avançada e transações com alto nível de integridade \cite{djangodocs}. O acesso ao banco é feito exclusivamente por meio do ORM, mantendo consistência entre o código Python e o esquema relacional ao longo de todo o ciclo de desenvolvimento.
+Para a camada de dados, foi utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. O SQLite foi mantido como alternativa adequada para desenvolvimento local, mas o PostgreSQL atende melhor ao cenário de produção previsto, que envolve acessos simultâneos, transações e restrições de integridade para impedir reservas sobrepostas. O Django oferece suporte ao PostgreSQL por meio do ORM e das transações do banco \cite{djangodocs}. No projeto, o acesso aos dados é feito pelo ORM, enquanto as restrições de integridade são mantidas no esquema relacional.
 
 A camada de apresentação foi construída com os \textit{templates} do Django combinados ao Tailwind CSS. Essa escolha agiliza o desenvolvimento da interface, mantém a consistência visual entre as telas e reduz o custo de manutenção, permitindo ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}.
 
@@ -610,7 +609,7 @@ Para a autenticação dos usuários, foi utilizada a biblioteca \textit{django-a
 
 As notificações automáticas são exibidas no próprio sistema, em um ícone no cabeçalho que se atualiza em tempo real, sem recarregar a página (RNF11). Ao receber uma solicitação de reserva, o sistema notifica os responsáveis pela análise; após a decisão, o solicitante recebe o resultado (RF09 e RF10). O e-mail é usado apenas para a definição e a recuperação de senha, com o servidor de envio configurado pela interface (RF27) e as mensagens enviadas em segundo plano (RNF10) \cite{djangodocs}.
 
-As notificações em tempo real foram implementadas com o Django Channels, extensão que permite ao Django manter conexões WebSocket com o navegador \cite{channelsdocs}. Tarefas demoradas, como a importação da planilha e o envio de e-mails, são executadas por um processo próprio em segundo plano, que lê uma fila registrada no banco e repete o envio em caso de falha. A aplicação, o banco de dados e esse processo são distribuídos em contêineres orquestrados pelo Docker Compose, o que facilita a implantação em ambientes diferentes \cite{dockerdocs}. 
+As notificações em tempo real foram implementadas com o Django Channels, extensão que permite ao Django manter conexões WebSocket com o navegador \cite{channelsdocs}. Tarefas demoradas, como a importação da planilha e o envio de e-mails, são executadas por um processo próprio em segundo plano. Esse processo lê uma fila registrada no banco e repete o envio em caso de falha. A aplicação, o banco de dados e o processo de tarefas são distribuídos em contêineres orquestrados pelo Docker Compose \cite{dockerdocs}.
 
 Resta definir a infraestrutura de hospedagem do sistema. Segundo a Diretora de Ensino Técnico, está em andamento uma articulação da direção do \textit{campus} com a FADETEC e com a Sifsoft, empresa júnior do curso de Bacharelado em Sistemas de Informação do \textit{campus} Salinas. Como essa articulação ainda não está concretizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
 
@@ -683,5 +682,9 @@ O cronograma da Tabela~\ref{tab:cronograma} abrange o segundo semestre de 2026. 
 % Referências bibliográficas
 % ----------------------------------------------------------
 \clearpage
+\begingroup
+\setlength{\parskip}{0pt}
+\setlength{\bibitemsep}{0pt}
 \bibliography{referencias}
+\endgroup
 \end{document}

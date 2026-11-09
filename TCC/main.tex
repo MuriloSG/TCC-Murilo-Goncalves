@@ -169,7 +169,7 @@ A necessidade de uma solução específica foi expressa pela Diretora de Ensino 
 Precisamos de um software que forneça um mapa de utilização dos espaços do campus e permita que horários livres dos espaços sejam agendados pelos docentes, aprovados pelos administradores e visualizados por todos.
 \end{citacao}
 
-Com esses recursos, o sistema deverá reduzir o cadastro manual dos horários, registrar o histórico das reservas e apoiar a administração na identificação de conflitos e na consulta da ocupação dos espaços.
+Com esses recursos, o sistema reduz o cadastro manual dos horários, registra o histórico das reservas e apoia a administração na identificação de conflitos e na consulta da ocupação dos espaços.
 %---------------------------------
 % SEÇÃO DE OBJETIVOS
 %---------------------------------
@@ -186,7 +186,7 @@ Desenvolver um sistema web para o gerenciamento de reservas de espaços físicos
     \item Verificar o funcionamento do sistema por meio de testes automatizados.
 \end{itemize}
 \subsection{Estrutura do Trabalho}
-Este trabalho está estruturado da seguinte forma: no Capítulo 2 é apresentada a revisão bibliográfica, que abrange o contexto institucional, os trabalhos relacionados e a fundamentação tecnológica; no Capítulo 3, a metodologia utilizada na condução da pesquisa; no Capítulo 4, o cronograma de execução das etapas previstas; e, por fim, as referências bibliográficas consultadas.
+Este trabalho está estruturado da seguinte forma: no Capítulo 2 é apresentada a revisão bibliográfica, que abrange o contexto institucional, os trabalhos relacionados e a fundamentação tecnológica; no Capítulo 3, a metodologia utilizada na condução da pesquisa; no Capítulo 4, o cronograma de execução das etapas realizadas; e, por fim, as referências bibliográficas consultadas.
 %---------------------------------
 % SEÇÃO DE REVISÃO
 %---------------------------------
@@ -400,7 +400,7 @@ Para orientar o projeto de interfaces, \citeonline{nielsen1994} propôs dez heur
 
 Algumas dessas heurísticas têm peso particular no sistema proposto. A visibilidade do estado do sistema é importante porque o docente precisa saber, a qualquer momento, se a sua solicitação de reserva está pendente, aprovada ou rejeitada. A correspondência com o mundo real orienta o uso de termos como ``laboratório'', ``reserva'' e ``disponível'' em vez de jargões técnicos. A prevenção de erros, por sua vez, inclui mecanismos como a verificação automática de conflitos de horário antes de permitir a solicitação.
 
-No contexto deste trabalho, usabilidade é relevante porque o sistema será utilizado por docentes com familiaridade tecnológica variada. Um sistema que exija treinamento extensivo ou que gere dúvidas frequentes tende a ser abandonado, o que comprometeria o próprio objetivo de substituir o processo manual de agendamento.
+No contexto deste trabalho, usabilidade é relevante porque o sistema é destinado a docentes com familiaridade tecnológica variada. Um sistema que exija treinamento extensivo ou que gere dúvidas frequentes tende a ser abandonado, o que comprometeria o próprio objetivo de substituir o processo manual de agendamento.
 %-----------------------------------
 \subsubsection{Testes de Software}
 \label{sec:testes}
@@ -433,13 +433,13 @@ Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinaç�
 \subsection{Procedimentos Metodológicos}
 \label{sec:procedimentos}
 
-Esta pesquisa está organizada em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. As etapas foram conduzidas de forma iterativa: a cada reunião com a Direção de Ensino, os requisitos eram refinados e incorporados ao sistema em desenvolvimento. No TCC 1 foram concluídas as quatro primeiras etapas e parte da validação; o TCC 2 compreende a conclusão da validação, a implantação e a análise dos resultados.
+Esta pesquisa está organizada em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. As etapas foram conduzidas de forma iterativa: a cada reunião com a Direção de Ensino, os requisitos eram refinados e incorporados ao sistema em desenvolvimento. Ao final do trabalho, foram concluídas a implementação do sistema e a validação técnica por meio de testes automatizados.
 
 %-----------------------------------
 \subsubsection{Diagnóstico do Problema}
 \label{sec:coleta}
 
-A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a profissional responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos usuários envolvidos, como docentes e equipe administrativa, além da consulta pública, disponível sem autenticação. Essa etapa produziu o insumo necessário para a especificação dos requisitos, cujos resultados são apresentados ao final desta seção.
+A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a Diretora de Ensino Técnico, responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos usuários envolvidos, como docentes e equipe administrativa, além da consulta pública, disponível sem autenticação. Essa etapa produziu o insumo necessário para a especificação dos requisitos, cujos resultados são apresentados ao final desta seção.
 
 Os dados desta pesquisa são primários, coletados diretamente junto à fonte por meio de um levantamento iterativo de requisitos, conduzido na forma de conversas semiestruturadas, interações técnicas informais, trocas de mensagens e discussões recorrentes sobre o processo de agendamento, além de validações contínuas da proposta ao longo do desenvolvimento. \citeonline{gil2008} aponta a entrevista como uma das técnicas de coleta de dados mais utilizadas nas ciências sociais por permitir que o entrevistador obtenha informações sobre fatos, opiniões, percepções e necessidades de forma direta, com abertura para explorar aspectos não previstos no roteiro inicial. Neste trabalho, essa característica foi estendida para um formato iterativo, em que o diálogo com a fonte se prolongou para além de sessões pontuais.
 
@@ -452,6 +452,8 @@ Entre essas sessões, houve comunicação técnica por mensagens e reuniões bre
 Durante o desenvolvimento, foram realizadas mais três reuniões remotas. Em agosto de 2026, a planilha de horários do campus foi apresentada e os requisitos foram refinados. Em setembro de 2026, uma reunião tratou de novos refinamentos, e outra apresentou o sistema em funcionamento à Direção de Ensino.
 
 A opção pelo formato semiestruturado permitiu seguir um roteiro comum sem limitar a discussão aos temas previstos inicialmente. O caráter iterativo foi necessário porque novas dúvidas surgiram durante a modelagem e precisaram ser confirmadas com a responsável pelo processo. Por isso, o levantamento não se limitou a uma única entrevista ou a um questionário fechado.
+
+Como a Diretora de Ensino é a responsável pelo processo de agendamento e apresentou a necessidade que originou o sistema, ela foi adotada como principal referência institucional para o levantamento e a validação dos requisitos. Os requisitos foram discutidos, refinados e validados nas reuniões realizadas ao longo do desenvolvimento. As percepções dos docentes e dos demais usuários não foram submetidas a uma avaliação formal de usabilidade, o que constitui uma limitação deste trabalho.
 
 O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os horários ocupados antes de qualquer reserva, e esse cadastro é refeito a cada semestre. Os docentes não consultam a disponibilidade nem solicitam reservas sem passar por um servidor, o que concentra todo o controle em um único ponto. Também não há registro consolidado do uso dos espaços que apoie o planejamento da administração.
 
@@ -527,7 +529,7 @@ Os requisitos não funcionais estabelecem as restrições de qualidade que o sis
 		RNF09 & Não permitir alterar nem excluir os registros de auditoria \\
 		RNF10 & Enviar os e-mails em segundo plano, com novas tentativas em caso de falha, sem atrasar a resposta ao usuário \\
 		RNF11 & Exibir as notificações em tempo real, sem recarregar a página \\
-		RNF12 & Ser distribuído em contêineres, para facilitar a implantação em ambientes diferentes \\
+		RNF12 & Ser distribuído em contêineres, para facilitar a execução em ambientes diferentes \\
 		RNF13 & Adaptar as telas a computadores e celulares \\ \hline
 	\end{tabular}
 	\label{tab:rnf}
@@ -601,7 +603,7 @@ A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupad
 	\label{tab:funcionalidades}
 \end{table}
 
-Para a camada de dados, foi utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. O SQLite foi mantido como alternativa adequada para desenvolvimento local, mas o PostgreSQL atende melhor ao cenário de produção previsto, que envolve acessos simultâneos, transações e restrições de integridade para impedir reservas sobrepostas. O Django oferece suporte ao PostgreSQL por meio do ORM e das transações do banco \cite{djangodocs}. No projeto, o acesso aos dados é feito pelo ORM, enquanto as restrições de integridade são mantidas no esquema relacional.
+Para a camada de dados, foi utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. O SQLite foi mantido como alternativa adequada para desenvolvimento local, mas o PostgreSQL atende melhor ao cenário de execução definido, que envolve acessos simultâneos, transações e restrições de integridade para impedir reservas sobrepostas. O Django oferece suporte ao PostgreSQL por meio do ORM e das transações do banco \cite{djangodocs}. No projeto, o acesso aos dados é feito pelo ORM, enquanto as restrições de integridade são mantidas no esquema relacional.
 
 A camada de apresentação foi construída com os \textit{templates} do Django combinados ao Tailwind CSS. Essa escolha agiliza o desenvolvimento da interface, mantém a consistência visual entre as telas e reduz o custo de manutenção, permitindo ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}.
 
@@ -611,14 +613,16 @@ As notificações automáticas são exibidas no próprio sistema, em um ícone n
 
 As notificações em tempo real foram implementadas com o Django Channels, extensão que permite ao Django manter conexões WebSocket com o navegador \cite{channelsdocs}. Tarefas demoradas, como a importação da planilha e o envio de e-mails, são executadas por um processo próprio em segundo plano. Esse processo lê uma fila registrada no banco e repete o envio em caso de falha. A aplicação, o banco de dados e o processo de tarefas são distribuídos em contêineres orquestrados pelo Docker Compose \cite{dockerdocs}.
 
-Resta definir a infraestrutura de hospedagem do sistema. Segundo a Diretora de Ensino Técnico, está em andamento uma articulação da direção do \textit{campus} com a FADETEC e com a Sifsoft, empresa júnior do curso de Bacharelado em Sistemas de Informação do \textit{campus} Salinas. Como essa articulação ainda não está concretizada, prevê-se, como alternativa, a hospedagem em plataformas gratuitas ou de baixo custo voltadas a aplicações web, a exemplo de Render, Railway ou PythonAnywhere, que oferecem suporte a aplicações Django e permitem disponibilizar o sistema sob um domínio público sem custo de infraestrutura para a instituição.
-
-Cabe esclarecer o escopo deste ponto: o presente trabalho compreende o desenvolvimento e a disponibilização de uma versão funcional do sistema em ambiente acessível por navegador. A implantação definitiva na infraestrutura institucional ficará sob responsabilidade da direção do campus e pelos setores envolvidos.
+O presente trabalho limita-se ao desenvolvimento de uma versão funcional do sistema para execução em ambiente local, acessível por navegador. A hospedagem e a implantação em infraestrutura institucional não fazem parte do escopo.
 %-----------------------------------
 \subsubsection{Validação}
 \label{sec:validacao}
 
-A validação do sistema é feita por testes técnicos automatizados, unitários e de integração, conforme os conceitos da Seção~\ref{sec:testes}. Os testes são escritos com o \textit{framework} de testes do Django, que executa cada caso sobre um banco de dados temporário \cite{djangodocs}. A versão atual conta com mais de 1.700 casos de teste, que cobrem, entre outras, as regras de negócio críticas listadas na Tabela~\ref{tab:testes}. O critério de aceite é a execução de todos os testes sem falhas. No TCC 2, o sistema passará ainda por homologação com a Direção de Ensino, com dados reais do semestre; testes formais de usabilidade com usuários finais não fazem parte do escopo deste trabalho.
+A validação realizada neste trabalho ocorre em duas frentes. A primeira corresponde à validação do alinhamento da solução ao processo institucional, conduzida com a Diretora de Ensino, principal parte interessada e responsável pelos agendamentos. A segunda é exclusivamente técnica e consiste em testes automatizados, unitários e de integração, conforme os conceitos da Seção~\ref{sec:testes}. Os testes unitários verificam regras e componentes de forma isolada. Os testes de integração verificam o comportamento conjunto entre as camadas da aplicação, o banco de dados e os fluxos acessados pelos usuários.
+
+Os testes são escritos com o \textit{framework} de testes do Django. Cada caso é executado sobre um banco de dados temporário, separado dos dados utilizados durante o desenvolvimento \cite{djangodocs}. Esse procedimento permite preparar os dados necessários para cada cenário e verificar as alterações realizadas sem modificar a base utilizada pela aplicação. A versão atual conta com mais de 1.700 casos de teste, distribuídos entre os módulos e regras de negócio do sistema.
+
+Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando solicitações são analisadas simultaneamente; a aplicação das permissões conforme o perfil do usuário; a importação e a reimportação da planilha de horários; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem exposição de dados pessoais; e a imutabilidade dos registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos correspondentes. O critério de aceite técnico é a execução de todos os testes sem falhas. Não são realizados testes formais de usabilidade com usuários finais; portanto, a validação técnica não mede satisfação ou facilidade de uso, enquanto a validação institucional dos requisitos foi realizada com a principal responsável pelo processo.
 
 \begin{table}[!htb]
 	\centering
@@ -644,7 +648,7 @@ A validação do sistema é feita por testes técnicos automatizados, unitários
 \section{Cronograma}
 \label{sec:cronograma}
 
-O cronograma da Tabela~\ref{tab:cronograma} abrange o segundo semestre de 2026. As etapas de agosto a outubro, referentes ao desenvolvimento das funcionalidades, já foram concluídas; as de novembro e dezembro correspondem ao TCC 2: conclusão dos testes, implantação, homologação com a Direção de Ensino, escrita e defesa. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precedem o desenvolvimento das funcionalidades, que por sua vez antecedem os testes e os ajustes finais.
+O cronograma da Tabela~\ref{tab:cronograma} abrange o segundo semestre de 2026. As etapas de agosto a outubro foram destinadas ao desenvolvimento das funcionalidades. Em novembro e dezembro foram concluídos os testes, os ajustes finais, a escrita e a defesa. As atividades foram distribuídas de forma a respeitar a dependência entre as camadas do sistema: a configuração do ambiente e a modelagem do banco de dados precederam o desenvolvimento das funcionalidades, que por sua vez antecedeu os testes e os ajustes finais.
 
 \begin{table}[H]
 	\centering
@@ -668,10 +672,7 @@ O cronograma da Tabela~\ref{tab:cronograma} abrange o segundo semestre de 2026. 
 			Módulo de notificações em tempo real &   &   & X &   &   \\
 			Geração de relatórios de uso &   &   & X &   &   \\
 			Testes unitários e de integração &   &   & X & X &   \\
-			Ajustes a partir da avaliação do TCC 1 &   &   &   & X &   \\
-            Implantação em ambiente de hospedagem &   &   &   & X &   \\
-			Homologação com a Direção de Ensino &   &   &   & X & X \\
-			Ajustes finais e escrita do TCC 2 &   &   &   & X & X \\
+			Ajustes finais e escrita do TCC &   &   &   & X & X \\
 			Defesa &   &   &   &   & X \\ \hline
 		\end{tabular}
 	}

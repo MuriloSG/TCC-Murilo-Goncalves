@@ -148,6 +148,7 @@
 % Imprimi a seção de títulos
 \maketitle
 \thispagestyle{empty}   % capa sem número de página
+
 \clearpage              % a Introdução começa na página seguinte
 \setcounter{page}{1}    % a capa não entra na contagem
 %---------------------------------
@@ -159,7 +160,7 @@ A organização dos espaços físicos num campus universitário pode aparentar s
 
 No IFNMG -- Campus Salinas, esse problema tem contorno específico. O sistema utilizado para agendamentos exige o cadastro manual dos horários ocupados antes de qualquer reserva. Como as atividades dos espaços mudam a cada semestre, o procedimento precisa ser repetido periodicamente. Os docentes também não consultam a disponibilidade nem solicitam reservas sem a intermediação de um servidor. Além disso, a instituição não dispõe de um registro consolidado da utilização dos laboratórios. Esse cenário não é exclusivo do Campus Salinas: estudo de \citeonline{cruz2023gestao} no IFNMG Campus Almenara identificou a ausência de planejamento permanente e de mecanismos para medir a utilização dos laboratórios.
 
-Este trabalho propõe o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. O sistema permite que docentes consultem a disponibilidade e solicitem reservas sem intermediação. Também oferece ao servidor responsável ferramentas para aprovar solicitações, acompanhar notificações e gerar relatórios sobre o uso dos espaços.
+Este trabalho apresenta o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. O sistema permite que docentes consultem a disponibilidade e solicitem reservas sem intermediação. Também oferece ao servidor responsável ferramentas para aprovar solicitações, acompanhar notificações e gerar relatórios sobre o uso dos espaços.
 
 Antes de optar pelo desenvolvimento de uma solução própria, foram investigadas alternativas já disponíveis no mercado e na comunidade de software livre, incluindo plataformas comerciais de reserva de espaços, como o Skedda \cite{skedda2025} e o Microsoft Bookings \cite{microsoft2025bookings}, além de sistemas acadêmicos desenvolvidos por outras instituições de ensino \cite{cruz2023gestao,nascimento2020reservas}. Essa investigação evidenciou que nenhuma dessas soluções atende ao requisito central apontado pela Direção de Ensino Técnico do campus: fazer com que a disponibilidade dos espaços reflita automaticamente a grade de horários institucional.
 

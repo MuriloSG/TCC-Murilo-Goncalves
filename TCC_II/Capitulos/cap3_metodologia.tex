@@ -1,0 +1,230 @@
+\chapter{Metodologia}
+\label{sec:metodologia}
+
+Este capítulo descreveu a metodologia da pesquisa. A Seção~\ref{sec:tipopesquisa} classificou a pesquisa quanto à natureza, aos objetivos e ao procedimento técnico, e a Seção~\ref{sec:procedimentos} descreveu as etapas do trabalho.
+
+%-----------------------------------
+\subsection{Tipo de Pesquisa}
+\label{sec:tipopesquisa}
+
+Quanto à natureza, esta pesquisa foi aplicada. Sua finalidade foi produzir um artefato de software para um problema concreto identificado num contexto institucional real, não ampliar o conhecimento teórico de forma genérica. \citeonline{gil2008} distinguiu a pesquisa aplicada da pesquisa básica precisamente por esse critério: a primeira foi motivada pela necessidade de resolver problemas práticos e seus resultados tiveram aplicação imediata.
+
+Quanto aos objetivos, a pesquisa foi descritiva. O ponto de partida foi a caracterização do processo de agendamento de espaços físicos no IFNMG -- Campus Salinas: como ele funcionava, onde falhava e o que os usuários envolvidos precisavam que mudasse. \citeonline{gil2008} definiu a pesquisa descritiva como aquela que buscava descrever as características de determinado fenômeno e estabelecer relações entre suas variáveis, sem que o pesquisador interferisse nos fatos observados.
+
+Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinação com pesquisa bibliográfica. O estudo de caso é adequado porque a investigação recai sobre um ambiente específico, o Campus Salinas, com histórico, atores e restrições próprios que precisam ser compreendidos antes de qualquer proposta de solução. \citeonline{yin2015} define o estudo de caso como uma investigação empírica que examina um fenômeno contemporâneo em profundidade e em seu contexto real, sendo especialmente indicado quando os limites entre o fenômeno e o contexto não são claramente separáveis. A pesquisa bibliográfica, por sua vez, dá sustentação às decisões de projeto, de modelagem e de escolha tecnológica, com base no que a literatura já consolidou sobre engenharia de software, controle de acesso e desenvolvimento web.
+
+%-----------------------------------
+\subsection{Procedimentos Metodológicos}
+\label{sec:procedimentos}
+
+Esta pesquisa foi organizada em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. As etapas foram conduzidas de forma iterativa: a cada reunião com a Direção de Ensino, os requisitos eram refinados e incorporados ao sistema em desenvolvimento. Ao final do trabalho, foram concluídas as cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem, implementação e validação técnica por meio de testes automatizados.
+
+%-----------------------------------
+\subsubsection{Diagnóstico do Problema}
+\label{sec:coleta}
+
+A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a Diretora de Ensino Técnico, responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos usuários envolvidos, como docentes e equipe administrativa, além da consulta pública, disponível sem autenticação. As informações obtidas nessa etapa fundamentaram a especificação dos requisitos apresentada a seguir.
+
+Os dados desta pesquisa são primários e foram coletados diretamente com a responsável pelo processo. O levantamento ocorreu de forma iterativa, por meio de conversas semiestruturadas, interações técnicas, trocas de mensagens e discussões sobre o agendamento. \citeonline{gil2008} aponta a entrevista como uma das técnicas de coleta de dados mais utilizadas nas ciências sociais por permitir que o entrevistador obtenha informações sobre fatos, opiniões, percepções e necessidades de forma direta, com abertura para explorar aspectos não previstos no roteiro inicial. Neste trabalho, essa característica foi estendida para um formato iterativo, em que o diálogo com a fonte se prolongou para além de sessões pontuais.
+
+As interações foram conduzidas com a Diretora de Ensino Técnico do IFNMG -- Campus Salinas, responsável pela gestão dos agendamentos de espaços físicos no campus. Na fase de especificação, foram realizadas três sessões remotas: em julho de 2025, novembro de 2025 e abril de 2026.
+
+A primeira sessão mapeou o processo atual de agendamento, incluindo a forma de solicitar reservas, os responsáveis pelo controle, os conflitos mais frequentes e as informações consultadas pelos usuários. A segunda foi dedicada à validação dos requisitos preliminares. As informações levantadas foram apresentadas de forma organizada para que a Diretora confirmasse, corrigisse ou complementasse o entendimento do pesquisador. A terceira sessão confirmou os requisitos finais e esclareceu questões surgidas durante a modelagem.
+
+Entre essas sessões, houve comunicação técnica por mensagens e reuniões breves. Esses contatos foram usados para esclarecer dúvidas sobre o processo e validar decisões de modelagem à medida que surgiam.
+
+Durante o desenvolvimento, foram realizadas mais três reuniões remotas. Em agosto de 2026, a planilha de horários do campus foi apresentada e os requisitos foram refinados. Em setembro de 2026, uma reunião tratou de novos refinamentos, e outra apresentou o sistema em funcionamento à Direção de Ensino.
+
+A opção pelo formato semiestruturado permitiu seguir um roteiro comum sem limitar a discussão aos temas previstos inicialmente. O caráter iterativo foi necessário porque novas dúvidas surgiram durante a modelagem e precisaram ser confirmadas com a responsável pelo processo. Por isso, o levantamento não se limitou a uma única entrevista ou a um questionário fechado.
+
+Como a Diretora de Ensino era a responsável pelo processo de agendamento e apresentou a necessidade que originou o sistema, ela foi adotada como principal referência institucional para o levantamento e a validação dos requisitos. Os requisitos foram discutidos, refinados e validados nas reuniões realizadas ao longo do desenvolvimento. As percepções dos docentes e dos demais usuários não foram submetidas a uma avaliação formal de usabilidade, o que constituiu uma limitação deste trabalho.
+
+O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os horários ocupados antes de qualquer reserva, e esse cadastro é refeito a cada semestre. Os docentes não consultam a disponibilidade nem solicitam reservas sem passar por um servidor, o que concentra todo o controle em um único ponto. Também não há registro consolidado do uso dos espaços que apoie o planejamento da administração.
+
+Dessas limitações derivam as necessidades que orientaram os requisitos: importar a planilha de horários já produzida pelo campus, marcando automaticamente como ocupados os horários das aulas; manter essa ocupação atualizada por reimportação ou ajuste pontual, sem integração em tempo real com sistemas externos; notificar automaticamente os envolvidos no fluxo de reserva; permitir a consulta pública da ocupação; e gerar um mapa da utilização dos espaços ao longo do semestre.
+
+%-----------------------------------
+\subsubsection{Levantamento e Análise de Requisitos}
+\label{sec:requisitos}
+
+A segunda etapa foi o levantamento e a análise de requisitos. \citeonline{pressman2016} descrevem a engenharia de requisitos como um processo contínuo de identificação, análise, especificação e validação das necessidades dos envolvidos, e ressaltam que a qualidade dessa etapa determina a qualidade do que será desenvolvido depois. A especificação de requisitos foi elaborada a partir das informações coletadas nas reuniões e do referencial bibliográfico consultado, e organizada em duas categorias: requisitos funcionais e requisitos não funcionais.
+
+Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, as funções e os serviços que ele oferece aos usuários \cite{sommerville2018}. Como o acesso é definido por perfis configuráveis (Seção~\ref{sec:rbac}), cada funcionalidade fica disponível a quem tiver a permissão correspondente, e não a um perfil fixo. A Tabela~\ref{tab:rf} apresenta os requisitos funcionais, agrupados nos módulos: ensalamento (RF01, RF02, RF13--RF16); espaços, cursos, disciplinas e turmas (RF03, RF17); usuários e perfis (RF04, RF18--RF20); agenda de reservas (RF05--RF08, RF21--RF23); notificações e comunicados (RF09, RF10, RF24); consulta pública (RF11, RF28); painel, relatórios e auditoria (RF12, RF25, RF26); configurações (RF27); e central de ajuda (RF29).
+
+\begin{SingleSpace}
+\begin{longtable}{@{}p{1.8cm}p{12cm}@{}}
+	\caption{Requisitos funcionais do sistema}\label{tab:rf} \\
+	\hline
+	\textbf{Código} & \textbf{Descrição} \\ \hline
+	\endfirsthead
+	\multicolumn{2}{@{}l}{\small\textit{Continuação da Tabela~\thetable}} \\ \hline
+	\textbf{Código} & \textbf{Descrição} \\ \hline
+	\endhead
+	\hline
+	\endfoot
+	RF01 & Importar a planilha de horários institucional do semestre, identificando automaticamente os espaços e os horários ocupados pelas aulas, com prévia do resultado e confirmação antes da gravação \\
+	RF02 & Atualizar os horários ocupados ao longo do semestre, por reimportação da planilha ou pela manutenção das aulas no próprio sistema (RF13 a RF16) \\
+	RF03 & Cadastrar e manter os espaços físicos do campus, incluindo os outros nomes pelos quais aparecem na planilha e a desativação de espaços fora de uso \\
+	RF04 & Gerenciar usuários e atribuir a cada um perfil de acesso \\
+	RF05 & Consultar a disponibilidade dos espaços físicos \\
+	RF06 & Submeter solicitações de reserva de espaços físicos \\
+	RF07 & Aprovar ou rejeitar solicitações de reserva \\
+	RF08 & Cancelar reservas já aprovadas \\
+	RF09 & Notificar automaticamente, no próprio sistema, os responsáveis pela análise quando uma nova solicitação de reserva for submetida \\
+	RF10 & Notificar automaticamente, no próprio sistema, o solicitante sobre o resultado da análise da sua solicitação \\
+	RF11 & Disponibilizar consulta pública, sem autenticação, aos horários dos espaços por sala, docente, curso ou turma, com o horário original e o calendário por data, sem expor e-mails nem a descrição das reservas \\
+	RF12 & Gerar relatórios sobre a utilização dos espaços, incluindo o mapa de ocupação por dia e horário e o relatório das solicitações de reserva \\
+	RF13 & Cadastrar aula recorrente, informando turma, disciplina, docentes, espaço, período de vigência, horário e duração \\
+	RF14 & Alterar a recorrência de uma aula (dia, horário, duração, espaço ou docentes) a partir de uma data, sem alterar as ocorrências anteriores \\
+	RF15 & Encerrar a recorrência de uma aula a partir de uma data, preservando o histórico das ocorrências anteriores \\
+	RF16 & Cancelar a ocorrência de uma aula em uma data, sem alterar a recorrência, pelo administrador ou pelo docente da aula \\
+	RF17 & Cadastrar e manter cursos, disciplinas e turmas \\
+	RF18 & Criar perfis de acesso e definir as permissões de cada um \\
+	RF19 & Importar usuários em lote por meio de arquivo CSV \\
+	RF20 & Enviar ao novo usuário, por e-mail, o link para definir a senha, e permitir a recuperação de senha \\
+	RF21 & Sugerir ao solicitante uma alternativa à reserva solicitada (outro espaço, data ou horário), que ele pode aceitar ou recusar \\
+	RF22 & Registrar solicitação de reserva em nome de outro usuário \\
+	RF23 & Acompanhar as próprias solicitações e ver a própria agenda de aulas e reservas \\
+	RF24 & Publicar comunicados para todos os usuários, para os usuários de um perfil ou para usuários escolhidos \\
+	RF25 & Exibir painel administrativo com as solicitações pendentes, a ocupação dos espaços e as pendências da grade (aulas sem espaço ou sem docente, conflitos de docente, choques entre aulas e reservas) \\
+	RF26 & Registrar em auditoria as ações realizadas no sistema e permitir consultá-las com filtros \\
+	RF27 & Configurar o servidor de envio de e-mails pela interface do sistema \\
+	RF28 & Exportar o calendário público do semestre, com os filtros escolhidos, em arquivo iCalendar (.ics), para importação em aplicativos de agenda \\
+	RF29 & Disponibilizar uma central de ajuda com tutoriais passo a passo de cada funcionalidade, com capturas das telas no computador e no celular, mostrando ao usuário só as funcionalidades liberadas para o seu perfil e abrindo direto na ajuda da tela de onde foi acessada \\
+\end{longtable}
+\end{SingleSpace}
+
+Os requisitos não funcionais estabelecem as restrições de qualidade que o sistema precisa satisfazer \cite{sommerville2018}. Eles foram definidos a partir dos atributos de qualidade descritos pelo autor: confiabilidade e segurança (RNF01, RNF02, RNF07, RNF08, RNF09); eficiência (RNF03, RNF10, RNF11); aceitabilidade (RNF04, RNF05, RNF13); e manutenibilidade (RNF06, RNF12). \citeonline{pressman2016} reforçam que esses requisitos condicionam a arquitetura e devem ser considerados desde o início do projeto. A Tabela~\ref{tab:rnf} apresenta os requisitos não funcionais.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Requisitos não funcionais do sistema}
+	\begin{tabular}{@{}p{1.8cm}p{12cm}@{}}
+	\hline
+		\textbf{Código} & \textbf{Descrição} \\ \hline
+		RNF01 & Controlar o acesso com base em papéis (RBAC), restringindo cada funcionalidade ao perfil correspondente \\
+		RNF02 & Proteger os dados dos usuários contra acessos indevidos: proteções contra CSRF, XSS e injeção de SQL, senha do servidor de e-mail armazenada cifrada, recuperação de senha que não revela quais e-mails estão cadastrados e encerramento das sessões do usuário quando outra pessoa altera o perfil ou o e-mail dele \\
+		RNF03 & Ter tempo de resposta adequado nas consultas de disponibilidade, mesmo nos períodos de pico \\
+		RNF04 & Funcionar no navegador web, sem instalar nada nos dispositivos dos usuários \\
+		RNF05 & Ter usabilidade compatível com o perfil tecnológico dos docentes e consistência visual entre as telas, sem exigir treinamento extenso \\
+		RNF06 & Ser manutenível, com separação clara entre as camadas de dados, lógica e apresentação \\
+		RNF07 & Funcionar sem depender da infraestrutura de horários do campus, sem consultas em tempo real a sistemas externos \\
+		RNF08 & Impedir reservas sobrepostas de um mesmo espaço, mesmo quando solicitações são analisadas ao mesmo tempo, por restrição de integridade no banco \\
+		RNF09 & Não permitir alterar nem excluir os registros de auditoria \\
+		RNF10 & Enviar os e-mails em segundo plano, com novas tentativas em caso de falha, sem atrasar a resposta ao usuário \\
+		RNF11 & Exibir as notificações em tempo real, sem recarregar a página \\
+		RNF12 & Ser distribuído em contêineres, para facilitar a execução em ambientes diferentes \\
+		RNF13 & Adaptar as telas a computadores e celulares \\ \hline
+	\end{tabular}
+	\label{tab:rnf}
+\end{table}
+
+%-----------------------------------
+\subsubsection{Modelagem do Sistema}
+\label{sec:modelagem}
+
+A modelagem utilizou três diagramas da UML: casos de uso, classes e sequência. Os diagramas refletem a versão implementada do sistema.
+
+O diagrama de casos de uso (Figura~\ref{fig:casos_uso}) organiza as funcionalidades em módulos. Como os perfis do sistema são configuráveis (Seção~\ref{sec:rbac}), cada ator representa um conjunto de permissões, e não um perfil fixo: Solicitante, Analista de reservas, Gestor do ensalamento e Administrador especializam o Usuário autenticado, e o Superadministrador especializa o Administrador. O Visitante representa a consulta pública, sem autenticação.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Diagrama de Casos de Uso do Sistema de Agendamento}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-casos-de-uso}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:casos_uso}
+\end{figure}
+
+O diagrama de classes (Figura~\ref{fig:classes}) apresenta as 18 classes do domínio, com seus atributos principais e as multiplicidades das associações. Classes de apoio, como importação, auditoria e fila de e-mails, foram omitidas para preservar a legibilidade.
+
+O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e a aprovação de uma reserva. Os fragmentos \textit{alt} mostram as duas verificações de conflito de horário: a primeira na solicitação e a segunda na aprovação, quando a restrição do banco de dados impede agendamentos sobrepostos (RNF08).
+
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de classes do sistema}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-classes}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:classes}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de sequência da solicitação e aprovação de reserva}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-sequencia}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:sequencia}
+\end{figure}
+
+%-----------------------------------
+\subsubsection{Implementação}
+\label{sec:implementacao}
+
+A quarta etapa foi a implementação. O IFAgenda foi desenvolvido como uma aplicação web, com as tecnologias e a arquitetura descritas a seguir, e constituiu uma versão funcional, executada em ambiente local e distribuída em contêineres.
+
+A implementação utiliza Python e o \textit{framework} Django, cujo padrão arquitetural MTV e funcionamento estão descritos nas Seções~\ref{sec:mvc_mtv} e~\ref{sec:django}. O \textit{framework} fornece o ORM, o sistema de autenticação, o roteamento e o mecanismo de \textit{templates} utilizados no projeto. A separação entre dados, lógica e apresentação também organiza o código e concentra as regras de reserva em componentes próprios.
+
+A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupadas pelos mesmos módulos dos requisitos funcionais.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Funcionalidades do sistema por módulo}
+	\renewcommand{\arraystretch}{1.25}
+	\newcommand{\fitem}[1]{\par\hangindent=1em\hangafter=1\noindent\makebox[1em][l]{\textbullet}#1}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{9.8cm}@{}}
+	\hline
+		\textbf{Módulo} & \textbf{Funcionalidades principais} \\ \hline
+		Ensalamento & \fitem{Importação da planilha de horários, com prévia e confirmação}\fitem{Associação dos espaços da planilha aos já cadastrados}\fitem{Aulas recorrentes: alteração, encerramento e cancelamento de ocorrências} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Espaços, cursos, disciplinas e turmas & \fitem{Cadastro e manutenção} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Usuários e perfis & \fitem{Cadastro individual ou em lote (CSV)}\fitem{Definição e recuperação de senha}\fitem{Perfis com permissões definidas pelo superadministrador} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Agenda de reservas & \fitem{Solicitação, inclusive em nome de outro usuário}\fitem{Análise: aprovação, rejeição ou sugestão de alternativa}\fitem{Acompanhamento das próprias solicitações} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Notificações e comunicados & \fitem{Avisos em tempo real}\fitem{Comunicados para todos, para um perfil ou para usuários escolhidos} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Consulta pública & \fitem{Calendário por data, com filtros por sala, docente, curso e turma}\fitem{Horário original da planilha}\fitem{Exportação do calendário (.ics)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Painel, relatórios e auditoria & \fitem{Painel de pendências e solicitações}\fitem{Mapa de ocupação por dia e horário}\fitem{Relatório de solicitações}\fitem{Registro das ações, sem alteração ou exclusão} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Configurações & \fitem{Servidor de envio de e-mails configurado pela interface} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Central de ajuda & \fitem{Tutoriais por tela, filtrados pelas permissões do usuário} \\ \hline
+	\end{tabular}
+	\label{tab:funcionalidades}
+\end{table}
+
+Para a camada de dados, foi utilizado o PostgreSQL como sistema gerenciador de banco de dados relacional. O SQLite foi mantido como alternativa adequada para desenvolvimento local, mas o PostgreSQL atende melhor ao cenário de execução definido, que envolve acessos simultâneos, transações e restrições de integridade para impedir reservas sobrepostas. O Django oferece suporte ao PostgreSQL por meio do ORM e das transações do banco \cite{djangodocs}. No projeto, o acesso aos dados é feito pelo ORM, enquanto as restrições de integridade são mantidas no esquema relacional.
+
+A camada de apresentação foi construída com os \textit{templates} do Django combinados ao Tailwind CSS. Essa escolha agiliza o desenvolvimento da interface, mantém a consistência visual entre as telas e reduz o custo de manutenção, permitindo ajustes visuais sem alteração nas \textit{views} ou nos \textit{models}.
+
+Para a autenticação dos usuários, foi utilizada a biblioteca \textit{django-allauth}, escolhida por fornecer prontos os fluxos de registro, login, recuperação de senha e gerenciamento de sessões \cite{pennersr2024}. O controle de acesso descrito na Seção~\ref{sec:rbac} foi implementado com perfis configuráveis. Cada permissão corresponde a uma ação sobre um recurso do sistema, como solicitar uma reserva ou editar um espaço, e o sistema define 47 permissões, distribuídas em 13 módulos. Um perfil é um conjunto dessas permissões, montado pelo superadministrador. Os perfis Administrador e Docente vêm na carga inicial apenas como exemplo e podem ser alterados. Outras categorias, como os técnicos administrativos, recebem um perfil com as permissões de que precisam. A verificação ocorre sempre no servidor, e a consulta pública dispensa autenticação.
+
+As notificações automáticas são exibidas no próprio sistema, em um ícone no cabeçalho que se atualiza em tempo real, sem recarregar a página (RNF11). Ao receber uma solicitação de reserva, o sistema notifica os responsáveis pela análise; após a decisão, o solicitante recebe o resultado (RF09 e RF10). O e-mail é usado apenas para a definição e a recuperação de senha, com o servidor de envio configurado pela interface (RF27) e as mensagens enviadas em segundo plano (RNF10) \cite{djangodocs}.
+
+As notificações em tempo real foram implementadas com o Django Channels, extensão que permite ao Django manter conexões WebSocket com o navegador \cite{channelsdocs}. Tarefas demoradas, como a importação da planilha e o envio de e-mails, são executadas por um processo próprio em segundo plano. Esse processo lê uma fila registrada no banco e repete o envio em caso de falha. A aplicação, o banco de dados e o processo de tarefas são distribuídos em contêineres orquestrados pelo Docker Compose \cite{dockerdocs}.
+
+O presente trabalho limita-se ao desenvolvimento de uma versão funcional do sistema para execução em ambiente local, acessível por navegador. A hospedagem e a implantação em infraestrutura institucional não fazem parte do escopo.
+%-----------------------------------
+\subsubsection{Validação}
+\label{sec:validacao}
+
+A validação realizada neste trabalho ocorreu em duas frentes. A primeira correspondeu à validação do alinhamento da solução ao processo institucional, conduzida com a Diretora de Ensino, principal interessada e responsável pelos agendamentos. A segunda foi exclusivamente técnica e consistiu em testes automatizados, unitários e de integração, conforme os conceitos da Seção~\ref{sec:testes}. Os testes unitários verificaram regras e componentes de forma isolada. Os testes de integração verificaram o comportamento conjunto entre as camadas da aplicação, o banco de dados e os fluxos acessados pelos usuários.
+
+Os testes são escritos com o \textit{framework} de testes do Django. Cada caso é executado sobre um banco de dados temporário, separado dos dados utilizados durante o desenvolvimento \cite{djangodocs}. Esse procedimento permite preparar os dados necessários para cada cenário e verificar as alterações realizadas sem modificar a base utilizada pela aplicação. A versão desenvolvida conta com mais de 1.700 casos de teste, distribuídos entre os módulos e regras de negócio do sistema.
+
+Entre as situações verificadas estiveram o bloqueio de reservas sobrepostas, inclusive quando solicitações foram analisadas simultaneamente; a aplicação das permissões conforme o perfil do usuário; a importação e a reimportação da planilha de horários; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem exposição de dados pessoais; e a imutabilidade dos registros de auditoria. A Tabela~\ref{tab:testes} relacionou essas verificações aos requisitos correspondentes. Para a validação técnica, foi adotado como critério a execução de todos os testes automatizados sem falhas. Não foram realizados testes formais de usabilidade com usuários finais. Portanto, os testes automatizados avaliaram o funcionamento técnico do sistema, enquanto a adequação aos requisitos institucionais foi analisada nas reuniões com a Diretora de Ensino.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Regras de negócio verificadas pelos testes}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{9.8cm}>{\raggedright\arraybackslash}p{4.0cm}@{}}
+	\hline
+		\textbf{Regra verificada} & \textbf{Requisitos} \\ \hline
+		Bloqueio de reservas sobrepostas, inclusive em análises simultâneas & RF06, RF07, RNF08 \\
+		Acesso a cada funcionalidade conforme as permissões do perfil & RF18, RNF01 \\
+		Importação e reimportação da planilha de horários & RF01, RF02 \\
+		Alteração, encerramento e cancelamento de aulas recorrentes & RF14--RF16 \\
+		Envio das notificações ao solicitante e aos responsáveis & RF09, RF10 \\
+		Consulta pública sem exposição de dados pessoais & RF11 \\
+		Imutabilidade dos registros de auditoria & RF26, RNF09 \\ \hline
+	\end{tabular}
+	\label{tab:testes}
+\end{table}
+
+%---------------------------------
+% SEÇÃO DE CRONOGRAMA
+%---------------------------------
+\needspace{9\baselineskip}

@@ -1,0 +1,108 @@
+% Diagrama de casos de uso do sistema de agendamento (gerado por gen_uc.py).
+% Os atores representam conjuntos de permissões, e não perfis fixos.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    uc/.style={ellipse, draw, fill=white, minimum width=4.4cm, minimum height=0.8cm,
+               align=center, inner xsep=-2pt, inner ysep=2.5pt},
+    pkg/.style={draw, rounded corners=2pt, fill=black!4},
+    pkglabel/.style={font=\scriptsize\bfseries, anchor=north west, inner sep=3pt},
+    rel/.style={dashed, -{Stealth[length=2mm]}},
+    rellabel/.style={font=\scriptsize\itshape, right, inner sep=2pt},
+    gen/.style={-{Triangle[open, length=2.5mm, width=2.5mm]}},
+    lbl/.style={anchor=north, align=center},
+    hit/.style={minimum width=0.7cm, minimum height=1.3cm},
+    actor/.pic={
+        \draw (0,0.55) circle (0.17);
+        \draw (0,0.38) -- (0,-0.1) (-0.3,0.22) -- (0.3,0.22)
+              (0,-0.1) -- (-0.25,-0.5) (0,-0.1) -- (0.25,-0.5);
+    },
+]
+\draw[thick, rounded corners=4pt] (2.6,-0.55) rectangle (13.4,20.45);
+\node[font=\small\bfseries] at (8,20.05) {Sistema de Agendamento de Espaços Físicos};
+\draw[pkg] (2.8499999999999996,16.0) rectangle (7.85,19.6);
+\node[pkglabel] at (2.8499999999999996,19.6) {Consulta pública};
+\draw[pkg] (2.8499999999999996,6.35) rectangle (7.85,15.7);
+\node[pkglabel] at (2.8499999999999996,15.7) {Agenda de reservas};
+\draw[pkg] (2.8499999999999996,2.45) rectangle (7.85,6.05);
+\node[pkglabel] at (2.8499999999999996,6.05) {Comunicação e ajuda};
+\draw[pkg] (8.15,12.55) rectangle (13.15,19.6);
+\node[pkglabel] at (8.15,19.6) {Ensalamento};
+\draw[pkg] (8.15,9.15) rectangle (13.15,12.25);
+\node[pkglabel] at (8.15,12.25) {Cadastros};
+\draw[pkg] (8.15,5.25) rectangle (13.15,8.85);
+\node[pkglabel] at (8.15,8.85) {Administração do sistema};
+\draw[pkg] (8.15,-0.25) rectangle (13.15,4.95);
+\node[pkglabel] at (8.15,4.95) {Gestão};
+\node[uc] (consultar) at (5.35,18.45) {Consultar calendário\\público};
+\node[uc] (exportar) at (5.35,16.9) {Exportar calendário\\(.ics)};
+\node[uc] (acompanhar) at (5.35,14.55) {Acompanhar e\\cancelar solicitações};
+\node[uc] (solicitar) at (5.35,13.25) {Solicitar reserva};
+\node[uc] (verificar) at (5.35,11.6) {Verificar\\disponibilidade};
+\node[uc] (analisar) at (5.35,9.95) {Analisar solicitação};
+\node[uc] (sugerir) at (5.35,8.55) {Sugerir alternativa};
+\node[uc] (emnome) at (5.35,7.25) {Solicitar em nome\\de outro usuário};
+\node[uc] (receber) at (5.35,4.9) {Receber\\notificações};
+\node[uc] (ajuda) at (5.35,3.35) {Consultar central\\de ajuda};
+\node[uc] (importar) at (10.65,18.45) {Importar planilha\\de horários};
+\node[uc] (resolver) at (10.65,16.55) {Resolver espaços\\da planilha};
+\node[uc] (aulas) at (10.65,15.0) {Manter aulas\\recorrentes};
+\node[uc] (ocorrencia) at (10.65,13.45) {Cancelar ocorrência\\de aula};
+\node[uc] (espacos) at (10.65,11.35) {Manter espaços};
+\node[uc] (cursos) at (10.65,10.05) {Manter cursos,\\disciplinas e turmas};
+\node[uc] (perfis) at (10.65,7.7) {Gerenciar perfis\\e permissões};
+\node[uc] (email) at (10.65,6.15) {Configurar servidor\\de e-mail};
+\node[uc] (usuarios) at (10.65,4.05) {Gerenciar usuários};
+\node[uc] (painel) at (10.65,2.75) {Consultar painel\\e relatórios};
+\node[uc] (auditoria) at (10.65,1.45) {Consultar auditoria};
+\node[uc] (comunicado) at (10.65,0.4) {Publicar comunicado};
+\draw[rel] (solicitar) -- node[rellabel] {«include»} (verificar);
+\draw[rel] (analisar) -- node[rellabel] {«include»} (verificar);
+\draw[rel] (sugerir) -- node[rellabel] {«extend»} (analisar);
+\draw[rel] (importar) -- node[rellabel] {«include»} (resolver);
+\pic at (1.2,17.675) {actor};
+\node[hit] (Avis) at (1.2,17.725) {};
+\node[lbl] (Lvis) at (1.2,17.125) {Visitante};
+\draw (Avis) -- (consultar.west);
+\draw (Avis) -- (exportar.west);
+\pic at (0.6,13.9) {actor};
+\node[hit] (Asol) at (0.6,13.950) {};
+\node[lbl] (Lsol) at (0.6,13.350) {Solicitante};
+\draw (Asol) -- (acompanhar.west);
+\draw (Asol) -- (solicitar.west);
+\pic at (1.6,7.5) {actor};
+\node[hit] (Aana) at (1.6,7.550) {};
+\node[lbl] (Lana) at (1.6,6.950) {Analista de\\reservas};
+\draw (Aana) -- (analisar.west);
+\draw (Aana) -- (emnome.west);
+\pic at (1.2,4.125) {actor};
+\node[hit] (Aaut) at (1.2,4.175) {};
+\node[lbl] (Laut) at (1.2,3.575) {Usuário\\autenticado};
+\draw (Aaut) -- (receber.west);
+\draw (Aaut) -- (ajuda.west);
+\pic at (15.0,10.65) {actor};
+\node[hit] (Ages) at (15.0,10.700) {};
+\node[lbl] (Lges) at (15.0,10.100) {Gestor do\\ensalamento};
+\draw (Ages) -- (importar.east);
+\draw (Ages) -- (aulas.east);
+\draw (Ages) -- (ocorrencia.east);
+\draw (Ages) -- (espacos.east);
+\draw (Ages) -- (cursos.east);
+\pic at (15.0,6.25) {actor};
+\node[hit] (Asup) at (15.0,6.300) {};
+\node[lbl] (Lsup) at (15.0,5.700) {Superadministrador};
+\draw (Asup) -- (perfis.east);
+\draw (Asup) -- (email.east);
+\pic at (15.0,0.6000000000000001) {actor};
+\node[hit] (Aadm) at (15.0,0.650) {};
+\node[lbl] (Ladm) at (15.0,0.050) {Administrador};
+\draw (Aadm) -- (usuarios.east);
+\draw (Aadm) -- (painel.east);
+\draw (Aadm) -- (auditoria.east);
+\draw (Aadm) -- (comunicado.east);
+\draw[gen] (Lsol.south) -- (0.6,5.34) -- (1.08,4.88);
+\draw[gen] (Lana.south) -- (1.3199999999999998,4.88);
+\draw[gen] (Lsup.south) -- (15.0,1.35);
+\draw (Ages.east) -- (16.55,10.70) -- (16.55,-1.10);
+\draw (Ladm.south) -- (15.0,-1.10);
+\draw[gen] (16.55,-1.10) -- (1.2,-1.10) -- (Laut.south);
+\end{tikzpicture}

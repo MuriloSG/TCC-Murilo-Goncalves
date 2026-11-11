@@ -1,0 +1,286 @@
+\documentclass[
+	% -- opções da classe memoir --
+	12pt,				% tamanho da fonte
+	%openright,			% capítulos começam em pág ímpar (insere página vazia caso preciso)
+	oneside,			% evita páginas vazias entre elementos do documento
+	a4paper,			% tamanho do papel.
+	% -- opções da classe abntex2 --
+	chapter=TITLE,		% títulos de capítulos convertidos em letras maiúsculas
+	section=TITLE,		% títulos de seções convertidos em letras maiúsculas
+	subsection=TITLE,	% títulos de subseções convertidos em letras maiúsculas
+	subsubsection=TITLE,% títulos de subsubseções convertidos em letras maiúsculas
+	% -- opções do pacote babel --
+	english,			% idioma adicional para hifenização
+	french,				% idioma adicional para hifenização
+	spanish,			% idioma adicional para hifenização
+	brazil,				% o último idioma é o principal do documento
+	]{abntex2}
+
+% ---------------------------------
+% PACOTES
+% ---------------------------------
+%\renewcommand{\thesection}{\arabic{section}}
+\usepackage{lmodern}			% Usa a fonte Latin Modern
+\usepackage[T1]{fontenc}		% Selecao de codigos de fonte.
+\usepackage[utf8]{inputenc}		% Codificacao do documento (conversão automática dos acentos)
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{color}				% Controle das cores
+\usepackage{lastpage}
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{microtype} 			% para melhorias de justificação
+\usepackage{multirow}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage[table]{xcolor}
+\usepackage{multirow}           % Merge rows and columns in tables
+\usepackage{longtable}          % Large tables
+\usepackage{fancyvrb}           % Codes and Outputs commands
+\usepackage{listings}           % Codes and Outputs commands
+\usepackage{pdflscape}
+\usepackage{float}
+\usepackage{subfig}             % Subfigures
+\usepackage{latexsym}           % Extra symbols of Latex
+\usepackage{booktabs}
+\usepackage{tikz}               % Diagramas UML
+\usetikzlibrary{positioning,shapes.geometric,shapes.multipart,arrows.meta,fit,calc}
+\usepackage{enumerate}
+\usepackage{acronym}
+\usepackage[portuguese, ruled, linesnumbered]{algorithm2e}
+\usepackage[noend]{algpseudocode}
+\usepackage{url}
+\let\realurl\url
+\renewcommand{\url}[1]{\realurl{#1}\wlog{URLX #1}}
+
+% ---------------------------------
+% Pacotes de citações
+% ---------------------------------
+\usepackage[brazilian,hyperpageref]{backref}% Paginas com as citações na bibl
+\usepackage[alf,bibjustif]{abntex2cite}	% Citações padrão ABNT
+
+% ---------------------------------
+% Configurações do pacote backref
+% Usado sem a opção hyperpageref de backref
+\renewcommand{\backrefpagesname}{Citado na(s) página(s):~}
+% Texto padrão antes do número das páginas
+\renewcommand{\backref}{}
+% Define os textos da citação
+\renewcommand*{\backrefalt}[4]{
+	\ifcase #1 %
+		Nenhuma citação no texto.%
+	\or
+		Citado na página #2.%
+	\else
+		Citado #1 vezes nas páginas #2.%
+	\fi}%
+% ---------------------------------
+% Configurações de aparência do PDF final
+% ---------------------------------
+% alterando o aspecto da cor azul
+\definecolor{blue}{RGB}{41,5,195}
+
+% informações do PDF
+\makeatletter
+\hypersetup{
+     	%pagebackref=true,
+		pdftitle={\@title},
+		pdfauthor={\@author},
+    	pdfsubject={\imprimirpreambulo},
+	    pdfcreator={LaTeX with abnTeX2},
+		pdfkeywords={abnt}{latex}{abntex}{abntex2}{projeto de pesquisa},
+		colorlinks=true,       		% false: boxed links; true: colored links
+    	linkcolor=blue,          	% color of internal links
+    	citecolor=blue,        		% color of links to bibliography
+    	filecolor=magenta,      		% color of file links
+		urlcolor=blue,
+		bookmarksdepth=4
+}
+\makeatother
+% ---------------------------------
+% Espaçamentos entre linhas e parágrafos
+% ---------------------------------
+% O tamanho do parágrafo é dado por:
+\setlength{\parindent}{1.3cm}
+% Controle do espaçamento entre um parágrafo e outro:
+\setlength{\parskip}{0.2cm}  % tente também \onelineskip
+
+
+%-----------------------------------
+% Front pages
+%-----------------------------------
+\titulo{Sistema Web para Agendamento de Espaços Físicos no IFNMG -- Salinas}
+\autor{Murilo Santos Gonçalves}
+\local{Salinas - Minas Gerais}
+\date{\normalsize\today} % Gera automaticamente a data
+\orientador{Arthur Farias Porto}
+\coorientador{Jéssica Glória}
+\instituicao{%
+ 	Instituto Federal do Norte de Minas Gerais - Campus Salinas
+ 	\par  
+ 	Bacharelado em Sistemas de Informação
+}
+
+\preambulo{Trabalho de conclusão de curso apresentado ao Curso de Bacharelado em Sistemas de Informação do Instituto Federal do Norte de Minas Gerais, como exigência para obtenção do grau de Bacharel em Sistemas de Informação.}
+
+%-----------------------------------
+% Set the final PDF
+%-----------------------------------
+\definecolor{blue}{RGB}{41,5,195} % setting the blue color
+
+% PDF informations
+\makeatletter                   
+\hypersetup{
+     	%pagebackref=true,
+		pdftitle={\@title}, 
+		pdfauthor={\@author},
+    	pdfsubject={\imprimirpreambulo},
+	    pdfcreator={LaTeX with abnTeX2},
+		pdfkeywords={abnt}{latex}{abntex}{abntex2}{trabalho acadêmico}, 
+		colorlinks=true,        % false: boxed links; true: colored links
+    	linkcolor=blue,         % color of internal links
+    	citecolor=blue,        	% color of links to bibliography
+    	filecolor=magenta,      % color of file links
+		urlcolor=blue,
+		bookmarksdepth=4
+}
+\makeatother
+
+%-----------------------------------
+% Spacing between lines and paragraphs
+%-----------------------------------
+\setlength{\parindent}{1.5cm}   % Set length of indent
+\setlength{\parskip}{0.2cm}     % Set length among the paragraphs 
+
+%Index
+\makeindex
+
+%-----------------------------------
+% Main document
+%-----------------------------------
+\begin{document}
+
+%-----------------------------------
+% Linguagem
+\selectlanguage{brazil} % Texts in pt-br
+\frenchspacing          % Remove obsolete spaces between phrases
+
+%-----------------------------------
+% Elementos pre-textuais
+\pretextual
+
+%-----------------------------------
+% Capa
+\imprimircapa                   
+
+% Folha de rosto
+\imprimirfolhaderosto
+
+\newpage
+
+%-----------------------------------
+% Dedicatória (opcional)
+\begin{dedicatoria}
+   \vspace*{\fill}
+   \begin{flushright}
+      \textit{Dedico este trabalho aos meus pais, que são a razão de muitas das minhas conquistas. A vocês, que sempre fizeram o possível e, muitas vezes, o impossível para me proporcionar oportunidades e me ajudar a construir meu caminho. Que enfrentaram dificuldades, fizeram sacrifícios e nunca deixaram de acreditar em mim. Esta conquista é fruto de tudo o que fizeram por mim, dos valores que me ensinaram e do amor que sempre me deram. Se hoje cheguei até aqui, é porque tive vocês como alicerce. Espero que esta conquista seja motivo de orgulho, assim como vocês sempre foram motivo de orgulho e inspiração para mim.}
+   \end{flushright}
+   \vspace*{\fill}
+\end{dedicatoria}
+
+%-----------------------------------
+% Agradecimentos (opcional)
+\begin{agradecimentos}
+Agradeço, primeiramente, a Deus, por me conceder força, sabedoria e perseverança para superar os desafios encontrados ao longo desta caminhada.
+
+Aos meus pais, pelo amor, apoio e incentivo constantes. Por todos os esforços, pela confiança e por estarem ao meu lado durante essa trajetória, contribuindo para que eu pudesse alcançar mais esta etapa da minha vida.
+
+Aos meus amigos e colegas, pelos momentos compartilhados, pela parceria e pelas experiências vividas durante a graduação, que contribuíram não apenas para minha formação acadêmica, mas também para meu crescimento pessoal.
+
+Aos professores do IFNMG -- Campus Salinas, pelos conhecimentos transmitidos, pela dedicação e por contribuírem para minha formação profissional e pessoal. Em especial, ao meu orientador, pela disponibilidade, paciência e direcionamento durante o desenvolvimento deste trabalho.
+
+Por fim, agradeço a todos que, de alguma maneira, fizeram parte dessa trajetória e contribuíram para a realização desta conquista.
+\end{agradecimentos}
+
+%-----------------------------------
+% Epígrafe (opcional)
+\begin{epigrafe}
+    \vspace*{\fill}
+	\begin{flushright}
+		\textit{“Todos podem superar suas circunstâncias e alcançar o sucesso, desde que tenham dedicação e paixão pelo que fazem.”}
+
+		\textit{--- Nelson Mandela (2009)}
+	\end{flushright}
+\end{epigrafe}
+
+%-----------------------------------
+% Resumo (em português)
+\setlength{\absparsep}{18pt} % set spacing between the paragraphs
+
+\begin{resumo}
+Este trabalho apresenta o desenvolvimento de um sistema web para o gerenciamento de reservas de espaços físicos no Instituto Federal do Norte de Minas Gerais (IFNMG) -- Campus Salinas. O problema investigado decorre da necessidade de cadastro manual dos horários ocupados, da intermediação de servidores nas solicitações e da ausência de um registro consolidado sobre a utilização dos espaços. A pesquisa é aplicada, descritiva e realizada por meio de estudo de caso, combinando pesquisa bibliográfica e levantamento iterativo de requisitos com a Direção de Ensino Técnico. Como resultado, foi desenvolvida uma aplicação web com Python e Django, utilizando PostgreSQL, controle de acesso baseado em papéis, importação da planilha de horários, solicitação e análise de reservas, notificações, consulta pública, relatórios e auditoria. A validação técnica foi organizada por meio de testes unitários e de integração, com mais de 1.700 casos distribuídos entre os módulos e regras de negócio do sistema. A solução constitui uma versão funcional executada em ambiente local e atende às necessidades identificadas para organizar a ocupação dos espaços, embora a hospedagem institucional e a avaliação formal de usabilidade permaneçam fora do escopo deste trabalho.
+
+Palavras-chave: reserva de espaços; sistema web; IFNMG; Django; gestão acadêmica.
+\end{resumo}
+
+%-----------------------------------
+% Abstract (in English) (opcional)
+\begin{resumo}[Abstract]
+    \begin{otherlanguage*}{english}
+This work presents the development of a web system for managing physical-space reservations at the Instituto Federal do Norte de Minas Gerais (IFNMG) -- Salinas Campus. The investigated problem arises from the need to manually register occupied schedules, the intermediation of staff in reservation requests, and the lack of consolidated records on space utilization. The research is applied and descriptive, conducted as a case study combined with bibliographic research and iterative requirements gathering with the Technical Education Office. As a result, a web application was developed with Python and Django, using PostgreSQL, role-based access control, schedule-sheet import, reservation requests and analysis, notifications, public consultation, reports, and auditing. Technical validation was organized through unit and integration tests, with more than 1,700 cases distributed among the system modules and business rules. The solution is a functional version executed in a local environment and addresses the identified needs for organizing space occupancy, although institutional hosting and formal usability evaluation remain outside the scope of this work.
+
+Keywords: space reservation; web system; IFNMG; Django; academic management.
+    \end{otherlanguage*}
+\end{resumo}
+
+%-----------------------------------
+% Lista de figuras
+\pdfbookmark[0]{\listfigurename}{lof}
+\listoffigures*
+\clearpage
+
+%-----------------------------------
+% Lista de tabelas
+\pdfbookmark[0]{\listtablename}{lot}
+\listoftables*
+\clearpage
+
+%-----------------------------------
+% Abreviações (opcional)
+\input{pre-textuais/sigla}
+\clearpage
+
+%-----------------------------------
+% Sumário
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents*
+\clearpage
+
+
+%-----------------------------------
+% TEXTUAL ELEMENTS
+%-----------------------------------
+\textual
+
+%-----------------------------------
+% Chapters
+\include{Capitulos/cap1_introducao}
+\include{Capitulos/cap2_revisao}
+\include{Capitulos/cap3_metodologia}
+\include{Capitulos/cap4_resultados}
+\include{Capitulos/cap5_conclusao}
+
+%-----------------------------------
+% Finaliza a parte no bookmark do PDF
+% para que se inicie o bookmark na raiz
+% e adiciona espaço de parte no Sumário
+\phantompart
+
+%-----------------------------------
+% Bibliografia
+\bibliography{referencias.bib}
+
+
+%-----------------------------------
+% POST-TEXTUAL ELEMENTS
+%-----------------------------------
+\postextual
+
+\end{document}

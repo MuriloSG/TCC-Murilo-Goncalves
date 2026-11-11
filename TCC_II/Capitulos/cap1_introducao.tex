@@ -1,0 +1,37 @@
+\chapter{Introdução}
+\label{Introducao}
+A organização dos espaços físicos num campus universitário pode aparentar simplicidade, mas revela-se complexa na prática. Quando laboratórios e salas especiais são compartilhados por vários docentes sem um sistema de agendamento adequado, surgem conflitos de horário e a tarefa de controlar quem usa o quê e quando recai sobre servidores que já têm outras atribuições.
+
+No IFNMG -- Campus Salinas, esse problema tem contorno específico. O sistema utilizado para agendamentos exige o cadastro manual dos horários ocupados antes de qualquer reserva. Como as atividades dos espaços mudam a cada semestre, o procedimento precisa ser repetido periodicamente. Os docentes também não consultam a disponibilidade nem solicitam reservas sem a intermediação de um servidor. Além disso, a instituição não dispõe de um registro consolidado da utilização dos laboratórios. Esse cenário não é exclusivo do Campus Salinas: estudo de \citeonline{cruz2023gestao} no IFNMG Campus Almenara identificou a ausência de planejamento permanente e de mecanismos para medir a utilização dos laboratórios.
+
+Este trabalho apresentou o desenvolvimento do \textit{IFAgenda}, um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. O IFAgenda permitiu que docentes consultassem a disponibilidade e solicitassem reservas sem intermediação. Também ofereceu ao servidor responsável ferramentas para aprovar solicitações, acompanhar notificações e gerar relatórios sobre o uso dos espaços.
+
+Antes de optar pelo desenvolvimento de uma solução própria, foram investigadas alternativas já disponíveis no mercado e na comunidade de software livre, incluindo plataformas comerciais de reserva de espaços, como o Skedda \cite{skedda2025} e o Microsoft Bookings \cite{microsoft2025bookings}, além de sistemas acadêmicos desenvolvidos por outras instituições de ensino \cite{cruz2023gestao,nascimento2020reservas}. Essa investigação evidenciou que nenhuma dessas soluções atende ao requisito central apontado pela Direção de Ensino Técnico do campus: fazer com que a disponibilidade dos espaços reflita automaticamente a grade de horários institucional.
+
+A necessidade de uma solução específica foi expressa pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, responsável pela gestão dos agendamentos. Em reunião, ela destacou\footnote{Informação verbal fornecida pela Diretora de Ensino Técnico do IFNMG -- Campus Salinas, em reuniões remotas realizadas entre julho de 2025 e setembro de 2026.}:
+
+\begin{citacao}
+Precisamos de um software que forneça um mapa de utilização dos espaços do campus e permita que horários livres dos espaços sejam agendados pelos docentes, aprovados pelos administradores e visualizados por todos.
+\end{citacao}
+
+Com esses recursos, o IFAgenda substituiu parte do cadastro manual dos horários, registrou o histórico das reservas e apoiou a administração na identificação de conflitos e na consulta da ocupação dos espaços.
+%---------------------------------
+% SEÇÃO DE OBJETIVOS
+%---------------------------------
+\subsection{Objetivo Geral}
+\label{sec:objetivoGeral}
+Desenvolver um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas.
+\subsection{Objetivos Específicos}
+\label{sec:objetivosEspecificos}
+\begin{itemize}
+    \item Levantar o processo atual de agendamento e identificar as necessidades dos perfis de usuários envolvidos;
+    \item Especificar os requisitos funcionais e não funcionais do sistema;
+    \item Implementar o sistema web com as tecnologias e a arquitetura definidas a partir dos requisitos especificados;
+    \item Disponibilizar ao administrador ferramentas para a gestão dos agendamentos e o acompanhamento do uso dos espaços;
+    \item Verificar o funcionamento do sistema por meio de testes automatizados.
+\end{itemize}
+\subsection{Estrutura do Trabalho}
+Este trabalho foi estruturado da seguinte forma: no Capítulo 2 foi apresentada a revisão bibliográfica, que abrangeu o contexto institucional, os trabalhos relacionados e a fundamentação tecnológica; no Capítulo 3, foi descrita a metodologia utilizada na condução da pesquisa; no Capítulo 4, foram apresentados os resultados do desenvolvimento e da validação do sistema; no Capítulo 5, foram apresentadas as conclusões, limitações e possibilidades de trabalhos futuros; e, por fim, foram reunidas as referências bibliográficas consultadas.
+%---------------------------------
+% SEÇÃO DE REVISÃO
+%---------------------------------

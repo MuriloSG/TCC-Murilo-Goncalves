@@ -1,0 +1,31 @@
+\chapter{Resultados} 
+\label{cap4_resultados} 
+
+Este capítulo apresentou os resultados obtidos com o desenvolvimento do \textit{IFAgenda}, sistema web para gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. Os resultados foram organizados em três aspectos: a solução implementada, o atendimento às necessidades identificadas e a validação técnica realizada.
+
+\section{Sistema Desenvolvido}
+\label{sec:resultado-sistema}
+
+O IFAgenda constituiu uma aplicação web funcional, executada em ambiente local e acessível por navegador. A solução foi implementada em Python com o \textit{framework} Django, utilizando PostgreSQL como sistema gerenciador de banco de dados e Docker Compose para a distribuição dos componentes em contêineres. A interface foi construída com \textit{templates} do Django e Tailwind CSS.
+
+A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
+
+O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda.
+
+\section{Atendimento às Necessidades Identificadas}
+\label{sec:resultado-necessidades}
+
+O IFAgenda atendeu às principais limitações observadas no diagnóstico. A importação da planilha reduziu o cadastro manual dos horários ocupados e permitiu que a ocupação das aulas fosse refletida no calendário do sistema. A consulta pública permitiu visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação manteve o controle administrativo sobre as reservas extraordinárias.
+
+O controle de acesso baseado em papéis restringiu as funcionalidades conforme as permissões de cada perfil. A solução definiu 47 permissões distribuídas em 13 módulos, possibilitando que os perfis fossem configurados pelo superadministrador. A restrição de integridade no banco de dados impediu reservas sobrepostas do mesmo espaço, inclusive quando solicitações foram analisadas simultaneamente.
+
+O IFAgenda também registrou as ações realizadas em auditoria, manteve o histórico das solicitações e forneceu informações para o acompanhamento da utilização dos espaços. Dessa forma, além de organizar o processo de reserva, a aplicação ofereceu dados que puderam apoiar o planejamento da ocupação dos laboratórios e das salas especiais.
+
+\section{Validação Técnica}
+\label{sec:resultado-validacao}
+
+A validação foi realizada com testes unitários e de integração utilizando o \textit{framework} de testes do Django. Os casos foram executados em banco de dados temporário, isolado dos dados de desenvolvimento. A versão desenvolvida contou com mais de 1.700 casos de teste distribuídos entre os módulos e as regras de negócio do sistema.
+
+Foram verificados, entre outros aspectos, o bloqueio de reservas sobrepostas, a aplicação das permissões conforme o perfil, a importação e a reimportação da planilha, o tratamento de aulas recorrentes, o envio de notificações, a consulta pública sem exposição de dados pessoais e a imutabilidade dos registros de auditoria. A validação institucional foi realizada em reuniões com a Diretora de Ensino Técnico, que acompanhou o refinamento dos requisitos e a apresentação do sistema.
+
+Os resultados demonstram que foi possível desenvolver uma versão funcional alinhada ao processo institucional levantado. Entretanto, não foram realizados testes formais de usabilidade com os usuários finais, e a implantação em infraestrutura institucional não fez parte do escopo. Essas limitações devem ser consideradas na interpretação dos resultados e no planejamento de evoluções futuras.

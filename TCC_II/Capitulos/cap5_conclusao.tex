@@ -1,0 +1,14 @@
+\chapter{Conclusão} 
+\label{cap5_conclusao} 
+
+Este trabalho teve como objetivo desenvolver o \textit{IFAgenda}, um sistema web para o gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. O problema foi investigado a partir das dificuldades do processo existente, que exigia o cadastro manual dos horários ocupados, dependia da intermediação de servidores e não mantinha um registro consolidado da utilização dos espaços.
+
+O objetivo geral foi alcançado com o desenvolvimento de uma versão funcional da aplicação. O IFAgenda permitiu importar a planilha de horários, consultar a disponibilidade, solicitar e analisar reservas, enviar notificações, acompanhar a ocupação dos espaços e registrar as ações realizadas. Também foram implementados mecanismos de controle de acesso, consulta pública, relatórios, auditoria e central de ajuda.
+
+Os objetivos específicos também foram contemplados. O processo atual e as necessidades dos usuários foram levantados com a Direção de Ensino Técnico; os requisitos funcionais e não funcionais foram especificados; a aplicação foi implementada com Python, Django, PostgreSQL, Tailwind CSS e Docker Compose; e o funcionamento técnico foi verificado por testes unitários e de integração. A solução conta com mais de 1.700 casos de teste distribuídos entre os módulos e as regras de negócio.
+
+Como contribuição, o sistema organizou em uma única aplicação o ensalamento, a consulta de disponibilidade e o fluxo de reservas. A importação da planilha reduziu o trabalho manual, enquanto o controle de conflitos e o registro de auditoria aumentaram a confiabilidade do processo. A consulta pública e os relatórios também puderam apoiar a administração na visualização e no planejamento da ocupação dos espaços.
+
+O trabalho possuiu duas limitações principais. A primeira foi que a versão desenvolvida foi executada em ambiente local, não incluindo a hospedagem e a implantação na infraestrutura institucional. A segunda foi a ausência de uma avaliação formal de usabilidade com docentes e demais usuários finais. Assim, a validação realizada demonstrou o funcionamento técnico e o alinhamento com os requisitos discutidos com a Direção de Ensino, mas não permitiu concluir sobre a experiência de uso de todos os públicos do sistema.
+
+Como trabalhos futuros, recomenda-se implantar a aplicação em ambiente institucional, realizar testes formais de usabilidade com os usuários finais e acompanhar o uso do sistema em um semestre letivo. Esse acompanhamento poderá fornecer evidências sobre a redução da intermediação, a qualidade dos dados de ocupação e a necessidade de novos ajustes ou funcionalidades.

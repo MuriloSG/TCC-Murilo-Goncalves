@@ -1,7 +1,7 @@
 \chapter{Resultados} 
 \label{cap4_resultados} 
 
-Este capítulo apresentou os resultados obtidos com o desenvolvimento do \textit{IFAgenda}, sistema web para gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. Os resultados foram organizados em três aspectos: a solução implementada, o atendimento às necessidades identificadas e a validação técnica realizada.
+Este capítulo apresentou os resultados obtidos com o desenvolvimento do \textit{IFAgenda}, sistema web para gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. Os resultados foram organizados em quatro aspectos: a solução implementada, a modelagem do banco de dados, o atendimento às necessidades identificadas e a validação técnica realizada.
 
 \section{Sistema Desenvolvido}
 \label{sec:resultado-sistema}
@@ -11,6 +11,107 @@ O IFAgenda constituiu uma aplicação web funcional, executada em ambiente local
 A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
 
 O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda.
+
+A interface aplicou as três heurísticas de \citeonline{nielsen1994} adotadas como diretrizes de projeto (Seção~\ref{sec:usab}). A situação de cada solicitação (pendente, aprovada, rejeitada, alternativa sugerida ou cancelada) fica visível ao solicitante, o que atende à visibilidade do estado do sistema. As telas usam os termos do processo do campus, como espaço, reserva, ensalamento e semestre, o que atende à correspondência com o mundo real. A verificação de conflito de horário antes do envio da solicitação, com a indicação do intervalo já ocupado, atende à prevenção de erros.
+
+\section{Modelagem do Banco de Dados}
+\label{sec:resultado-banco}
+
+O banco de dados foi projetado nos três níveis descritos por \citeonline{heuser2009}: conceitual, lógico e físico (Seção~\ref{sec:bd}). Os modelos apresentados a seguir correspondem à versão implementada do sistema. Os diagramas foram gerados a partir do próprio código: o físico, das classes de modelo do Django, e o conceitual, de uma descrição das entidades e dos relacionamentos mantida junto a essas classes. Os modelos lógico e físico representam o esquema completo do banco, enquanto o conceitual se concentra no domínio do problema, como detalhado na Seção~\ref{sec:modelo-conceitual}.
+
+\subsection{Modelo Conceitual}
+\label{sec:modelo-conceitual}
+
+O modelo conceitual, apresentado na Figura~\ref{fig:der-conceitual}, segue a notação de Peter Chen. As entidades aparecem em retângulos, os relacionamentos em losangos e os atributos ao lado de cada entidade, com o identificador destacado. A cardinalidade mínima e máxima de cada entidade aparece junto à linha do relacionamento.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Modelo conceitual do banco de dados}
+    \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{Figuras/banco/der-conceitual.png}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:der-conceitual}
+\end{figure}
+\end{landscape}
+
+O núcleo do modelo está nas entidades Espaço, Ensalamento, Solicitação e Agendamento. Um Ensalamento representa uma aula recorrente da grade importada: ocupa um espaço em um dia da semana e em uma faixa de horário, dentro de um semestre, e se liga à turma, à disciplina e aos docentes. Uma Solicitação é feita por um usuário para um espaço e analisada por um usuário com permissão para isso; quando aprovada, gera no máximo um Agendamento, que passa a ocupar o espaço. Cada Usuário tem no máximo um Perfil, e cada Perfil concede um conjunto de Permissões, o que corresponde à restrição de cardinalidade do modelo RBAC adotado (Seção~\ref{sec:rbac}). As demais entidades apoiam a importação da planilha (Importação, Linha da importação, Decisão de espaço e Outro nome), a comunicação com os usuários (Aviso e Notificação) e a rastreabilidade das ações (Registro de auditoria).
+
+Para manter o diagrama legível, o modelo conceitual representa apenas as entidades e os relacionamentos de negócio. Ficaram de fora as tabelas de infraestrutura, que guardam a fila de envio de e-mails e as configurações do sistema, e as referências secundárias que registram a autoria das operações, como quem aprovou ou cancelou uma reserva, quem registrou uma solicitação em nome de outro usuário, quem resolveu uma importação ou decidiu a correspondência de um espaço, além do espaço sugerido como alternativa e da importação que originou um espaço. Esses elementos aparecem nos modelos lógico e físico, que representam o esquema completo.
+
+\subsection{Modelo Lógico}
+\label{sec:modelo-logico}
+
+O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esquema relacional: cada entidade e cada relacionamento muitos-para-muitos do modelo conceitual tornaram-se uma tabela, com sua chave primária (sublinhada) e as chaves estrangeiras (em itálico) que materializam os relacionamentos. Os nomes das tabelas seguem a convenção do Django, formada pelo nome do módulo da aplicação e pelo nome da classe de modelo. As tabelas foram agrupadas pelos módulos do sistema.
+
+\begin{SingleSpace}
+\small
+\begin{longtable}{@{}p{15.5cm}@{}}
+	\caption{Modelo lógico do banco de dados}\label{tab:modelo-logico} \\
+	\hline
+	\textbf{Tabela(colunas)} \\ \hline
+	\endfirsthead
+	\multicolumn{1}{@{}l}{\small\textit{Continuação da Tabela~\thetable}} \\ \hline
+	\textbf{Tabela(colunas)} \\ \hline
+	\endhead
+	\hline
+	\multicolumn{1}{@{}l}{\footnotesize Legenda: chave primária sublinhada; chave estrangeira em itálico, com a tabela referenciada indicada após ``FK''.} \\
+	\multicolumn{1}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
+	\endlastfoot
+	\hline
+	\endfoot
+	\multicolumn{1}{@{}l}{\textbf{Contas e controle de acesso}} \\
+	accounts\_user(\underline{id}, password, last\_login, email, name, username, is\_active, is\_superadmin, session\_epoch, created\_at) \\
+	accounts\_role(\underline{id}, code, name, description) \\
+	accounts\_permission(\underline{id}, code, description) \\
+	accounts\_rolepermission(\underline{id}, \textit{role\_id}, \textit{permission\_id}) \newline {\footnotesize FK: role\_id $\rightarrow$ accounts\_role; permission\_id $\rightarrow$ accounts\_permission} \\
+	accounts\_userrole(\underline{id}, \textit{user\_id}, \textit{role\_id}) \newline {\footnotesize FK: user\_id $\rightarrow$ accounts\_user; role\_id $\rightarrow$ accounts\_role} \\
+	\multicolumn{1}{@{}l}{\textbf{Ensalamento}} \\
+	schedule\_semester(\underline{id}, code, start\_date, end\_date) \\
+	schedule\_timeslot(\underline{id}, \textit{semester\_id}, start\_time, end\_time) \newline {\footnotesize FK: semester\_id $\rightarrow$ schedule\_semester} \\
+	schedule\_course(\underline{id}, name, stage) \\
+	schedule\_classgroup(\underline{id}, \textit{course\_id}, label) \newline {\footnotesize FK: course\_id $\rightarrow$ schedule\_course} \\
+	schedule\_subject(\underline{id}, name) \\
+	schedule\_classoffering(\underline{id}, \textit{semester\_id}, \textit{subject\_id}, \textit{class\_group\_id}) \newline {\footnotesize FK: semester\_id $\rightarrow$ schedule\_semester; subject\_id $\rightarrow$ schedule\_subject; class\_group\_id $\rightarrow$ schedule\_classgroup} \\
+	schedule\_teacher(\underline{id}, name) \\
+	schedule\_teachingassignment(\underline{id}, \textit{offering\_id}, \textit{teacher\_id}, is\_current) \newline {\footnotesize FK: offering\_id $\rightarrow$ schedule\_classoffering; teacher\_id $\rightarrow$ schedule\_teacher} \\
+	schedule\_space(\underline{id}, name, origin, \textit{source\_import\_id}, is\_active) \newline {\footnotesize FK: source\_import\_id $\rightarrow$ imports\_import} \\
+	schedule\_spacename(\underline{id}, \textit{space\_id}, name) \newline {\footnotesize FK: space\_id $\rightarrow$ schedule\_space} \\
+	schedule\_allocation(\underline{id}, \textit{semester\_id}, \textit{class\_group\_id}, \textit{subject\_id}, \textit{space\_id}, weekday, \textit{time\_slot\_id}, origin, valid\_from, valid\_until) \newline {\footnotesize FK: semester\_id $\rightarrow$ schedule\_semester; class\_group\_id $\rightarrow$ schedule\_classgroup; subject\_id $\rightarrow$ schedule\_subject; space\_id $\rightarrow$ schedule\_space; time\_slot\_id $\rightarrow$ schedule\_timeslot} \\
+	schedule\_allocation\_teachers(\underline{id}, \textit{allocation\_id}, \textit{teacher\_id}) \newline {\footnotesize FK: allocation\_id $\rightarrow$ schedule\_allocation; teacher\_id $\rightarrow$ schedule\_teacher} \\
+	schedule\_allocationexception(\underline{id}, \textit{allocation\_id}, date, kind, \textit{created\_by\_id}, created\_at) \newline {\footnotesize FK: allocation\_id $\rightarrow$ schedule\_allocation; created\_by\_id $\rightarrow$ accounts\_user} \\
+	schedule\_spacedecision(\underline{id}, \textit{importation\_id}, found\_name, kind, \textit{space\_id}, target\_name, \textit{decided\_by\_id}, decided\_at) \newline {\footnotesize FK: importation\_id $\rightarrow$ imports\_import; space\_id $\rightarrow$ schedule\_space; decided\_by\_id $\rightarrow$ accounts\_user} \\
+	\multicolumn{1}{@{}l}{\textbf{Reservas}} \\
+	bookings\_bookingrequest(\underline{id}, \textit{requested\_by\_id}, \textit{teaching\_assignment\_id}, \textit{created\_by\_id}, \textit{space\_id}, date, start\_time, end\_time, description, student\_count, status, rejection\_reason, \textit{suggested\_space\_id}, suggested\_date, suggested\_start\_time, suggested\_end\_time, suggestion\_message, \textit{decided\_by\_id}, decided\_at, responded\_at, \textit{cancelled\_by\_id}, cancelled\_at, cancellation\_reason, created\_at) \newline {\footnotesize FK: requested\_by\_id $\rightarrow$ accounts\_user; teaching\_assignment\_id $\rightarrow$ schedule\_teachingassignment; created\_by\_id $\rightarrow$ accounts\_user; space\_id $\rightarrow$ schedule\_space; suggested\_space\_id $\rightarrow$ schedule\_space; decided\_by\_id $\rightarrow$ accounts\_user; cancelled\_by\_id $\rightarrow$ accounts\_user} \\
+	bookings\_booking(\underline{id}, \textit{request\_id}, \textit{space\_id}, starts\_at, ends\_at, description, student\_count, \textit{requested\_by\_id}, \textit{approved\_by\_id}, created\_at) \newline {\footnotesize FK: request\_id $\rightarrow$ bookings\_bookingrequest; space\_id $\rightarrow$ schedule\_space; requested\_by\_id $\rightarrow$ accounts\_user; approved\_by\_id $\rightarrow$ accounts\_user} \\
+	\multicolumn{1}{@{}l}{\textbf{Importação da planilha}} \\
+	imports\_import(\underline{id}, kind, status, file\_name, \textit{created\_by\_id}, created\_at, \textit{resolved\_by\_id}, resolved\_at, revalidation\_count, file\_errors, operation, \textit{requested\_by\_id}, requested\_at, attempts, next\_attempt\_at, last\_error, outcome, outcome\_message) \newline {\footnotesize FK: created\_by\_id $\rightarrow$ accounts\_user; resolved\_by\_id $\rightarrow$ accounts\_user; requested\_by\_id $\rightarrow$ accounts\_user} \\
+	imports\_importrow(\underline{id}, \textit{parent\_id}, line\_number, values, action, target, changes, warnings, errors, pending, created\_object) \newline {\footnotesize FK: parent\_id $\rightarrow$ imports\_import} \\
+	\multicolumn{1}{@{}l}{\textbf{Comunicados e notificações}} \\
+	notices\_notice(\underline{id}, type, title, message, destination, recipients\_count, \textit{published\_by\_id}, created\_at) \newline {\footnotesize FK: published\_by\_id $\rightarrow$ accounts\_user} \\
+	notices\_notification(\underline{id}, \textit{recipient\_id}, \textit{notice\_id}, type, title, message, target\_url, read\_at, created\_at) \newline {\footnotesize FK: recipient\_id $\rightarrow$ accounts\_user; notice\_id $\rightarrow$ notices\_notice} \\
+	\multicolumn{1}{@{}l}{\textbf{Auditoria, fila de e-mails e configurações}} \\
+	audit\_auditlog(\underline{id}, \textit{user\_id}, action, resource, resource\_id, old\_values, new\_values, metadata, origin, ip\_address, user\_agent, created\_at) \newline {\footnotesize FK: user\_id $\rightarrow$ accounts\_user} \\
+	outbox\_outboxentry(\underline{id}, kind, reference, status, attempts, next\_attempt\_at, last\_error, created\_at, sent\_at) \\
+	system\_settings\_systemsetting(\underline{id}, kind, value, created\_at, updated\_at) \\
+\end{longtable}
+\end{SingleSpace}
+
+\subsection{Modelo Físico}
+\label{sec:modelo-fisico}
+
+O modelo físico, apresentado na Figura~\ref{fig:der-fisico}, detalha a implementação do esquema no PostgreSQL. Para cada uma das 28 tabelas, o diagrama mostra as colunas com o tipo de dado do SGBD, a obrigatoriedade (\texttt{NULL} ou \texttt{NOT NULL}) e as marcações de chave primária (PK), chave estrangeira (FK) e unicidade (UK). Cada chave estrangeira aparece como uma linha entre as tabelas, com a cardinalidade nos dois lados.
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \caption{Modelo físico do banco de dados}
+    \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{Figuras/banco/der-fisico.png}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:der-fisico}
+\end{figure}
+\end{landscape}
+
+Algumas regras do modelo físico não aparecem no diagrama porque são restrições e índices declarados no esquema. A mais importante é a restrição de exclusão \texttt{booking\_no\_overlap}, definida na tabela \texttt{bookings\_booking} com um índice GiST: ela impede que dois agendamentos do mesmo espaço tenham intervalos de horário sobrepostos, inclusive quando duas solicitações são aprovadas ao mesmo tempo, o que atende ao RNF08. Restrições de verificação (\textit{CHECK}) garantem que o início de cada agendamento e de cada solicitação seja anterior ao fim, e índices únicos sobre \texttt{LOWER(email)} e \texttt{LOWER(username)} impedem usuários duplicados que difiram apenas por letras maiúsculas e minúsculas. Cada usuário tem no máximo um perfil por força de uma restrição de unicidade sobre \texttt{user\_id} na tabela \texttt{accounts\_userrole}. Essas regras são criadas pelas \textit{migrations} do Django, de modo que o esquema do banco é versionado junto com o código.
 
 \section{Atendimento às Necessidades Identificadas}
 \label{sec:resultado-necessidades}

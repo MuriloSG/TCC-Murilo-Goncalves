@@ -4,23 +4,23 @@
 Este capítulo descreveu a metodologia da pesquisa. A Seção~\ref{sec:tipopesquisa} classificou a pesquisa quanto à natureza, aos objetivos e ao procedimento técnico, e a Seção~\ref{sec:procedimentos} descreveu as etapas do trabalho.
 
 %-----------------------------------
-\subsection{Tipo de Pesquisa}
+\section{Tipo de Pesquisa}
 \label{sec:tipopesquisa}
 
-Quanto à natureza, esta pesquisa foi aplicada. Sua finalidade foi produzir um artefato de software para um problema concreto identificado num contexto institucional real, não ampliar o conhecimento teórico de forma genérica. \citeonline{gil2008} distinguiu a pesquisa aplicada da pesquisa básica precisamente por esse critério: a primeira foi motivada pela necessidade de resolver problemas práticos e seus resultados tiveram aplicação imediata.
+Quanto à natureza, esta pesquisa foi aplicada. Sua finalidade foi produzir um artefato de software para um problema concreto identificado num contexto institucional real, não ampliar o conhecimento teórico de forma genérica. \citeonline{gil2008} distingue a pesquisa aplicada da pesquisa básica precisamente por esse critério: a primeira foi motivada pela necessidade de resolver problemas práticos e seus resultados tiveram aplicação imediata.
 
 Quanto aos objetivos, a pesquisa foi descritiva. O ponto de partida foi a caracterização do processo de agendamento de espaços físicos no IFNMG -- Campus Salinas: como ele funcionava, onde falhava e o que os usuários envolvidos precisavam que mudasse. \citeonline{gil2008} definiu a pesquisa descritiva como aquela que buscava descrever as características de determinado fenômeno e estabelecer relações entre suas variáveis, sem que o pesquisador interferisse nos fatos observados.
 
 Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinação com pesquisa bibliográfica. O estudo de caso é adequado porque a investigação recai sobre um ambiente específico, o Campus Salinas, com histórico, atores e restrições próprios que precisam ser compreendidos antes de qualquer proposta de solução. \citeonline{yin2015} define o estudo de caso como uma investigação empírica que examina um fenômeno contemporâneo em profundidade e em seu contexto real, sendo especialmente indicado quando os limites entre o fenômeno e o contexto não são claramente separáveis. A pesquisa bibliográfica, por sua vez, dá sustentação às decisões de projeto, de modelagem e de escolha tecnológica, com base no que a literatura já consolidou sobre engenharia de software, controle de acesso e desenvolvimento web.
 
 %-----------------------------------
-\subsection{Procedimentos Metodológicos}
+\section{Procedimentos Metodológicos}
 \label{sec:procedimentos}
 
 Esta pesquisa foi organizada em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. As etapas foram conduzidas de forma iterativa: a cada reunião com a Direção de Ensino, os requisitos eram refinados e incorporados ao sistema em desenvolvimento. Ao final do trabalho, foram concluídas as cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem, implementação e validação técnica por meio de testes automatizados.
 
 %-----------------------------------
-\subsubsection{Diagnóstico do Problema}
+\subsection{Diagnóstico do Problema}
 \label{sec:coleta}
 
 A primeira etapa consistiu no diagnóstico do problema. Por meio de conversas semiestruturadas, interações técnicas informais e validações contínuas com a Diretora de Ensino Técnico, responsável pela gestão dos espaços físicos no campus, foram mapeados o processo atual de agendamento, suas limitações operacionais e as necessidades concretas dos usuários envolvidos, como docentes e equipe administrativa, além da consulta pública, disponível sem autenticação. As informações obtidas nessa etapa fundamentaram a especificação dos requisitos apresentada a seguir.
@@ -44,7 +44,7 @@ O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os 
 Dessas limitações derivam as necessidades que orientaram os requisitos: importar a planilha de horários já produzida pelo campus, marcando automaticamente como ocupados os horários das aulas; manter essa ocupação atualizada por reimportação ou ajuste pontual, sem integração em tempo real com sistemas externos; notificar automaticamente os envolvidos no fluxo de reserva; permitir a consulta pública da ocupação; e gerar um mapa da utilização dos espaços ao longo do semestre.
 
 %-----------------------------------
-\subsubsection{Levantamento e Análise de Requisitos}
+\subsection{Levantamento e Análise de Requisitos}
 \label{sec:requisitos}
 
 A segunda etapa foi o levantamento e a análise de requisitos. \citeonline{pressman2016} descrevem a engenharia de requisitos como um processo contínuo de identificação, análise, especificação e validação das necessidades dos envolvidos, e ressaltam que a qualidade dessa etapa determina a qualidade do que será desenvolvido depois. A especificação de requisitos foi elaborada a partir das informações coletadas nas reuniões e do referencial bibliográfico consultado, e organizada em duas categorias: requisitos funcionais e requisitos não funcionais.
@@ -80,7 +80,7 @@ Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, as funç
 	RF16 & Cancelar a ocorrência de uma aula em uma data, sem alterar a recorrência, pelo administrador ou pelo docente da aula \\
 	RF17 & Cadastrar e manter cursos, disciplinas e turmas \\
 	RF18 & Criar perfis de acesso e definir as permissões de cada um \\
-	RF19 & Importar usuários em lote por meio de arquivo CSV \\
+	RF19 & Importar usuários em lote por meio de arquivo .CSV \\
 	RF20 & Enviar ao novo usuário, por e-mail, o link para definir a senha, e permitir a recuperação de senha \\
 	RF21 & Sugerir ao solicitante uma alternativa à reserva solicitada (outro espaço, data ou horário), que ele pode aceitar ou recusar \\
 	RF22 & Registrar solicitação de reserva em nome de outro usuário \\
@@ -120,7 +120,7 @@ Os requisitos não funcionais estabelecem as restrições de qualidade que o sis
 \end{table}
 
 %-----------------------------------
-\subsubsection{Modelagem do Sistema}
+\subsection{Modelagem do Sistema}
 \label{sec:modelagem}
 
 A modelagem utilizou três diagramas da UML: casos de uso, classes e sequência. Os diagramas refletem a versão implementada do sistema.
@@ -156,7 +156,7 @@ O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e 
 \end{figure}
 
 %-----------------------------------
-\subsubsection{Implementação}
+\subsection{Implementação}
 \label{sec:implementacao}
 
 A quarta etapa foi a implementação. O IFAgenda foi desenvolvido como uma aplicação web, com as tecnologias e a arquitetura descritas a seguir, e constituiu uma versão funcional, executada em ambiente local e distribuída em contêineres.
@@ -198,7 +198,7 @@ As notificações em tempo real foram implementadas com o Django Channels, exten
 
 O presente trabalho limita-se ao desenvolvimento de uma versão funcional do sistema para execução em ambiente local, acessível por navegador. A hospedagem e a implantação em infraestrutura institucional não fazem parte do escopo.
 %-----------------------------------
-\subsubsection{Validação}
+\subsection{Validação}
 \label{sec:validacao}
 
 A validação realizada neste trabalho ocorreu em duas frentes. A primeira correspondeu à validação do alinhamento da solução ao processo institucional, conduzida com a Diretora de Ensino, principal interessada e responsável pelos agendamentos. A segunda foi exclusivamente técnica e consistiu em testes automatizados, unitários e de integração, conforme os conceitos da Seção~\ref{sec:testes}. Os testes unitários verificaram regras e componentes de forma isolada. Os testes de integração verificaram o comportamento conjunto entre as camadas da aplicação, o banco de dados e os fluxos acessados pelos usuários.

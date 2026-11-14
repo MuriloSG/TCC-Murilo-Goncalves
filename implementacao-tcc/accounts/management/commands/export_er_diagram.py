@@ -12,10 +12,10 @@ PROJECT_APPS = ['accounts', 'schedule', 'bookings', 'imports', 'notices', 'audit
 
 IDENTIFIER_COLOR = '#3b4fa8'
 
-CONCEPTUAL_HEADER = '''  layout=neato; mode=major; start=5; overlap=prism; sep="+10"; splines=line; bgcolor=white; pad=0.4;
+CONCEPTUAL_HEADER = '''  layout=neato; overlap=true; splines=line; bgcolor=white; pad=0.4;
   fontname="Helvetica"; fontsize=10; labelloc=b; labeljust=l;
   node [fontname="Helvetica", fontsize=10];
-  edge [fontname="Helvetica", fontsize=9, color="#222222", len=1.4, labeldistance=1.8, labelangle=30];'''
+  edge [color="#222222"];'''
 
 PHYSICAL_HEADER = '''  layout=dot; rankdir=LR; nodesep=0.3; ranksep=1.2; splines=polyline; bgcolor=white; pad=0.4;
   fontname="Helvetica"; fontsize=10; labelloc=b; labeljust=l;
@@ -52,6 +52,26 @@ CONCEPTUAL_ENTITIES = {
 }
 
 CONCEPTUAL_FOOTNOTES = ['Solicitacao', 'Usuario']
+
+# Célula (coluna, linha) de cada entidade, agrupada por módulo: acadêmico à esquerda,
+# espaços e reservas no centro, usuários e administração à direita. A linha 0 fica embaixo.
+CONCEPTUAL_GRID = {
+    'Oferta': (0, 4), 'Curso': (1, 4), 'Turma': (1, 3), 'Disciplina': (1, 1), 'Semestre': (0, 1),
+    'Faixa': (1, 0), 'Vinculo': (2, 5), 'Docente': (2, 3), 'Ensalamento': (2, 0),
+    'Ocorrencia': (3, 4), 'Espaco': (3, 1), 'OutroNome': (3, 0), 'Solicitacao': (3, 3),
+    'Agendamento': (4, 2), 'Decisao': (4, 1),
+    'Usuario': (4, 4), 'Perfil': (5, 4), 'Permissao': (5, 3), 'Auditoria': (5, 5),
+    'Importacao': (5, 2), 'Linha': (5, 1), 'Aviso': (3, 5), 'Notificacao': (4, 5),
+}
+
+# Geometria em polegadas: tamanho da célula, retângulo da entidade, losango e rótulo de cardinalidade.
+CELL_WIDTH, CELL_HEIGHT = 6.2, 3.4
+BOX_WIDTH = 140 / 72
+ATTRIBUTE_ROW = 13 / 72
+CHAR_WIDTH = 6.2 / 72
+DIAMOND_WIDTH, DIAMOND_HEIGHT = 1.5, 0.55
+LABEL_WIDTH, LABEL_HEIGHT = 0.4, 0.17
+PARALLEL_OFFSET = 0.7  # afastamento do losango quando duas entidades têm mais de um relacionamento
 
 CONCEPTUAL_RELATIONSHIPS = [
     ('Usuario', '(0,n)', 'tem', 'Perfil', '(0,1)'),
@@ -103,31 +123,159 @@ def attribute_row(name, identifier):
     color = IDENTIFIER_COLOR if identifier else '#222222'
     circle = '●' if identifier else '○'
     label = f'<B>{escape(name)}</B>' if identifier else escape(name)
-    return f'<TR><TD ALIGN="LEFT" CELLPADDING="0">─<FONT COLOR="{color}">{circle}</FONT> {label}</TD></TR>'
+    return f'<TR><TD ALIGN="LEFT" HEIGHT="13">─<FONT COLOR="{color}">{circle}</FONT> {label}</TD></TR>'
 
 
-def entity_node(key, name, attributes, footnote):
-    """Entidade: retângulo com o nome e, ao lado, os atributos ou o asterisco da nota de rodapé."""
-    box = f'<TD PORT="e" BORDER="1" CELLPADDING="12" WIDTH="110"><B>{escape(name)}</B></TD>'
-    if footnote:
-        side = '<TD VALIGN="TOP">*</TD>'
-    else:
-        rows = ''.join(attribute_row(attribute, attribute == 'id') for attribute in attributes)
-        side = (
-            '<TD><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0"><TR><TD BORDER="1" SIDES="L">'
-            f'<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="1">{rows}</TABLE></TD></TR></TABLE></TD>'
+class Entity:
+    """Geometria da entidade: retângulo com o nome e, à direita, a coluna de atributos (ou o asterisco)."""
+
+    def __init__(self, key):
+        self.key = key
+        self.name, self.attributes = CONCEPTUAL_ENTITIES[key]
+        self.footnote = key in CONCEPTUAL_FOOTNOTES
+        column, row = CONCEPTUAL_GRID[key]
+        self.x, self.y = column * CELL_WIDTH, row * CELL_HEIGHT  # centro do retângulo
+        rows = 1 if self.footnote else len(self.attributes)
+        self.height = max(0.5, rows * ATTRIBUTE_ROW + 8 / 72)
+        longest = 1 if self.footnote else max(len(attribute) for attribute in self.attributes) + 3
+        self.side = longest * CHAR_WIDTH + 6 / 72
+
+    def rect(self):
+        """Retângulo ocupado pela entidade inteira, atributos incluídos (x0, y0, x1, y1)."""
+        return (self.x - BOX_WIDTH / 2, self.y - self.height / 2, self.x + BOX_WIDTH / 2 + self.side, self.y + self.height / 2)
+
+    def exit_point(self, tx, ty):
+        """Onde a linha em direção a (tx, ty) sai da entidade, sem passar por cima dos atributos."""
+        dx, dy = tx - self.x, ty - self.y
+        half_width, half_height = BOX_WIDTH / 2, self.height / 2
+        to_side = half_width / abs(dx) if dx else float('inf')
+        to_top = half_height / abs(dy) if dy else float('inf')
+        if dx <= 0 or to_top <= to_side:
+            t = min(to_side, to_top)
+            return self.x + dx * t, self.y + dy * t
+        if (half_width + self.side) / dx <= to_top:  # passa por toda a coluna de atributos: sai à direita dela
+            t = (half_width + self.side) / dx
+            return self.x + dx * t, self.y + dy * t
+        return self.x + half_width, self.y + (half_height if dy > 0 else -half_height)  # sai pelo canto
+
+    def node(self):
+        box = (
+            f'<TD BORDER="1" WIDTH="{BOX_WIDTH * 72:.0f}" HEIGHT="{self.height * 72:.0f}">'
+            f'<B>{escape(self.name)}</B></TD>'
         )
-    return f'  {key} [shape=plaintext, label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0"><TR>{box}{side}</TR></TABLE>>];'
+        size = f'WIDTH="{self.side * 72:.0f}" HEIGHT="{self.height * 72:.0f}"'
+        if self.footnote:
+            side = f'<TD {size} ALIGN="LEFT" VALIGN="TOP">*</TD>'
+        else:
+            rows = ''.join(attribute_row(attribute, attribute == 'id') for attribute in self.attributes)
+            side = (
+                f'<TD {size} BORDER="1" SIDES="L" ALIGN="LEFT">'
+                f'<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0">{rows}</TABLE></TD>'
+            )
+        center = self.x + self.side / 2  # o nó é centrado na tabela inteira, não no retângulo do nome
+        return (
+            f'  {self.key} [shape=plain, pos="{center:.3f},{self.y:.3f}!", '
+            f'label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0"><TR>{box}{side}</TR></TABLE>>];'
+        )
+
+
+def overlaps(a, b, gap=0.0):
+    return a[0] < b[2] + gap and b[0] < a[2] + gap and a[1] < b[3] + gap and b[1] < a[3] + gap
+
+
+def segment_hits_rect(start, end, rect):
+    """Teste de interseção entre segmento e retângulo (Liang-Barsky)."""
+    t0, t1 = 0.0, 1.0
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    for p, q in ((-dx, start[0] - rect[0]), (dx, rect[2] - start[0]), (-dy, start[1] - rect[1]), (dy, rect[3] - start[1])):
+        if p == 0:
+            if q < 0:
+                return False
+            continue
+        r = q / p
+        if p < 0:
+            t0 = max(t0, r)
+        else:
+            t1 = min(t1, r)
+        if t0 > t1:
+            return False
+    return True
+
+
+def centered_rect(x, y, width, height):
+    return (x - width / 2, y - height / 2, x + width / 2, y + height / 2)
+
+
+def conceptual_layout():
+    """Losangos no meio das linhas e pontas das linhas na borda das entidades."""
+    entities = {key: Entity(key) for key in CONCEPTUAL_ENTITIES}
+    pairs = [frozenset((left, right)) for left, _, _, right, _ in CONCEPTUAL_RELATIONSHIPS]
+    relationships = []
+    for index, (left, left_cardinality, verb, right, right_cardinality) in enumerate(CONCEPTUAL_RELATIONSHIPS):
+        a, b = entities[left], entities[right]
+        start, end = a.exit_point(b.x, b.y), b.exit_point(a.x, a.y)
+        x, y = (start[0] + end[0]) / 2, (start[1] + end[1]) / 2
+        total = pairs.count(pairs[index])
+        if total > 1:  # relacionamentos paralelos: afasta o losango e recalcula as pontas na direção dele
+            length = ((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2) ** 0.5
+            shift = (pairs[:index].count(pairs[index]) - (total - 1) / 2) * 2 * PARALLEL_OFFSET
+            x, y = x - (end[1] - start[1]) / length * shift, y + (end[0] - start[0]) / length * shift
+            start, end = a.exit_point(x, y), b.exit_point(x, y)
+        relationships.append((index, verb, (x, y), [(left, start, left_cardinality), (right, end, right_cardinality)]))
+    return entities, relationships
+
+
+def place_cardinalities(entities, relationships):
+    """Cardinalidade junto da ponta de cada linha, na primeira posição que não encosta em nada."""
+    obstacles = [entity.rect() for entity in entities.values()]
+    obstacles += [centered_rect(x, y, DIAMOND_WIDTH * 0.8, DIAMOND_HEIGHT * 0.8) for _, _, (x, y), _ in relationships]
+    segments = [(point, diamond) for _, _, diamond, ends in relationships for _, point, _ in ends]
+    placed = []
+    for _, _, diamond, ends in relationships:
+        for _, point, cardinality in ends:
+            dx, dy = diamond[0] - point[0], diamond[1] - point[1]
+            length = (dx * dx + dy * dy) ** 0.5
+            ux, uy = dx / length, dy / length
+            clearance = abs(uy) * LABEL_WIDTH / 2 + abs(ux) * LABEL_HEIGHT / 2 + 0.05
+            candidates = [
+                (point[0] + ux * along - uy * side * clearance, point[1] + uy * along + ux * side * clearance)
+                for along in (0.3, 0.45, 0.6, 0.8, 1.0, 1.25, 1.5)
+                for side in (1, -1)
+            ]
+
+            def conflicts(center):
+                rect = centered_rect(*center, LABEL_WIDTH, LABEL_HEIGHT)
+                margin = centered_rect(*center, LABEL_WIDTH + 0.06, LABEL_HEIGHT + 0.06)
+                return (
+                    sum(overlaps(rect, other, 0.04) for other in obstacles + placed)
+                    + sum(segment_hits_rect(a, b, margin) for a, b in segments)
+                )
+
+            chosen = min(candidates, key=conflicts)  # a primeira livre; sem nenhuma livre, a que menos encosta
+            placed.append(centered_rect(*chosen, LABEL_WIDTH, LABEL_HEIGHT))
+            yield chosen, cardinality
 
 
 def render_conceptual():
-    """DOT do DER conceitual na notação de Peter Chen, como no brModelo."""
+    """DOT do DER conceitual na notação de Peter Chen, como no brModelo.
+
+    As posições são calculadas aqui: cada linha sai da borda da entidade (nunca por cima dos atributos)
+    e cada cardinalidade fica perto da sua ponta, num lugar livre de outras linhas, rótulos e entidades.
+    """
+    entities, relationships = conceptual_layout()
     lines = ['graph conceitual {', CONCEPTUAL_HEADER]
-    for key, (name, attributes) in CONCEPTUAL_ENTITIES.items():
-        lines.append(entity_node(key, name, attributes, key in CONCEPTUAL_FOOTNOTES))
-    for index, (left, left_cardinality, verb, right, right_cardinality) in enumerate(CONCEPTUAL_RELATIONSHIPS):
-        lines.append(f'  r{index} [shape=diamond, label="{verb}", fontsize=9, height=0.5, width=1.1, margin=0.02];')
-        lines.append(f'  {left}:e -- r{index} [taillabel="{left_cardinality}"]; r{index} -- {right}:e [headlabel="{right_cardinality}"];')
+    lines += [entity.node() for entity in entities.values()]
+    for index, verb, (x, y), ends in relationships:
+        lines.append(
+            f'  r{index} [shape=diamond, label="{verb}", pos="{x:.3f},{y:.3f}!", fontsize=9, '
+            f'width={DIAMOND_WIDTH}, height={DIAMOND_HEIGHT}, fixedsize=true];'
+        )
+        for side, (_, (px, py), _) in zip('ab', ends):
+            lines.append(f'  p{index}{side} [shape=point, width=0.01, height=0.01, style=invis, pos="{px:.3f},{py:.3f}!"];')
+        lines.append(f'  p{index}a -- r{index} -- p{index}b;')
+    labels = place_cardinalities(entities, relationships)
+    for number, ((x, y), cardinality) in enumerate(labels):
+        lines.append(f'  c{number} [shape=plain, label="{cardinality}", fontsize=9, pos="{x:.3f},{y:.3f}!"];')
     footnotes = ''.join(
         f'* {CONCEPTUAL_ENTITIES[key][0]}({", ".join(CONCEPTUAL_ENTITIES[key][1])})\\l' for key in CONCEPTUAL_FOOTNOTES
     )

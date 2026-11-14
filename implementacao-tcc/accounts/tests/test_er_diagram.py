@@ -19,8 +19,25 @@ class ExportErDiagramTests(TestCase):
     def test_conceptual_uses_chen_notation_with_cardinalities(self):
         content = export()['der-conceitual.dot']
         self.assertIn('shape=diamond, label="solicita"', content)
-        self.assertIn('Usuario:e -- r18 [taillabel="(1,1)"]; r18 -- Solicitacao:e [headlabel="(0,n)"];', content)
+        self.assertIn('p18a -- r18 -- p18b;', content)
+        self.assertEqual(content.count('fontsize=9, pos='), 2 * content.count('shape=diamond'))
         self.assertIn('* Solicitação(id, data', content)
+
+    def test_conceptual_cardinalities_do_not_overlap(self):
+        from accounts.management.commands.export_er_diagram import (
+            LABEL_HEIGHT,
+            LABEL_WIDTH,
+            centered_rect,
+            conceptual_layout,
+            overlaps,
+            place_cardinalities,
+        )
+
+        entities, relationships = conceptual_layout()
+        labels = [centered_rect(*center, LABEL_WIDTH, LABEL_HEIGHT) for center, _ in place_cardinalities(entities, relationships)]
+        boxes = [entity.rect() for entity in entities.values()]
+        for index, label in enumerate(labels):
+            self.assertFalse(any(overlaps(label, other) for other in labels[index + 1:] + boxes))
 
     def test_physical_lists_project_tables_with_columns_and_keys(self):
         content = export()['der-fisico.dot']

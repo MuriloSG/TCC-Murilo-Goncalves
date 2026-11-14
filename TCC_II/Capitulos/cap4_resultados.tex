@@ -1,25 +1,149 @@
-\chapter{Resultados} 
-\label{cap4_resultados} 
+\chapter{Resultados}
+\label{cap4_resultados}
 
-Este capítulo apresentou os resultados obtidos com o desenvolvimento do \textit{IFAgenda}, sistema web para gerenciamento de reservas de espaços físicos no IFNMG -- Campus Salinas. Os resultados foram organizados em quatro aspectos: a solução implementada, a modelagem do banco de dados, o atendimento às necessidades identificadas e a validação técnica realizada.
+Este capítulo apresenta os resultados de cada uma das cinco etapas descritas no Capítulo~\ref{sec:metodologia}, na mesma ordem. A Seção~\ref{sec:resultado-necessidades} fecha o capítulo relacionando o sistema às necessidades encontradas no diagnóstico.
 
-\section{Sistema Desenvolvido}
-\label{sec:resultado-sistema}
+%-----------------------------------
+\section{Diagnóstico do Problema}
+\label{sec:resultado-diagnostico}
 
-O IFAgenda constituiu uma aplicação web funcional, executada em ambiente local e acessível por navegador. A solução foi implementada em Python com o \textit{framework} Django, utilizando PostgreSQL como sistema gerenciador de banco de dados e Docker Compose para a distribuição dos componentes em contêineres. A interface foi construída com \textit{templates} do Django e Tailwind CSS.
+O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os horários ocupados antes de qualquer reserva, e esse cadastro é refeito a cada semestre. Os docentes não consultam a disponibilidade nem solicitam reservas sem passar por um servidor, o que concentra todo o controle em um único ponto. Também não há registro consolidado do uso dos espaços que apoie o planejamento da administração.
 
-A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
+Dessas limitações derivam as necessidades que orientaram os requisitos: importar a planilha de horários já produzida pelo campus, marcando automaticamente como ocupados os horários das aulas; manter essa ocupação atualizada por reimportação ou ajuste pontual, sem integração em tempo real com sistemas externos; notificar automaticamente os envolvidos no fluxo de reserva; permitir a consulta pública da ocupação; e gerar um mapa da utilização dos espaços ao longo do semestre.
 
-O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda.
+Na reunião de 28 de setembro de 2026, com a Direção de Ensino e a SifSoft Júnior, a avaliação do Merly mostrou que ele não atendia ao processo do campus. Por isso, o desenvolvimento do IFAgenda foi mantido.
 
-A interface aplicou as três heurísticas de \citeonline{nielsen1994} adotadas como diretrizes de projeto (Seção~\ref{sec:usab}). A situação de cada solicitação (pendente, aprovada, rejeitada, alternativa sugerida ou cancelada) fica visível ao solicitante, o que atende à visibilidade do estado do sistema. As telas usam os termos do processo do campus, como espaço, reserva, ensalamento e semestre, o que atende à correspondência com o mundo real. A verificação de conflito de horário antes do envio da solicitação, com a indicação do intervalo já ocupado, atende à prevenção de erros.
+%-----------------------------------
+\section{Requisitos}
+\label{sec:resultado-requisitos}
 
-\section{Modelagem do Banco de Dados}
+O levantamento resultou em 29 requisitos funcionais e 13 não funcionais. Os funcionais estão na Tabela~\ref{tab:rf} e foram agrupados por módulo: ensalamento (RF01, RF02, RF13--RF16); espaços, cursos, disciplinas e turmas (RF03, RF17); usuários e perfis (RF04, RF18--RF20); agenda de reservas (RF05--RF08, RF21--RF23); notificações e comunicados (RF09, RF10, RF24); consulta pública (RF11, RF28); painel, relatórios e auditoria (RF12, RF25, RF26); configurações (RF27); e central de ajuda (RF29). A coluna Situação mostra se cada requisito foi atendido na versão desenvolvida.
+
+\begin{SingleSpace}
+\begin{longtable}{@{}p{1.4cm}p{11.6cm}p{1.8cm}@{}}
+	\caption{Requisitos funcionais do sistema}\label{tab:rf} \\
+	\hline
+	\textbf{Código} & \textbf{Descrição} & \textbf{Situação} \\ \hline
+	\endfirsthead
+	\multicolumn{3}{@{}l}{\small\textit{Continuação da Tabela~\thetable}} \\ \hline
+	\textbf{Código} & \textbf{Descrição} & \textbf{Situação} \\ \hline
+	\endhead
+	\hline
+	\endfoot
+	RF01 & Importar a planilha de horários institucional do semestre, identificando automaticamente os espaços e os horários ocupados pelas aulas, com prévia do resultado e confirmação antes da gravação & Atendido \\
+	RF02 & Atualizar os horários ocupados ao longo do semestre, por reimportação da planilha ou pela manutenção das aulas no próprio sistema (RF13 a RF16) & Atendido \\
+	RF03 & Cadastrar e manter os espaços físicos do campus, incluindo os outros nomes pelos quais aparecem na planilha e a desativação de espaços fora de uso & Atendido \\
+	RF04 & Gerenciar usuários e atribuir a cada um perfil de acesso & Atendido \\
+	RF05 & Consultar a disponibilidade dos espaços físicos & Atendido \\
+	RF06 & Submeter solicitações de reserva de espaços físicos & Atendido \\
+	RF07 & Aprovar ou rejeitar solicitações de reserva & Atendido \\
+	RF08 & Cancelar reservas já aprovadas & Atendido \\
+	RF09 & Notificar automaticamente, no próprio sistema, os responsáveis pela análise quando uma nova solicitação de reserva for submetida & Atendido \\
+	RF10 & Notificar automaticamente, no próprio sistema, o solicitante sobre o resultado da análise da sua solicitação & Atendido \\
+	RF11 & Disponibilizar consulta pública, sem autenticação, aos horários dos espaços por sala, docente, curso ou turma, com o horário original e o calendário por data, sem expor e-mails nem a descrição das reservas & Atendido \\
+	RF12 & Gerar relatórios sobre a utilização dos espaços, incluindo o mapa de ocupação por dia e horário e o relatório das solicitações de reserva & Atendido \\
+	RF13 & Cadastrar aula recorrente, informando turma, disciplina, docentes, espaço, período de vigência, horário e duração & Atendido \\
+	RF14 & Alterar a recorrência de uma aula (dia, horário, duração, espaço ou docentes) a partir de uma data, sem alterar as ocorrências anteriores & Atendido \\
+	RF15 & Encerrar a recorrência de uma aula a partir de uma data, preservando o histórico das ocorrências anteriores & Atendido \\
+	RF16 & Cancelar a ocorrência de uma aula em uma data, sem alterar a recorrência, pelo administrador ou pelo docente da aula & Atendido \\
+	RF17 & Cadastrar e manter cursos, disciplinas e turmas & Atendido \\
+	RF18 & Criar perfis de acesso e definir as permissões de cada um & Atendido \\
+	RF19 & Importar usuários em lote por meio de arquivo .CSV & Atendido \\
+	RF20 & Enviar ao novo usuário, por e-mail, o link para definir a senha, e permitir a recuperação de senha & Atendido \\
+	RF21 & Sugerir ao solicitante uma alternativa à reserva solicitada (outro espaço, data ou horário), que ele pode aceitar ou recusar & Atendido \\
+	RF22 & Registrar solicitação de reserva em nome de outro usuário & Atendido \\
+	RF23 & Acompanhar as próprias solicitações e ver a própria agenda de aulas e reservas & Atendido \\
+	RF24 & Publicar comunicados para todos os usuários, para os usuários de um perfil ou para usuários escolhidos & Atendido \\
+	RF25 & Exibir painel administrativo com as solicitações pendentes, a ocupação dos espaços e as pendências da grade (aulas sem espaço ou sem docente, conflitos de docente, choques entre aulas e reservas) & Atendido \\
+	RF26 & Registrar em auditoria as ações realizadas no sistema e permitir consultá-las com filtros & Atendido \\
+	RF27 & Configurar o servidor de envio de e-mails pela interface do sistema & Atendido \\
+	RF28 & Exportar o calendário público do semestre, com os filtros escolhidos, em arquivo iCalendar (.ics), para importação em aplicativos de agenda & Atendido \\
+	RF29 & Disponibilizar uma central de ajuda com tutoriais passo a passo de cada funcionalidade, com capturas das telas no computador e no celular, mostrando ao usuário só as funcionalidades liberadas para o seu perfil e abrindo direto na ajuda da tela de onde foi acessada & Atendido \\
+	\multicolumn{3}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
+\end{longtable}
+\end{SingleSpace}
+
+Os 29 requisitos funcionais foram atendidos. A Tabela~\ref{tab:funcionalidades} (Seção~\ref{sec:resultado-sistema}) mostra em quais módulos do sistema eles foram implementados, e a Tabela~\ref{tab:testes} (Seção~\ref{sec:resultado-validacao}) resume os testes que verificam as principais regras.
+
+A Tabela~\ref{tab:rnf} traz os requisitos não funcionais, com a situação de cada um e o que foi feito para atendê-lo. Eles foram agrupados pelos atributos de qualidade de \citeonline{sommerville2018}: confiabilidade e segurança (RNF01, RNF02, RNF07, RNF08, RNF09); eficiência (RNF03, RNF10, RNF11); aceitabilidade (RNF04, RNF05, RNF13); e manutenibilidade (RNF06, RNF12).
+
+\begin{SingleSpace}
+\small
+\begin{longtable}{@{}p{1.3cm}p{5.7cm}p{1.5cm}p{6.2cm}@{}}
+	\caption{Requisitos não funcionais do sistema}\label{tab:rnf} \\
+	\hline
+	\textbf{Código} & \textbf{Descrição} & \textbf{Situação} & \textbf{Como foi atendido} \\ \hline
+	\endfirsthead
+	\multicolumn{4}{@{}l}{\small\textit{Continuação da Tabela~\thetable}} \\ \hline
+	\textbf{Código} & \textbf{Descrição} & \textbf{Situação} & \textbf{Como foi atendido} \\ \hline
+	\endhead
+	\hline
+	\endfoot
+	RNF01 & Controlar o acesso com base em papéis (RBAC), restringindo cada funcionalidade ao perfil correspondente & Atendido & Perfis configuráveis, formados por 47 permissões em 13 módulos e verificados no servidor; um teste percorre todas as rotas do sistema \\
+	RNF02 & Proteger os dados dos usuários contra acessos indevidos: proteções contra CSRF, XSS e injeção de SQL, senha do servidor de e-mail armazenada cifrada, recuperação de senha que não revela quais e-mails estão cadastrados e encerramento das sessões do usuário quando outra pessoa altera o perfil ou o e-mail dele & Atendido & Proteções do Django contra CSRF, XSS e injeção de SQL; senha do servidor de e-mail cifrada; recuperação de senha sem revelar e-mails; sessões encerradas na troca de perfil ou de e-mail \\
+	RNF03 & Ter tempo de resposta adequado nas consultas de disponibilidade, mesmo nos períodos de pico & Parcial & Cache das telas públicas no Redis, índices no banco e número fixo de consultas, verificado por testes; sem medição de desempenho \\
+	RNF04 & Funcionar no navegador web, sem instalar nada nos dispositivos dos usuários & Atendido & Aplicação web acessada pelo navegador \\
+	RNF05 & Ter usabilidade compatível com o perfil tecnológico dos docentes e consistência visual entre as telas, sem exigir treinamento extenso & Parcial & Heurísticas adotadas, termos do campus e componentes padronizados, verificados por testes da interface; sem avaliação com usuários \\
+	RNF06 & Ser manutenível, com separação clara entre as camadas de dados, lógica e apresentação & Atendido & Padrão MTV, com as regras de negócio nas classes de modelo e o código organizado por módulo \\
+	RNF07 & Funcionar sem depender da infraestrutura de horários do campus, sem consultas em tempo real a sistemas externos & Atendido & Ensalamento importado da planilha por ação administrativa, sem consulta a sistemas externos \\
+	RNF08 & Impedir reservas sobrepostas de um mesmo espaço, mesmo quando solicitações são analisadas ao mesmo tempo, por restrição de integridade no banco & Atendido & Restrição de exclusão no PostgreSQL (Seção~\ref{sec:modelo-fisico}) \\
+	RNF09 & Não permitir alterar nem excluir os registros de auditoria & Atendido & O registro de auditoria recusa alteração e exclusão, e não há tela para isso \\
+	RNF10 & Enviar os e-mails em segundo plano, com novas tentativas em caso de falha, sem atrasar a resposta ao usuário & Atendido & Fila de e-mails no banco, processada em segundo plano, com novas tentativas \\
+	RNF11 & Exibir as notificações em tempo real, sem recarregar a página & Atendido & Django Channels com WebSocket; o sino do cabeçalho é atualizado sem recarregar a página \\
+	RNF12 & Ser distribuído em contêineres, para facilitar a execução em ambientes diferentes & Atendido & Imagem Docker e Docker Compose com a aplicação, o banco, o Redis e os processos em segundo plano \\
+	RNF13 & Adaptar as telas a computadores e celulares & Atendido & Layout responsivo com Tailwind CSS e navegação própria no celular, verificados por testes da interface \\
+	\hline
+	\multicolumn{4}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
+\end{longtable}
+\end{SingleSpace}
+
+Dos 13 requisitos não funcionais, 11 foram atendidos e 2 foram atendidos em parte, o RNF03 e o RNF05. Para o RNF03, que trata do tempo de resposta nas consultas de disponibilidade, foram tomadas algumas medidas. As telas públicas, onde essas consultas se concentram, são servidas por um cache no Redis, atualizado sempre que os dados mudam, e as tabelas mais consultadas têm índices. Além disso, a grade semanal de um espaço é montada com um número fixo de consultas ao banco, verificado por testes, que não aumenta conforme cresce a quantidade de aulas. Mesmo assim, não houve medição do tempo de resposta nem teste de carga, então não é possível afirmar como o sistema se comporta nos horários de pico. No RNF05, a interface seguiu as heurísticas adotadas e usa os termos do campus, e a consistência visual das telas é verificada por testes da interface. A usabilidade, porém, não foi avaliada com os usuários finais.
+
+%-----------------------------------
+\section{Modelagem do Sistema}
+\label{sec:resultado-modelagem}
+
+A modelagem produziu três diagramas UML, que correspondem à versão implementada, e os modelos conceitual, lógico e físico do banco de dados.
+
+\subsection{Diagramas UML}
+\label{sec:resultado-uml}
+
+O diagrama de casos de uso (Figura~\ref{fig:casos_uso}) organiza as funcionalidades em módulos. Como os perfis do sistema são configuráveis (Seção~\ref{sec:rbac}), cada ator representa um conjunto de permissões, e não um perfil fixo: Solicitante, Analista de reservas, Gestor do ensalamento e Administrador especializam o Usuário autenticado, e o Superadministrador especializa o Administrador. O Visitante representa a consulta pública, sem autenticação.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Diagrama de Casos de Uso do Sistema de Agendamento}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-casos-de-uso}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:casos_uso}
+\end{figure}
+
+O diagrama de classes (Figura~\ref{fig:classes}) apresenta as 18 classes do domínio, com seus atributos principais e as multiplicidades das associações. Classes de apoio, como importação, auditoria e fila de e-mails, foram omitidas para preservar a legibilidade.
+
+O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e a aprovação de uma reserva. Os fragmentos \textit{alt} mostram as duas verificações de conflito de horário: a primeira na solicitação e a segunda na aprovação, quando a restrição do banco de dados impede agendamentos sobrepostos (RNF08).
+
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de classes do sistema}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-classes}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:classes}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \caption{Diagrama de sequência da solicitação e aprovação de reserva}
+    \resizebox{\textwidth}{!}{\input{Figuras/uml-sequencia}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:sequencia}
+\end{figure}
+
+\subsection{Banco de Dados}
 \label{sec:resultado-banco}
 
 O banco de dados foi projetado nos três níveis descritos por \citeonline{heuser2009}: conceitual, lógico e físico (Seção~\ref{sec:bd}). Os modelos apresentados a seguir correspondem à versão implementada do sistema. Os diagramas foram gerados a partir do próprio código: o físico, das classes de modelo do Django, e o conceitual, de uma descrição das entidades e dos relacionamentos mantida junto a essas classes. Os modelos lógico e físico representam o esquema completo do banco, enquanto o conceitual se concentra no domínio do problema, como detalhado na Seção~\ref{sec:modelo-conceitual}.
 
-\subsection{Modelo Conceitual}
+\subsubsection{Modelo Conceitual}
 \label{sec:modelo-conceitual}
 
 O modelo conceitual, apresentado na Figura~\ref{fig:der-conceitual}, segue a notação de Peter Chen. As entidades aparecem em retângulos, os relacionamentos em losangos e os atributos ao lado de cada entidade, com o identificador destacado. A cardinalidade mínima e máxima de cada entidade aparece junto à linha do relacionamento.
@@ -38,7 +162,7 @@ O núcleo do modelo está nas entidades Espaço, Ensalamento, Solicitação e Ag
 
 Para manter o diagrama legível, o modelo conceitual representa apenas as entidades e os relacionamentos de negócio. Ficaram de fora as tabelas de infraestrutura, que guardam a fila de envio de e-mails e as configurações do sistema, e as referências secundárias que registram a autoria das operações, como quem aprovou ou cancelou uma reserva, quem registrou uma solicitação em nome de outro usuário, quem resolveu uma importação ou decidiu a correspondência de um espaço, além do espaço sugerido como alternativa e da importação que originou um espaço. Esses elementos aparecem nos modelos lógico e físico, que representam o esquema completo.
 
-\subsection{Modelo Lógico}
+\subsubsection{Modelo Lógico}
 \label{sec:modelo-logico}
 
 O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esquema relacional: cada entidade e cada relacionamento muitos-para-muitos do modelo conceitual tornaram-se uma tabela, com sua chave primária (sublinhada) e as chaves estrangeiras (em itálico) que materializam os relacionamentos. Os nomes das tabelas seguem a convenção do Django, formada pelo nome do módulo da aplicação e pelo nome da classe de modelo. As tabelas foram agrupadas pelos módulos do sistema.
@@ -96,7 +220,7 @@ O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esqu
 \end{longtable}
 \end{SingleSpace}
 
-\subsection{Modelo Físico}
+\subsubsection{Modelo Físico}
 \label{sec:modelo-fisico}
 
 O modelo físico, apresentado na Figura~\ref{fig:der-fisico}, detalha a implementação do esquema no PostgreSQL. Para cada uma das 28 tabelas, o diagrama mostra as colunas com o tipo de dado do SGBD, a obrigatoriedade (\texttt{NULL} ou \texttt{NOT NULL}) e as marcações de chave primária (PK), chave estrangeira (FK) e unicidade (UK). Cada chave estrangeira aparece como uma linha entre as tabelas, com a cardinalidade nos dois lados.
@@ -113,20 +237,78 @@ O modelo físico, apresentado na Figura~\ref{fig:der-fisico}, detalha a implemen
 
 Algumas regras do modelo físico não aparecem no diagrama porque são restrições e índices declarados no esquema. A mais importante é a restrição de exclusão \texttt{booking\_no\_overlap}, definida na tabela \texttt{bookings\_booking} com um índice GiST: ela impede que dois agendamentos do mesmo espaço tenham intervalos de horário sobrepostos, inclusive quando duas solicitações são aprovadas ao mesmo tempo, o que atende ao RNF08. Restrições de verificação (\textit{CHECK}) garantem que o início de cada agendamento e de cada solicitação seja anterior ao fim, e índices únicos sobre \texttt{LOWER(email)} e \texttt{LOWER(username)} impedem usuários duplicados que difiram apenas por letras maiúsculas e minúsculas. Cada usuário tem no máximo um perfil por força de uma restrição de unicidade sobre \texttt{user\_id} na tabela \texttt{accounts\_userrole}. Essas regras são criadas pelas \textit{migrations} do Django, de modo que o esquema do banco é versionado junto com o código.
 
+%-----------------------------------
+\section{Sistema Desenvolvido}
+\label{sec:resultado-sistema}
+
+O IFAgenda constituiu uma aplicação web funcional, executada em ambiente local e acessível por navegador. A solução foi implementada em Python com o \textit{framework} Django, utilizando PostgreSQL como sistema gerenciador de banco de dados e Docker Compose para a distribuição dos componentes em contêineres. A interface foi construída com \textit{templates} do Django e Tailwind CSS.
+
+A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
+
+O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda.
+
+A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupadas pelos mesmos módulos dos requisitos funcionais.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Funcionalidades do sistema por módulo}
+	\renewcommand{\arraystretch}{1.25}
+	\newcommand{\fitem}[1]{\par\hangindent=1em\hangafter=1\noindent\makebox[1em][l]{\textbullet}#1}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{9.8cm}@{}}
+	\hline
+		\textbf{Módulo} & \textbf{Funcionalidades principais} \\ \hline
+		Ensalamento & \fitem{Importação da planilha de horários, com prévia e confirmação}\fitem{Associação dos espaços da planilha aos já cadastrados}\fitem{Aulas recorrentes: alteração, encerramento e cancelamento de ocorrências} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Espaços, cursos, disciplinas e turmas & \fitem{Cadastro e manutenção} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Usuários e perfis & \fitem{Cadastro individual ou em lote (CSV)}\fitem{Definição e recuperação de senha}\fitem{Perfis com permissões definidas pelo superadministrador} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Agenda de reservas & \fitem{Solicitação, inclusive em nome de outro usuário}\fitem{Análise: aprovação, rejeição ou sugestão de alternativa}\fitem{Acompanhamento das próprias solicitações} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Notificações e comunicados & \fitem{Avisos em tempo real}\fitem{Comunicados para todos, para um perfil ou para usuários escolhidos} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Consulta pública & \fitem{Calendário por data, com filtros por sala, docente, curso e turma}\fitem{Horário original da planilha}\fitem{Exportação do calendário (.ics)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Painel, relatórios e auditoria & \fitem{Painel de pendências e solicitações}\fitem{Mapa de ocupação por dia e horário}\fitem{Relatório de solicitações}\fitem{Registro das ações, sem alteração ou exclusão} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Configurações & \fitem{Servidor de envio de e-mails configurado pela interface} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Central de ajuda & \fitem{Tutoriais por tela, filtrados pelas permissões do usuário} \\ \hline
+	\end{tabular}
+	\label{tab:funcionalidades}
+\end{table}
+
+O controle de acesso foi implementado com perfis configuráveis. Cada permissão corresponde a uma ação em um recurso do sistema, como solicitar uma reserva ou editar um espaço, e ao todo são 47 permissões divididas em 13 módulos. Um perfil é um conjunto de permissões montado pelo superadministrador. Os perfis Administrador e Docente vêm cadastrados apenas como exemplo e podem ser alterados, e categorias como a dos técnicos administrativos recebem um perfil com as permissões de que precisam. A consulta pública não exige login.
+
+As notificações aparecem no próprio sistema, em um ícone no cabeçalho que é atualizado em tempo real, sem recarregar a página. Quando chega uma solicitação de reserva, os responsáveis pela análise são notificados, e, depois da decisão, o solicitante recebe o resultado. O e-mail é usado só para definir e recuperar a senha. O servidor de envio é configurado pela interface, e as mensagens saem em segundo plano. O mesmo vale para a importação da planilha: as tarefas mais demoradas rodam em processos separados, que leem filas gravadas no banco e tentam de novo quando algo falha.
+
+A interface aplicou as três heurísticas de \citeonline{nielsen1994} adotadas como diretrizes de projeto (Seção~\ref{sec:usab}). A situação de cada solicitação (pendente, aprovada, rejeitada, alternativa sugerida ou cancelada) fica visível ao solicitante, o que atende à visibilidade do estado do sistema. As telas usam os termos do processo do campus, como espaço, reserva, ensalamento e semestre, o que atende à correspondência com o mundo real. A verificação de conflito de horário antes do envio da solicitação, com a indicação do intervalo já ocupado, atende à prevenção de erros.
+
+%-----------------------------------
+\section{Validação}
+\label{sec:resultado-validacao}
+
+Na validação institucional, o sistema foi apresentado funcionando localmente à Direção de Ensino, na reunião de 7 de outubro de 2026, e foi aprovado.
+
+Na validação técnica, a versão desenvolvida tinha 1.780 testes automatizados em 20 de outubro de 2026, e todos passaram, o que cumpre o critério definido na Seção~\ref{sec:validacao}. Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando duas solicitações são analisadas ao mesmo tempo; as permissões de cada perfil; a importação e a reimportação da planilha; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem expor dados pessoais; e a impossibilidade de alterar os registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Regras de negócio verificadas pelos testes}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{9.8cm}>{\raggedright\arraybackslash}p{4.0cm}@{}}
+	\hline
+		\textbf{Regra verificada} & \textbf{Requisitos} \\ \hline
+		Bloqueio de reservas sobrepostas, inclusive em análises simultâneas & RF06, RF07, RNF08 \\
+		Acesso a cada funcionalidade conforme as permissões do perfil & RF18, RNF01 \\
+		Importação e reimportação da planilha de horários & RF01, RF02 \\
+		Alteração, encerramento e cancelamento de aulas recorrentes & RF14--RF16 \\
+		Envio das notificações ao solicitante e aos responsáveis & RF09, RF10 \\
+		Consulta pública sem exposição de dados pessoais & RF11 \\
+		Imutabilidade dos registros de auditoria & RF26, RNF09 \\ \hline
+	\end{tabular}
+	\label{tab:testes}
+\end{table}
+
+Os testes automatizados mostram que o sistema funciona do ponto de vista técnico, e a reunião com a Direção de Ensino mostrou que ele atende ao processo do campus. Não houve testes formais de usabilidade com os usuários finais, e o sistema não foi implantado na infraestrutura do campus. Esses limites devem ser levados em conta na leitura dos resultados e nas próximas versões do sistema.
+
+%-----------------------------------
 \section{Atendimento às Necessidades Identificadas}
 \label{sec:resultado-necessidades}
 
 O IFAgenda atendeu às principais limitações observadas no diagnóstico. A importação da planilha reduziu o cadastro manual dos horários ocupados e permitiu que a ocupação das aulas fosse refletida no calendário do sistema. A consulta pública permitiu visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação manteve o controle administrativo sobre as reservas extraordinárias.
 
-O controle de acesso baseado em papéis restringiu as funcionalidades conforme as permissões de cada perfil. A solução definiu 47 permissões distribuídas em 13 módulos, possibilitando que os perfis fossem configurados pelo superadministrador. A restrição de integridade no banco de dados impediu reservas sobrepostas do mesmo espaço, inclusive quando solicitações foram analisadas simultaneamente.
+O controle de acesso baseado em papéis restringiu as funcionalidades conforme as permissões de cada perfil. A restrição de integridade no banco de dados impediu reservas sobrepostas do mesmo espaço, inclusive quando solicitações foram analisadas simultaneamente.
 
 O IFAgenda também registrou as ações realizadas em auditoria, manteve o histórico das solicitações e forneceu informações para o acompanhamento da utilização dos espaços. Dessa forma, além de organizar o processo de reserva, a aplicação ofereceu dados que puderam apoiar o planejamento da ocupação dos laboratórios e das salas especiais.
-
-\section{Validação Técnica}
-\label{sec:resultado-validacao}
-
-A validação foi realizada com testes unitários e de integração utilizando o \textit{framework} de testes do Django. Os casos foram executados em banco de dados temporário, isolado dos dados de desenvolvimento. A versão desenvolvida contou com mais de 1.700 casos de teste distribuídos entre os módulos e as regras de negócio do sistema.
-
-Foram verificados, entre outros aspectos, o bloqueio de reservas sobrepostas, a aplicação das permissões conforme o perfil, a importação e a reimportação da planilha, o tratamento de aulas recorrentes, o envio de notificações, a consulta pública sem exposição de dados pessoais e a imutabilidade dos registros de auditoria. A validação institucional foi realizada em reuniões com a Diretora de Ensino Técnico, que acompanhou o refinamento dos requisitos e a apresentação do sistema.
-
-Os resultados demonstram que foi possível desenvolver uma versão funcional alinhada ao processo institucional levantado. Entretanto, não foram realizados testes formais de usabilidade com os usuários finais, e a implantação em infraestrutura institucional não fez parte do escopo. Essas limitações devem ser consideradas na interpretação dos resultados e no planejamento de evoluções futuras.

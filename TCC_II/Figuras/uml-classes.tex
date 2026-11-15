@@ -36,10 +36,10 @@
 \node[cls] (solicitacao) at (\cb,\rc) {\cname{Solicitação}
   \nodepart{second} - data: data\\- inicio: hora\\- fim: hora\\- descricao: texto\\- qtd\_alunos: inteiro\\- situacao: texto
   \nodepart{third} + submeter()\\+ aprovar(analista)\\+ rejeitar(motivo)\\+ sugerir(alternativa)\\+ cancelar(motivo)};
-\node[cls2] (vinculo) at (\cb,\rd) {\cname{Vínculo docente}
-  \nodepart{second} - atual: lógico};
-\node[cls2] (docente) at (\cb,\re) {\cname{Docente}
+\node[cls2] (docente) at (\cb,\rd) {\cname{Docente}
   \nodepart{second} - nome: texto};
+\node[cls2] (vinculo) at (\cb,\re) {\cname{Vínculo docente}
+  \nodepart{second} - atual: lógico};
 
 % ---------------- coluna 3: espaços e grade ----------------
 \node[cls2] (espaco) at (\cc,\rb) {\cname{Espaço}
@@ -78,15 +78,19 @@
 \draw (s1) -- node[rl, above] {solicita} (solicitacao.west |- s1)
       node[m, pos=0.1, below] {1} node[m, pos=0.9, below] {*};
 \draw (s2) -- node[rl, above] {analisa} (solicitacao.west |- s2)
-      node[m, pos=0.12, below] {0..1} node[m, pos=0.9, below] {*};
+      node[m, pos=0, below right] {0..1} node[m, pos=0.9, below] {*};
 
 % --- agenda (verticais na coluna 2)
 \draw (solicitacao.north) -- node[rl, right] {gera} (agendamento.south)
       node[m, pos=0.12, left] {1} node[m, pos=0.88, left] {0..1};
-\draw (solicitacao.south) -- node[rl, right] {justifica} (vinculo.north)
-      node[m, pos=0.08, left] {*} node[m, pos=0.92, left] {0..1};
-\draw (docente.north) -- node[rl, right] {assume} (vinculo.south)
-      node[m, pos=0.12, left] {1} node[m, pos=0.88, left] {*};
+% justifica contorna o Docente pela esquerda, no vão entre as colunas 1 e 2
+\path ([yshift=4mm]solicitacao.south west) coordinate (j1);
+\draw (j1) -- (\cb-2.6,0 |- j1) -- node[rl, sloped, above, pos=0.5] {justifica} (\cb-2.6,0 |- vinculo.west)
+      -- (vinculo.west);
+\node[m, above left] at (j1) {*};
+\node[m, above left] at (vinculo.west) {0..1};
+\draw (docente.south) -- node[rl, right] {assume} (vinculo.north)
+      node[m, pos=0.15, left] {1} node[m, pos=0.85, left] {*};
 
 % --- espaço
 \path (agendamento.north east) ++(0,-0.9) coordinate (a1);
@@ -111,7 +115,7 @@
       node[m, pos=0.06, left] {*} node[m, pos=0.95, left] {1};
 \draw (ensalamento.south east) -- (turma.north west)
       node[m, pos=0.12, below left] {*} node[m, pos=0.88, below left] {1};
-\draw (docente.east) -- (\cb+2.3,\re-0.5) -- node[rl, sloped, above, pos=0.55] {ministra} (\cb+2.3,\rc-1.75)
+\draw (docente.east) -- (\cb+2.3,0 |- docente.east) -- node[rl, sloped, above, pos=0.5] {ministra} (\cb+2.3,\rc-1.75)
       -- (ensalamento.south west |- 0,\rc-1.75);
 \node[m, above right] at (docente.east) {*};
 \node[m, above left] at (ensalamento.south west |- 0,\rc-1.75) {*};
@@ -119,15 +123,15 @@
 % --- grade
 \draw (semestre.north) -- node[rl, right] {define} (faixa.south)
       node[m, pos=0.12, left] {1} node[m, pos=0.88, left] {*};
-\draw (vinculo.south east) -- (oferta.north west)
-      node[m, pos=0.12, above right] {*} node[m, pos=0.85, above right] {1};
+\draw (vinculo.east) -- (oferta.west |- vinculo.east)
+      node[m, pos=0, above right] {*} node[m, pos=1, above left] {1};
 \draw (oferta.north) -- (disciplina.south)
       node[m, pos=0.12, left] {*} node[m, pos=0.88, left] {1};
 \draw (oferta.north east) -- (turma.south west)
       node[m, pos=0.12, above left] {*} node[m, pos=0.88, above left] {1};
 \draw (curso.north) -- node[rl, right] {possui} (turma.south)
       node[m, pos=0.12, left] {1} node[m, pos=0.88, left] {*};
-\draw (oferta.south) -- (\cc,\re-1.6) -- (\cd+2.3,\re-1.6) -- (\cd+2.3,\rb-0.8) -- (semestre.east |- 0,\rb-0.8)
-      node[m, pos=0.9, above] {1};
+\draw (oferta.south) -- (\cc,\re-1.6) -- (\cd+2.3,\re-1.6) -- (\cd+2.3,\rb-0.8) -- (semestre.east |- 0,\rb-0.8);
+\node[m, above right, xshift=1pt] at (semestre.east |- 0,\rb-0.8) {1};
 \node[m, below left] at (oferta.south) {*};
 \end{tikzpicture}

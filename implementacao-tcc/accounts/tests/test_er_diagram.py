@@ -39,6 +39,17 @@ class ExportErDiagramTests(TestCase):
         for index, label in enumerate(labels):
             self.assertFalse(any(overlaps(label, other) for other in labels[index + 1:] + boxes))
 
+    def test_conceptual_lines_do_not_cross_each_other_or_entities(self):
+        from accounts.management.commands.export_er_diagram import conceptual_layout, crossing_pairs, segment_hits_rect
+
+        entities, relationships = conceptual_layout()
+        ends = [(verb, key, point, diamond) for _, verb, diamond, pairs in relationships for key, point, _ in pairs]
+        crossed = [(f'{ends[a][0]}:{ends[a][1]}', f'{ends[b][0]}:{ends[b][1]}') for a, b in crossing_pairs([[point, diamond] for _, _, point, diamond in ends])]
+        self.assertEqual(crossed, [])
+        for verb, key, point, diamond in ends:
+            hit = [name for name, entity in entities.items() if name != key and segment_hits_rect(point, diamond, entity.rect())]
+            self.assertEqual(hit, [], f'{verb}:{key}')
+
     def test_physical_lists_project_tables_with_columns_and_keys(self):
         content = export()['der-fisico.dot']
         self.assertIn('<B>accounts_user</B>', content)

@@ -58,11 +58,15 @@ CONCEPTUAL_FOOTNOTES = ['Solicitacao', 'Usuario']
 CONCEPTUAL_GRID = {
     'Oferta': (0, 4), 'Curso': (1, 4), 'Turma': (1, 3), 'Disciplina': (1, 1), 'Semestre': (0, 1),
     'Faixa': (1, 0), 'Vinculo': (2, 5), 'Docente': (2, 3), 'Ensalamento': (2, 0),
-    'Ocorrencia': (3, 4), 'Espaco': (3, 1), 'OutroNome': (3, 0), 'Solicitacao': (3, 3),
+    'Ocorrencia': (6, 1.25), 'Espaco': (3, 1), 'OutroNome': (3, 0), 'Solicitacao': (3, 3),
     'Agendamento': (4, 2), 'Decisao': (4, 1),
     'Usuario': (4, 4), 'Perfil': (5, 4), 'Permissao': (5, 3), 'Auditoria': (5, 5),
     'Importacao': (5, 2), 'Linha': (5, 1), 'Aviso': (3, 5), 'Notificacao': (4, 5),
 }
+
+# Célula do losango dos relacionamentos que não ficam no meio da linha. Sem ele, a linha reta cruzaria outra;
+# com o losango aqui, ela dobra nele e passa pela borda do diagrama.
+CONCEPTUAL_DIAMONDS = {('Ensalamento', 'tem', 'Ocorrencia'): (4, -0.5)}
 
 # Geometria em polegadas: tamanho da célula, retângulo da entidade, losango e rótulo de cardinalidade.
 CELL_WIDTH, CELL_HEIGHT = 6.2, 3.4
@@ -264,7 +268,11 @@ def conceptual_layout():
         start, end = a.exit_point(b.x, b.y), b.exit_point(a.x, a.y)
         x, y = (start[0] + end[0]) / 2, (start[1] + end[1]) / 2
         total = pairs.count(pairs[index])
-        if total > 1:  # relacionamentos paralelos: afasta o losango e recalcula as pontas na direção dele
+        if (left, verb, right) in CONCEPTUAL_DIAMONDS:  # losango fora do meio: a linha dobra nele e contorna o diagrama
+            column, row = CONCEPTUAL_DIAMONDS[left, verb, right]
+            x, y = column * CELL_WIDTH, row * CELL_HEIGHT
+            start, end = a.exit_point(x, y), b.exit_point(x, y)
+        elif total > 1:  # relacionamentos paralelos: afasta o losango e recalcula as pontas na direção dele
             length = ((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2) ** 0.5
             shift = (pairs[:index].count(pairs[index]) - (total - 1) / 2) * 2 * PARALLEL_OFFSET
             x, y = x - (end[1] - start[1]) / length * shift, y + (end[0] - start[0]) / length * shift

@@ -50,8 +50,8 @@ css: ## Gera o CSS minificado da interface em ui/static/ui/css/app.css
 er-diagram: ## Gera os DERs conceitual e físico (.dot) e as restrições em docs/diagramas
 	$(MANAGE) export_er_diagram
 
-er-images: ## Exporta os DERs (.dot) de docs/diagramas para SVG e PNG
-	$(COMPOSE) run --rm --build diagrams sh -c 'for f in docs/diagramas/*.dot; do dot -Tsvg "$$f" -o "$${f%.dot}.svg" && dot -Tpng -Gdpi=150 "$$f" -o "$${f%.dot}.png" || exit 1; done'
+er-images: ## Exporta os DERs (.dot) de docs/diagramas para SVG, PNG e PDF
+	$(COMPOSE) run --rm --build diagrams sh -c 'for f in docs/diagramas/*.dot; do dot -Tsvg "$$f" -o "$${f%.dot}.svg" && dot -Tpng -Gdpi=150 "$$f" -o "$${f%.dot}.png" && dot -Tpdf "$$f" -o "$${f%.dot}.pdf" || exit 1; done'
 
 npm: ## Executa um comando do npm no container tailwind (ex.: make npm cmd="install --save-exact pacote@1.0.0")
 	$(COMPOSE) run --rm tailwind npm $(cmd)

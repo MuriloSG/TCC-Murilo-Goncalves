@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
 DEFAULT_OUTPUT = 'docs/diagramas'
@@ -17,10 +17,10 @@ CONCEPTUAL_HEADER = '''  layout=neato; overlap=true; splines=line; bgcolor=white
   node [fontname="Helvetica", fontsize=10];
   edge [color="#222222"];'''
 
-PHYSICAL_HEADER = '''  layout=dot; rankdir=LR; nodesep=0.3; ranksep=1.2; splines=polyline; bgcolor=white; pad=0.4;
+PHYSICAL_HEADER = '''  layout=neato; overlap=true; splines=line; bgcolor=white; pad=0.4;
   fontname="Helvetica"; fontsize=10; labelloc=b; labeljust=l;
   node [fontname="Helvetica", fontsize=10];
-  edge [fontname="Helvetica", fontsize=9, color="#222222", labeldistance=1.8, labelangle=30];'''
+  edge [color="#222222"];'''
 
 CONCEPTUAL_ENTITIES = {
     'Usuario': ('Usuário', ['id', 'nome', 'email', 'nome_de_usuario', 'ativo', 'superadmin']),
@@ -72,6 +72,23 @@ CHAR_WIDTH = 6.2 / 72
 DIAMOND_WIDTH, DIAMOND_HEIGHT = 1.5, 0.55
 LABEL_WIDTH, LABEL_HEIGHT = 0.4, 0.17
 PARALLEL_OFFSET = 0.7  # afastamento do losango quando duas entidades têm mais de um relacionamento
+
+# Colunas do DER físico, da esquerda para a direita, com as tabelas de cima para baixo. A ordem foi
+# escolhida para que nenhuma linha atravesse uma tabela; uma tabela nova precisa entrar aqui.
+PHYSICAL_COLUMNS = [
+    ['schedule_course', 'schedule_timeslot', 'accounts_permission', 'accounts_rolepermission'],
+    ['schedule_classgroup', 'schedule_semester', 'schedule_allocation', 'accounts_role'],
+    ['schedule_classoffering', 'schedule_subject', 'schedule_allocation_teachers', 'schedule_spacename', 'schedule_space', 'schedule_spacedecision', 'imports_importrow', 'schedule_allocationexception', 'accounts_userrole', 'audit_auditlog', 'notices_notification'],
+    ['schedule_teachingassignment', 'schedule_teacher'],
+    ['bookings_bookingrequest', 'bookings_booking', 'imports_import', 'accounts_user', 'notices_notice', 'system_settings_systemsetting'],
+    ['outbox_outboxentry'],
+]
+
+# Geometria do DER físico em polegadas: linhas da tabela, espaço entre colunas e entre tabelas.
+TABLE_TITLE, TABLE_ROW = 20 / 72, 18 / 72
+UPPER_CHAR_WIDTH = 7.2 / 72
+COLUMN_GAP, TABLE_GAP = 2.0, 0.6
+BRACKET_OFFSET, BRACKET_STEP = 0.3, 0.22  # colchete das ligações entre tabelas da mesma coluna
 
 CONCEPTUAL_RELATIONSHIPS = [
     ('Usuario', '(0,n)', 'tem', 'Perfil', '(0,1)'),
@@ -233,35 +250,43 @@ def conceptual_layout():
     return entities, relationships
 
 
+def place_labels(ends, obstacles, segments):
+    """Rótulo junto de cada ponta de linha, na primeira posição que não encosta em nada.
+
+    `ends` traz (ponta, ponto para onde a linha segue, texto). Sem posição livre, fica a que menos encosta.
+    """
+    placed = []
+    for point, toward, text in ends:
+        dx, dy = toward[0] - point[0], toward[1] - point[1]
+        length = (dx * dx + dy * dy) ** 0.5
+        ux, uy = dx / length, dy / length
+        clearance = abs(uy) * LABEL_WIDTH / 2 + abs(ux) * LABEL_HEIGHT / 2 + 0.05
+        candidates = [
+            (point[0] + ux * along - uy * side * clearance, point[1] + uy * along + ux * side * clearance)
+            for along in (0.3, 0.45, 0.6, 0.8, 1.0, 1.25, 1.5)
+            for side in (1, -1)
+        ]
+
+        def conflicts(center):
+            rect = centered_rect(*center, LABEL_WIDTH, LABEL_HEIGHT)
+            margin = centered_rect(*center, LABEL_WIDTH + 0.06, LABEL_HEIGHT + 0.06)
+            return (
+                sum(overlaps(rect, other, 0.04) for other in obstacles + placed)
+                + sum(segment_hits_rect(a, b, margin) for a, b in segments)
+            )
+
+        chosen = min(candidates, key=conflicts)
+        placed.append(centered_rect(*chosen, LABEL_WIDTH, LABEL_HEIGHT))
+        yield chosen, text
+
+
 def place_cardinalities(entities, relationships):
-    """Cardinalidade junto da ponta de cada linha, na primeira posição que não encosta em nada."""
+    """Cardinalidades do DER conceitual, junto das pontas das linhas entre entidades e losangos."""
     obstacles = [entity.rect() for entity in entities.values()]
     obstacles += [centered_rect(x, y, DIAMOND_WIDTH * 0.8, DIAMOND_HEIGHT * 0.8) for _, _, (x, y), _ in relationships]
     segments = [(point, diamond) for _, _, diamond, ends in relationships for _, point, _ in ends]
-    placed = []
-    for _, _, diamond, ends in relationships:
-        for _, point, cardinality in ends:
-            dx, dy = diamond[0] - point[0], diamond[1] - point[1]
-            length = (dx * dx + dy * dy) ** 0.5
-            ux, uy = dx / length, dy / length
-            clearance = abs(uy) * LABEL_WIDTH / 2 + abs(ux) * LABEL_HEIGHT / 2 + 0.05
-            candidates = [
-                (point[0] + ux * along - uy * side * clearance, point[1] + uy * along + ux * side * clearance)
-                for along in (0.3, 0.45, 0.6, 0.8, 1.0, 1.25, 1.5)
-                for side in (1, -1)
-            ]
-
-            def conflicts(center):
-                rect = centered_rect(*center, LABEL_WIDTH, LABEL_HEIGHT)
-                margin = centered_rect(*center, LABEL_WIDTH + 0.06, LABEL_HEIGHT + 0.06)
-                return (
-                    sum(overlaps(rect, other, 0.04) for other in obstacles + placed)
-                    + sum(segment_hits_rect(a, b, margin) for a, b in segments)
-                )
-
-            chosen = min(candidates, key=conflicts)  # a primeira livre; sem nenhuma livre, a que menos encosta
-            placed.append(centered_rect(*chosen, LABEL_WIDTH, LABEL_HEIGHT))
-            yield chosen, cardinality
+    ends = [(point, diamond, cardinality) for _, _, diamond, ends in relationships for _, point, cardinality in ends]
+    return place_labels(ends, obstacles, segments)
 
 
 def render_conceptual():
@@ -316,51 +341,154 @@ def column_type(field):
     return (db_type or '').upper()
 
 
-def column_row(field):
-    """Coluna: marcador de chave, nome, tipo e se aceita nulo."""
-    if field.primary_key:
-        marker = f'<FONT COLOR="{IDENTIFIER_COLOR}">●</FONT>'
-    elif field.is_relation:
-        marker = '◆'
-    else:
-        marker = '○'
+def column_cells(field):
+    """Marcador e nome, tipo, nulo e chaves de uma coluna, como texto."""
     keys = ', '.join(
         key for key, present in [
             ('PK', field.primary_key), ('FK', field.is_relation), ('UK', field.unique and not field.primary_key),
         ] if present
     )
-    name = f'<B>{escape(field.column)}</B>' if field.primary_key else escape(field.column)
-    nullable = 'NULL' if field.null else 'NOT NULL'
-    return (
-        f'<TR><TD ALIGN="LEFT">{marker} {name}</TD><TD ALIGN="LEFT">{escape(column_type(field))}</TD>'
-        f'<TD ALIGN="LEFT">{nullable}</TD><TD ALIGN="LEFT">{keys}</TD></TR>'
-    )
+    return field.column, column_type(field), 'NULL' if field.null else 'NOT NULL', keys
 
 
-def table_node(model):
-    """Tabela no estilo do modelo lógico do brModelo."""
-    rows = ''.join(column_row(field) for field in model._meta.local_fields)
-    title = f'<TR><TD COLSPAN="4" BORDER="1" SIDES="B"><B>{model._meta.db_table}</B></TD></TR>'
-    table = f'<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3">{title}{rows}</TABLE>'
-    return f'  {model._meta.db_table} [shape=plaintext, label=<{table}>];'
+class Table:
+    """Geometria de uma tabela do DER físico. `x` e `y` são o canto superior esquerdo, com `y` crescendo para baixo."""
+
+    def __init__(self, model):
+        self.name = model._meta.db_table
+        self.fields = list(model._meta.local_fields)
+        cells = [column_cells(field) for field in self.fields]
+        self.widths = [
+            (max(len(cell[0]) for cell in cells) + 3) * CHAR_WIDTH + 6 / 72,
+            max(len(cell[1]) for cell in cells) * UPPER_CHAR_WIDTH + 8 / 72,
+            max(len(cell[2]) for cell in cells) * UPPER_CHAR_WIDTH + 8 / 72,
+            max(max(len(cell[3]) for cell in cells), 2) * UPPER_CHAR_WIDTH + 8 / 72,
+        ]
+        title = len(self.name) * 6.8 / 72 + 14 / 72
+        if sum(self.widths) < title:
+            self.widths[0] += title - sum(self.widths)
+        self.width = sum(self.widths)
+        self.height = TABLE_TITLE + len(self.fields) * TABLE_ROW
+        self.x = self.y = 0.0
+
+    def rect(self):
+        """Retângulo no sistema do Graphviz (y para cima): (x0, y0, x1, y1)."""
+        return (self.x, -(self.y + self.height), self.x + self.width, -self.y)
+
+    def center(self):
+        return self.x + self.width / 2, -(self.y + self.height / 2)
+
+    def row_y(self, field):
+        return -(self.y + TABLE_TITLE + (self.fields.index(field) + 0.5) * TABLE_ROW)
+
+    def side_x(self, right):
+        return self.x + self.width if right else self.x
+
+    def node(self):
+        sizes = [f'WIDTH="{width * 72:.0f}" HEIGHT="{TABLE_ROW * 72:.0f}"' for width in self.widths]
+        rows = []
+        for field in self.fields:
+            name, kind, nullable, keys = (escape(text) for text in column_cells(field))
+            if field.primary_key:
+                marker, name = f'<FONT COLOR="{IDENTIFIER_COLOR}">●</FONT>', f'<B>{name}</B>'
+            else:
+                marker = '◆' if field.is_relation else '○'
+            texts = [f'{marker} {name}', kind, nullable, keys]
+            rows.append('<TR>' + ''.join(f'<TD ALIGN="LEFT" {size}>{text}</TD>' for size, text in zip(sizes, texts)) + '</TR>')
+        title = f'<TR><TD COLSPAN="4" BORDER="1" SIDES="B" HEIGHT="{TABLE_TITLE * 72:.0f}"><B>{self.name}</B></TD></TR>'
+        table = f'<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3">{title}{"".join(rows)}</TABLE>'
+        return f'  {self.name} [shape=plain, pos={pinned(*self.center())}, label=<{table}>];'
 
 
-def relationship_edge(model, field):
-    """Linha da FK com a cardinalidade (mín,máx) de cada lado."""
-    child_side = '(0,1)' if field.one_to_one or field.unique else '(0,n)'
-    parent_side = '(0,1)' if field.null else '(1,1)'
-    return (
-        f'  {model._meta.db_table} -- {field.related_model._meta.db_table} '
-        f'[taillabel="{child_side}", headlabel="{parent_side}"];'
-    )
+def cardinalities(field):
+    """(mín,máx) do lado da tabela filha e do lado da tabela referenciada."""
+    child = '(0,1)' if field.one_to_one or field.unique else '(0,n)'
+    parent = '(0,1)' if field.null else '(1,1)'
+    return child, parent
+
+
+def physical_layout(models):
+    """Posiciona as tabelas em colunas e calcula o traçado de cada linha de chave estrangeira.
+
+    Entre colunas, a linha sai da altura da coluna da FK, pelo lado voltado para a tabela referenciada, e segue
+    reta. Na mesma coluna, ela sai pela direita e contorna a coluna por fora, como um colchete. As pontas que
+    chegam a uma mesma tabela pelo mesmo lado se distribuem ao longo da borda, na ordem das alturas de origem.
+    """
+    tables = {model._meta.db_table: Table(model) for model in models}
+    laid_out = [name for column in PHYSICAL_COLUMNS for name in column]
+    missing, extra = set(tables) - set(laid_out), set(laid_out) - set(tables)
+    if missing or extra:
+        raise CommandError(f'Atualize PHYSICAL_COLUMNS. Faltam: {sorted(missing)}. Sobram: {sorted(extra)}.')
+    column_of, column_right = {}, {}
+    x = 0.0
+    for index, column in enumerate(PHYSICAL_COLUMNS):
+        y = 0.0
+        for name in column:
+            tables[name].x, tables[name].y = x, y
+            column_of[name] = index
+            y += tables[name].height + TABLE_GAP
+        width = max(tables[name].width for name in column)
+        column_right[index] = x + width
+        x += width + COLUMN_GAP
+    links = []
+    for model in models:
+        for field in foreign_keys(model):
+            child, parent = tables[model._meta.db_table], tables[field.related_model._meta.db_table]
+            same = column_of[child.name] == column_of[parent.name]
+            child_right = True if same else column_of[parent.name] > column_of[child.name]
+            parent_right = True if same else not child_right
+            start = (child.side_x(child_right), child.row_y(field))
+            links.append({'child': child, 'field': field, 'parent': parent, 'parent_right': parent_right, 'same': same, 'start': start})
+    groups = {}
+    for link in links:
+        groups.setdefault((link['parent'].name, link['parent_right']), []).append(link)
+    for (_, right), group in groups.items():
+        parent = group[0]['parent']
+        top, bottom = -(parent.y + TABLE_TITLE + 0.08), -(parent.y + parent.height - 0.08)
+        group.sort(key=lambda link: -link['start'][1])
+        for index, link in enumerate(group, 1):
+            link['end'] = (parent.side_x(right), top + (bottom - top) * index / (len(group) + 1))
+    brackets = {}
+    for link in links:
+        if link['same']:
+            column = column_of[link['child'].name]
+            offset = BRACKET_OFFSET + brackets.get(column, 0) * BRACKET_STEP
+            brackets[column] = brackets.get(column, 0) + 1
+            bend = column_right[column] + offset
+            link['points'] = [link['start'], (bend, link['start'][1]), (bend, link['end'][1]), link['end']]
+        else:
+            link['points'] = [link['start'], link['end']]
+    return tables, links
+
+
+def physical_labels(tables, links):
+    obstacles = [table.rect() for table in tables.values()]
+    segments = [pair for link in links for pair in zip(link['points'], link['points'][1:])]
+    ends = []
+    for link in links:
+        child_card, parent_card = cardinalities(link['field'])
+        points = link['points']
+        ends += [(points[0], points[1], child_card), (points[-1], points[-2], parent_card)]
+    return place_labels(ends, obstacles, segments)
 
 
 def render_physical(models):
-    """DOT do DER físico com todas as tabelas, colunas, tipos e chaves."""
+    """DOT do DER físico com todas as tabelas, colunas, tipos e chaves, em posições fixas."""
+    tables, links = physical_layout(models)
     lines = ['graph fisico {', PHYSICAL_HEADER]
     lines.append('  label="● chave primária   ◆ chave estrangeira   ○ coluna\\l";')
-    lines.extend(table_node(model) for model in models)
-    lines.extend(relationship_edge(model, field) for model in models for field in foreign_keys(model))
+    lines += [table.node() for table in tables.values()]
+    for index, link in enumerate(links):
+        names = [f'f{index}p{number}' for number in range(len(link['points']))]
+        for name, point in zip(names, link['points']):
+            lines.append(f'  {name} [shape=point, width=0.01, height=0.01, style=invis, pos={pinned(*point)}];')
+        child_card, parent_card = cardinalities(link['field'])
+        lines.append(
+            f'  {" -- ".join(names)};  // {link["child"].name}.{link["field"].column} -> {link["parent"].name} '
+            f'{child_card}/{parent_card}'
+        )
+    for number, (center, text) in enumerate(physical_labels(tables, links)):
+        lines.append(f'  k{number} [shape=plain, label="{text}", fontsize=9, pos={pinned(*center)}];')
     lines.append('}')
     return '\n'.join(lines) + '\n'
 

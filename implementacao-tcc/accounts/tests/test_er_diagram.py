@@ -43,15 +43,40 @@ class ExportErDiagramTests(TestCase):
         content = export()['der-fisico.dot']
         self.assertIn('<B>accounts_user</B>', content)
         self.assertIn('schedule_allocation_teachers [', content)
-        self.assertIn('<TD ALIGN="LEFT">NOT NULL</TD><TD ALIGN="LEFT">FK, UK</TD>', content)
+        self.assertRegex(content, r'>NOT NULL</TD><TD ALIGN="LEFT" [^>]*>FK, UK</TD>')
         self.assertNotIn('auth_group', content)
         self.assertNotIn('account_emailaddress', content)
 
+    def test_physical_lines_do_not_cross_tables_and_labels_do_not_overlap(self):
+        from accounts.management.commands.export_er_diagram import (
+            LABEL_HEIGHT,
+            LABEL_WIDTH,
+            centered_rect,
+            overlaps,
+            physical_labels,
+            physical_layout,
+            project_models,
+            segment_hits_rect,
+        )
+
+        tables, links = physical_layout(project_models())
+        for link in links:
+            for start, end in zip(link['points'], link['points'][1:]):
+                crossed = [
+                    table.name for table in tables.values()
+                    if table not in (link['child'], link['parent']) and segment_hits_rect(start, end, table.rect())
+                ]
+                self.assertEqual(crossed, [], f'{link["child"].name}.{link["field"].column}')
+        labels = [centered_rect(*center, LABEL_WIDTH, LABEL_HEIGHT) for center, _ in physical_labels(tables, links)]
+        boxes = [table.rect() for table in tables.values()]
+        for index, label in enumerate(labels):
+            self.assertFalse(any(overlaps(label, other) for other in labels[index + 1:] + boxes))
+
     def test_physical_cardinality_follows_nullability_and_uniqueness(self):
         content = export()['der-fisico.dot']
-        self.assertIn('bookings_booking -- schedule_space [taillabel="(0,n)", headlabel="(1,1)"];', content)
-        self.assertIn('schedule_allocation -- schedule_space [taillabel="(0,n)", headlabel="(0,1)"];', content)
-        self.assertIn('bookings_booking -- bookings_bookingrequest [taillabel="(0,1)", headlabel="(1,1)"];', content)
+        self.assertIn('// bookings_booking.space_id -> schedule_space (0,n)/(1,1)', content)
+        self.assertIn('// schedule_allocation.space_id -> schedule_space (0,n)/(0,1)', content)
+        self.assertIn('// bookings_booking.request_id -> bookings_bookingrequest (0,1)/(1,1)', content)
 
     def test_restrictions_list_constraints_as_sql(self):
         content = export()['restricoes.md']

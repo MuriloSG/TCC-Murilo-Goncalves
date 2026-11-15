@@ -52,6 +52,7 @@ class ExportErDiagramTests(TestCase):
             LABEL_HEIGHT,
             LABEL_WIDTH,
             centered_rect,
+            crossing_lines,
             overlaps,
             physical_labels,
             physical_layout,
@@ -60,6 +61,11 @@ class ExportErDiagramTests(TestCase):
         )
 
         tables, links = physical_layout(project_models())
+        crossed = [
+            (f'{links[a]["child"].name}.{links[a]["field"].column}', f'{links[b]["child"].name}.{links[b]["field"].column}')
+            for a, b in crossing_lines(links)
+        ]
+        self.assertEqual(crossed, [])
         for link in links:
             for start, end in zip(link['points'], link['points'][1:]):
                 crossed = [
@@ -71,6 +77,24 @@ class ExportErDiagramTests(TestCase):
         boxes = [table.rect() for table in tables.values()]
         for index, label in enumerate(labels):
             self.assertFalse(any(overlaps(label, other) for other in labels[index + 1:] + boxes))
+
+    def test_physical_lines_have_no_small_steps_or_detours(self):
+        from accounts.management.commands.export_er_diagram import MIN_JOG, PHYSICAL_COLUMNS, physical_layout, project_models
+
+        column_of = {name: index for index, column in enumerate(PHYSICAL_COLUMNS) for name in column}
+        _, links = physical_layout(project_models())
+        for link in links:
+            name = f'{link["child"].name}.{link["field"].column}'
+            points = link['points']
+            inner = list(zip(points, points[1:]))[1:-1]  # o primeiro e o último trecho são os tocos junto das tabelas
+            steps = [round(abs(b[0] - a[0]) + abs(b[1] - a[1]), 3) for a, b in inner]
+            self.assertTrue(all(step >= MIN_JOG for step in steps), f'{name}: {steps}')
+            if column_of[link['child'].name] != column_of[link['parent'].name]:
+                # Entre colunas, a linha vai direto: no máximo uma subida ou descida e nenhuma volta.
+                length = sum(abs(b[0] - a[0]) + abs(b[1] - a[1]) for a, b in zip(points, points[1:]))
+                direct = abs(points[-1][0] - points[0][0]) + abs(points[-1][1] - points[0][1])
+                self.assertLessEqual(len(points), 4, name)
+                self.assertAlmostEqual(length, direct, places=6, msg=name)
 
     def test_physical_cardinality_follows_nullability_and_uniqueness(self):
         content = export()['der-fisico.dot']

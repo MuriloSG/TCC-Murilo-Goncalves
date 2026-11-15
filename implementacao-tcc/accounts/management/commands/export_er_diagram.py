@@ -74,14 +74,14 @@ LABEL_WIDTH, LABEL_HEIGHT = 0.4, 0.17
 PARALLEL_OFFSET = 0.7  # afastamento do losango quando duas entidades têm mais de um relacionamento
 
 # Colunas do DER físico, da esquerda para a direita, com as tabelas de cima para baixo. A ordem foi
-# escolhida para que nenhuma linha atravesse uma tabela; uma tabela nova precisa entrar aqui.
+# escolhida para que nenhuma linha atravesse uma tabela nem cruze outra; uma tabela nova precisa entrar aqui.
 PHYSICAL_COLUMNS = [
-    ['schedule_course', 'schedule_timeslot', 'accounts_permission', 'accounts_rolepermission'],
-    ['schedule_classgroup', 'schedule_semester', 'schedule_allocation', 'accounts_role'],
-    ['schedule_classoffering', 'schedule_subject', 'schedule_allocation_teachers', 'schedule_spacename', 'schedule_space', 'schedule_spacedecision', 'imports_importrow', 'schedule_allocationexception', 'accounts_userrole', 'audit_auditlog', 'notices_notification'],
-    ['schedule_teachingassignment', 'schedule_teacher'],
-    ['bookings_bookingrequest', 'bookings_booking', 'imports_import', 'accounts_user', 'notices_notice', 'system_settings_systemsetting'],
-    ['outbox_outboxentry'],
+    ['schedule_semester', 'schedule_classgroup', 'schedule_allocation', 'schedule_timeslot'],
+    ['schedule_classoffering', 'schedule_course', 'schedule_subject', 'schedule_allocation_teachers'],
+    ['schedule_teachingassignment', 'outbox_outboxentry', 'schedule_teacher', 'schedule_space', 'schedule_spacename'],
+    ['bookings_bookingrequest', 'bookings_booking', 'imports_import', 'imports_importrow', 'schedule_spacedecision', 'schedule_allocationexception'],
+    ['audit_auditlog', 'system_settings_systemsetting', 'accounts_user'],
+    ['notices_notification', 'notices_notice', 'accounts_userrole', 'accounts_role', 'accounts_rolepermission', 'accounts_permission'],
 ]
 
 # Geometria do DER físico em polegadas: linhas da tabela, espaço entre colunas e entre tabelas.
@@ -89,6 +89,29 @@ TABLE_TITLE, TABLE_ROW = 20 / 72, 18 / 72
 UPPER_CHAR_WIDTH = 7.2 / 72
 COLUMN_GAP, TABLE_GAP = 2.0, 0.6
 BRACKET_OFFSET, BRACKET_STEP = 0.3, 0.22  # colchete das ligações entre tabelas da mesma coluna
+BRACKET_CLEARANCE = 0.15  # folga vertical para dois colchetes dividirem o mesmo afastamento
+SLOT_BETWEEN_ROWS = 0.06  # preferência pela ponta no meio da linha da tabela
+TRACK_STEP, TRACK_MARGIN = 0.16, 0.6  # trilhas verticais no vão entre colunas e folga até os colchetes
+TRACK_CLEARANCE = 0.12  # folga vertical para duas linhas dividirem a mesma trilha
+MIN_JOG = 0.15  # menor degrau aceito numa linha; abaixo disso a ponta se alinha e a linha fica reta
+SLOT_CLEARANCE = 0.1  # distância mínima entre duas pontas na mesma borda de tabela
+
+# Espaço extra, em polegadas, acima de uma tabela na sua coluna.
+PHYSICAL_SPACING = {'audit_auditlog': 1.5, 'bookings_booking': 0.25, 'schedule_allocation': 1.0, 'schedule_allocation_teachers': 0.5, 'schedule_allocationexception': 0.5, 'schedule_classgroup': 1.0, 'schedule_classoffering': 1.0, 'schedule_course': 0.25, 'schedule_semester': 0.5}
+
+# Ligações na mesma coluna cujo colchete contorna a coluna pela esquerda; as demais vão pela direita.
+PHYSICAL_LEFT_BRACKETS = {
+    'accounts_rolepermission.permission_id',
+    'accounts_rolepermission.role_id',
+    'accounts_userrole.role_id',
+    'bookings_booking.request_id',
+    'imports_importrow.parent_id',
+    'schedule_allocation.semester_id',
+    'schedule_allocation.time_slot_id',
+    'schedule_spacedecision.importation_id',
+    'schedule_teachingassignment.teacher_id',
+    'schedule_timeslot.semester_id',
+}
 
 CONCEPTUAL_RELATIONSHIPS = [
     ('Usuario', '(0,n)', 'tem', 'Perfil', '(0,1)'),
@@ -378,12 +401,6 @@ class Table:
     def center(self):
         return self.x + self.width / 2, -(self.y + self.height / 2)
 
-    def row_y(self, field):
-        return -(self.y + TABLE_TITLE + (self.fields.index(field) + 0.5) * TABLE_ROW)
-
-    def side_x(self, right):
-        return self.x + self.width if right else self.x
-
     def node(self):
         sizes = [f'WIDTH="{width * 72:.0f}" HEIGHT="{TABLE_ROW * 72:.0f}"' for width in self.widths]
         rows = []
@@ -408,57 +425,295 @@ def cardinalities(field):
 
 
 def physical_layout(models):
-    """Posiciona as tabelas em colunas e calcula o traçado de cada linha de chave estrangeira.
-
-    Entre colunas, a linha sai da altura da coluna da FK, pelo lado voltado para a tabela referenciada, e segue
-    reta. Na mesma coluna, ela sai pela direita e contorna a coluna por fora, como um colchete. As pontas que
-    chegam a uma mesma tabela pelo mesmo lado se distribuem ao longo da borda, na ordem das alturas de origem.
-    """
+    """Posiciona as tabelas em `PHYSICAL_COLUMNS` e calcula o traçado de cada linha de chave estrangeira."""
     tables = {model._meta.db_table: Table(model) for model in models}
     laid_out = [name for column in PHYSICAL_COLUMNS for name in column]
     missing, extra = set(tables) - set(laid_out), set(laid_out) - set(tables)
     if missing or extra:
         raise CommandError(f'Atualize PHYSICAL_COLUMNS. Faltam: {sorted(missing)}. Sobram: {sorted(extra)}.')
-    column_of, column_right = {}, {}
-    x = 0.0
-    for index, column in enumerate(PHYSICAL_COLUMNS):
+    keys = [(model, field) for model in models for field in foreign_keys(model)]
+    fks = [
+        (model._meta.db_table, tables[model._meta.db_table].fields.index(field), field.related_model._meta.db_table, field.column)
+        for model, field in keys
+    ]
+    sizes = {name: (table.width, table.height) for name, table in tables.items()}
+    corners, routes = physical_geometry(PHYSICAL_COLUMNS, PHYSICAL_SPACING, PHYSICAL_LEFT_BRACKETS, sizes, fks)
+    for name, (x, y) in corners.items():
+        tables[name].x, tables[name].y = x, y
+    links = [
+        {
+            'child': tables[model._meta.db_table], 'field': field, 'parent': tables[field.related_model._meta.db_table],
+            'points': [(x, -y) for x, y in route],  # o Graphviz usa y para cima
+        }
+        for (model, field), route in zip(keys, routes)
+    ]
+    return tables, links
+
+
+def physical_geometry(columns, spacing, left_brackets, sizes, fks):
+    """Canto de cada tabela e traçado de cada FK, em polegadas e com y crescendo para baixo.
+
+    `sizes` traz (largura, altura) por tabela e `fks` traz (filha, posição da coluna da FK, referenciada, coluna).
+    Todas as linhas são ortogonais. Entre colunas, a linha sai na altura da FK pelo lado voltado para a tabela
+    referenciada, sobe ou desce numa trilha só dela no vão entre as colunas e entra na tabela referenciada na
+    horizontal. Na mesma coluna, ela contorna a coluna por fora, como um colchete: pela direita, ou pela esquerda
+    se estiver em `left_brackets` ("tabela.coluna").
+    """
+    column_of, spans = {}, {}
+    for index, column in enumerate(columns):
         y = 0.0
         for name in column:
-            tables[name].x, tables[name].y = x, y
-            column_of[name] = index
-            y += tables[name].height + TABLE_GAP
-        width = max(tables[name].width for name in column)
-        column_right[index] = x + width
-        x += width + COLUMN_GAP
-    links = []
-    for model in models:
-        for field in foreign_keys(model):
-            child, parent = tables[model._meta.db_table], tables[field.related_model._meta.db_table]
-            same = column_of[child.name] == column_of[parent.name]
-            child_right = True if same else column_of[parent.name] > column_of[child.name]
-            parent_right = True if same else not child_right
-            start = (child.side_x(child_right), child.row_y(field))
-            links.append({'child': child, 'field': field, 'parent': parent, 'parent_right': parent_right, 'same': same, 'start': start})
-    groups = {}
-    for link in links:
-        groups.setdefault((link['parent'].name, link['parent_right']), []).append(link)
-    for (_, right), group in groups.items():
-        parent = group[0]['parent']
-        top, bottom = -(parent.y + TABLE_TITLE + 0.08), -(parent.y + parent.height - 0.08)
-        group.sort(key=lambda link: -link['start'][1])
-        for index, link in enumerate(group, 1):
-            link['end'] = (parent.side_x(right), top + (bottom - top) * index / (len(group) + 1))
-    brackets = {}
-    for link in links:
-        if link['same']:
-            column = column_of[link['child'].name]
-            offset = BRACKET_OFFSET + brackets.get(column, 0) * BRACKET_STEP
-            brackets[column] = brackets.get(column, 0) + 1
-            bend = column_right[column] + offset
-            link['points'] = [link['start'], (bend, link['start'][1]), (bend, link['end'][1]), link['end']]
+            y += spacing.get(name, 0.0)
+            spans[name], column_of[name] = (y, y + sizes[name][1]), index
+            y += sizes[name][1] + TABLE_GAP
+    plan = plan_links(columns, column_of, spans, left_brackets, fks)
+    edges, gaps, x = [], [], 0.0
+    for index, column in enumerate(columns):
+        edges.append((x, x + max(sizes[name][0] for name in column)))
+        right, left = plan['channels'].get((index, True), 0.0), plan['channels'].get((index + 1, False), 0.0)
+        count = plan['tracks'].get(index, 0)
+        width = max(COLUMN_GAP, right + left + 2 * TRACK_MARGIN + max(count - 1, 0) * TRACK_STEP)
+        # As trilhas ficam centradas no espaço que sobra entre os colchetes das duas colunas.
+        first = edges[-1][1] + right + (width - right - left - max(count - 1, 0) * TRACK_STEP) / 2
+        gaps.append(first)
+        x = edges[-1][1] + width
+    corners = {name: (edges[column_of[name]][0], top) for name, (top, _) in spans.items()}
+
+    def side(name, right):
+        return corners[name][0] + (sizes[name][0] if right else 0.0)
+
+    routes = []
+    for index, (child, _, parent, _) in enumerate(fks):
+        child_right, parent_right = plan['sides'][index]
+        start = (side(child, child_right), plan['starts'][index])
+        end = (side(parent, parent_right), plan['ends'][index])
+        if column_of[child] == column_of[parent]:
+            column = column_of[child]
+            offset = BRACKET_OFFSET + plan['brackets'][index] * BRACKET_STEP
+            bend = edges[column][1] + offset if child_right else edges[column][0] - offset
+            points = [start, (bend, start[1]), (bend, end[1]), end]
         else:
-            link['points'] = [link['start'], link['end']]
-    return tables, links
+            reverse = column_of[child] > column_of[parent]
+            first, last = (end, start) if reverse else (start, end)
+            points = [first]
+            for gap, low, high in plan['pieces'][index]:
+                if low != high:
+                    track = gaps[gap] + plan['track_of'][index, gap] * TRACK_STEP
+                    points += [(track, low), (track, high)]
+            points.append(last)
+            if reverse:
+                points.reverse()
+        routes.append([point for number, point in enumerate(points) if number == 0 or point != points[number - 1]])
+    return corners, routes
+
+
+def plan_links(columns, column_of, spans, left_brackets, fks):
+    """Parte vertical do traçado: alturas das pontas, lados, trilhas dos colchetes e trilhas nos vãos."""
+    sides, starts, approach = [], [], []
+    for child, row, parent, column in fks:
+        if column_of[child] == column_of[parent]:
+            right = f'{child}.{column}' not in left_brackets
+            sides.append((right, right))
+        else:
+            right = column_of[parent] > column_of[child]
+            sides.append((right, not right))
+        starts.append(spans[child][0] + TABLE_TITLE + (row + 0.5) * TABLE_ROW)
+        between = range(min(column_of[child], column_of[parent]) + 1, max(column_of[child], column_of[parent]))
+        approach.append(corridor(starts[-1], [columns[number] for number in between], spans) if between else starts[-1])
+    exits = {}
+    for index, (child, row, _, _) in enumerate(fks):
+        exits.setdefault((child, sides[index][0]), set()).add(row)
+    groups = {}
+    for index, (_, _, parent, _) in enumerate(fks):
+        groups.setdefault((parent, sides[index][1]), []).append(index)
+    ends = [None] * len(fks)
+    for (parent, right), group in groups.items():
+        top, bottom = spans[parent]
+
+        def order(index):
+            # Pela borda, de cima para baixo: colchetes vindos de cima (o mais próximo primeiro), linhas de
+            # outras colunas (na ordem de chegada) e colchetes vindos de baixo (o mais distante primeiro).
+            if column_of[fks[index][0]] == column_of[parent]:
+                return (0, -starts[index]) if starts[index] < top else (2, -starts[index])
+            return (1, approach[index])
+
+        group.sort(key=order)
+        rows = round((bottom - top - TABLE_TITLE) / TABLE_ROW)
+        used = exits.get((parent, right), set())
+        # Pontas possíveis: o meio de cada linha da tabela (menos as que já têm FK saindo) e a divisa entre linhas.
+        slots = [
+            (top + TABLE_TITLE + step * TABLE_ROW / 2, step % 2 == 0)
+            for step in range(1, 2 * rows) if step % 2 == 0 or (step - 1) // 2 not in used
+        ]
+        wanted = [approach[index] for index in group]
+        for index, y in zip(group, assign_slots(wanted, [(top, bottom)] * len(group), slots, top, bottom)):
+            ends[index] = y
+        # Ponta a menos de MIN_JOG da altura de chegada vira linha reta: um degrau tão pequeno parece uma falha.
+        leaving = [top + TABLE_TITLE + (row + 0.5) * TABLE_ROW for row in used]
+        for index in group:
+            target = approach[index]
+            others = [ends[other] for other in group if other != index] + leaving
+            if (
+                0 < abs(ends[index] - target) < MIN_JOG and top + TABLE_TITLE + 0.05 < target < bottom - 0.05
+                and all(abs(target - other) > SLOT_CLEARANCE for other in others)
+            ):
+                ends[index] = target
+    brackets, channels, nests = {}, {}, {}
+    for index, (child, _, parent, _) in enumerate(fks):
+        if column_of[child] == column_of[parent]:
+            nests.setdefault((column_of[child], sides[index][0]), []).append(index)
+    for key, group in nests.items():
+        # Colchetes aninhados: o de menor vão fica mais perto da coluna, para um não cortar o outro.
+        group.sort(key=lambda index: (abs(ends[index] - starts[index]), index))
+        for index in group:
+            low, high = sorted((starts[index], ends[index]))
+            inner = [
+                brackets[other] for other in group if other in brackets
+                and min(starts[other], ends[other]) < high + BRACKET_CLEARANCE
+                and low < max(starts[other], ends[other]) + BRACKET_CLEARANCE
+            ]
+            brackets[index] = max(inner) + 1 if inner else 0
+        channels[key] = BRACKET_OFFSET + max(brackets[index] for index in group) * BRACKET_STEP
+    pieces, by_gap = {}, {}
+    for index, (child, _, parent, _) in enumerate(fks):
+        if column_of[child] == column_of[parent]:
+            continue
+        reverse = column_of[child] > column_of[parent]
+        left, right = (parent, child) if reverse else (child, parent)
+        left_y, right_y = (ends[index], starts[index]) if reverse else (starts[index], ends[index])
+        first, last = column_of[left], column_of[right] - 1
+        pieces[index] = [
+            (gap, left_y if gap == first else approach[index], right_y if gap == last else approach[index])
+            for gap in range(first, last + 1)
+        ]
+        for gap, low, high in pieces[index]:
+            if low != high:
+                by_gap.setdefault(gap, []).append((index, low, high))
+    track_of, tracks = {}, {}
+    for gap, items in by_gap.items():
+        assigned = assign_tracks(items)
+        tracks[gap] = max(assigned.values()) + 1
+        track_of.update({(index, gap): track for index, track in assigned.items()})
+    return {
+        'sides': sides, 'starts': starts, 'ends': ends, 'brackets': brackets, 'channels': channels,
+        'pieces': pieces, 'track_of': track_of, 'tracks': tracks,
+    }
+
+
+def corridor(y, columns, spans):
+    """Altura livre de tabelas em todas as `columns`, a mais próxima de `y`, para a linha atravessá-las."""
+    blocked = sorted(
+        (spans[name][0] - TABLE_GAP / 4, spans[name][1] + TABLE_GAP / 4) for column in columns for name in column
+    )
+    candidates = [y] + [edge for interval in blocked for edge in (interval[0] - 0.01, interval[1] + 0.01)]
+    free = [value for value in candidates if not any(low < value < high for low, high in blocked)]
+    return min(free, key=lambda value: (abs(value - y), value))
+
+
+def assign_tracks(items):
+    """Trilha (0 é a mais à esquerda) de cada trecho vertical num vão, sem cruzamentos que possam ser evitados.
+
+    `items` traz (ligação, altura na borda esquerda do vão, altura na borda direita). Duas linhas só se cruzam
+    se a horizontal de uma passar pela vertical da outra; quando só uma das ordens evita isso, ela é obrigatória.
+    """
+    def inside(value, a, b):
+        low, high = sorted((a, b))
+        return low + 1e-6 < value < high - 1e-6
+
+    def left_of(a, b):
+        return not inside(a[2], b[1], b[2]) and not inside(b[1], a[1], a[2])
+
+    before = {item[0]: set() for item in items}
+    for number, a in enumerate(items):
+        for b in items[number + 1:]:
+            ab, ba = left_of(a, b), left_of(b, a)
+            if ab and not ba:
+                before[b[0]].add(a[0])
+            elif ba and not ab:
+                before[a[0]].add(b[0])
+    span = {index: sorted((low, high)) for index, low, high in items}
+    track, pending = {}, sorted(items, key=lambda item: (min(item[1], item[2]), item[0]))
+    while pending:
+        ready = [item for item in pending if before[item[0]] <= set(track)]
+        item = ready[0] if ready else min(pending, key=lambda item: len(before[item[0]] - set(track)))
+        pending.remove(item)
+        index = item[0]
+        low, high = span[index]
+        taken = {
+            track[other] for other in track
+            if span[other][0] < high + TRACK_CLEARANCE and low < span[other][1] + TRACK_CLEARANCE
+        }
+        value = max((track[other] + 1 for other in before[index] if other in track), default=0)
+        while value in taken:
+            value += 1
+        track[index] = value
+    return track
+
+
+def assign_slots(wanted, bounds, slots, top, bottom):
+    """Escolhe, na ordem, uma ponta para cada linha, entre os limites dela e o mais perto da altura de onde vem."""
+    inf = float('inf')
+    for limits in (bounds, [(top, bottom)] * len(wanted)):  # sem solução nos limites, ignora os limites
+        cost = [[0.0] * (len(slots) + 1)] + [[inf] * (len(slots) + 1) for _ in wanted]
+        for i, (y, (low, high)) in enumerate(zip(wanted, limits), 1):
+            for j, (slot, between) in enumerate(slots, 1):
+                here = abs(slot - y) + (SLOT_BETWEEN_ROWS if between else 0) if low < slot < high else inf
+                cost[i][j] = min(cost[i][j - 1], cost[i - 1][j - 1] + here)
+        if cost[-1][-1] < inf:
+            break
+    else:  # mais linhas que pontas: distribui igualmente pela borda
+        top, bottom = top + TABLE_TITLE + 0.08, bottom - 0.08
+        return [top + (bottom - top) * number / (len(wanted) + 1) for number in range(1, len(wanted) + 1)]
+    chosen, j = [], len(slots)
+    for i in range(len(wanted), 0, -1):
+        while cost[i][j] == cost[i][j - 1]:
+            j -= 1
+        chosen.append(slots[j - 1][0])
+        j -= 1
+    return chosen[::-1]
+
+
+def route_problems(routes, fks, rects):
+    """Cruzamentos e sobreposições entre linhas mais trechos que passam por cima de uma tabela."""
+    cuts = sum(
+        segment_hits_rect(a, b, (x0 - 0.05, y0 - 0.05, x1 + 0.05, y1 + 0.05))
+        for route, (child, _, parent, _) in zip(routes, fks)
+        for a, b in zip(route, route[1:])
+        for name, (x0, y0, x1, y1) in rects.items() if name not in (child, parent)
+    )
+    return len(crossing_pairs(routes)) + cuts
+
+
+def crossing_pairs(routes):
+    """Pares de linhas diferentes que se cruzam ou correm uma sobre a outra (o toque nas pontas não conta)."""
+    def ccw(a, b, c):
+        return (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0])
+
+    def shared(a, b, c, d):
+        # Trechos na mesma reta horizontal ou vertical que dividem mais que um ponto.
+        for axis in (0, 1):
+            if a[axis] == b[axis] == c[axis] == d[axis]:
+                other = 1 - axis
+                low = max(min(a[other], b[other]), min(c[other], d[other]))
+                high = min(max(a[other], b[other]), max(c[other], d[other]))
+                return high - low > 1e-6
+        return False
+
+    segments = [(a, b, index) for index, route in enumerate(routes) for a, b in zip(route, route[1:])]
+    found = []
+    for number, (a, b, first) in enumerate(segments):
+        for c, d, second in segments[number + 1:]:
+            if first == second:
+                continue
+            if shared(a, b, c, d) or (
+                not {a, b} & {c, d} and ccw(c, d, a) * ccw(c, d, b) < 0 and ccw(a, b, c) * ccw(a, b, d) < 0
+            ):
+                found.append((first, second))
+    return found
+
+
+def crossing_lines(links):
+    return crossing_pairs([link['points'] for link in links])
 
 
 def physical_labels(tables, links):

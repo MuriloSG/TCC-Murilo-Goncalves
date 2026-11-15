@@ -48,10 +48,12 @@
 \usepackage[noend]{algpseudocode}
 \usepackage{url}
 
-% Páginas só com figuras começam no topo
+% Páginas só com figuras começam no topo, e nenhuma página começa ou termina com uma linha isolada
 \makeatletter
 \setlength{\@fptop}{0pt}
 \makeatother
+\widowpenalty=10000
+\clubpenalty=10000
 \let\realurl\url
 \renewcommand{\url}[1]{\realurl{#1}\wlog{URLX #1}}
 

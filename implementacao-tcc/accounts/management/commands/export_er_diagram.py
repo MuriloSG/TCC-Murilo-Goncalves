@@ -118,6 +118,14 @@ Constraints e índices que o diagrama não representa, com o SQL que o Django ex
 |---|---|---|"""
 
 
+# Posição fixa no Graphviz: "x,y!" em polegadas. O "!" fica numa constante para não ser lido como texto de interface.
+PIN = '!'
+
+
+def pinned(x, y):
+    return f'"{x:.3f},{y:.3f}{PIN}"'
+
+
 def attribute_row(name, identifier):
     """Atributo no estilo do brModelo: traço, círculo (cheio no identificador) e nome."""
     color = IDENTIFIER_COLOR if identifier else '#222222'
@@ -174,7 +182,7 @@ class Entity:
             )
         center = self.x + self.side / 2  # o nó é centrado na tabela inteira, não no retângulo do nome
         return (
-            f'  {self.key} [shape=plain, pos="{center:.3f},{self.y:.3f}!", '
+            f'  {self.key} [shape=plain, pos={pinned(center, self.y)}, '
             f'label=<<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0"><TR>{box}{side}</TR></TABLE>>];'
         )
 
@@ -267,15 +275,15 @@ def render_conceptual():
     lines += [entity.node() for entity in entities.values()]
     for index, verb, (x, y), ends in relationships:
         lines.append(
-            f'  r{index} [shape=diamond, label="{verb}", pos="{x:.3f},{y:.3f}!", fontsize=9, '
+            f'  r{index} [shape=diamond, label="{verb}", pos={pinned(x, y)}, fontsize=9, '
             f'width={DIAMOND_WIDTH}, height={DIAMOND_HEIGHT}, fixedsize=true];'
         )
         for side, (_, (px, py), _) in zip('ab', ends):
-            lines.append(f'  p{index}{side} [shape=point, width=0.01, height=0.01, style=invis, pos="{px:.3f},{py:.3f}!"];')
+            lines.append(f'  p{index}{side} [shape=point, width=0.01, height=0.01, style=invis, pos={pinned(px, py)}];')
         lines.append(f'  p{index}a -- r{index} -- p{index}b;')
     labels = place_cardinalities(entities, relationships)
     for number, ((x, y), cardinality) in enumerate(labels):
-        lines.append(f'  c{number} [shape=plain, label="{cardinality}", fontsize=9, pos="{x:.3f},{y:.3f}!"];')
+        lines.append(f'  c{number} [shape=plain, label="{cardinality}", fontsize=9, pos={pinned(x, y)}];')
     footnotes = ''.join(
         f'* {CONCEPTUAL_ENTITIES[key][0]}({", ".join(CONCEPTUAL_ENTITIES[key][1])})\\l' for key in CONCEPTUAL_FOOTNOTES
     )

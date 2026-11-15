@@ -15,6 +15,7 @@ from django.test.runner import DiscoverRunner
 from accounts.models import User
 from accounts.utils import LOCAL_DATABASE_MARK, database_identity
 from accounts.tests.roles import requester_role
+from config.testing import IsolatedCasesMixin
 from config import test_runner
 from schedule.models import Space
 
@@ -70,7 +71,7 @@ def run(command, confirm=True):
     return native
 
 
-class CommandGuardTestCase(TestCase):
+class CommandGuardTestCase(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.superadmin = User.objects.create_superadmin('root@ifnmg.edu.br', 'Root', PASSWORD)
@@ -102,29 +103,27 @@ class CommandGuardTestCase(TestCase):
 
 
 class EnvironmentRefusalTests(CommandGuardTestCase):
-    def test_other_environments_are_refused(self):
-        for value in OTHER_ENVIRONMENTS:
+    def test_environment_other_than_local_is_refused(self):
+        with self.case('outros ambientes'):
+            for value in OTHER_ENVIRONMENTS:
+                for command in COMMANDS:
+                    with self.subTest(command, environment=value), local_settings(ENVIRONMENT=value):
+                        mark()
+                        self.assertRefused(command)
+        with self.case('valores ambíguos ou inválidos'):
+            for value in AMBIGUOUS_VALUES + NON_TEXT_VALUES:
+                for command in COMMANDS:
+                    with self.subTest(command, environment=value), local_settings(ENVIRONMENT=value):
+                        self.assertRefused(command)
+        with self.case('sem ambiente'):
             for command in COMMANDS:
-                with self.subTest(command, environment=value), local_settings(ENVIRONMENT=value):
-                    mark()
+                with self.subTest(command), local_settings():
+                    del settings.ENVIRONMENT
                     self.assertRefused(command)
-
-    def test_ambiguous_or_invalid_values_are_refused(self):
-        for value in AMBIGUOUS_VALUES + NON_TEXT_VALUES:
+        with self.case('DEBUG não indica ambiente local'):
             for command in COMMANDS:
-                with self.subTest(command, environment=value), local_settings(ENVIRONMENT=value):
+                with self.subTest(command), local_settings(DEBUG=True, ENVIRONMENT=''):
                     self.assertRefused(command)
-
-    def test_missing_environment_is_refused(self):
-        for command in COMMANDS:
-            with self.subTest(command), local_settings():
-                del settings.ENVIRONMENT
-                self.assertRefused(command)
-
-    def test_debug_is_not_evidence_of_local_environment(self):
-        for command in COMMANDS:
-            with self.subTest(command), local_settings(DEBUG=True, ENVIRONMENT=''):
-                self.assertRefused(command)
 
     def test_refused_before_the_confirmation_question(self):
         for command in COMMANDS[1:]:
@@ -133,56 +132,55 @@ class EnvironmentRefusalTests(CommandGuardTestCase):
 
 
 class DatabaseRefusalTests(CommandGuardTestCase):
-    def test_missing_local_database_is_refused(self):
-        for value in ('', None, 1):
+    def test_database_other_than_the_declared_local_one_is_refused(self):
+        with self.case('sem banco local declarado'):
+            for value in ('', None, 1):
+                for command in COMMANDS:
+                    with self.subTest(command, local_database=value), local_settings(LOCAL_DATABASE=value):
+                        mark()
+                        self.assertRefused(command)
             for command in COMMANDS:
-                with self.subTest(command, local_database=value), local_settings(LOCAL_DATABASE=value):
-                    mark()
+                with self.subTest(command, local_database='ausente'), local_settings():
+                    del settings.LOCAL_DATABASE
                     self.assertRefused(command)
-        for command in COMMANDS:
-            with self.subTest(command, local_database='ausente'), local_settings():
-                del settings.LOCAL_DATABASE
-                self.assertRefused(command)
+        with self.case('outro banco'):
+            for identity in other_identities():
+                for command in COMMANDS:
+                    with self.subTest(command, identity=identity), local_settings(LOCAL_DATABASE=identity):
+                        mark()
+                        self.assertRefused(command)
 
-    def test_database_other_than_the_declared_one_is_refused(self):
-        for identity in other_identities():
+    def test_database_without_the_local_mark_is_refused(self):
+        with self.case('sem marca'):
             for command in COMMANDS:
-                with self.subTest(command, identity=identity), local_settings(LOCAL_DATABASE=identity):
-                    mark()
-                    self.assertRefused(command)
+                with self.subTest(command), local_settings():
+                    message = self.assertRefused(command, queries=1)
+                    self.assertIn('make mark-local-db', message)
+        with self.case('marca de outro ambiente'):
+            for value in ('producao', 'Local', ''):
+                for command in COMMANDS:
+                    with self.subTest(command, mark=value), local_settings():
+                        mark(value)
+                        self.assertRefused(command, queries=1)
 
-    def test_unmarked_database_is_refused_after_one_read(self):
-        for command in COMMANDS:
-            with self.subTest(command), local_settings():
-                message = self.assertRefused(command, queries=1)
-                self.assertIn('make mark-local-db', message)
-
-    def test_database_marked_for_another_environment_is_refused(self):
-        for value in ('producao', 'Local', ''):
-            for command in COMMANDS:
-                with self.subTest(command, mark=value), local_settings():
-                    mark(value)
-                    self.assertRefused(command, queries=1)
-
-    def test_operational_database_with_a_test_name_is_refused(self):
-        """O banco de teste fora do registro do runner e um nome `test_` configurado não liberam."""
-        for name in ('test_' + os.environ['POSTGRES_DB'], 'test_agendamento', connection.settings_dict['NAME']):
-            for command in COMMANDS:
-                with (
-                    self.subTest(command, name=name),
-                    mock.patch.dict(connections['default'].settings_dict, NAME=name),
-                    local_settings(),
-                ):
-                    self.assertRefused(command, queries=1)
-
-    def test_effective_database_must_match_the_configured_name(self):
-        with (
-            local_settings(),
-            mock.patch('accounts.utils.connected_database', return_value=('agendamento_producao', 'local')),
-        ):
-            for command in COMMANDS:
-                with self.subTest(command):
-                    self.assertRefused(command)
+    def test_names_must_match_the_real_database(self):
+        with self.case('banco operacional com nome de teste'):
+            for name in ('test_' + os.environ['POSTGRES_DB'], 'test_agendamento', connection.settings_dict['NAME']):
+                for command in COMMANDS:
+                    with (
+                        self.subTest(command, name=name),
+                        mock.patch.dict(connections['default'].settings_dict, NAME=name),
+                        local_settings(),
+                    ):
+                        self.assertRefused(command, queries=1)
+        with self.case('nome efetivo igual ao configurado'):
+            with (
+                local_settings(),
+                mock.patch('accounts.utils.connected_database', return_value=('agendamento_producao', 'local')),
+            ):
+                for command in COMMANDS:
+                    with self.subTest(command):
+                        self.assertRefused(command)
 
     def test_messages_do_not_expose_configuration(self):
         cases = (
@@ -211,24 +209,23 @@ class DatabaseRefusalTests(CommandGuardTestCase):
 
 
 class LocalDatabaseTests(CommandGuardTestCase):
-    def test_set_passwords_runs(self):
-        with local_settings():
-            mark()
-            run('set_passwords')
-        for account in (self.superadmin, self.user):
-            account.refresh_from_db()
-            self.assertTrue(account.check_password(DEVELOPMENT_PASSWORD))
-
-    def test_delete_users_runs(self):
-        with local_settings():
-            mark()
-            run('delete_users')
-        self.assertEqual(list(User.objects.all()), [self.superadmin])
-
-    def test_flush_delegates_to_the_native_command(self):
-        with local_settings():
-            mark()
-            run('flush').assert_called_once()
+    def test_commands_run_on_the_marked_local_database(self):
+        with self.case('set_passwords'):
+            with local_settings():
+                mark()
+                run('set_passwords')
+            for account in (self.superadmin, self.user):
+                account.refresh_from_db()
+                self.assertTrue(account.check_password(DEVELOPMENT_PASSWORD))
+        with self.case('delete_users'):
+            with local_settings():
+                mark()
+                run('delete_users')
+            self.assertEqual(list(User.objects.all()), [self.superadmin])
+        with self.case('flush'):
+            with local_settings():
+                mark()
+                run('flush').assert_called_once()
 
 
 class LocalClearDataTests(TransactionTestCase):
@@ -260,11 +257,11 @@ class LocalClearDataTests(TransactionTestCase):
 
 
 class TestRunnerAuthorizationTests(CommandGuardTestCase):
-    def test_project_flush_replaces_the_native_one(self):
-        self.assertEqual(get_commands()['flush'], 'accounts')
-
-    def test_test_database_created_by_the_runner_is_registered(self):
-        self.assertIn(('default', connection.settings_dict['NAME']), test_runner.created_test_databases)
+    def test_runner_registers_its_database_and_the_project_flush(self):
+        with self.subTest('flush do projeto'):
+            self.assertEqual(get_commands()['flush'], 'accounts')
+        with self.subTest('banco do runner registrado'):
+            self.assertIn(('default', connection.settings_dict['NAME']), test_runner.created_test_databases)
 
     def test_commands_run_on_the_test_database_without_local_configuration(self):
         with override_settings(ENVIRONMENT='', LOCAL_DATABASE=''):

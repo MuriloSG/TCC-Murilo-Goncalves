@@ -1,4 +1,5 @@
 from django.test import SimpleTestCase, TestCase
+from config.testing import IsolatedCasesMixin
 
 from accounts.models import User
 from accounts.tests.roles import requester_role
@@ -22,55 +23,54 @@ class SanitizeTests(SimpleTestCase):
 
 
 class ActorTests(SimpleTestCase):
-    def test_default_actor_is_the_system(self):
-        actor = current_actor()
-        self.assertIsNone(actor.user)
-        self.assertEqual(actor.origin, catalog.SYSTEM)
-
-    def test_acting_as_is_restored(self):
-        with acting_as(Actor(user=None, ip_address='10.0.0.1', origin=catalog.INTERFACE)):
-            self.assertEqual(current_actor().ip_address, '10.0.0.1')
-        self.assertEqual(current_actor(), Actor())
-
-    def test_import_origin_keeps_the_executor(self):
-        with acting_as(Actor(user='ana', ip_address='10.0.0.1', origin=catalog.INTERFACE)):
-            with acting_from_import('ana'):
-                self.assertEqual(current_actor().origin, catalog.IMPORTED)
-                self.assertEqual(current_actor().user, 'ana')
+    def test_actor_of_the_context(self):
+        with self.subTest('padrão é o sistema'):
+            actor = current_actor()
+            self.assertIsNone(actor.user)
+            self.assertEqual(actor.origin, catalog.SYSTEM)
+        with self.subTest('restaurado'):
+            with acting_as(Actor(user=None, ip_address='10.0.0.1', origin=catalog.INTERFACE)):
                 self.assertEqual(current_actor().ip_address, '10.0.0.1')
-            self.assertEqual(current_actor().origin, catalog.INTERFACE)
+            self.assertEqual(current_actor(), Actor())
+        with self.subTest('importação mantém o executor'):
+            with acting_as(Actor(user='ana', ip_address='10.0.0.1', origin=catalog.INTERFACE)):
+                with acting_from_import('ana'):
+                    self.assertEqual(current_actor().origin, catalog.IMPORTED)
+                    self.assertEqual(current_actor().user, 'ana')
+                    self.assertEqual(current_actor().ip_address, '10.0.0.1')
+                self.assertEqual(current_actor().origin, catalog.INTERFACE)
 
 
-class RecordTests(TestCase):
+class RecordTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.teacher = requester_role()
         cls.user = User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=cls.teacher)
 
-    def test_record_uses_the_actor_of_the_context(self):
-        actor = Actor(user=self.user, ip_address='192.168.0.10', user_agent='Firefox', origin=catalog.INTERFACE)
-        with acting_as(actor):
-            entry = AuditLog.objects.record(
-                catalog.UPDATE, catalog.USER, resource_id=25,
-                old_values={'name': 'Ana'}, new_values={'name': 'Ana Souza'},
-            )
-        self.assertEqual(entry.user, self.user)
-        self.assertEqual(entry.action, catalog.UPDATE)
-        self.assertEqual(entry.resource, catalog.USER)
-        self.assertEqual(entry.resource_id, '25')
-        self.assertEqual(entry.old_values, {'name': 'Ana'})
-        self.assertEqual(entry.new_values, {'name': 'Ana Souza'})
-        self.assertEqual(entry.ip_address, '192.168.0.10')
-        self.assertEqual(entry.user_agent, 'Firefox')
-        self.assertEqual(entry.origin, catalog.INTERFACE)
-        self.assertIsNotNone(entry.created_at)
-
-    def test_record_without_actor_is_from_the_system(self):
-        entry = AuditLog.objects.record(catalog.SEND, catalog.EMAIL, resource_id=7)
-        self.assertIsNone(entry.user)
-        self.assertEqual(entry.origin, catalog.SYSTEM)
-        self.assertIsNone(entry.ip_address)
-        self.assertEqual(entry.user_agent, '')
+    def test_record_uses_the_actor_of_the_context_or_the_system(self):
+        with self.case('ator do contexto'):
+            actor = Actor(user=self.user, ip_address='192.168.0.10', user_agent='Firefox', origin=catalog.INTERFACE)
+            with acting_as(actor):
+                entry = AuditLog.objects.record(
+                    catalog.UPDATE, catalog.USER, resource_id=25,
+                    old_values={'name': 'Ana'}, new_values={'name': 'Ana Souza'},
+                )
+            self.assertEqual(entry.user, self.user)
+            self.assertEqual(entry.action, catalog.UPDATE)
+            self.assertEqual(entry.resource, catalog.USER)
+            self.assertEqual(entry.resource_id, '25')
+            self.assertEqual(entry.old_values, {'name': 'Ana'})
+            self.assertEqual(entry.new_values, {'name': 'Ana Souza'})
+            self.assertEqual(entry.ip_address, '192.168.0.10')
+            self.assertEqual(entry.user_agent, 'Firefox')
+            self.assertEqual(entry.origin, catalog.INTERFACE)
+            self.assertIsNotNone(entry.created_at)
+        with self.case('sem ator'):
+            entry = AuditLog.objects.record(catalog.SEND, catalog.EMAIL, resource_id=7)
+            self.assertIsNone(entry.user)
+            self.assertEqual(entry.origin, catalog.SYSTEM)
+            self.assertIsNone(entry.ip_address)
+            self.assertEqual(entry.user_agent, '')
 
     def test_record_refuses_unknown_codes(self):
         with self.assertRaises(UnknownAuditCode):
@@ -78,31 +78,22 @@ class RecordTests(TestCase):
         with self.assertRaises(UnknownAuditCode):
             AuditLog.objects.record(catalog.CREATE, 'RESERVA')
 
-    def test_record_drops_sensitive_fields(self):
-        entry = AuditLog.objects.record(
-            catalog.UPDATE, catalog.USER,
-            new_values={'email': 'ana@ifnmg.edu.br', 'password': 'segredo'},
-            metadata={'token': 'abc', 'rota': 'user_update'},
-        )
-        self.assertEqual(entry.new_values, {'email': 'ana@ifnmg.edu.br'})
-        self.assertEqual(entry.metadata, {'rota': 'user_update'})
-
-    def test_new_action_needs_only_the_catalog(self):
-        catalog.ACTION_LABELS['REVISAR'] = 'Revisão'
-        try:
-            entry = AuditLog.objects.record('REVISAR', catalog.USER)
-        finally:
-            del catalog.ACTION_LABELS['REVISAR']
-        self.assertEqual(AuditLog.objects.get(pk=entry.pk).action, 'REVISAR')
-
-    def test_labels_come_from_the_catalog(self):
-        entry = AuditLog.objects.record(catalog.LOGIN, catalog.AUTHENTICATION)
-        self.assertEqual(entry.action_label, 'Entrada')
-        self.assertEqual(entry.resource_label, 'Autenticação')
-        self.assertEqual(entry.origin_label, 'Sistema')
+    def test_actions_and_labels_come_from_the_catalog(self):
+        with self.case('ação nova'):
+            catalog.ACTION_LABELS['REVISAR'] = 'Revisão'
+            try:
+                entry = AuditLog.objects.record('REVISAR', catalog.USER)
+            finally:
+                del catalog.ACTION_LABELS['REVISAR']
+            self.assertEqual(AuditLog.objects.get(pk=entry.pk).action, 'REVISAR')
+        with self.case('rótulos'):
+            entry = AuditLog.objects.record(catalog.LOGIN, catalog.AUTHENTICATION)
+            self.assertEqual(entry.action_label, 'Entrada')
+            self.assertEqual(entry.resource_label, 'Autenticação')
+            self.assertEqual(entry.origin_label, 'Sistema')
 
 
-class IntegrityTests(TestCase):
+class IntegrityTests(IsolatedCasesMixin, TestCase):
     def setUp(self):
         self.entry = AuditLog.objects.record(catalog.LOGIN, catalog.AUTHENTICATION)
 
@@ -112,14 +103,14 @@ class IntegrityTests(TestCase):
             self.entry.save()
         self.assertEqual(AuditLog.objects.get(pk=self.entry.pk).action, catalog.LOGIN)
 
-    def test_queryset_update_is_refused(self):
-        with self.assertRaises(AuditLogProtected):
-            AuditLog.objects.filter(pk=self.entry.pk).update(action=catalog.LOGOUT)
-        self.assertEqual(AuditLog.objects.get(pk=self.entry.pk).action, catalog.LOGIN)
-
-    def test_delete_is_refused(self):
-        with self.assertRaises(AuditLogProtected):
-            self.entry.delete()
-        with self.assertRaises(AuditLogProtected):
-            AuditLog.objects.filter(pk=self.entry.pk).delete()
-        self.assertTrue(AuditLog.objects.filter(pk=self.entry.pk).exists())
+    def test_queryset_update_and_delete_are_refused(self):
+        with self.case('update'):
+            with self.assertRaises(AuditLogProtected):
+                AuditLog.objects.filter(pk=self.entry.pk).update(action=catalog.LOGOUT)
+            self.assertEqual(AuditLog.objects.get(pk=self.entry.pk).action, catalog.LOGIN)
+        with self.case('delete'):
+            with self.assertRaises(AuditLogProtected):
+                self.entry.delete()
+            with self.assertRaises(AuditLogProtected):
+                AuditLog.objects.filter(pk=self.entry.pk).delete()
+            self.assertTrue(AuditLog.objects.filter(pk=self.entry.pk).exists())

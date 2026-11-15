@@ -8,6 +8,7 @@ from django.test import Client, TestCase, override_settings
 
 from accounts.emails import PASSWORD_LINK, password_link
 from accounts.models import User
+from config.testing import IsolatedCasesMixin
 from accounts.tests.roles import requester_role
 from outbox.models import OutboxEntry
 from system_settings.tests.base import configure_smtp
@@ -15,7 +16,7 @@ from system_settings.tests.base import configure_smtp
 PASSWORD = 'Senha-forte-123'
 
 
-class PasswordLinkTests(TestCase):
+class PasswordLinkTests(IsolatedCasesMixin, TestCase):
     def setUp(self):
         configure_smtp()
         cache.clear()
@@ -26,38 +27,37 @@ class PasswordLinkTests(TestCase):
     def entry(self):
         return OutboxEntry.objects.get(kind=PASSWORD_LINK, reference=str(self.user.pk))
 
-    def test_registration_registers_the_link_without_sending(self):
-        self.assertEqual(self.entry().status, 'A_ENVIAR')
-        self.assertEqual(mail.outbox, [])
+    def test_link_is_registered_only_for_users_without_a_password(self):
+        with self.case('cadastro registra o link'):
+            self.assertEqual(self.entry().status, 'A_ENVIAR')
+            self.assertEqual(mail.outbox, [])
+        with self.case('superadmin do comando'):
+            User.objects.create_superadmin(email='super@ifnmg.edu.br', name='Super', password=PASSWORD)
+            self.assertEqual(OutboxEntry.objects.count(), 1)
 
-    def test_superadmin_created_by_command_registers_no_link(self):
-        User.objects.create_superadmin(email='super@ifnmg.edu.br', name='Super', password=PASSWORD)
-        self.assertEqual(OutboxEntry.objects.count(), 1)
-
-    @override_settings(SITE_URL='https://agendamento.exemplo.edu.br/')
-    def test_link_uses_the_site_url_and_the_recovery_templates(self):
-        message = password_link(self.user.pk)
-        self.assertEqual(message.to, ['maria@ifnmg.edu.br'])
-        self.assertTrue(message.subject.startswith('[IFAgenda] '))
-        self.assertIn('https://agendamento.exemplo.edu.br/contas/senha/redefinir/', message.body)
-        self.assertTrue(message.body.startswith('Foi solicitada a definição ou a redefinição da senha desta conta'))
-
-    @override_settings(SITE_URL='http://testserver')
-    def test_worker_sends_a_link_that_defines_the_password(self):
-        call_command('process_outbox', '--once')
-        self.assertEqual(self.entry().status, 'ENVIADO')
-        link = re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', mail.outbox[0].body).group(1)
-        client = Client()
-        form_url = client.get(link)['Location']
-        response = client.post(form_url, {'password1': PASSWORD, 'password2': PASSWORD})
-        self.assertRedirects(response, '/contas/senha/redefinir/concluido/', fetch_redirect_response=False)
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password(PASSWORD))
-
-    def test_link_goes_to_the_current_email(self):
-        User.objects.filter(pk=self.user.pk).update(email='maria.sousa@ifnmg.edu.br')
-        call_command('process_outbox', '--once')
-        self.assertEqual(mail.outbox[0].to, ['maria.sousa@ifnmg.edu.br'])
+    def test_worker_sends_the_link_to_the_current_email(self):
+        with self.case('endereço do site e modelos'):
+            with override_settings(SITE_URL='https://agendamento.exemplo.edu.br/'):
+                message = password_link(self.user.pk)
+                self.assertEqual(message.to, ['maria@ifnmg.edu.br'])
+                self.assertTrue(message.subject.startswith('[IFAgenda] '))
+                self.assertIn('https://agendamento.exemplo.edu.br/contas/senha/redefinir/', message.body)
+                self.assertTrue(message.body.startswith('Foi solicitada a definição ou a redefinição da senha desta conta'))
+        with self.case('link define a senha'):
+            with override_settings(SITE_URL='http://testserver'):
+                call_command('process_outbox', '--once')
+                self.assertEqual(self.entry().status, 'ENVIADO')
+                link = re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', mail.outbox[0].body).group(1)
+                client = Client()
+                form_url = client.get(link)['Location']
+                response = client.post(form_url, {'password1': PASSWORD, 'password2': PASSWORD})
+                self.assertRedirects(response, '/contas/senha/redefinir/concluido/', fetch_redirect_response=False)
+                self.user.refresh_from_db()
+                self.assertTrue(self.user.check_password(PASSWORD))
+        with self.case('e-mail atual'):
+            User.objects.filter(pk=self.user.pk).update(email='maria.sousa@ifnmg.edu.br')
+            call_command('process_outbox', '--once')
+            self.assertEqual(mail.outbox[-1].to, ['maria.sousa@ifnmg.edu.br'])
 
     def test_discards_when_sending_no_longer_makes_sense(self):
         cases = {

@@ -33,37 +33,34 @@ class LayerSettingsTests(SimpleTestCase):
             environment['DJANGO_CACHE_KEY_PREFIX'] = prefix
         return load_settings(environment, list(argv)).CHANNEL_LAYERS['default']
 
-    def test_redis_url_uses_the_shared_layer_with_its_own_prefix(self):
-        layer = self.layer('redis://redis:6379/0', prefix='campus')
-        self.assertEqual(layer['BACKEND'], 'channels_redis.core.RedisChannelLayer')
-        self.assertEqual(layer['CONFIG']['prefix'], 'campus:channels')
-        self.assertEqual(layer['CONFIG']['hosts'][0]['address'], 'redis://redis:6379/0')
-
-    def test_shared_layer_has_no_read_timeout_shorter_than_the_blocking_wait(self):
-        host = self.layer('redis://redis:6379/0')['CONFIG']['hosts'][0]
-        self.assertIsNone(host['socket_timeout'])
-        self.assertIn('socket_connect_timeout', host)
-
-    def test_missing_url_keeps_the_layer_in_memory(self):
-        self.assertEqual(self.layer('')['BACKEND'], 'channels.layers.InMemoryChannelLayer')
-
-    def test_tests_keep_the_layer_in_memory(self):
-        layer = self.layer('redis://redis:6379/0', argv=('manage.py', 'test'))
-        self.assertEqual(layer['BACKEND'], 'channels.layers.InMemoryChannelLayer')
+    def test_layer_settings(self):
+        with self.subTest('Redis com prefixo próprio'):
+            layer = self.layer('redis://redis:6379/0', prefix='campus')
+            self.assertEqual(layer['BACKEND'], 'channels_redis.core.RedisChannelLayer')
+            self.assertEqual(layer['CONFIG']['prefix'], 'campus:channels')
+            self.assertEqual(layer['CONFIG']['hosts'][0]['address'], 'redis://redis:6379/0')
+        with self.subTest('tempo de leitura'):
+            host = self.layer('redis://redis:6379/0')['CONFIG']['hosts'][0]
+            self.assertIsNone(host['socket_timeout'])
+            self.assertIn('socket_connect_timeout', host)
+        with self.subTest('sem URL'):
+            self.assertEqual(self.layer('')['BACKEND'], 'channels.layers.InMemoryChannelLayer')
+        with self.subTest('nos testes'):
+            layer = self.layer('redis://redis:6379/0', argv=('manage.py', 'test'))
+            self.assertEqual(layer['BACKEND'], 'channels.layers.InMemoryChannelLayer')
 
 
 class LayerCheckTests(SimpleTestCase):
-    @override_settings(TESTING=False, CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}})
-    def test_layer_in_memory_is_warned(self):
-        self.assertEqual([message.id for message in channel_layer_shared(None)], ['notices.W001'])
-
-    @override_settings(TESTING=False, CHANNEL_LAYERS={'default': {'BACKEND': 'channels_redis.core.RedisChannelLayer'}})
-    def test_shared_layer_is_not_warned(self):
-        self.assertEqual(channel_layer_shared(None), [])
-
-    @override_settings(TESTING=True, CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}})
-    def test_tests_are_not_warned(self):
-        self.assertEqual(channel_layer_shared(None), [])
+    def test_only_the_layer_in_memory_outside_the_tests_is_warned(self):
+        with self.subTest('em memória'):
+            with override_settings(TESTING=False, CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}):
+                self.assertEqual([message.id for message in channel_layer_shared(None)], ['notices.W001'])
+        with self.subTest('compartilhada'):
+            with override_settings(TESTING=False, CHANNEL_LAYERS={'default': {'BACKEND': 'channels_redis.core.RedisChannelLayer'}}):
+                self.assertEqual(channel_layer_shared(None), [])
+        with self.subTest('nos testes'):
+            with override_settings(TESTING=True, CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}):
+                self.assertEqual(channel_layer_shared(None), [])
 
 
 SENDER = """

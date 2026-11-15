@@ -63,7 +63,7 @@ A referência de implementação é o app `accounts`.
 - Cada regra é testada na camada mais baixa que a implementa, o modelo ou o serviço. Na tela basta conferir uma vez, por formulário, que o erro aparece.
 - Não se testa comportamento do Django: `max_length`, `unique`, CASCADE, `Meta.ordering`, valores padrão, o 405 de `require_POST` e o `transaction.atomic`.
 - Os testes conferem textos e valores, pelo `context` quando possível, e não a marcação exata do HTML. A marcação é verificada pelas varreduras do app `ui`.
-- Variações de um mesmo caso viram um teste com `subTest`. Números que vêm do catálogo, como o total de permissões, são calculados a partir de `accounts/permissions.py`.
+- Variações de um mesmo caso viram um teste com `subTest`, ou com `self.case` (`config.testing.IsolatedCasesMixin`) quando cada variação grava no banco e precisa partir do mesmo estado. Números que vêm do catálogo, como o total de permissões, são calculados a partir de `accounts/permissions.py`.
 - Use `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `transaction.on_commit` ou de concorrência. Toda classe `TransactionTestCase` declara `serialized_rollback = True`: uma classe sem ele recria os tipos de conteúdo no `flush`, e a próxima classe com ele falha ao recarregar os dados.
 - Limpe o cache (`cache.clear()`) no `setUp` de testes que passam pelos limites de tentativas do allauth.
 - Os testes de permissão usam usuários que não são superadmin, para que o acesso irrestrito não mascare falhas.

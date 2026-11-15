@@ -245,8 +245,8 @@ Cada `ImportRow` guarda os valores lidos e o plano (`action`, `target`, `changes
 
 | Arquivo | Cobre |
 |---|---|
-| `imports/tests/test_models.py` | Transições, pendências, atualização, verificação própria, divergência, erro inesperado, situações finais, confirmações simultâneas e plano determinístico, com uma importação de teste sobre `auth.Group` (`imports/tests/definitions.py`) |
-| `imports/tests/test_worker.py` | Restrição do banco, reserva, queda entre reserva e execução, tentativas, recusas sem nova tentativa, solicitante desativado, `lock_timeout`, comando e concorrência |
+| `imports/tests/test_models.py` | Transições, pendências, atualização, verificação própria, divergência, situações finais, confirmações simultâneas e plano determinístico, com uma importação de teste sobre `auth.Group` (`imports/tests/definitions.py`) |
+| `imports/tests/test_worker.py` | Restrição do banco, reserva, queda entre reserva e execução, tentativas e erro inesperado, recusas sem nova tentativa, solicitante desativado, `lock_timeout`, comando e concorrência |
 | `imports/tests/test_reader.py`, `test_sources.py` | Leitura CSV e XLSX |
 | `imports/tests/worker.py` | Auxiliares que pedem a operação e rodam o worker, usados pelos testes das importações específicas |
 | `accounts/tests/test_user_import.py`, `test_user_import_views.py` | Regras e telas da importação de usuários |

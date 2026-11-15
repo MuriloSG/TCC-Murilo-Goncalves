@@ -11,13 +11,13 @@ make manage cmd="test bookings.tests.test_models.SubmitTests.test_past_start_is_
 
 Sem `make`: `docker compose run --rm web python manage.py test`.
 
-Situação em 20/10/2026: 1780 testes, todos passando, em cerca de 100 segundos. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
+Situação em 15/11/2026: 681 testes, todos passando, em cerca de 65 segundos. A suíte foi enxugada nessa data: saíram os testes que repetiam a matriz de rotas, testavam comportamento do Django ou do allauth, conferiam marcação já coberta pelas varreduras do `ui` ou repetiam na tela uma regra do model, e as variações de um mesmo caso viraram um teste só. Rode sem `--parallel`: nesse modo, um teste com falha derruba o runner ao serializar o erro, e a saída não mostra qual foi. As mensagens "Importação N falhou na tentativa..." na saída são logs esperados dos testes do worker.
 
 A convenção do projeto é rodar a suíte inteira antes de cada commit. Não há CI no repositório.
 
 ## Organização
 
-- Testes em `<app>/tests/test_*.py`. Auxiliares compartilhados: `accounts/tests/roles.py` (perfis montados pelas permissões), `bookings/tests/base.py`, `system_settings/tests/base.py` (`configure_smtp`), `imports/tests/definitions.py` (importação de teste sobre `auth.Group`), `imports/tests/worker.py` (roda o worker nos testes), `ui/tests/files.py` (lista templates e módulos).
+- Testes em `<app>/tests/test_*.py`. Auxiliares compartilhados: `config/testing.py` (`IsolatedCasesMixin`), `accounts/tests/roles.py` (perfis montados pelas permissões), `bookings/tests/base.py`, `system_settings/tests/base.py` (`configure_smtp`), `imports/tests/definitions.py` (importação de teste sobre `auth.Group`), `imports/tests/worker.py` (roda o worker nos testes), `ui/tests/files.py` (lista templates e módulos).
 - Os testes do ensalamento leem cópias da planilha real e das sugeridas em `schedule/tests/fixtures/`, e não `sources/`, para rodarem também dentro da imagem de produção, que não leva `sources/`.
 
 ## Catálogo por app
@@ -58,7 +58,7 @@ Resumo da seção 7 das [convenções](convencoes.md#7-testes):
 - O teste do app cobre a rota executando com a permissão. Anônimo, falta de permissão e CSRF ficam na matriz central.
 - Não testar comportamento do Django (`max_length`, `unique`, CASCADE, `Meta.ordering`, valores padrão, 405 de `require_POST`, `transaction.atomic`).
 - Conferir textos e valores pelo `context` quando possível, não a marcação exata.
-- Variações do mesmo caso com `subTest`. Totais do catálogo calculados de `accounts/permissions.py`.
+- Variações do mesmo caso num teste só. Quando elas gravam no banco, use `self.case(...)` de `config.testing.IsolatedCasesMixin`: cada variação roda num `subTest` dentro de um savepoint desfeito no fim e começa com a caixa de e-mails vazia. O estado em memória (instâncias do `setUp`, cookies do cliente, relógios simulados com `addCleanup`) não volta, então busque de novo do banco o que um caso altera. Sem gravação, basta `subTest`. Totais do catálogo calculados de `accounts/permissions.py`.
 - `TransactionTestCase` com `serialized_rollback = True` quando o comportamento depende de `on_commit` ou de concorrência. Toda classe `TransactionTestCase` declara esse atributo.
 - Testes que executam `clear_data`, `delete_users` ou `set_passwords` declaram `@override_settings(ENVIRONMENT='local')`; o container de testes não tem a variável e recusa os comandos.
 - `cache.clear()` no `setUp` de testes que passam pelos limites de tentativas do allauth.

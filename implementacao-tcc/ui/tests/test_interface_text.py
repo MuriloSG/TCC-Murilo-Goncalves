@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
 from django.core.management import call_command
+from config.testing import IsolatedCasesMixin
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 
 from accounts.models import Role, User
@@ -59,71 +60,66 @@ class TemplateExtractionTests(SimpleTestCase):
             ['page.html:3: "Usuário cadastrado!" → "!". Sem ponto de exclamação.'],
         )
 
-    def test_operador_em_tag_e_doctype_nao_sao_texto(self):
-        source = '<!DOCTYPE html>\n<html>{% if a != b %}<p>Texto.</p>{% endif %}<!-- Olá! --></html>'
-        self.assertEqual(self.violations(source), [])
+    def test_o_que_nao_e_texto_visivel(self):
+        with self.subTest('operador e doctype'):
+            source = '<!DOCTYPE html>\n<html>{% if a != b %}<p>Texto.</p>{% endif %}<!-- Olá! --></html>'
+            self.assertEqual(self.violations(source), [])
+        with self.subTest('comentários'):
+            source = '{# Olá! #}<p>Texto.</p>{% comment %}Olá!{% endcomment %}'
+            self.assertEqual(self.violations(source), [])
+        with self.subTest('variável'):
+            self.assertEqual(self.violations('<h1>{{ action|capfirst }} usuário</h1>'), [])
+            self.assertEqual(self.violations('<h1>{{ action|capfirst }} {{ target.name }}?</h1>'), [])
 
-    def test_comentarios_do_django_nao_sao_texto(self):
-        source = '{# Olá! #}<p>Texto.</p>{% comment %}Olá!{% endcomment %}'
-        self.assertEqual(self.violations(source), [])
-
-    def test_variavel_vira_marcador_neutro(self):
-        self.assertEqual(self.violations('<h1>{{ action|capfirst }} usuário</h1>'), [])
-        self.assertEqual(self.violations('<h1>{{ action|capfirst }} {{ target.name }}?</h1>'), [])
-
-    def test_maiusculas_no_titulo_do_bloco(self):
-        source = '{% extends "base.html" %}{% block title %}Cadastrar Usuário{% endblock %}'
-        self.assertEqual(len(self.violations(source)), 1)
-
-    def test_maiusculas_consideram_o_elemento_inteiro(self):
-        self.assertEqual(len(self.violations('<button><svg></svg> <span>Excluir Perfil</span></button>')), 1)
-        self.assertEqual(self.violations('<p>Leia o <strong>Manual</strong>.</p>'), [])
-
-    def test_atributos_visiveis(self):
-        self.assertEqual(len(self.violations('<button aria-label="Bloquear"></button>')), 1)
-        self.assertEqual(len(self.violations('<input placeholder="Informe o email">')), 1)
-        self.assertEqual(len(self.violations('<input type="submit" value="Salvar Dados">')), 1)
-        self.assertEqual(self.violations('<input type="email" name="email">'), [])
-        self.assertEqual(len(self.violations('<td data-label="Usuários Vinculados">1</td>')), 1)
-        self.assertEqual(self.violations('<td data-label="Usuários vinculados">1</td>'), [])
-
-    def test_template_txt_e_todo_visivel(self):
-        self.assertEqual(
-            self.violations('{% autoescape off %}Olá.\n\n{{ link }}{% endautoescape %}', 'message.txt'),
-            ['message.txt:1: "Olá." → "Olá". Sem saudação.'],
-        )
+    def test_o_que_e_texto_visivel(self):
+        with self.subTest('título do bloco'):
+            source = '{% extends "base.html" %}{% block title %}Cadastrar Usuário{% endblock %}'
+            self.assertEqual(len(self.violations(source)), 1)
+        with self.subTest('elemento inteiro'):
+            self.assertEqual(len(self.violations('<button><svg></svg> <span>Excluir Perfil</span></button>')), 1)
+            self.assertEqual(self.violations('<p>Leia o <strong>Manual</strong>.</p>'), [])
+        with self.subTest('atributos'):
+            self.assertEqual(len(self.violations('<button aria-label="Bloquear"></button>')), 1)
+            self.assertEqual(len(self.violations('<input placeholder="Informe o email">')), 1)
+            self.assertEqual(len(self.violations('<input type="submit" value="Salvar Dados">')), 1)
+            self.assertEqual(self.violations('<input type="email" name="email">'), [])
+            self.assertEqual(len(self.violations('<td data-label="Usuários Vinculados">1</td>')), 1)
+            self.assertEqual(self.violations('<td data-label="Usuários vinculados">1</td>'), [])
+        with self.subTest('template .txt'):
+            self.assertEqual(
+                self.violations('{% autoescape off %}Olá.\n\n{{ link }}{% endautoescape %}', 'message.txt'),
+                ['message.txt:1: "Olá." → "Olá". Sem saudação.'],
+            )
 
 
 class PythonExtractionTests(SimpleTestCase):
     def violations(self, source):
         return describe('views.py', python_fragments(source))
 
-    def test_mensagem_proibida_indica_modulo_e_linha(self):
-        source = (
-            'from django.contrib import messages\n'
-            '\n'
-            'def perform(request):\n'
-            '    messages.success(request, "Perfil criado com sucesso.")\n'
-        )
-        self.assertEqual(
-            self.violations(source),
-            ['views.py:4: "Perfil criado com sucesso." → "com sucesso". Sem "com sucesso". Informe o fato no particípio.'],
-        )
-
-    def test_docstring_nao_e_texto_exibido(self):
-        source = '"""Módulo simples."""\n\nclass A:\n    """Uma classe simples."""\n\n    def b(self):\n        """Simples."""\n'
-        self.assertEqual(self.violations(source), [])
-
-    def test_logger_nao_e_texto_exibido(self):
-        self.assertEqual(self.violations('logger.exception("Algo deu errado com %s.", email)\n'), [])
-
-    def test_fstring_e_chaves_sem_espaco(self):
-        self.assertEqual(len(self.violations('x = f"Usuário {email} bloqueado."\n')), 1)
-        self.assertEqual(self.violations('x = {"email": 1}\ny = f"Usuário {data[\'email\']} desativado."\n'), [])
+    def test_extracao_do_python(self):
+        with self.subTest('mensagem proibida'):
+            source = (
+                'from django.contrib import messages\n'
+                '\n'
+                'def perform(request):\n'
+                '    messages.success(request, "Perfil criado com sucesso.")\n'
+            )
+            self.assertEqual(
+                self.violations(source),
+                ['views.py:4: "Perfil criado com sucesso." → "com sucesso". Sem "com sucesso". Informe o fato no particípio.'],
+            )
+        with self.subTest('docstring'):
+            source = '"""Módulo simples."""\n\nclass A:\n    """Uma classe simples."""\n\n    def b(self):\n        """Simples."""\n'
+            self.assertEqual(self.violations(source), [])
+        with self.subTest('logger'):
+            self.assertEqual(self.violations('logger.exception("Algo deu errado com %s.", email)\n'), [])
+        with self.subTest('f-string'):
+            self.assertEqual(len(self.violations('x = f"Usuário {email} bloqueado."\n')), 1)
+            self.assertEqual(self.violations('x = {"email": 1}\ny = f"Usuário {data[\'email\']} desativado."\n'), [])
 
 
 @override_settings(SITE_URL='http://testserver')
-class RenderedPagesTextTests(TestCase):
+class RenderedPagesTextTests(IsolatedCasesMixin, TestCase):
     """Textos das telas renderizadas, sem a regra de maiúsculas, que vale só nos templates."""
 
     @classmethod
@@ -145,49 +141,49 @@ class RenderedPagesTextTests(TestCase):
         ])
         self.assertEqual(problems, [])
 
-    def test_telas_de_gestao(self):
-        self.client.force_login(self.admin)
-        for url in (
-            '/inicio/', '/usuarios/', '/usuarios/novo/',
-            f'/usuarios/{self.target.pk}/editar/', f'/usuarios/{self.target.pk}/perfil/',
-            f'/usuarios/{self.target.pk}/desativar/', f'/usuarios/{self.target.pk}/reativar/',
-            '/perfis/', '/perfis/novo/', f'/perfis/{self.role.pk}/', f'/perfis/{self.role.pk}/editar/',
-            f'/perfis/{self.role.pk}/permissoes/', f'/perfis/{self.role.pk}/excluir/',
-        ):
-            with self.subTest(url=url):
-                response = self.client.get(url, follow=True)
-                self.assertEqual(response.status_code, 200)
-                self.assertPageFollowsRules(response)
-        response = self.client.post('/usuarios/novo/', {'name': '', 'email': 'invalido', 'role': ''})
-        self.assertPageFollowsRules(response)
+    def test_telas_de_gestao_e_acesso_negado(self):
+        with self.case('gestão'):
+            self.client.force_login(self.admin)
+            for url in (
+                '/inicio/', '/usuarios/', '/usuarios/novo/',
+                f'/usuarios/{self.target.pk}/editar/', f'/usuarios/{self.target.pk}/perfil/',
+                f'/usuarios/{self.target.pk}/desativar/', f'/usuarios/{self.target.pk}/reativar/',
+                '/perfis/', '/perfis/novo/', f'/perfis/{self.role.pk}/', f'/perfis/{self.role.pk}/editar/',
+                f'/perfis/{self.role.pk}/permissoes/', f'/perfis/{self.role.pk}/excluir/',
+            ):
+                with self.subTest(url=url):
+                    response = self.client.get(url, follow=True)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertPageFollowsRules(response)
+            response = self.client.post('/usuarios/novo/', {'name': '', 'email': 'invalido', 'role': ''})
+            self.assertPageFollowsRules(response)
+        with self.case('acesso negado'):
+            self.client.force_login(self.target)
+            response = self.client.get('/usuarios/')
+            self.assertEqual(response.status_code, 403)
+            self.assertPageFollowsRules(response)
 
-    def test_pagina_de_acesso_negado(self):
-        self.client.force_login(self.target)
-        response = self.client.get('/usuarios/')
-        self.assertEqual(response.status_code, 403)
-        self.assertPageFollowsRules(response)
-
-    def test_telas_de_login_e_senha(self):
-        client = Client()
-        for url in ('/contas/login/', '/contas/senha/recuperar/', '/contas/senha/recuperar/enviado/',
-                    '/contas/senha/redefinir/concluido/', '/contas/senha/redefinir/1-invalido/'):
-            with self.subTest(url=url):
-                self.assertPageFollowsRules(client.get(url, follow=True))
-        self.assertPageFollowsRules(client.post('/contas/login/', {'login': 'invalido', 'password': 'x'}))
-        self.assertPageFollowsRules(client.post('/contas/login/', {'login': 'admin@ifnmg.edu.br', 'password': 'x'}))
-        self.assertPageFollowsRules(client.post('/contas/senha/recuperar/', {'email': 'invalido'}))
-        client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
-        call_command('process_outbox', '--once')
-        for number, line in enumerate(mail.outbox[0].body.splitlines(), start=1):
-            self.assertEqual(find_violations(line), [], f'Linha {number} do e-mail: {line}')
-        link = re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', mail.outbox[0].body).group(1)
-        response = client.get(link, follow=True)
-        self.assertPageFollowsRules(response)
-        response = client.post(response.request['PATH_INFO'], {'password1': 'Senha-forte-123', 'password2': 'Outra-senha-456'})
-        self.assertPageFollowsRules(response)
-        self.assertPageFollowsRules(client.post(response.request['PATH_INFO'], {'password1': '123', 'password2': '123'}))
-
-    def test_logout(self):
-        self.client.force_login(self.admin)
-        self.assertPageFollowsRules(self.client.get('/contas/logout/'))
-        self.assertPageFollowsRules(self.client.post('/contas/logout/', follow=True))
+    def test_telas_de_login_senha_e_saida(self):
+        with self.case('login e senha'):
+            client = Client()
+            for url in ('/contas/login/', '/contas/senha/recuperar/', '/contas/senha/recuperar/enviado/',
+                        '/contas/senha/redefinir/concluido/', '/contas/senha/redefinir/1-invalido/'):
+                with self.subTest(url=url):
+                    self.assertPageFollowsRules(client.get(url, follow=True))
+            self.assertPageFollowsRules(client.post('/contas/login/', {'login': 'invalido', 'password': 'x'}))
+            self.assertPageFollowsRules(client.post('/contas/login/', {'login': 'admin@ifnmg.edu.br', 'password': 'x'}))
+            self.assertPageFollowsRules(client.post('/contas/senha/recuperar/', {'email': 'invalido'}))
+            client.post('/contas/senha/recuperar/', {'email': 'maria@ifnmg.edu.br'})
+            call_command('process_outbox', '--once')
+            for number, line in enumerate(mail.outbox[0].body.splitlines(), start=1):
+                self.assertEqual(find_violations(line), [], f'Linha {number} do e-mail: {line}')
+            link = re.search(r'http://testserver(/contas/senha/redefinir/\S+/)', mail.outbox[0].body).group(1)
+            response = client.get(link, follow=True)
+            self.assertPageFollowsRules(response)
+            response = client.post(response.request['PATH_INFO'], {'password1': 'Senha-forte-123', 'password2': 'Outra-senha-456'})
+            self.assertPageFollowsRules(response)
+            self.assertPageFollowsRules(client.post(response.request['PATH_INFO'], {'password1': '123', 'password2': '123'}))
+        with self.case('saída'):
+            self.client.force_login(self.admin)
+            self.assertPageFollowsRules(self.client.get('/contas/logout/'))
+            self.assertPageFollowsRules(self.client.post('/contas/logout/', follow=True))

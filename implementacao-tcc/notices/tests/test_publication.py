@@ -1,4 +1,5 @@
 from django.test import TestCase
+from config.testing import IsolatedCasesMixin
 
 from accounts.models import Role, User
 from accounts.tests.roles import management_role, requester_role
@@ -9,7 +10,7 @@ from notices import catalog
 from notices.models import NoRecipients, Notification, NotPublishedManually
 
 
-class PublicationAuditTests(TestCase):
+class PublicationAuditTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.docente = requester_role()
@@ -32,52 +33,52 @@ class PublicationAuditTests(TestCase):
         return AuditLog.objects.filter(resource=audit_catalog.NOTICE)
 
     def test_publication_records_one_entry_with_the_reached_count(self):
-        notice = self.publish(catalog.ALL_USERS)
-        self.assertEqual(notice.recipients_count, 3)
-        self.assertEqual(notice.published_by, None)
-        self.assertEqual(self.records().count(), 1)
-        record = self.records().get()
-        self.assertEqual(record.action, audit_catalog.PUBLISH)
-        self.assertEqual(record.user, self.ana)
-        self.assertEqual(record.origin, audit_catalog.INTERFACE)
-        self.assertEqual(record.metadata['destinatarios'], 3)
-        self.assertEqual(record.resource_id, str(notice.pk))
-        self.assertEqual(record.metadata['destino'], catalog.ALL_USERS)
-        self.assertEqual(record.metadata['tipo'], catalog.INFORMATION)
-        self.assertEqual(record.metadata['titulo'], 'Nova versão do sistema')
-
-    def test_recipients_are_resolved_at_the_publication(self):
-        self.bruno.deactivate()
-        self.assertEqual(self.publish(catalog.ROLE, role=self.docente).recipients_count, 1)
-        self.assertEqual(self.records().get().metadata['destinatarios'], 1)
+        with self.case('registro com o alcance'):
+            notice = self.publish(catalog.ALL_USERS)
+            self.assertEqual(notice.recipients_count, 3)
+            self.assertEqual(notice.published_by, None)
+            self.assertEqual(self.records().count(), 1)
+            record = self.records().get()
+            self.assertEqual(record.action, audit_catalog.PUBLISH)
+            self.assertEqual(record.user, self.ana)
+            self.assertEqual(record.origin, audit_catalog.INTERFACE)
+            self.assertEqual(record.metadata['destinatarios'], 3)
+            self.assertEqual(record.resource_id, str(notice.pk))
+            self.assertEqual(record.metadata['destino'], catalog.ALL_USERS)
+            self.assertEqual(record.metadata['tipo'], catalog.INFORMATION)
+            self.assertEqual(record.metadata['titulo'], 'Nova versão do sistema')
+        with self.case('destinatários na publicação'):
+            self.bruno.deactivate()
+            self.assertEqual(self.publish(catalog.ROLE, role=self.docente).recipients_count, 1)
+            self.assertEqual(self.records().get().metadata['destinatarios'], 1)
 
     def test_refused_publication_records_nothing(self):
-        vazio = Role.objects.create_role('COORDENACAO', 'Coordenação')
-        with self.assertRaises(NoRecipients):
-            self.publish(catalog.ROLE, role=vazio)
-        self.assertEqual(self.records().count(), 0)
-        self.assertEqual(Notification.objects.count(), 0)
+        with self.case('publicação recusada'):
+            vazio = Role.objects.create_role('COORDENACAO', 'Coordenação')
+            with self.assertRaises(NoRecipients):
+                self.publish(catalog.ROLE, role=vazio)
+            self.assertEqual(self.records().count(), 0)
+            self.assertEqual(Notification.objects.count(), 0)
+        with self.case('tipo não manual'):
+            with acting_as(Actor(user=self.ana, origin=audit_catalog.INTERFACE)):
+                with self.assertRaises(NotPublishedManually):
+                    Notification.objects.publish_manually(
+                        catalog.ROLE_CHANGED,
+                        'Perfil alterado',
+                        'Mensagem.',
+                        catalog.ALL_USERS,
+                    )
+            self.assertEqual(self.records().count(), 0)
+            self.assertEqual(Notification.objects.count(), 0)
 
-    def test_type_not_published_manually_is_refused(self):
-        with acting_as(Actor(user=self.ana, origin=audit_catalog.INTERFACE)):
-            with self.assertRaises(NotPublishedManually):
-                Notification.objects.publish_manually(
-                    catalog.ROLE_CHANGED,
-                    'Perfil alterado',
-                    'Mensagem.',
-                    catalog.ALL_USERS,
-                )
-        self.assertEqual(self.records().count(), 0)
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_delivery_without_publication_records_nothing(self):
-        before = AuditLog.objects.count()
-        Notification.objects.notify(self.bruno, catalog.ROLE_CHANGED, 'Perfil alterado', 'Mensagem.')
-        self.assertEqual(AuditLog.objects.count(), before)
-
-    def test_reading_is_not_audited(self):
-        self.publish(catalog.ALL_USERS)
-        before = AuditLog.objects.count()
-        Notification.objects.for_user(self.bruno).first().mark_as_read()
-        Notification.objects.mark_all_as_read(self.carla)
-        self.assertEqual(AuditLog.objects.count(), before)
+    def test_delivery_and_reading_are_not_audited(self):
+        with self.case('entrega'):
+            before = AuditLog.objects.count()
+            Notification.objects.notify(self.bruno, catalog.ROLE_CHANGED, 'Perfil alterado', 'Mensagem.')
+            self.assertEqual(AuditLog.objects.count(), before)
+        with self.case('leitura'):
+            self.publish(catalog.ALL_USERS)
+            before = AuditLog.objects.count()
+            Notification.objects.for_user(self.bruno).first().mark_as_read()
+            Notification.objects.mark_all_as_read(self.carla)
+            self.assertEqual(AuditLog.objects.count(), before)

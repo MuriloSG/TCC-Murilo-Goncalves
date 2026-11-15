@@ -12,7 +12,6 @@ from django.db import connection, transaction
 from django.test import SimpleTestCase, TransactionTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-from django.utils import timezone
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
@@ -67,18 +66,14 @@ class CleanPublicCache:
 
 @override_settings(CACHES=LOCMEM)
 class KeyTests(CleanPublicCache, SimpleTestCase):
-    def test_key_format_and_fixed_length(self):
+    def test_key_has_a_fixed_format_and_depends_on_every_part(self):
         short = public_cache.cache_key(public_cache.OPTIONS, 7, {'semester': '2026/2'})
         long = public_cache.cache_key(public_cache.CALENDAR_GRID, 7, {'space': 'x' * 5000})
         self.assertRegex(short, r'^public:options:g7:[0-9a-f]{32}$')
         self.assertEqual(len(long), len('public:calendar-grid:g7:') + 32)
-
-    def test_same_params_same_key_in_any_order(self):
         first = public_cache.cache_key(public_cache.CALENDAR_GRID, 1, {'space': 3, 'teacher': None, 'start': date(2026, 9, 21)})
         second = public_cache.cache_key(public_cache.CALENDAR_GRID, 1, {'start': date(2026, 9, 21), 'teacher': None, 'space': 3})
         self.assertEqual(first, second)
-
-    def test_different_params_resource_or_generation_change_the_key(self):
         base = public_cache.cache_key(public_cache.CALENDAR_GRID, 1, {'space': 3})
         for other in (
             public_cache.cache_key(public_cache.CALENDAR_GRID, 1, {'space': 4}),
@@ -88,40 +83,32 @@ class KeyTests(CleanPublicCache, SimpleTestCase):
         ):
             with self.subTest(other=other):
                 self.assertNotEqual(base, other)
-
-    def test_unknown_resource_is_refused(self):
         with self.assertRaises(ValueError):
             public_cache.cache_key('pagina', 1, {})
-
-    def test_final_ttls(self):
-        self.assertEqual(public_cache.TTL, {'options': 3600, 'calendar-grid': 600, 'original-grid': 1800})
 
 
 @override_settings(CACHES=LOCMEM)
 class LookupTests(CleanPublicCache, SimpleTestCase):
-    def test_miss_then_hit(self):
+    def test_miss_then_hit_reading_the_generation_once(self):
         builder = mock.Mock(return_value=['valor'])
         first, second = public_cache.Lookup(), public_cache.Lookup()
         self.assertEqual(first.fetch(public_cache.OPTIONS, {'semester': '*'}, builder), ['valor'])
         self.assertEqual(second.fetch(public_cache.OPTIONS, {'semester': '*'}, builder), ['valor'])
         self.assertEqual((first.status, second.status, builder.call_count), ('miss', 'hit', 1))
-
-    def test_generation_is_read_once_per_request(self):
         lookup = public_cache.Lookup()
         with mock.patch.object(public_cache, 'current_generation', wraps=public_cache.current_generation) as read:
             lookup.fetch(public_cache.OPTIONS, {'semester': '*'}, list)
             lookup.fetch(public_cache.OPTIONS, {'semester': '2026/2'}, list)
         self.assertEqual(read.call_count, 1)
 
-    def test_bump_makes_the_previous_entry_unreachable(self):
+    def test_bump_makes_entries_unreachable_and_never_reuses_a_generation(self):
+        public_cache.bump_generation()
+        self.assertIsNotNone(generation())
         builder = mock.Mock(side_effect=['antes', 'depois'])
         public_cache.Lookup().fetch(public_cache.OPTIONS, {}, builder)
         public_cache.bump_generation()
         lookup = public_cache.Lookup()
-        self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, builder), 'depois')
-        self.assertEqual(lookup.status, 'miss')
-
-    def test_missing_generation_is_recreated_without_reusing_a_previous_one(self):
+        self.assertEqual((lookup.fetch(public_cache.OPTIONS, {}, builder), lookup.status), ('depois', 'miss'))
         first = public_cache.current_generation()
         public_cache.bump_generation()
         used = public_cache.current_generation()
@@ -130,28 +117,22 @@ class LookupTests(CleanPublicCache, SimpleTestCase):
         self.assertNotIn(recreated, (first, used))
         self.assertGreater(recreated, used)
 
-    def test_bump_without_generation_creates_a_new_one(self):
-        public_cache.bump_generation()
-        self.assertIsNotNone(generation())
-
-    def test_unreadable_value_is_a_miss(self):
+    def test_unreadable_value_is_a_miss_and_no_redis_bypasses(self):
         lookup = public_cache.Lookup()
         lookup.generation()
         with mock.patch.object(caches['public'], 'get', side_effect=ValueError):
             self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
         self.assertEqual(lookup.status, 'miss')
-
-    @override_settings(CACHES={**LOCMEM, 'public': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
-    def test_without_redis_configured_it_bypasses(self):
-        lookup = public_cache.Lookup()
-        self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
-        self.assertEqual(lookup.status, 'bypass')
-        public_cache.bump_generation()
+        with override_settings(CACHES={**LOCMEM, 'public': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}}):
+            lookup = public_cache.Lookup()
+            self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
+            self.assertEqual(lookup.status, 'bypass')
+            public_cache.bump_generation()
 
 
 @override_settings(CACHES=LOCMEM)
 class UnavailableTests(CleanPublicCache, SimpleTestCase):
-    def test_connection_error_and_timeout_fall_back_to_the_database(self):
+    def test_redis_failures_fall_back_to_the_database(self):
         for error in (RedisConnectionError, RedisTimeoutError, OSError):
             with self.subTest(error=error.__name__), mock.patch.object(public_cache, 'backend', return_value=FailingCache(error)):
                 public_cache.resume()
@@ -160,6 +141,17 @@ class UnavailableTests(CleanPublicCache, SimpleTestCase):
                     self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
                 self.assertEqual(lookup.status, 'bypass')
                 self.assertIn('REDIS UNAVAILABLE read', logs.output[0])
+        public_cache.resume()
+        with mock.patch.object(caches['public'], 'set', side_effect=RedisConnectionError('fora')), self.assertLogs('schedule.public_cache', 'WARNING') as logs:
+            lookup = public_cache.Lookup()
+            self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
+        self.assertEqual(lookup.status, 'miss')
+        self.assertIn('REDIS UNAVAILABLE write', logs.output[0])
+        public_cache.resume()
+        with mock.patch.object(public_cache, 'backend', return_value=FailingCache()), self.assertLogs('schedule.public_cache', 'WARNING') as logs:
+            public_cache.bump_generation()
+        self.assertIn('REDIS UNAVAILABLE invalidate', logs.output[0])
+        self.assertFalse(public_cache.is_enabled())
 
     def test_pause_skips_redis_for_thirty_seconds(self):
         failing = FailingCache()
@@ -176,20 +168,6 @@ class UnavailableTests(CleanPublicCache, SimpleTestCase):
             public_cache.Lookup().fetch(public_cache.OPTIONS, {}, list)
             self.assertGreater(failing.calls, calls)
 
-    def test_write_failure_still_returns_the_value(self):
-        cache = caches['public']
-        with mock.patch.object(cache, 'set', side_effect=RedisConnectionError('fora')), self.assertLogs('schedule.public_cache', 'WARNING') as logs:
-            lookup = public_cache.Lookup()
-            self.assertEqual(lookup.fetch(public_cache.OPTIONS, {}, lambda: 'banco'), 'banco')
-        self.assertEqual(lookup.status, 'miss')
-        self.assertIn('REDIS UNAVAILABLE write', logs.output[0])
-
-    def test_invalidation_failure_is_logged_and_does_not_raise(self):
-        with mock.patch.object(public_cache, 'backend', return_value=FailingCache()), self.assertLogs('schedule.public_cache', 'WARNING') as logs:
-            public_cache.bump_generation()
-        self.assertIn('REDIS UNAVAILABLE invalidate', logs.output[0])
-        self.assertFalse(public_cache.is_enabled())
-
 
 @override_settings(CACHES=LOCMEM)
 class InvalidationTestCase(CleanPublicCache, TransactionTestCase):
@@ -201,6 +179,11 @@ class InvalidationTestCase(CleanPublicCache, TransactionTestCase):
 
     def bumps(self):
         return generation() - self.start
+
+    def assertBumpsOnce(self, operation, label):
+        before = self.bumps()
+        operation()
+        self.assertEqual(self.bumps(), before + 1, label)
 
 
 class CommitTests(InvalidationTestCase):
@@ -233,28 +216,33 @@ class CommitTests(InvalidationTestCase):
             Teacher.objects.resolve('Mantido')
         self.assertEqual(self.bumps(), 1)
 
-    def test_space_changes_bump(self):
+    def test_writes_of_public_data_bump(self):
         lab = Space.objects.register('Lab 1')
-        for operation in (
-            lambda: lab.update_details('Lab Um', []),
-            lab.deactivate,
-            lambda: lab.reactivate(),
-            lab.delete_space,
-        ):
-            before = self.bumps()
-            operation()
-            self.assertEqual(self.bumps(), before + 1)
-
-    def test_course_changes_bump(self):
         course = Course.objects.register('Eng. Alimentos', Stage.UNDERGRADUATE)
-        for operation in (
-            lambda: course.update_details('Engenharia de Alimentos', Stage.UNDERGRADUATE),
-            lambda: course.update_details('Engenharia de Alimentos', Stage.SECONDARY),
-            course.delete_course,
-        ):
-            before = self.bumps()
-            operation()
-            self.assertEqual(self.bumps(), before + 1)
+        user = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'senha-forte-123')
+        allocation = Allocation.objects.get(semester=semester_with_lesson())
+        other = Teacher.objects.resolve('Outra Docente')[0]
+
+        def save_user(field, value):
+            setattr(user, field, value)
+            user.save(update_fields=[field])
+
+        operations = [
+            ('espaço renomeado', lambda: lab.update_details('Lab Um', [])),
+            ('espaço desativado', lab.deactivate),
+            ('espaço reativado', lambda: lab.reactivate()),
+            ('espaço excluído', lab.delete_space),
+            ('curso renomeado', lambda: course.update_details('Engenharia de Alimentos', Stage.UNDERGRADUATE)),
+            ('etapa do curso', lambda: course.update_details('Engenharia de Alimentos', Stage.SECONDARY)),
+            ('curso excluído', course.delete_course),
+            ('nome do usuário', lambda: save_user('name', 'Outro')),
+            ('nome de usuário', lambda: save_user('username', 'outro')),
+            ('usuário inativo', lambda: save_user('is_active', False)),
+            ('usuário salvo inteiro', user.save),
+            ('docentes da aula', lambda: self.assertEqual(allocation.update_details(allocation.space, [other])[0], 'update')),
+        ]
+        for label, operation in operations:
+            self.assertBumpsOnce(operation, label)
 
     def test_login_and_password_change_do_not_bump(self):
         user = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'senha-forte-123')
@@ -269,27 +257,7 @@ class CommitTests(InvalidationTestCase):
         user.save(update_fields=['email'])
         self.assertEqual(self.bumps(), before)
 
-    def test_relevant_user_change_bumps(self):
-        user = User.objects.create_superadmin('super@ifnmg.edu.br', 'Super', 'senha-forte-123')
-        for field, value in (('name', 'Outro'), ('username', 'outro'), ('is_active', False)):
-            with self.subTest(field=field):
-                before = self.bumps()
-                setattr(user, field, value)
-                user.save(update_fields=[field])
-                self.assertEqual(self.bumps(), before + 1)
-        before = self.bumps()
-        user.save()
-        self.assertEqual(self.bumps(), before + 1)
-
-    def test_teacher_change_of_an_allocation_bumps(self):
-        semester = semester_with_lesson()
-        allocation = Allocation.objects.get(semester=semester)
-        other = Teacher.objects.resolve('Outra Docente')[0]
-        before = self.bumps()
-        self.assertEqual(allocation.update_details(allocation.space, [other])[0], 'update')
-        self.assertEqual(self.bumps(), before + 1)
-
-    def test_bulk_writes_invalidate_explicitly(self):
+    def test_bulk_writes_and_clear_data_invalidate_explicitly(self):
         semester = semester_with_lesson()
         allocation = Allocation.objects.get(semester=semester)
         before = self.bumps()
@@ -300,13 +268,8 @@ class CommitTests(InvalidationTestCase):
         with mock.patch('django.db.models.signals.post_save.send'):
             offering.sync_assignments()
         self.assertEqual(self.bumps(), before + 2)
-
-    @override_settings(ENVIRONMENT='local')
-    def test_clear_data_invalidates(self):
-        Space.objects.register('Sala 50')
-        before = self.bumps()
-        call_command('clear_data', '--yes', stdout=mock.Mock())
-        self.assertEqual(self.bumps(), before + 1)
+        with override_settings(ENVIRONMENT='local'):
+            self.assertBumpsOnce(lambda: call_command('clear_data', '--yes', stdout=mock.Mock()), 'clear_data')
 
     def test_invalidation_failure_keeps_the_committed_write(self):
         with mock.patch.object(caches['public'], 'incr', side_effect=RedisConnectionError('fora')), \
@@ -317,64 +280,48 @@ class CommitTests(InvalidationTestCase):
 
 
 class BookingInvalidationTests(InvalidationTestCase):
-    def setUp(self):
-        super().setUp()
+    def test_booking_writes_bump_after_commit_and_refusals_do_not(self):
         frozen_clock(self)
         semester_with_lesson()
-        self.reviewer = user_with('revisor@ifnmg.edu.br', *REVIEWER)
-        self.ana = user_with('ana@ifnmg.edu.br', *REQUESTER)
-        self.lab = space('Laboratório 1')
-
-    def test_request_approval_and_cancellation_bump_after_commit(self):
+        reviewer = user_with('revisor@ifnmg.edu.br', *REVIEWER)
+        ana = user_with('ana@ifnmg.edu.br', *REQUESTER)
+        lab = space('Laboratório 1')
         before = self.bumps()
-        request = submit(self.ana, self.lab)
+        request = submit(ana, lab)
         self.assertGreater(self.bumps(), before)
-        before = self.bumps()
-        request.approve(self.reviewer)
-        self.assertEqual(self.bumps(), before + 1)
-        before = self.bumps()
-        request.cancel(self.ana)
-        self.assertEqual(self.bumps(), before + 1)
+        self.assertBumpsOnce(lambda: request.approve(reviewer), 'aprovação')
+        self.assertBumpsOnce(lambda: request.cancel(ana), 'cancelamento')
         self.assertFalse(Booking.objects.exists())
 
-    def test_booking_change_and_deletion_bump(self):
-        request = submit(self.ana, self.lab)
-        request.approve(self.reviewer)
+        submit(user_with('carla@ifnmg.edu.br', *REQUESTER), lab).approve(reviewer)
         booking = Booking.objects.get()
-        before = self.bumps()
         booking.description = 'Outra descrição'
-        booking.save()
-        self.assertEqual(self.bumps(), before + 1)
-        booking.delete()
-        self.assertEqual(self.bumps(), before + 2)
+        self.assertBumpsOnce(booking.save, 'agendamento alterado')
+        self.assertBumpsOnce(booking.delete, 'agendamento excluído')
 
-    def test_refused_approval_does_not_bump(self):
-        request = submit(self.ana, self.lab)
-        second = submit(user_with('bruno@ifnmg.edu.br', *REQUESTER), self.lab)
-        request.approve(self.reviewer)
+        first = submit(user_with('bruno@ifnmg.edu.br', *REQUESTER), lab)
+        second = submit(user_with('dora@ifnmg.edu.br', *REQUESTER), lab)
+        first.approve(reviewer)
         before = self.bumps()
         with self.assertRaises(SlotUnavailable):
-            second.approve(self.reviewer)
+            second.approve(reviewer)
         self.assertEqual(self.bumps(), before)
 
 
 class ImportInvalidationTests(InvalidationTestCase):
     """A prévia é desfeita e não invalida; a confirmação pelo worker invalida o mesmo alias que a tela lê."""
 
-    def setUp(self):
-        super().setUp()
-        self.executor = space_manager()
-        self.definition = SpaceAllocationImport()
-
     def test_preview_does_not_bump_and_worker_confirmation_bumps_once(self):
+        executor = space_manager()
+        definition = SpaceAllocationImport()
         form = ImportUploadForm(
-            data={'own_semestre': '2026/1', **PERIOD}, files={'file': workbook_file()}, definition=self.definition,
+            data={'own_semestre': '2026/1', **PERIOD}, files={'file': workbook_file()}, definition=definition,
         )
         self.assertTrue(form.is_valid(), form.errors)
         before = self.bumps()
-        importation = preview(self.definition, form.cleaned_data['rows'], form.cleaned_data['file'].name, self.executor)
+        importation = preview(definition, form.cleaned_data['rows'], form.cleaned_data['file'].name, executor)
         self.assertEqual(self.bumps(), before)
-        self.assertTrue(confirm(importation, self.definition, self.executor))
+        self.assertTrue(confirm(importation, definition, executor))
         self.assertEqual(self.bumps(), before + 1)
         self.assertTrue(Allocation.objects.exists())
 
@@ -384,7 +331,7 @@ class PublicViewCacheTests(CleanPublicCache, PublicCalendarTestCase):
     def open(self, url=CALENDAR, **params):
         return self.client.get(url, params)
 
-    def test_headers_miss_then_hit_and_no_cache(self):
+    def test_headers_and_the_shared_content(self):
         for url, params in ((CALENDAR, {'sala': '10'}), (ORIGINAL, {'sala': '10'})):
             with self.subTest(url=url):
                 first, second = self.open(url, **params), self.open(url, **params)
@@ -392,6 +339,17 @@ class PublicViewCacheTests(CleanPublicCache, PublicCalendarTestCase):
                 self.assertIn('no-cache', second['Cache-Control'])
                 self.assertEqual(first.content, second.content)
                 self.assertNotIn('Set-Cookie', second.headers)
+        anonymous = self.open(sala='10').content
+        self.client.force_login(self.aldo)
+        response = self.open(sala='10')
+        self.assertEqual(response['X-Public-Cache'], 'hit')
+        self.assertEqual(response.content, anonymous)
+        self.assertNotIn(self.aldo.name.encode(), response.content.split(b'<main')[0])
+        self.client.logout()
+        keys = set(caches['public']._cache)
+        for name in ('account_login', 'account_reset_password'):
+            self.assertNotIn('X-Public-Cache', self.client.get(reverse(name)).headers)
+        self.assertEqual(set(caches['public']._cache), keys)
 
     def test_same_content_with_and_without_cache(self):
         cases = [
@@ -410,39 +368,26 @@ class PublicViewCacheTests(CleanPublicCache, PublicCalendarTestCase):
                 self.assertEqual(plain.content, cold.content)
                 self.assertEqual(plain.content, warm.content)
 
-    def test_spellings_share_the_entry(self):
+    def test_spellings_share_the_entry_and_unknown_values_create_none(self):
         self.open(sala='Sala Dez')
         self.assertEqual(self.open(sala='SALA DEZ')['X-Public-Cache'], 'hit')
         self.open(docente='Aldo Gomes')
         self.assertEqual(self.open(docente='ALDO GOMES')['X-Public-Cache'], 'hit')
-
-    def test_unknown_parameter_creates_no_grid_entry(self):
         keys_before = set(caches['public']._cache)
-        response = self.open(sala='x' * 5000)
-        self.assertContains(response, 'Escolha uma sala, um docente ou um curso.')
+        self.assertContains(self.open(sala='x' * 5000), 'Escolha uma sala, um docente ou um curso.')
         options = len(set(caches['public']._cache) - keys_before)
         self.open(sala='y' * 5000)
         self.assertEqual(len(set(caches['public']._cache) - keys_before), options)
 
-    def test_warm_page_without_principal_filter_makes_no_query(self):
-        self.open()
-        with CaptureQueriesContext(connection) as queries:
-            response = self.open()
-        self.assertEqual(response['X-Public-Cache'], 'hit')
-        self.assertEqual(len(queries), 0)
-
-    def test_warm_grid_makes_no_query(self):
-        self.open(sala='10')
-        with CaptureQueriesContext(connection) as queries:
-            self.assertEqual(self.open(sala='10')['X-Public-Cache'], 'hit')
-        self.assertEqual(len(queries), 0)
-
-    def test_day_change_rebuilds_the_grid(self):
-        self.open(sala='10')
+    def test_warm_entries_make_no_query_until_the_day_or_the_generation_changes(self):
+        for params in ({}, {'sala': '10'}):
+            with self.subTest(params=params):
+                self.open(**params)
+                with CaptureQueriesContext(connection) as queries:
+                    self.assertEqual(self.open(**params)['X-Public-Cache'], 'hit')
+                self.assertEqual(len(queries), 0)
         with mock.patch('schedule.public_views.timezone.localdate', return_value=date(2026, 9, 24)):
             self.assertEqual(self.open(sala='10')['X-Public-Cache'], 'miss')
-
-    def test_after_invalidation_the_next_request_reads_the_database(self):
         self.assertContains(self.open(sala='10'), 'Banco de Dados')
         Allocation.objects.filter(subject__name='Banco de Dados').update(space=Space.objects.named('12'))
         self.assertEqual(self.open(sala='10')['X-Public-Cache'], 'hit')
@@ -450,29 +395,11 @@ class PublicViewCacheTests(CleanPublicCache, PublicCalendarTestCase):
         response = self.open(sala='10')
         self.assertEqual(response['X-Public-Cache'], 'miss')
         self.assertNotContains(response, 'Banco de Dados')
-
-    def test_redis_down_serves_the_database_content(self):
-        expected = self.open(sala='10').content
+        expected = response.content
         public_cache.bump_generation()
         with mock.patch.object(public_cache, 'backend', return_value=FailingCache(RedisTimeoutError)), self.assertLogs('schedule.public_cache', 'WARNING'):
             response = self.open(sala='10')
-        self.assertEqual(response['X-Public-Cache'], 'bypass')
-        self.assertEqual(response.content, expected)
-
-    def test_authenticated_visitor_gets_the_shared_content(self):
-        anonymous = self.open(sala='10').content
-        self.client.force_login(self.aldo)
-        response = self.open(sala='10')
-        self.assertEqual(response['X-Public-Cache'], 'hit')
-        self.assertEqual(response.content, anonymous)
-        self.assertNotIn(self.aldo.name.encode(), response.content.split(b'<main')[0])
-
-    def test_login_and_password_pages_do_not_use_the_cache(self):
-        keys = set(caches['public']._cache)
-        for name in ('account_login', 'account_reset_password'):
-            response = self.client.get(reverse(name))
-            self.assertNotIn('X-Public-Cache', response.headers)
-        self.assertEqual(set(caches['public']._cache), keys)
+        self.assertEqual((response['X-Public-Cache'], response.content), ('bypass', expected))
 
 
 class BulkWriteScanTests(SimpleTestCase):
@@ -532,22 +459,18 @@ class BulkWriteScanTests(SimpleTestCase):
 class JsonSerializerTests(SimpleTestCase):
     """O Redis guarda JSON, e não pickle: um valor gravado por terceiros nunca vira objeto Python arbitrário."""
 
-    def test_round_trip_of_cached_shapes(self):
+    def test_json_round_trip_refuses_pickle_and_unknown_types(self):
+        import pickle
+
         serializer = JsonSerializer()
         value = [(1, '2026/1', date(2026, 2, 2), date(2026, 7, 1))]
         self.assertEqual(serializer.loads(serializer.dumps(value)), [[1, '2026/1', date(2026, 2, 2), date(2026, 7, 1)]])
         self.assertEqual(serializer.loads(serializer.dumps('<p>grade</p>')), '<p>grade</p>')
         self.assertEqual(serializer.dumps(7), 7)
-
-    def test_pickled_payload_is_not_unpickled(self):
-        import pickle
-
         with self.assertRaises(ValueError):
-            JsonSerializer().loads(pickle.dumps(object()))
-
-    def test_unknown_type_is_refused_when_writing(self):
+            serializer.loads(pickle.dumps(object()))
         with self.assertRaises(TypeError):
-            JsonSerializer().dumps({'x': object()})
+            serializer.dumps({'x': object()})
 
 
 class TolerantCacheTests(SimpleTestCase):

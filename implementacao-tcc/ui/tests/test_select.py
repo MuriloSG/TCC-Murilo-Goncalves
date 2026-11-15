@@ -21,20 +21,19 @@ class SelectComponentTests(TestCase):
         return self.client.get(url).content.decode()
 
     def test_component_wraps_the_native_select(self):
-        content = self.content()
-        self.assertIn('<div class="select" data-select>', content)
-        self.assertIn('<div class="select-native select-wrap"><select name="role"', content)
-
-    def test_trigger_and_panel_start_hidden_for_the_no_javascript_case(self):
-        content = self.content()
-        self.assertIn('id="id_role_gatilho" aria-haspopup="listbox" aria-expanded="false"', content)
-        self.assertIn('hidden data-select-trigger', content)
-        self.assertIn('hidden data-select-panel', content)
-
-    def test_label_is_associated_with_the_trigger(self):
-        content = self.content()
-        self.assertIn('<label id="id_role_rotulo" for="id_role">Perfil</label>', content)
-        self.assertIn('aria-labelledby="id_role_rotulo id_role_gatilho"', content)
+        with self.subTest('envolve o select'):
+            content = self.content()
+            self.assertIn('<div class="select" data-select>', content)
+            self.assertIn('<div class="select-native select-wrap"><select name="role"', content)
+        with self.subTest('oculto sem JavaScript'):
+            content = self.content()
+            self.assertIn('id="id_role_gatilho" aria-haspopup="listbox" aria-expanded="false"', content)
+            self.assertIn('hidden data-select-trigger', content)
+            self.assertIn('hidden data-select-panel', content)
+        with self.subTest('rótulo associado'):
+            content = self.content()
+            self.assertIn('<label id="id_role_rotulo" for="id_role">Perfil</label>', content)
+            self.assertIn('aria-labelledby="id_role_rotulo id_role_gatilho"', content)
 
     def test_every_choice_field_of_the_project_uses_the_component(self):
         for url in ('/usuarios/novo/', '/usuarios/', '/auditoria/', '/relatorios/mapa-de-calor/', '/relatorios/solicitacoes/'):

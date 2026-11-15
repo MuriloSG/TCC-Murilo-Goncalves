@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection
 from django.test import TestCase, override_settings
+from config.testing import IsolatedCasesMixin
 
 from audit.models import AuditLog
 from system_settings.models import SystemSetting
@@ -16,64 +17,57 @@ VALID = {
 }
 
 
-class SaveSmtpTests(TestCase):
+class SaveSmtpTests(IsolatedCasesMixin, TestCase):
     def test_creates_and_updates_a_single_setting(self):
         SystemSetting.objects.save_smtp(**VALID)
         SystemSetting.objects.save_smtp(**(VALID | {'host': 'smtp2.ifnmg.edu.br'}))
         self.assertEqual(SystemSetting.objects.count(), 1)
         self.assertEqual(SystemSetting.objects.smtp().host, 'smtp2.ifnmg.edu.br')
 
-    def test_database_refuses_duplicate_kind(self):
-        configure_smtp()
-        with self.assertRaises(IntegrityError):
-            SystemSetting.objects.create(kind='smtp', value={})
-
     def test_invalid_data_is_refused_without_saving(self):
-        cases = {
-            'host': {'host': '  '},
-            'port': {'port': 70000},
-            'from_email': {'from_email': 'agenda'},
-            'password': {'password': ''},
-            'security': {'security': 'NENHUMA'},
-        }
-        for field, values in cases.items():
-            with self.subTest(field):
-                with self.assertRaises(ValidationError) as raised:
-                    SystemSetting.objects.save_smtp(**(VALID | values))
-                self.assertIn(field, raised.exception.message_dict)
-        self.assertFalse(SystemSetting.objects.exists())
+        with self.case('dados inválidos'):
+            cases = {
+                'host': {'host': '  '},
+                'port': {'port': 70000},
+                'from_email': {'from_email': 'agenda'},
+                'password': {'password': ''},
+                'security': {'security': 'NENHUMA'},
+            }
+            for field, values in cases.items():
+                with self.subTest(field):
+                    with self.assertRaises(ValidationError) as raised:
+                        SystemSetting.objects.save_smtp(**(VALID | values))
+                    self.assertIn(field, raised.exception.message_dict)
+            self.assertFalse(SystemSetting.objects.exists())
+        with self.case('senha sem usuário'):
+            with self.assertRaises(ValidationError) as raised:
+                smtp_settings(username='').validate()
+            self.assertIn('username', raised.exception.message_dict)
+        with self.case('relay sem credenciais aceito'):
+            SystemSetting.objects.save_smtp(**(VALID | {'username': '', 'password': '', 'security': 'NENHUMA', 'port': 25}))
+            self.assertEqual(SystemSetting.objects.smtp().password, '')
 
-    def test_password_without_user_is_refused(self):
-        with self.assertRaises(ValidationError) as raised:
-            smtp_settings(username='').validate()
-        self.assertIn('username', raised.exception.message_dict)
-
-    def test_relay_without_credentials_is_accepted(self):
-        SystemSetting.objects.save_smtp(**(VALID | {'username': '', 'password': '', 'security': 'NENHUMA', 'port': 25}))
-        self.assertEqual(SystemSetting.objects.smtp().password, '')
-
-    def test_blank_password_keeps_the_stored_one_for_the_same_destination(self):
-        SystemSetting.objects.save_smtp(**VALID)
-        SystemSetting.objects.save_smtp(**(VALID | {'from_email': 'outro@ifnmg.edu.br', 'password': ''}))
-        smtp = SystemSetting.objects.smtp()
-        self.assertEqual((smtp.from_email, smtp.password), ('outro@ifnmg.edu.br', SMTP_PASSWORD))
-
-    def test_blank_password_is_refused_for_a_new_destination(self):
-        SystemSetting.objects.save_smtp(**VALID)
-        for values in (
-            {'host': 'smtp.externo.example'}, {'port': 465, 'security': 'SSL'}, {'username': 'outro.usuario'},
-        ):
-            with self.subTest(values=values):
-                with self.assertRaises(ValidationError) as caught:
-                    SystemSetting.objects.save_smtp(**(VALID | values | {'password': ''}))
-                self.assertIn('password', caught.exception.error_dict)
-        smtp = SystemSetting.objects.smtp()
-        self.assertEqual((smtp.host, smtp.username, smtp.password), (VALID['host'], VALID['username'], SMTP_PASSWORD))
-
-    def test_removing_the_user_drops_the_password(self):
-        SystemSetting.objects.save_smtp(**VALID)
-        SystemSetting.objects.save_smtp(**(VALID | {'username': '', 'password': ''}))
-        self.assertEqual(SystemSetting.objects.get().value['password'], '')
+    def test_stored_password_rules(self):
+        with self.case('em branco mantém'):
+            SystemSetting.objects.save_smtp(**VALID)
+            SystemSetting.objects.save_smtp(**(VALID | {'from_email': 'outro@ifnmg.edu.br', 'password': ''}))
+            smtp = SystemSetting.objects.smtp()
+            self.assertEqual((smtp.from_email, smtp.password), ('outro@ifnmg.edu.br', SMTP_PASSWORD))
+        with self.case('em branco recusada para destino novo'):
+            SystemSetting.objects.save_smtp(**VALID)
+            for values in (
+                {'host': 'smtp.externo.example'}, {'port': 465, 'security': 'SSL'}, {'username': 'outro.usuario'},
+            ):
+                with self.subTest(values=values):
+                    with self.assertRaises(ValidationError) as caught:
+                        SystemSetting.objects.save_smtp(**(VALID | values | {'password': ''}))
+                    self.assertIn('password', caught.exception.error_dict)
+            smtp = SystemSetting.objects.smtp()
+            self.assertEqual((smtp.host, smtp.username, smtp.password), (VALID['host'], VALID['username'], SMTP_PASSWORD))
+        with self.case('sem usuário apaga a senha'):
+            SystemSetting.objects.save_smtp(**VALID)
+            SystemSetting.objects.save_smtp(**(VALID | {'username': '', 'password': ''}))
+            self.assertEqual(SystemSetting.objects.get().value['password'], '')
 
     def test_audit_has_no_password(self):
         SystemSetting.objects.save_smtp(**VALID)
@@ -108,9 +102,6 @@ class SchemaTests(TestCase):
         value = smtp_settings().to_value() | {'extra': 'x'}
         with self.assertRaises(ValidationError):
             SystemSetting(kind='smtp', value=value).clean()
-
-    def test_missing_setting_is_none(self):
-        self.assertIsNone(SystemSetting.objects.smtp())
 
 
 class ClearSmtpTests(TestCase):

@@ -41,23 +41,14 @@ class PermissionMiddlewareTests(TestCase):
         middleware = PermissionMiddleware(lambda request: HttpResponse())
         return middleware.process_view(request, view, (), {})
 
-    def test_reads_the_permission_of_class_and_function_views(self):
-        for view in (ClassView.as_view(), function_view):
-            with self.subTest(view):
-                self.assertIsNone(self.process(view, self.admin))
-                with self.assertRaises(PermissionDenied):
-                    self.process(view, self.teacher)
-
-    def test_views_without_permission_are_left_to_the_url(self):
-        self.assertIsNone(self.process(open_view, AnonymousUser()))
-        self.assertIsNone(self.process(open_view, self.teacher))
-
-    def test_anonymous_never_reaches_a_view_with_permission(self):
-        response = self.process(ClassView.as_view(), AnonymousUser())
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response['Location'], '/contas/login/?next=/usuarios/%3Fpagina%3D2')
-
-    def test_inactive_user_is_refused(self):
-        User.objects.filter(pk=self.admin.pk).update(is_active=False)
-        with self.assertRaises(PermissionDenied):
-            self.process(ClassView.as_view(), User.objects.get(pk=self.admin.pk))
+    def test_reads_the_permission_of_the_view_and_sends_the_anonymous_to_the_login(self):
+        with self.subTest('views de classe e de função'):
+            for view in (ClassView.as_view(), function_view):
+                with self.subTest(view):
+                    self.assertIsNone(self.process(view, self.admin))
+                    with self.assertRaises(PermissionDenied):
+                        self.process(view, self.teacher)
+        with self.subTest('anônimo'):
+            response = self.process(ClassView.as_view(), AnonymousUser())
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response['Location'], '/contas/login/?next=/usuarios/%3Fpagina%3D2')

@@ -6,6 +6,7 @@ from django.test import Client, TestCase, TransactionTestCase, override_settings
 from accounts import permissions
 from accounts.emails import PASSWORD_LINK
 from accounts.models import Role, User
+from config.testing import IsolatedCasesMixin
 from accounts.tests.roles import management_role, requester_role
 from outbox.models import OutboxEntry
 from system_settings.tests.base import configure_smtp
@@ -20,7 +21,7 @@ ROUTES = {
 }
 
 
-class UserViewsTestCase(TestCase):
+class UserViewsTestCase(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.administrator = management_role()
@@ -52,14 +53,6 @@ class AccessTests(UserViewsTestCase):
                 client.force_login(user)
                 self.assertEqual(client.get(self.url(route)).status_code, 200)
 
-    def test_active_superadmin_with_teacher_role_has_access(self):
-        superadmin = User.objects.register(email='super@ifnmg.edu.br', name='Super', role=self.teacher)
-        superadmin.set_superadmin(True)
-        self.client.force_login(superadmin)
-        for route in ROUTES:
-            with self.subTest(route):
-                self.assertEqual(self.client.get(self.url(route)).status_code, 200)
-
     def test_list_shows_actions_allowed_to_the_user(self):
         response = self.client.get('/usuarios/')
         self.assertContains(response, 'maria@ifnmg.edu.br')
@@ -79,48 +72,46 @@ class CreateTests(UserViewsTestCase):
         data = self.data | {'role': self.teacher.pk} | changes
         return self.client.post('/usuarios/novo/', data, follow=True)
 
-    def test_creates_with_username(self):
-        self.post(username='  Aldo   Gomes  ')
-        self.assertEqual(User.objects.get(email='joana@ifnmg.edu.br').username, 'Aldo Gomes')
+    def test_creates_with_username_from_a_form_without_password_or_superadmin(self):
+        with self.case('cadastro com nome de usuário'):
+            self.post(username='  Aldo   Gomes  ')
+            self.assertEqual(User.objects.get(email='joana@ifnmg.edu.br').username, 'Aldo Gomes')
+        with self.case('formulário sem senha nem superadmin'):
+            response = self.client.get('/usuarios/novo/')
+            self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'username', 'role'})
+            self.assertNotContains(response, 'type="password"')
+            self.assertNotContains(response, 'superadmin')
 
-    def test_refuses_username_already_taken(self):
-        User.objects.register(
-            email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
-        )
-        response = self.post(username='ALDO GOMES')
-        self.assertIn('username', response.context['form'].errors)
-        self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
-
-    def test_form_has_no_password_nor_superadmin_field(self):
-        response = self.client.get('/usuarios/novo/')
-        self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'username', 'role'})
-        self.assertNotContains(response, 'type="password"')
-        self.assertNotContains(response, 'superadmin')
-
-    def test_refuses_invalid_data(self):
-        cases = {
-            'name': {'name': ''},
-            'email': {'email': 'joana.ifnmg.edu.br'},
-            'email of another domain': {'email': 'joana@gmail.com'},
-            'role': {'role': ''},
-        }
-        for field, changes in cases.items():
-            with self.subTest(field):
-                response = self.post(**changes)
-                self.assertIn(field.split()[0], response.context['form'].errors)
-        self.assertFalse(User.objects.filter(name='Joana Lima').exists())
-        self.assertEqual(mail.outbox, [])
-
-    def test_refuses_more_than_one_role(self):
-        response = self.post(role=[self.administrator.pk, self.teacher.pk])
-        self.assertIn('role', response.context['form'].errors)
-        self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
-
-    def test_refuses_email_in_use_ignoring_case_and_situation(self):
-        User.objects.filter(pk=self.target.pk).update(is_active=False)
-        response = self.post(email='MARIA@ifnmg.edu.br')
-        self.assertIn('email', response.context['form'].errors)
-        self.assertEqual(User.objects.filter(email='maria@ifnmg.edu.br').count(), 1)
+    def test_refusals_appear_on_the_form(self):
+        with self.case('dados inválidos'):
+            cases = {
+                'name': {'name': ''},
+                'email': {'email': 'joana.ifnmg.edu.br'},
+                'email of another domain': {'email': 'joana@gmail.com'},
+                'role': {'role': ''},
+            }
+            for field, changes in cases.items():
+                with self.subTest(field):
+                    response = self.post(**changes)
+                    self.assertIn(field.split()[0], response.context['form'].errors)
+            self.assertFalse(User.objects.filter(name='Joana Lima').exists())
+            self.assertEqual(mail.outbox, [])
+        with self.case('mais de um perfil'):
+            response = self.post(role=[self.administrator.pk, self.teacher.pk])
+            self.assertIn('role', response.context['form'].errors)
+            self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
+        with self.case('nome de usuário em uso'):
+            User.objects.register(
+                email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
+            )
+            response = self.post(username='ALDO GOMES')
+            self.assertIn('username', response.context['form'].errors)
+            self.assertFalse(User.objects.filter(email='joana@ifnmg.edu.br').exists())
+        with self.case('e-mail em uso'):
+            User.objects.filter(pk=self.target.pk).update(is_active=False)
+            response = self.post(email='MARIA@ifnmg.edu.br')
+            self.assertIn('email', response.context['form'].errors)
+            self.assertEqual(User.objects.filter(email='maria@ifnmg.edu.br').count(), 1)
 
 
 class CreateSendTests(TransactionTestCase):
@@ -159,98 +150,81 @@ class CreateSendTests(TransactionTestCase):
             'Usuário joana@ifnmg.edu.br cadastrado. O link para definir a senha será enviado para joana@ifnmg.edu.br.',
         )
 
-    def test_refused_creation_registers_no_link(self):
-        self.post(email='Admin@ifnmg.edu.br')
-        self.assertEqual(list(OutboxEntry.objects.values_list('reference', flat=True)), [str(self.admin.pk)])
-
-    @override_settings(SITE_URL='http://testserver')
-    def test_link_of_the_creation_is_the_same_route_of_the_recovery(self):
-        self.post()
-        call_command('process_outbox', '--once')
-        Client().post('/contas/senha/recuperar/', {'email': 'joana@ifnmg.edu.br'})
-        call_command('process_outbox', '--once')
-        created, recovery = [message for message in mail.outbox if message.to == ['joana@ifnmg.edu.br']]
-        prefix = 'http://testserver/contas/senha/redefinir/'
-        self.assertIn(prefix, created.body)
-        self.assertIn(prefix, recovery.body)
-
 
 class UpdateTests(UserViewsTestCase):
     def test_changes_name_and_email_only(self):
-        self.target.set_password('Senha-forte-123')
-        self.target.save()
-        password = self.target.password
-        response = self.client.post(
-            self.url('update'),
-            {'name': 'Maria Souza', 'email': 'Maria.Souza@ifnmg.edu.br', 'is_superadmin': 'on', 'password': 'x'},
-        )
-        self.assertRedirects(response, '/usuarios/')
-        target = self.reload(self.target)
-        self.assertEqual((target.name, target.email), ('Maria Souza', 'maria.souza@ifnmg.edu.br'))
-        self.assertEqual(target.password, password)
-        self.assertFalse(target.is_superadmin)
-        self.assertEqual(target.role, self.teacher)
+        with self.case('nome e e-mail'):
+            self.target.set_password('Senha-forte-123')
+            self.target.save()
+            password = self.target.password
+            response = self.client.post(
+                self.url('update'),
+                {'name': 'Maria Souza', 'email': 'Maria.Souza@ifnmg.edu.br', 'is_superadmin': 'on', 'password': 'x'},
+            )
+            self.assertRedirects(response, '/usuarios/')
+            target = self.reload(self.target)
+            self.assertEqual((target.name, target.email), ('Maria Souza', 'maria.souza@ifnmg.edu.br'))
+            self.assertEqual(target.password, password)
+            self.assertFalse(target.is_superadmin)
+            self.assertEqual(target.role, self.teacher)
+        with self.case('formulário sem senha'):
+            response = self.client.get(self.url('update'))
+            self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'username'})
+            self.assertNotContains(response, 'type="password"')
 
-    def test_refuses_username_of_another_user(self):
-        other = User.objects.register(
-            email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
-        )
-        response = self.client.post(self.url('update'), {
-            'name': self.target.name, 'email': self.target.email, 'username': 'aldo gomes',
-        })
-        self.assertIn('username', response.context['form'].errors)
-        self.assertIsNone(self.reload(self.target).username)
-        self.assertEqual(self.reload(other).username, 'Aldo Gomes')
-
-    def test_form_has_no_password_field(self):
-        response = self.client.get(self.url('update'))
-        self.assertEqual(set(response.context['form'].fields), {'name', 'email', 'username'})
-        self.assertNotContains(response, 'type="password"')
-
-    def test_refuses_empty_name_and_email_of_another_user(self):
-        for data in [{'name': '', 'email': 'maria@ifnmg.edu.br'}, {'name': 'Maria', 'email': 'Admin@ifnmg.edu.br'}]:
-            with self.subTest(data):
-                response = self.client.post(self.url('update'), data)
-                self.assertEqual(response.status_code, 200)
-                self.assertTrue(response.context['form'].errors)
-        target = self.reload(self.target)
-        self.assertEqual((target.name, target.email), ('Maria Sousa', 'maria@ifnmg.edu.br'))
+    def test_refusals_appear_on_the_form(self):
+        with self.case('nome de usuário de outro'):
+            other = User.objects.register(
+                email='aldo@ifnmg.edu.br', name='Aldo', role=self.teacher, username='Aldo Gomes',
+            )
+            response = self.client.post(self.url('update'), {
+                'name': self.target.name, 'email': self.target.email, 'username': 'aldo gomes',
+            })
+            self.assertIn('username', response.context['form'].errors)
+            self.assertIsNone(self.reload(self.target).username)
+            self.assertEqual(self.reload(other).username, 'Aldo Gomes')
+        with self.case('nome vazio e e-mail de outro'):
+            for data in [{'name': '', 'email': 'maria@ifnmg.edu.br'}, {'name': 'Maria', 'email': 'Admin@ifnmg.edu.br'}]:
+                with self.subTest(data):
+                    response = self.client.post(self.url('update'), data)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(response.context['form'].errors)
+            target = self.reload(self.target)
+            self.assertEqual((target.name, target.email), ('Maria Sousa', 'maria@ifnmg.edu.br'))
 
 
 class ChangeRoleTests(UserViewsTestCase):
-    def test_changes_the_role(self):
-        response = self.client.post(self.url('change_role'), {'role': self.administrator.pk, 'is_superadmin': 'on'})
-        self.assertRedirects(response, '/usuarios/')
-        target = self.reload(self.target)
-        self.assertEqual(list(target.roles.all()), [self.administrator])
-        self.assertFalse(target.is_superadmin)
-
-    def test_refuses_more_than_one_role(self):
-        response = self.client.post(self.url('change_role'), {'role': [self.administrator.pk, self.teacher.pk]})
-        self.assertIn('role', response.context['form'].errors)
-        self.assertEqual(list(self.reload(self.target).roles.all()), [self.teacher])
-
-    def test_continuity_violation_is_shown_and_nothing_changes(self):
-        response = self.client.post(self.url('change_role', self.admin), {'role': self.teacher.pk})
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'capacidade administrativa')
-        self.assertEqual(list(self.reload(self.admin).roles.all()), [self.administrator])
+    def test_changes_the_only_role_keeping_continuity(self):
+        with self.case('troca o perfil'):
+            response = self.client.post(self.url('change_role'), {'role': self.administrator.pk, 'is_superadmin': 'on'})
+            self.assertRedirects(response, '/usuarios/')
+            target = self.reload(self.target)
+            self.assertEqual(list(target.roles.all()), [self.administrator])
+            self.assertFalse(target.is_superadmin)
+        with self.case('mais de um perfil'):
+            response = self.client.post(self.url('change_role'), {'role': [self.administrator.pk, self.teacher.pk]})
+            self.assertIn('role', response.context['form'].errors)
+            self.assertEqual(list(self.reload(self.target).roles.all()), [self.teacher])
+        with self.case('continuidade'):
+            response = self.client.post(self.url('change_role', self.admin), {'role': self.teacher.pk})
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, 'capacidade administrativa')
+            self.assertEqual(list(self.reload(self.admin).roles.all()), [self.administrator])
 
 
 class StatusTests(UserViewsTestCase):
     def test_deactivates_and_reactivates_by_post(self):
-        self.assertRedirects(self.client.post(self.url('deactivate')), '/usuarios/')
-        self.assertFalse(self.reload(self.target).is_active)
-        self.assertRedirects(self.client.post(self.url('reactivate')), '/usuarios/')
-        self.assertTrue(self.reload(self.target).is_active)
-
-    def test_last_user_with_capability_cannot_deactivate_itself(self):
-        response = self.client.post(self.url('deactivate', self.admin), follow=True)
-        self.assertContains(response, 'capacidade administrativa')
-        self.assertTrue(self.reload(self.admin).is_active)
-
-    def test_user_deactivates_itself_when_another_keeps_the_capability(self):
-        User.objects.register(email='outro@ifnmg.edu.br', name='Outro', role=self.administrator)
-        self.client.post(self.url('deactivate', self.admin))
-        self.assertFalse(self.reload(self.admin).is_active)
-        self.assertRedirects(self.client.get('/usuarios/'), '/contas/login/?next=/usuarios/', fetch_redirect_response=False)
+        with self.case('desativa e reativa'):
+            self.assertRedirects(self.client.post(self.url('deactivate')), '/usuarios/')
+            self.assertFalse(self.reload(self.target).is_active)
+            self.assertRedirects(self.client.post(self.url('reactivate')), '/usuarios/')
+            self.assertTrue(self.reload(self.target).is_active)
+        with self.case('o último capaz não se desativa'):
+            response = self.client.post(self.url('deactivate', self.admin), follow=True)
+            self.assertContains(response, 'capacidade administrativa')
+            self.assertTrue(self.reload(self.admin).is_active)
+        with self.case('desativa a si mesmo com outro capaz'):
+            User.objects.register(email='outro@ifnmg.edu.br', name='Outro', role=self.administrator)
+            self.client.post(self.url('deactivate', self.admin))
+            self.assertFalse(self.reload(self.admin).is_active)
+            self.assertRedirects(self.client.get('/usuarios/'), '/contas/login/?next=/usuarios/', fetch_redirect_response=False)

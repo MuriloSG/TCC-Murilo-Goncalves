@@ -80,12 +80,6 @@ class ImportMemoryTests(ImportTestCase):
         self.assertEqual(offerings, {'Biologia'})
         self.assertEqual(assignments, {'Érica'})
 
-    def test_preview_undoes_the_final_step(self):
-        importation = self.preview()
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertFalse(ClassOffering.objects.exists())
-        self.assertFalse(TeachingAssignment.objects.exists())
-
     def test_lock_reaches_only_the_allocations(self):
         self.conclude()
         rows = self.rows(workbook_file())

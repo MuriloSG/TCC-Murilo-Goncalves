@@ -29,42 +29,39 @@ class FileTests(SimpleTestCase):
             read(text, **kwargs)
         self.assertIn(message, context.exception.message)
 
-    def test_reads_rows_by_column_label(self):
-        rows = read('E-mail;Nome;Perfil\nana@ifnmg.edu.br;Ana Souza;DOCENTE\n')
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0].line_number, 2)
-        self.assertEqual(rows[0].values, {'E-mail': 'ana@ifnmg.edu.br', 'Nome': 'Ana Souza', 'Perfil': 'DOCENTE'})
-        self.assertEqual(rows[0].errors, [])
+    def test_reads_rows_by_column_label_without_the_bom(self):
+        with self.subTest('por rótulo'):
+            rows = read('E-mail;Nome;Perfil\nana@ifnmg.edu.br;Ana Souza;DOCENTE\n')
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0].line_number, 2)
+            self.assertEqual(rows[0].values, {'E-mail': 'ana@ifnmg.edu.br', 'Nome': 'Ana Souza', 'Perfil': 'DOCENTE'})
+            self.assertEqual(rows[0].errors, [])
+        with self.subTest('BOM'):
+            rows = read('﻿E-mail;Nome;Perfil\nana@ifnmg.edu.br;Ana;DOCENTE\n')
+            self.assertEqual(rows[0].values['E-mail'], 'ana@ifnmg.edu.br')
 
-    def test_bom_is_not_part_of_the_first_header(self):
-        rows = read('﻿E-mail;Nome;Perfil\nana@ifnmg.edu.br;Ana;DOCENTE\n')
-        self.assertEqual(rows[0].values['E-mail'], 'ana@ifnmg.edu.br')
-
-    def test_refuses_file_outside_utf8(self):
-        self.assertRejected(
-            'E-mail;Nome;Perfil\njoao@ifnmg.edu.br;João;DOCENTE\n',
-            'O arquivo não está em UTF-8. No Excel, salve como "CSV UTF-8 (delimitado por vírgulas)".',
-            encoding='cp1252',
-        )
-
-    @override_settings(IMPORT_MAX_FILE_SIZE=1024)
-    def test_refuses_file_above_the_size_limit(self):
-        self.assertRejected('E-mail;Nome;Perfil\n' + 'a;b;c\n' * 400, 'O limite é 1 KB.')
-
-    @override_settings(IMPORT_MAX_ROWS=2)
-    def test_refuses_file_above_the_row_limit(self):
-        self.assertRejected(
-            'E-mail;Nome;Perfil\n' + ''.join(f'p{index}@ifnmg.edu.br;P;DOCENTE\n' for index in range(3)),
-            'O arquivo tem 3 linhas. O limite é 2. Divida o arquivo e importe em partes.',
-        )
-
-    def test_refuses_empty_file_and_header_only(self):
-        for text in ('', 'E-mail;Nome;Perfil\n', 'E-mail;Nome;Perfil\n;;\n\n'):
-            with self.subTest(text=text):
-                self.assertRejected(text, 'O arquivo não tem linhas de dados.')
-
-    def test_refuses_comma_separator(self):
-        self.assertRejected('E-mail,Nome,Perfil\na@ifnmg.edu.br,A,DOCENTE\n', 'como separador')
+    def test_refused_files(self):
+        with self.subTest('fora do UTF-8'):
+            self.assertRejected(
+                'E-mail;Nome;Perfil\njoao@ifnmg.edu.br;João;DOCENTE\n',
+                'O arquivo não está em UTF-8. No Excel, salve como "CSV UTF-8 (delimitado por vírgulas)".',
+                encoding='cp1252',
+            )
+        with self.subTest('acima do tamanho'):
+            with override_settings(IMPORT_MAX_FILE_SIZE=1024):
+                self.assertRejected('E-mail;Nome;Perfil\n' + 'a;b;c\n' * 400, 'O limite é 1 KB.')
+        with self.subTest('acima das linhas'):
+            with override_settings(IMPORT_MAX_ROWS=2):
+                self.assertRejected(
+                    'E-mail;Nome;Perfil\n' + ''.join(f'p{index}@ifnmg.edu.br;P;DOCENTE\n' for index in range(3)),
+                    'O arquivo tem 3 linhas. O limite é 2. Divida o arquivo e importe em partes.',
+                )
+        with self.subTest('vazio e só cabeçalho'):
+            for text in ('', 'E-mail;Nome;Perfil\n', 'E-mail;Nome;Perfil\n;;\n\n'):
+                with self.subTest(text=text):
+                    self.assertRejected(text, 'O arquivo não tem linhas de dados.')
+        with self.subTest('vírgula'):
+            self.assertRejected('E-mail,Nome,Perfil\na@ifnmg.edu.br,A,DOCENTE\n', 'como separador')
 
 
 class HeaderTests(SimpleTestCase):
@@ -79,68 +76,63 @@ class HeaderTests(SimpleTestCase):
         rows = read('E-mail;Nóme;Pérfil\nana@ifnmg.edu.br;Ana;DOCENTE\n')
         self.assertEqual(rows[0].values['Nome'], 'Ana')
 
-    def test_unknown_column(self):
-        self.assertRejected(
-            'E-mail;Nome;Perfl',
-            'Coluna "Perfl" não reconhecida. Use as colunas do modelo: E-mail, Nome, Perfil.',
-        )
-
-    def test_missing_column(self):
-        self.assertRejected('E-mail;Nome', 'Falta a coluna "Perfil". Use as colunas do modelo: E-mail, Nome, Perfil.')
-
-    def test_repeated_column(self):
-        self.assertRejected('E-mail;Nome;Perfil;e-mail', 'A coluna "E-mail" aparece mais de uma vez. Deixe só uma.')
+    def test_unknown_missing_or_repeated_column(self):
+        with self.subTest('desconhecida'):
+            self.assertRejected(
+                'E-mail;Nome;Perfl',
+                'Coluna "Perfl" não reconhecida. Use as colunas do modelo: E-mail, Nome, Perfil.',
+            )
+        with self.subTest('ausente'):
+            self.assertRejected('E-mail;Nome', 'Falta a coluna "Perfil". Use as colunas do modelo: E-mail, Nome, Perfil.')
+        with self.subTest('repetida'):
+            self.assertRejected('E-mail;Nome;Perfil;e-mail', 'A coluna "E-mail" aparece mais de uma vez. Deixe só uma.')
 
 
 class RowTests(SimpleTestCase):
     def codes(self, row):
         return [(error.column, error.code) for error in row.errors]
 
-    def test_empty_lines_are_ignored_keeping_numbers(self):
-        rows = read(
-            'E-mail;Nome;Perfil\na@ifnmg.edu.br;A;DOCENTE\nb@ifnmg.edu.br;B;DOCENTE\n;;\n'
-            'c@ifnmg.edu.br;C;DOCENTE\n\n  ;  ;\n'
-        )
-        self.assertEqual([row.line_number for row in rows], [2, 3, 5])
+    def test_row_parsing(self):
+        with self.subTest('linhas vazias'):
+            rows = read(
+                'E-mail;Nome;Perfil\na@ifnmg.edu.br;A;DOCENTE\nb@ifnmg.edu.br;B;DOCENTE\n;;\n'
+                'c@ifnmg.edu.br;C;DOCENTE\n\n  ;  ;\n'
+            )
+            self.assertEqual([row.line_number for row in rows], [2, 3, 5])
+        with self.subTest('aspas'):
+            rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;"Ana; da\nSilva";DOCENTE\nb@ifnmg.edu.br;B;DOCENTE\n')
+            self.assertEqual(rows[0].values['Nome'], 'Ana; da\nSilva')
+            self.assertEqual([row.line_number for row in rows], [2, 4])
+        with self.subTest('valores brutos'):
+            rows = read('E-mail;Nome;Perfil\n Ana@IFNMG.edu.br ;Ana;docente\n')
+            self.assertEqual(rows[0].values['E-mail'], ' Ana@IFNMG.edu.br ')
+        with self.subTest('células ausentes'):
+            rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;Ana\n')
+            self.assertEqual(rows[0].values['Perfil'], '')
+            self.assertEqual(self.codes(rows[0]), [('Perfil', 'required')])
+        with self.subTest('células a mais'):
+            rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;Ana;DOCENTE;sobra\nb@ifnmg.edu.br;B;DOCENTE;\n')
+            self.assertEqual(self.codes(rows[0]), [(None, 'extra_cells')])
+            self.assertEqual(rows[1].errors, [])
 
-    def test_quoted_cells_with_separator_and_line_break(self):
-        rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;"Ana; da\nSilva";DOCENTE\nb@ifnmg.edu.br;B;DOCENTE\n')
-        self.assertEqual(rows[0].values['Nome'], 'Ana; da\nSilva')
-        self.assertEqual([row.line_number for row in rows], [2, 4])
+    def test_required_and_optional_cells(self):
+        with self.subTest('obrigatória só com espaços'):
+            rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;   ;DOCENTE\n')
+            self.assertEqual(rows[0].errors, [RowError('Nome', 'required', 'Preencha a coluna Nome.')])
+        with self.subTest('opcional vazia'):
+            class WithOptional(PeopleImport):
+                columns = (Column('E-mail'), Column('Nome'), Column('Apelido', required=False))
 
-    def test_values_are_kept_raw(self):
-        rows = read('E-mail;Nome;Perfil\n Ana@IFNMG.edu.br ;Ana;docente\n')
-        self.assertEqual(rows[0].values['E-mail'], ' Ana@IFNMG.edu.br ')
+            rows = read_csv(upload('E-mail;Nome;Apelido\na@ifnmg.edu.br;Ana;\n'), WithOptional())
+            self.assertEqual(rows[0].errors, [])
+            self.assertEqual(rows[0].values['Apelido'], '')
+        with self.subTest('opcional no cabeçalho'):
+            class WithOptional(PeopleImport):
+                columns = (Column('E-mail'), Column('Nome'), Column('Apelido', required=False))
 
-    def test_required_cell_with_only_spaces(self):
-        rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;   ;DOCENTE\n')
-        self.assertEqual(rows[0].errors, [RowError('Nome', 'required', 'Preencha a coluna Nome.')])
-
-    def test_missing_cells_are_empty(self):
-        rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;Ana\n')
-        self.assertEqual(rows[0].values['Perfil'], '')
-        self.assertEqual(self.codes(rows[0]), [('Perfil', 'required')])
-
-    def test_optional_column_accepts_an_empty_cell(self):
-        class WithOptional(PeopleImport):
-            columns = (Column('E-mail'), Column('Nome'), Column('Apelido', required=False))
-
-        rows = read_csv(upload('E-mail;Nome;Apelido\na@ifnmg.edu.br;Ana;\n'), WithOptional())
-        self.assertEqual(rows[0].errors, [])
-        self.assertEqual(rows[0].values['Apelido'], '')
-
-    def test_optional_column_is_still_required_in_the_header(self):
-        class WithOptional(PeopleImport):
-            columns = (Column('E-mail'), Column('Nome'), Column('Apelido', required=False))
-
-        with self.assertRaises(FileRejected) as context:
-            read_csv(upload('E-mail;Nome\na@ifnmg.edu.br;Ana\n'), WithOptional())
-        self.assertIn('"Apelido"', context.exception.message)
-
-    def test_extra_cells(self):
-        rows = read('E-mail;Nome;Perfil\na@ifnmg.edu.br;Ana;DOCENTE;sobra\nb@ifnmg.edu.br;B;DOCENTE;\n')
-        self.assertEqual(self.codes(rows[0]), [(None, 'extra_cells')])
-        self.assertEqual(rows[1].errors, [])
+            with self.assertRaises(FileRejected) as context:
+                read_csv(upload('E-mail;Nome\na@ifnmg.edu.br;Ana\n'), WithOptional())
+            self.assertIn('"Apelido"', context.exception.message)
 
     def test_repeated_identifier_with_different_spelling(self):
         rows = read(
@@ -153,16 +145,16 @@ class RowTests(SimpleTestCase):
 
 
 class ValidationTranslationTests(SimpleTestCase):
-    def test_field_errors_go_to_their_columns(self):
-        error = ValidationError({
-            'email': ValidationError('Informe um e-mail válido.', code='invalid'),
-            'is_active': ValidationError('Outro campo.', code='other'),
-        })
-        self.assertEqual(
-            errors_from_validation(error, {'email': 'E-mail'}),
-            [RowError('E-mail', 'invalid', 'Informe um e-mail válido.'), RowError(None, 'other', 'Outro campo.')],
-        )
-
-    def test_general_error_has_no_column(self):
-        error = ValidationError('Operação recusada.', code='refused')
-        self.assertEqual(errors_from_validation(error, {}), [RowError(None, 'refused', 'Operação recusada.')])
+    def test_errors_go_to_their_columns(self):
+        with self.subTest('erros de campo'):
+            error = ValidationError({
+                'email': ValidationError('Informe um e-mail válido.', code='invalid'),
+                'is_active': ValidationError('Outro campo.', code='other'),
+            })
+            self.assertEqual(
+                errors_from_validation(error, {'email': 'E-mail'}),
+                [RowError('E-mail', 'invalid', 'Informe um e-mail válido.'), RowError(None, 'other', 'Outro campo.')],
+            )
+        with self.subTest('erro geral'):
+            error = ValidationError('Operação recusada.', code='refused')
+            self.assertEqual(errors_from_validation(error, {}), [RowError(None, 'refused', 'Operação recusada.')])

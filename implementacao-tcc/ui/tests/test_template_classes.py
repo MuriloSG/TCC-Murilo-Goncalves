@@ -26,40 +26,36 @@ class ClassRulesTests(SimpleTestCase):
     def assertAllowed(self, source):
         self.assertEqual(find_class_violations(source), [])
 
-    def test_valor_arbitrario_indica_linha_e_classe(self):
-        self.assertViolation('<p>Texto</p>\n<div class="mt-[13px]"></div>', 'mt-[13px]', line=2)
-        self.assertViolation('<div class="bg-[#fff]"></div>', 'bg-[#fff]')
+    def test_classes_recusadas(self):
+        with self.subTest('valor arbitrário'):
+            self.assertViolation('<p>Texto</p>\n<div class="mt-[13px]"></div>', 'mt-[13px]', line=2)
+            self.assertViolation('<div class="bg-[#fff]"></div>', 'bg-[#fff]')
+        with self.subTest('cor da paleta padrão'):
+            self.assertViolation('<div class="bg-blue-500"></div>', 'bg-blue-500')
+            self.assertViolation('<div class="hover:text-red-600"></div>', 'hover:text-red-600')
+            self.assertViolation('<div class="border-white"></div>', 'border-white')
+            self.assertAllowed('<div class="bg-surface text-text-muted border-divider hover:bg-page"></div>')
+        with self.subTest('atributo style'):
+            self.assertViolation('<div style="color: red"></div>', 'style="color: red"')
+        with self.subTest('passo fora da escala'):
+            self.assertViolation('<div class="p-7"></div>', 'p-7')
+            self.assertViolation('<div class="sm:gap-9"></div>', 'sm:gap-9')
+            self.assertViolation('<div class="h-18"></div>', 'h-18')
+            self.assertAllowed('<div class="p-4 gap-11 min-h-11 size-5 -mt-1 w-full mx-auto inset-0 w-1/2"></div>')
+        with self.subTest('fonte, raio e largura'):
+            self.assertViolation('<p class="text-4xl"></p>', 'text-4xl')
+            self.assertViolation('<p class="rounded-2xl"></p>', 'rounded-2xl')
+            self.assertViolation('<p class="max-w-7xl"></p>', 'max-w-7xl')
+            self.assertAllowed('<p class="text-sm rounded-lg rounded-full max-w-modal text-center"></p>')
+        with self.subTest('sombra'):
+            self.assertViolation('<button class="btn-primary shadow-overlay"></button>', 'shadow-overlay')
+            self.assertViolation('<section class="card shadow-overlay"></section>', 'shadow-overlay')
+            self.assertViolation('<div class="shadow-lg"></div>', 'shadow-lg')
+            self.assertAllowed('<div class="menu-list shadow-overlay"></div>')
 
-    def test_cor_da_paleta_padrao(self):
-        self.assertViolation('<div class="bg-blue-500"></div>', 'bg-blue-500')
-        self.assertViolation('<div class="hover:text-red-600"></div>', 'hover:text-red-600')
-        self.assertViolation('<div class="border-white"></div>', 'border-white')
-        self.assertAllowed('<div class="bg-surface text-text-muted border-divider hover:bg-page"></div>')
-
-    def test_atributo_style(self):
-        self.assertViolation('<div style="color: red"></div>', 'style="color: red"')
-
-    def test_passo_fora_da_escala(self):
-        self.assertViolation('<div class="p-7"></div>', 'p-7')
-        self.assertViolation('<div class="sm:gap-9"></div>', 'sm:gap-9')
-        self.assertViolation('<div class="h-18"></div>', 'h-18')
-        self.assertAllowed('<div class="p-4 gap-11 min-h-11 size-5 -mt-1 w-full mx-auto inset-0 w-1/2"></div>')
-
-    def test_tamanho_de_fonte_raio_e_largura(self):
-        self.assertViolation('<p class="text-4xl"></p>', 'text-4xl')
-        self.assertViolation('<p class="rounded-2xl"></p>', 'rounded-2xl')
-        self.assertViolation('<p class="max-w-7xl"></p>', 'max-w-7xl')
-        self.assertAllowed('<p class="text-sm rounded-lg rounded-full max-w-modal text-center"></p>')
-
-    def test_sombra_so_em_camada_flutuante(self):
-        self.assertViolation('<button class="btn-primary shadow-overlay"></button>', 'shadow-overlay')
-        self.assertViolation('<section class="card shadow-overlay"></section>', 'shadow-overlay')
-        self.assertViolation('<div class="shadow-lg"></div>', 'shadow-lg')
-        self.assertAllowed('<div class="menu-list shadow-overlay"></div>')
-
-    def test_tags_do_django_no_atributo(self):
-        self.assertAllowed('<a class="icon-btn{% if action.danger %} danger{% endif %} {{ extra }}"></a>')
-        self.assertAllowed('<span class="badge tone-{{ tone }}"></span>')
-
-    def test_componentes_sao_aceitos_pelo_nome(self):
-        self.assertAllowed('<a class="btn-primary"></a><div class="field card data-table"></div>')
+    def test_classes_aceitas(self):
+        with self.subTest('tags do Django'):
+            self.assertAllowed('<a class="icon-btn{% if action.danger %} danger{% endif %} {{ extra }}"></a>')
+            self.assertAllowed('<span class="badge tone-{{ tone }}"></span>')
+        with self.subTest('componentes'):
+            self.assertAllowed('<a class="btn-primary"></a><div class="field card data-table"></div>')

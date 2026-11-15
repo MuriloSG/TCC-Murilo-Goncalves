@@ -24,6 +24,7 @@ class PublicIcsTests(PublicCalendarTestCase):
         whole_course = self.client.get(URL, {'curso': 'INFORMÁTICA'}).content.decode()
         self.assertIn('ano b', whole_course.casefold())
         self.assertNotIn('ano b', content.casefold())
+        self.assertEqual(self.client.get(URL).status_code, 404)
 
     def test_cancelled_occurrence_is_left_out(self):
         allocation = self.group_a.allocations.get(subject__name='Banco de Dados')
@@ -32,14 +33,3 @@ class PublicIcsTests(PublicCalendarTestCase):
         content = self.client.get(URL, {'curso': 'INFORMÁTICA', 'turma': '2º ANO A'}).content.decode()
         self.assertIn('20260601T070000', content)
         self.assertNotIn('20260608T070000', content)
-
-    def test_without_filter_is_not_found(self):
-        self.assertEqual(self.client.get(URL).status_code, 404)
-
-    def test_post_is_not_allowed(self):
-        self.assertEqual(self.client.post(URL).status_code, 405)
-
-    def test_calendar_shows_download_icon_with_filters(self):
-        response = self.client.get(reverse('public_calendar'), {'curso': 'INFORMÁTICA', 'turma': '2º ANO A'})
-        self.assertContains(response, 'class="icon-btn public-export"')
-        self.assertContains(response, URL + '?')

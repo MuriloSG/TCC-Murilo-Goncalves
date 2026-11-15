@@ -16,6 +16,7 @@ from accounts.models import (
     User,
     UserRole,
 )
+from config.testing import IsolatedCasesMixin
 from accounts.tests.roles import management_role, requester_role
 
 
@@ -29,56 +30,55 @@ def create_user(email, role, **fields):
     return User.objects.get(pk=user.pk)
 
 
-class CreateRoleTests(TestCase):
-    def test_creates_custom_role_without_permissions(self):
-        role = Role.objects.create_role(code='COORDENACAO', name='Coordenação', description='Cursos')
-        role = Role.objects.get(pk=role.pk)
-        self.assertEqual((role.code, role.name, role.description), ('COORDENACAO', 'Coordenação', 'Cursos'))
-        self.assertEqual(codes(role), set())
-
-    def test_creates_role_with_chosen_permissions(self):
-        role = Role.objects.create_role(
-            code='COORDENACAO',
-            name='Coordenação',
-            permissions=[permissions.USER_VIEW, Permission.objects.get(code=permissions.USER_EDIT)],
-        )
-        self.assertEqual(codes(role), {permissions.USER_VIEW, permissions.USER_EDIT})
-
-    def test_refuses_invalid_data_without_creating_anything(self):
-        Role.objects.create_role(code='COORDENACAO', name='Coordenação')
-        cases = {
-            'missing code': dict(code='', name='Secretaria'),
-            'lowercase code': dict(code='secretaria', name='Secretaria'),
-            'code with dash': dict(code='COORD-1', name='Secretaria'),
-            'repeated code': dict(code='COORDENACAO', name='Secretaria'),
-            'missing name': dict(code='SECRETARIA', name='   '),
-            'name differing in case': dict(code='COORDENACAO_GERAL', name='COORDENAÇÃO'),
-        }
-        for label, data in cases.items():
-            with self.subTest(label):
-                with self.assertRaises(ValidationError):
-                    Role.objects.create_role(**data)
-        self.assertEqual(Role.objects.count(), 3)
-
-    def test_refuses_reserved_permission_without_creating_anything(self):
-        with self.assertRaises(ReservedPermissionNotGrantable) as raised:
-            Role.objects.create_role(
+class CreateRoleTests(IsolatedCasesMixin, TestCase):
+    def test_creates_custom_role_with_or_without_permissions(self):
+        with self.case('sem permissões'):
+            role = Role.objects.create_role(code='COORDENACAO', name='Coordenação', description='Cursos')
+            role = Role.objects.get(pk=role.pk)
+            self.assertEqual((role.code, role.name, role.description), ('COORDENACAO', 'Coordenação', 'Cursos'))
+            self.assertEqual(codes(role), set())
+        with self.case('com as permissões escolhidas'):
+            role = Role.objects.create_role(
                 code='COORDENACAO',
                 name='Coordenação',
-                permissions=[permissions.USER_VIEW, permissions.ROLE_CHANGE_PERMISSIONS],
+                permissions=[permissions.USER_VIEW, Permission.objects.get(code=permissions.USER_EDIT)],
             )
-        self.assertIn(permissions.ROLE_CHANGE_PERMISSIONS, raised.exception.messages[0])
-        self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
-        self.assertFalse(RolePermission.objects.filter(role__code='COORDENACAO').exists())
+            self.assertEqual(codes(role), {permissions.USER_VIEW, permissions.USER_EDIT})
 
-    def test_refuses_permission_outside_catalog_without_creating_anything(self):
-        with self.assertRaises(ValidationError):
-            Role.objects.create_role(code='COORDENACAO', name='Coordenação', permissions=['RESERVA.APROVAR'])
-        self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
-        self.assertFalse(Permission.objects.filter(code='RESERVA.APROVAR').exists())
+    def test_refuses_invalid_data_without_creating_anything(self):
+        with self.case('dados inválidos'):
+            Role.objects.create_role(code='COORDENACAO', name='Coordenação')
+            cases = {
+                'missing code': dict(code='', name='Secretaria'),
+                'lowercase code': dict(code='secretaria', name='Secretaria'),
+                'code with dash': dict(code='COORD-1', name='Secretaria'),
+                'repeated code': dict(code='COORDENACAO', name='Secretaria'),
+                'missing name': dict(code='SECRETARIA', name='   '),
+                'name differing in case': dict(code='COORDENACAO_GERAL', name='COORDENAÇÃO'),
+            }
+            for label, data in cases.items():
+                with self.subTest(label):
+                    with self.assertRaises(ValidationError):
+                        Role.objects.create_role(**data)
+            self.assertEqual(Role.objects.count(), 3)
+        with self.case('permissão reservada'):
+            with self.assertRaises(ReservedPermissionNotGrantable) as raised:
+                Role.objects.create_role(
+                    code='COORDENACAO',
+                    name='Coordenação',
+                    permissions=[permissions.USER_VIEW, permissions.ROLE_CHANGE_PERMISSIONS],
+                )
+            self.assertIn(permissions.ROLE_CHANGE_PERMISSIONS, raised.exception.messages[0])
+            self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
+            self.assertFalse(RolePermission.objects.filter(role__code='COORDENACAO').exists())
+        with self.case('permissão fora do catálogo'):
+            with self.assertRaises(ValidationError):
+                Role.objects.create_role(code='COORDENACAO', name='Coordenação', permissions=['RESERVA.APROVAR'])
+            self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
+            self.assertFalse(Permission.objects.filter(code='RESERVA.APROVAR').exists())
 
 
-class UpdateRoleDetailsTests(TestCase):
+class UpdateRoleDetailsTests(IsolatedCasesMixin, TestCase):
     def setUp(self):
         self.role = Role.objects.create_role(
             code='COORDENACAO', name='Coordenação', permissions=[permissions.USER_VIEW],
@@ -86,23 +86,22 @@ class UpdateRoleDetailsTests(TestCase):
         self.user = create_user('coord@ifnmg.edu.br', self.role)
 
     def test_changes_name_and_description_only(self):
-        self.role.update_details(name='Coordenação de Curso', description='Nova descrição')
-        role = Role.objects.get(pk=self.role.pk)
-        self.assertEqual((role.name, role.description), ('Coordenação de Curso', 'Nova descrição'))
-        self.assertEqual(role.code, 'COORDENACAO')
-        self.assertEqual(codes(role), {permissions.USER_VIEW})
-        self.assertEqual(User.objects.get(pk=self.user.pk).role, role)
-        self.assertTrue(User.objects.get(pk=self.user.pk).has_perm(permissions.USER_VIEW))
-
-    def test_does_not_accept_code(self):
-        with self.assertRaises(TypeError):
-            self.role.update_details(name='Secretaria', description='', code='SECRETARIA')
-
-    def test_initial_role_name_can_change_and_code_stays(self):
-        administrator = Role.objects.get(code='ADMINISTRADOR')
-        administrator.update_details(name='Administração', description='')
-        administrator = Role.objects.get(pk=administrator.pk)
-        self.assertEqual((administrator.code, administrator.name), ('ADMINISTRADOR', 'Administração'))
+        with self.case('nome e descrição'):
+            self.role.update_details(name='Coordenação de Curso', description='Nova descrição')
+            role = Role.objects.get(pk=self.role.pk)
+            self.assertEqual((role.name, role.description), ('Coordenação de Curso', 'Nova descrição'))
+            self.assertEqual(role.code, 'COORDENACAO')
+            self.assertEqual(codes(role), {permissions.USER_VIEW})
+            self.assertEqual(User.objects.get(pk=self.user.pk).role, role)
+            self.assertTrue(User.objects.get(pk=self.user.pk).has_perm(permissions.USER_VIEW))
+        with self.case('não aceita código'):
+            with self.assertRaises(TypeError):
+                self.role.update_details(name='Secretaria', description='', code='SECRETARIA')
+        with self.case('perfil inicial muda o nome e mantém o código'):
+            administrator = Role.objects.get(code='ADMINISTRADOR')
+            administrator.update_details(name='Administração', description='')
+            administrator = Role.objects.get(pk=administrator.pk)
+            self.assertEqual((administrator.code, administrator.name), ('ADMINISTRADOR', 'Administração'))
 
     def test_refuses_empty_or_repeated_name_and_keeps_values(self):
         for name in ('', '   ', 'docente'):
@@ -115,7 +114,7 @@ class UpdateRoleDetailsTests(TestCase):
         self.assertEqual(Role.objects.get(code='DOCENTE').name, 'Docente')
 
 
-class SetPermissionsTests(TestCase):
+class SetPermissionsTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.administrator = management_role()
@@ -126,148 +125,139 @@ class SetPermissionsTests(TestCase):
             code='COORDENACAO', name='Coordenação', permissions=[permissions.USER_VIEW, permissions.USER_EDIT],
         )
 
-    def test_grants_and_removes_in_the_same_call(self):
-        create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
-        self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_CREATE])
-        self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_CREATE})
+    def test_grants_and_removes_permissions(self):
+        with self.case('concede e retira'):
+            create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+            self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_CREATE])
+            self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_CREATE})
+        with self.case('perfil inicial'):
+            teacher = Role.objects.get(code='DOCENTE')
+            teacher.set_permissions([permissions.USER_VIEW])
+            self.assertEqual(codes(teacher), {permissions.USER_VIEW})
+        with self.case('conjunto vazio'):
+            create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+            self.coordination.set_permissions([])
+            self.assertEqual(codes(self.coordination), set())
+        with self.case('alcança os usuários do perfil'):
+            create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+            first = create_user('um@ifnmg.edu.br', self.coordination)
+            second = create_user('dois@ifnmg.edu.br', self.coordination)
+            inactive = create_user('tres@ifnmg.edu.br', self.coordination, is_active=False)
+            self.coordination.set_permissions([permissions.USER_CREATE])
+            for user in (first, second):
+                with self.subTest(user=user.email):
+                    self.assertEqual(User.objects.get(pk=user.pk).effective_permissions(), {permissions.USER_CREATE})
+            self.assertFalse(User.objects.get(pk=inactive.pk).has_perm(permissions.USER_CREATE))
 
-    def test_initial_role_permissions_can_change(self):
-        teacher = Role.objects.get(code='DOCENTE')
-        teacher.set_permissions([permissions.USER_VIEW])
-        self.assertEqual(codes(teacher), {permissions.USER_VIEW})
+    def test_refuses_reserved_or_unknown_permissions(self):
+        with self.case('reservada'):
+            with self.assertRaises(ReservedPermissionNotGrantable):
+                self.coordination.set_permissions([permissions.USER_CREATE, permissions.ROLE_CREATE])
+            self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
+        with self.case('reservada em perfil capaz'):
+            with self.assertRaises(ReservedPermissionNotGrantable):
+                self.administrator.set_permissions(
+                    set(permissions.ADMINISTRATIVE_CAPABILITY) | {permissions.ROLE_DELETE},
+                )
+            self.assertNotIn(permissions.ROLE_DELETE, codes(self.administrator))
+        with self.case('fora do catálogo'):
+            with self.assertRaises(ValidationError):
+                self.coordination.set_permissions([permissions.USER_VIEW, 'RESERVA.APROVAR'])
+            self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
+            self.assertFalse(Permission.objects.filter(code='RESERVA.APROVAR').exists())
 
-    def test_empty_set_is_accepted(self):
-        create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
-        self.coordination.set_permissions([])
-        self.assertEqual(codes(self.coordination), set())
-
-    def test_change_reaches_every_user_of_the_role(self):
-        create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
-        first = create_user('um@ifnmg.edu.br', self.coordination)
-        second = create_user('dois@ifnmg.edu.br', self.coordination)
-        inactive = create_user('tres@ifnmg.edu.br', self.coordination, is_active=False)
-        self.coordination.set_permissions([permissions.USER_CREATE])
-        for user in (first, second):
-            with self.subTest(user=user.email):
-                self.assertEqual(User.objects.get(pk=user.pk).effective_permissions(), {permissions.USER_CREATE})
-        self.assertFalse(User.objects.get(pk=inactive.pk).has_perm(permissions.USER_CREATE))
-
-    def test_refuses_reserved_permission_entirely(self):
-        with self.assertRaises(ReservedPermissionNotGrantable):
-            self.coordination.set_permissions([permissions.USER_CREATE, permissions.ROLE_CREATE])
-        self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
-
-    def test_refuses_reserved_permission_on_role_with_capability(self):
-        with self.assertRaises(ReservedPermissionNotGrantable):
-            self.administrator.set_permissions(
-                set(permissions.ADMINISTRATIVE_CAPABILITY) | {permissions.ROLE_DELETE},
-            )
-        self.assertNotIn(permissions.ROLE_DELETE, codes(self.administrator))
-
-    def test_refuses_permission_outside_catalog(self):
-        with self.assertRaises(ValidationError):
-            self.coordination.set_permissions([permissions.USER_VIEW, 'RESERVA.APROVAR'])
-        self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
-        self.assertFalse(Permission.objects.filter(code='RESERVA.APROVAR').exists())
-
-    def test_removal_allowed_because_active_superadmin_keeps_capability(self):
-        superadmin = create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
-        admin = create_user('admin@ifnmg.edu.br', self.administrator)
-        self.administrator.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_EDIT})
-        self.assertFalse(User.objects.get(pk=admin.pk).has_administrative_capability())
-        self.assertTrue(User.objects.get(pk=superadmin.pk).has_administrative_capability())
-
-    def test_removal_refused_without_another_capable_user(self):
-        self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY)
-        create_user('coord@ifnmg.edu.br', self.coordination)
-        with self.assertRaises(AdministrativeContinuityViolation):
-            self.coordination.set_permissions(
-                permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_CHANGE_STATUS},
-            )
-        self.assertEqual(codes(self.coordination), set(permissions.ADMINISTRATIVE_CAPABILITY))
-
-    def test_removal_refused_when_only_superadmin_is_inactive(self):
-        create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True, is_active=False)
-        self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY)
-        create_user('coord@ifnmg.edu.br', self.coordination)
-        with self.assertRaises(AdministrativeContinuityViolation):
-            self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_CREATE})
-        self.assertIn(permissions.USER_CREATE, codes(self.coordination))
-
-    def test_removal_allowed_with_capable_user_by_another_role(self):
-        self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY)
-        create_user('coord@ifnmg.edu.br', self.coordination)
-        create_user('admin@ifnmg.edu.br', self.administrator)
-        self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_EDIT})
-        self.assertNotIn(permissions.USER_EDIT, codes(self.coordination))
-
-    def test_additions_and_other_removals_are_not_checked(self):
-        self.assertFalse(User.objects.with_administrative_capability().exists())
-        other = Permission.objects.create(code='RESERVA.APROVAR', description='Aprovar reserva')
-        self.teacher.set_permissions([permissions.USER_VIEW])
-        self.teacher.set_permissions([permissions.USER_VIEW, other])
-        self.teacher.set_permissions([permissions.USER_VIEW])
-        self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT, other])
-        self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT])
-        self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
-
-    def test_removal_of_capability_permission_is_checked(self):
-        self.assertFalse(User.objects.with_administrative_capability().exists())
-        with self.assertRaises(AdministrativeContinuityViolation):
-            self.coordination.set_permissions([permissions.USER_VIEW])
-        self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
+    def test_removal_of_capability_keeps_someone_capable(self):
+        with self.case('superadmin ativo mantém'):
+            superadmin = create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True)
+            admin = create_user('admin@ifnmg.edu.br', self.administrator)
+            self.administrator.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_EDIT})
+            self.assertFalse(User.objects.get(pk=admin.pk).has_administrative_capability())
+            self.assertTrue(User.objects.get(pk=superadmin.pk).has_administrative_capability())
+        with self.case('recusada sem outro capaz'):
+            self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY)
+            create_user('coord@ifnmg.edu.br', self.coordination)
+            with self.assertRaises(AdministrativeContinuityViolation):
+                self.coordination.set_permissions(
+                    permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_CHANGE_STATUS},
+                )
+            self.assertEqual(codes(self.coordination), set(permissions.ADMINISTRATIVE_CAPABILITY))
+        with self.case('recusada com superadmin inativo'):
+            create_user('super@ifnmg.edu.br', self.teacher, is_superadmin=True, is_active=False)
+            self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY)
+            create_user('coord@ifnmg.edu.br', self.coordination)
+            with self.assertRaises(AdministrativeContinuityViolation):
+                self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_CREATE})
+            self.assertIn(permissions.USER_CREATE, codes(self.coordination))
+        with self.case('outro perfil capaz'):
+            self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY)
+            create_user('coord@ifnmg.edu.br', self.coordination)
+            create_user('admin@ifnmg.edu.br', self.administrator)
+            self.coordination.set_permissions(permissions.ADMINISTRATIVE_CAPABILITY - {permissions.USER_EDIT})
+            self.assertNotIn(permissions.USER_EDIT, codes(self.coordination))
+        with self.case('acréscimos e outras retiradas'):
+            self.assertFalse(User.objects.with_administrative_capability().exists())
+            other = Permission.objects.create(code='RESERVA.APROVAR', description='Aprovar reserva')
+            self.teacher.set_permissions([permissions.USER_VIEW])
+            self.teacher.set_permissions([permissions.USER_VIEW, other])
+            self.teacher.set_permissions([permissions.USER_VIEW])
+            self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT, other])
+            self.coordination.set_permissions([permissions.USER_VIEW, permissions.USER_EDIT])
+            self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
+        with self.case('retirada conferida'):
+            self.assertFalse(User.objects.with_administrative_capability().exists())
+            with self.assertRaises(AdministrativeContinuityViolation):
+                self.coordination.set_permissions([permissions.USER_VIEW])
+            self.assertEqual(codes(self.coordination), {permissions.USER_VIEW, permissions.USER_EDIT})
 
 
-class DeleteRoleTests(TestCase):
+class DeleteRoleTests(IsolatedCasesMixin, TestCase):
     def setUp(self):
         self.coordination = Role.objects.create_role(
             code='COORDENACAO', name='Coordenação', permissions=[permissions.USER_VIEW],
         )
 
-    def test_deletes_custom_role_without_users_and_its_grants(self):
-        self.coordination.delete_role()
-        self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
-        self.assertFalse(RolePermission.objects.filter(role_id=self.coordination.pk).exists())
-        self.assertTrue(Permission.objects.filter(code=permissions.USER_VIEW).exists())
-
-    def test_initial_roles_without_users_are_deleted_like_any_other(self):
-        for code in ('ADMINISTRADOR', 'DOCENTE'):
-            with self.subTest(code=code):
-                role = Role.objects.get(code=code)
-                role.delete_role()
-                self.assertFalse(Role.objects.filter(code=code).exists())
-                self.assertFalse(RolePermission.objects.filter(role_id=role.pk).exists())
-
-    def test_initial_role_with_user_cannot_be_deleted(self):
-        administrator = Role.objects.get(code='ADMINISTRADOR')
-        create_user('admin@ifnmg.edu.br', administrator)
-        with self.assertRaises(RoleInUse):
-            administrator.delete_role()
-        self.assertTrue(Role.objects.filter(pk=administrator.pk).exists())
-
-    def test_role_with_active_user_cannot_be_deleted(self):
-        user = create_user('coord@ifnmg.edu.br', self.coordination)
-        with self.assertRaises(RoleInUse) as raised:
+    def test_role_without_users_is_deleted(self):
+        with self.case('perfil próprio'):
             self.coordination.delete_role()
-        self.assertIn('1 usuário vinculado', raised.exception.messages[0])
-        self.assertEqual(codes(self.coordination), {permissions.USER_VIEW})
-        self.assertEqual(User.objects.get(pk=user.pk).role, self.coordination)
-
-    def test_role_with_only_inactive_users_cannot_be_deleted(self):
-        create_user('um@ifnmg.edu.br', self.coordination, is_active=False)
-        create_user('dois@ifnmg.edu.br', self.coordination, is_active=False)
-        with self.assertRaises(RoleInUse) as raised:
+            self.assertFalse(Role.objects.filter(code='COORDENACAO').exists())
+            self.assertFalse(RolePermission.objects.filter(role_id=self.coordination.pk).exists())
+            self.assertTrue(Permission.objects.filter(code=permissions.USER_VIEW).exists())
+        with self.case('perfis iniciais'):
+            for code in ('ADMINISTRADOR', 'DOCENTE'):
+                with self.subTest(code=code):
+                    role = Role.objects.get(code=code)
+                    role.delete_role()
+                    self.assertFalse(Role.objects.filter(code=code).exists())
+                    self.assertFalse(RolePermission.objects.filter(role_id=role.pk).exists())
+        with self.case('depois da troca de perfil'):
+            create_user('admin@ifnmg.edu.br', management_role())
+            user = create_user('coord@ifnmg.edu.br', self.coordination)
+            user.change_role(requester_role())
             self.coordination.delete_role()
-        self.assertIn('2 usuários vinculados', raised.exception.messages[0])
-        self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
+            self.assertFalse(Role.objects.filter(pk=self.coordination.pk).exists())
+            self.assertEqual(list(User.objects.get(pk=user.pk).roles.values_list('code', flat=True)), ['SOLICITACAO'])
 
-    def test_role_can_be_deleted_after_users_change_role(self):
-        create_user('admin@ifnmg.edu.br', management_role())
-        user = create_user('coord@ifnmg.edu.br', self.coordination)
-        user.change_role(requester_role())
-        self.coordination.delete_role()
-        self.assertFalse(Role.objects.filter(pk=self.coordination.pk).exists())
-        self.assertEqual(list(User.objects.get(pk=user.pk).roles.values_list('code', flat=True)), ['SOLICITACAO'])
+    def test_role_with_users_cannot_be_deleted(self):
+        with self.case('perfil inicial'):
+            administrator = Role.objects.get(code='ADMINISTRADOR')
+            create_user('admin@ifnmg.edu.br', administrator)
+            with self.assertRaises(RoleInUse):
+                administrator.delete_role()
+            self.assertTrue(Role.objects.filter(pk=administrator.pk).exists())
+        with self.case('usuário ativo'):
+            user = create_user('coord@ifnmg.edu.br', self.coordination)
+            with self.assertRaises(RoleInUse) as raised:
+                self.coordination.delete_role()
+            self.assertIn('1 usuário vinculado', raised.exception.messages[0])
+            self.assertEqual(codes(self.coordination), {permissions.USER_VIEW})
+            self.assertEqual(User.objects.get(pk=user.pk).role, self.coordination)
+        with self.case('só usuários inativos'):
+            create_user('um@ifnmg.edu.br', self.coordination, is_active=False)
+            create_user('dois@ifnmg.edu.br', self.coordination, is_active=False)
+            with self.assertRaises(RoleInUse) as raised:
+                self.coordination.delete_role()
+            self.assertIn('2 usuários vinculados', raised.exception.messages[0])
+            self.assertTrue(Role.objects.filter(pk=self.coordination.pk).exists())
 
 
 class ConcurrentPermissionChangeTests(TransactionTestCase):

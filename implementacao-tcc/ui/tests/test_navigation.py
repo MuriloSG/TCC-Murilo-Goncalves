@@ -1,4 +1,5 @@
 from django.test import TestCase
+from config.testing import IsolatedCasesMixin
 from django.urls import reverse
 
 from accounts import permissions
@@ -6,7 +7,7 @@ from accounts.models import Role, User
 from ui.templatetags.ui import navigation
 
 
-class NavigationTestCase(TestCase):
+class NavigationTestCase(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_superadmin(email='ana@ifnmg.edu.br', name='Ana Maria Souza', password='Senha-forte-123')
@@ -25,89 +26,70 @@ class NavigationTestCase(TestCase):
 
 
 class GroupVisibilityTests(NavigationTestCase):
-    def test_todas_as_permissoes_mostram_cada_item_no_seu_grupo(self):
-        response, menu, _ = self.menu(self.admin, '/auditoria/')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(list(menu), ['Painel', 'Agenda', 'Gestão acadêmica', 'Relatórios', 'Notificações', 'Administração', 'Configurações'])
-        self.assertEqual(menu['Gestão acadêmica'], ['Ensalamento', 'Espaços', 'Cursos', 'Disciplinas', 'Turmas'])
-        self.assertEqual(menu['Administração'], ['Usuários', 'Perfis e permissões', 'Auditoria'])
-
-    def test_cada_item_do_grupo_segue_a_propria_permissao(self):
-        cases = (
-            ('Gestão acadêmica', permissions.SPACE_VIEW, '/espacos/', ['Espaços'], 'Administração'),
-            ('Administração', permissions.AUDIT_VIEW, '/auditoria/', ['Auditoria'], 'Gestão acadêmica'),
-        )
-        for group, code, url, children, absent in cases:
-            with self.subTest(group=group):
-                response, menu, _ = self.menu(self.user_with(code), url)
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(list(menu), [group])
-                self.assertEqual(menu[group], children)
-                self.assertNotIn(absent, menu)
-
-    def test_um_item_do_grupo_nao_libera_os_demais(self):
-        user = self.user_with(permissions.SPACE_VIEW)
-        self.client.force_login(user)
-        for url in ('/disciplinas/', '/turmas/', '/usuarios/', '/auditoria/'):
-            with self.subTest(url=url):
-                self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_visualizar_nao_libera_as_acoes_do_modulo(self):
-        self.client.force_login(self.user_with(permissions.SPACE_VIEW, permissions.SUBJECT_VIEW))
-        for url in ('/espacos/novo/', '/disciplinas/nova/'):
-            with self.subTest(url=url):
-                self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_acao_sem_visualizar_nao_mostra_o_item(self):
-        _, menu, _ = self.menu(self.user_with(permissions.SPACE_CREATE, permissions.SUBJECT_CREATE, permissions.PANEL_VIEW), '/inicio/')
-        self.assertEqual(list(menu), ['Painel'])
+    def test_cada_item_segue_a_propria_permissao(self):
+        with self.case('todas as permissões'):
+            response, menu, _ = self.menu(self.admin, '/auditoria/')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(list(menu), ['Painel', 'Agenda', 'Gestão acadêmica', 'Relatórios', 'Notificações', 'Administração', 'Configurações'])
+            self.assertEqual(menu['Gestão acadêmica'], ['Ensalamento', 'Espaços', 'Cursos', 'Disciplinas', 'Turmas'])
+            self.assertEqual(menu['Administração'], ['Usuários', 'Perfis e permissões', 'Auditoria'])
+        with self.case('cada item'):
+            cases = (
+                ('Gestão acadêmica', permissions.SPACE_VIEW, '/espacos/', ['Espaços'], 'Administração'),
+                ('Administração', permissions.AUDIT_VIEW, '/auditoria/', ['Auditoria'], 'Gestão acadêmica'),
+            )
+            for group, code, url, children, absent in cases:
+                with self.subTest(group=group):
+                    response, menu, _ = self.menu(self.user_with(code), url)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(list(menu), [group])
+                    self.assertEqual(menu[group], children)
+                    self.assertNotIn(absent, menu)
+        with self.case('ação sem visualizar'):
+            _, menu, _ = self.menu(self.user_with(permissions.SPACE_CREATE, permissions.SUBJECT_CREATE, permissions.PANEL_VIEW), '/inicio/')
+            self.assertEqual(list(menu), ['Painel'])
 
 
 class UserImportEntryTests(NavigationTestCase):
-    def test_usuarios_leva_a_tela_permitida(self):
-        cases = (
-            ((permissions.USER_IMPORT,), '/usuarios/importacoes/'),
-            ((permissions.USER_VIEW,), '/usuarios/'),
-            ((permissions.USER_VIEW, permissions.USER_IMPORT), '/usuarios/'),
-        )
-        for codes, target in cases:
-            with self.subTest(codes=codes):
-                response, menu, items = self.menu(self.user_with(*codes), target)
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(menu, {'Administração': ['Usuários']})
-                self.assertEqual(items[0]['children'][0]['url'], target)
-
-    def test_sem_as_permissoes_nao_ha_item_de_usuarios(self):
-        _, menu, _ = self.menu(self.user_with(permissions.PANEL_VIEW, permissions.USER_IMPORT_DELETE), '/inicio/')
-        self.assertEqual(list(menu), ['Painel'])
-
-    def test_importacoes_marcam_o_item_usuarios(self):
-        _, _, items = self.menu(self.user_with(permissions.USER_IMPORT), '/usuarios/importacoes/')
-        self.assertTrue(items[0]['current'])
-        self.assertEqual([child['label'] for child in items[0]['children'] if child['current']], ['Usuários'])
-
-    def test_inicio_abre_as_importacoes_para_quem_so_importa(self):
-        self.client.force_login(self.user_with(permissions.USER_IMPORT))
-        self.assertRedirects(self.client.get(reverse('home')), '/usuarios/importacoes/', fetch_redirect_response=False)
+    def test_item_usuarios_leva_a_tela_permitida(self):
+        with self.case('tela permitida'):
+            cases = (
+                ((permissions.USER_IMPORT,), '/usuarios/importacoes/'),
+                ((permissions.USER_VIEW,), '/usuarios/'),
+                ((permissions.USER_VIEW, permissions.USER_IMPORT), '/usuarios/'),
+            )
+            for codes, target in cases:
+                with self.subTest(codes=codes):
+                    response, menu, items = self.menu(self.user_with(*codes), target)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(menu, {'Administração': ['Usuários']})
+                    self.assertEqual(items[0]['children'][0]['url'], target)
+        with self.case('sem as permissões'):
+            _, menu, _ = self.menu(self.user_with(permissions.PANEL_VIEW, permissions.USER_IMPORT_DELETE), '/inicio/')
+            self.assertEqual(list(menu), ['Painel'])
+        with self.case('importações marcam o item'):
+            _, _, items = self.menu(self.user_with(permissions.USER_IMPORT), '/usuarios/importacoes/')
+            self.assertTrue(items[0]['current'])
+            self.assertEqual([child['label'] for child in items[0]['children'] if child['current']], ['Usuários'])
 
 
 class CurrentItemTests(NavigationTestCase):
-    def test_grupo_da_pagina_atual_abre_com_o_item_marcado(self):
-        cases = (
-            ('/espacos/', 'Gestão acadêmica', 'Espaços'),
-            ('/perfis/', 'Administração', 'Perfis e permissões'),
-            ('/auditoria/', 'Administração', 'Auditoria'),
-        )
-        for url, group, child in cases:
-            with self.subTest(url=url):
-                _, _, items = self.menu(self.admin, url)
-                current = [item for item in items if item['current']]
-                self.assertEqual([item['label'] for item in current], [group])
-                self.assertEqual([entry['label'] for entry in current[0]['children'] if entry['current']], [child])
-
-    def test_item_independente_nao_abre_grupo(self):
-        _, _, items = self.menu(self.admin, '/agenda/')
-        self.assertEqual([item['label'] for item in items if item['current']], ['Agenda'])
+    def test_item_atual_marcado_no_seu_grupo(self):
+        with self.case('grupo da página atual'):
+            cases = (
+                ('/espacos/', 'Gestão acadêmica', 'Espaços'),
+                ('/perfis/', 'Administração', 'Perfis e permissões'),
+                ('/auditoria/', 'Administração', 'Auditoria'),
+            )
+            for url, group, child in cases:
+                with self.subTest(url=url):
+                    _, _, items = self.menu(self.admin, url)
+                    current = [item for item in items if item['current']]
+                    self.assertEqual([item['label'] for item in current], [group])
+                    self.assertEqual([entry['label'] for entry in current[0]['children'] if entry['current']], [child])
+        with self.case('item independente'):
+            _, _, items = self.menu(self.admin, '/agenda/')
+            self.assertEqual([item['label'] for item in items if item['current']], ['Agenda'])
 
     def test_grupo_aberto_na_barra_lateral_e_no_menu_do_celular(self):
         self.client.force_login(self.admin)
@@ -131,7 +113,3 @@ class RoutesTests(NavigationTestCase):
             for target in entry.get('children') or [entry]:
                 with self.subTest(item=target['label']):
                     self.assertEqual(self.client.get(target['url']).status_code, 200)
-
-    def test_inicio_abre_o_primeiro_item_liberado(self):
-        self.client.force_login(self.user_with(permissions.AUDIT_VIEW))
-        self.assertRedirects(self.client.get(reverse('home')), '/auditoria/', fetch_redirect_response=False)

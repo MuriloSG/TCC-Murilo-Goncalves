@@ -47,12 +47,11 @@ class ImportQueryTests(ImportTestCase):
         per_row = (large - small) / ADDED_ROWS
         self.assertLessEqual(per_row, MAX_QUERIES_PER_ROW, f'{small} e {large} consultas: {per_row:.1f} por linha')
 
-    def test_first_preview(self):
-        self.assert_cost_per_row(self.preview_queries(SMALL), self.preview_queries(LARGE))
-
-    def test_first_confirmation(self):
-        self.assert_cost_per_row(self.confirmation_queries(SMALL), self.confirmation_queries(LARGE))
-
-    def test_reimport_preview(self):
-        self.conclude(sheet(LARGE))
-        self.assert_cost_per_row(self.preview_queries(SMALL), self.preview_queries(LARGE))
+    def test_cost_per_row_of_each_operation(self):
+        with self.case('primeira prévia'):
+            self.assert_cost_per_row(self.preview_queries(SMALL), self.preview_queries(LARGE))
+        with self.case('primeira confirmação'):
+            self.assert_cost_per_row(self.confirmation_queries(SMALL), self.confirmation_queries(LARGE))
+        with self.case('prévia da reimportação'):
+            self.conclude(sheet(LARGE))
+            self.assert_cost_per_row(self.preview_queries(SMALL), self.preview_queries(LARGE))

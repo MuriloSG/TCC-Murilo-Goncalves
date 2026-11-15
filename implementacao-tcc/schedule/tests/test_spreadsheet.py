@@ -100,38 +100,24 @@ class StructureTests(SpreadsheetTestCase):
         self.assertIn(f'{UNDERGRADUATE_SHEET}!F69#1', origins)
         self.assertIn(f'{UNDERGRADUATE_SHEET}!F69#2', origins)
         self.assertEqual(len([origin for origin in origins if '#' in origin]), 45)
-
-    def test_space_names_lose_the_parentheses_of_the_list(self):
-        names = [self.definition.catalog_name(row) for row in self.catalog_rows if row[KIND_COLUMN] == SPACE_KIND]
-        self.assertIn('1/10', names)
-        self.assertIn('Lab. de Madeira', names)
-        self.assertIn('Lab. Reprodução Animal', names)
-        self.assertNotIn('(1/10)', names)
-
-    def test_catalog_rows_come_before_the_activity_rows(self):
+        self.assertEqual((len(self.catalog_rows), len(self.activity_rows), len(self.rows)), (206, 1500, 1706))
         kinds = [row[KIND_COLUMN] for row in self.rows]
         self.assertEqual(set(kinds[:206]), {SPACE_KIND, TEACHER_KIND})
         self.assertEqual(set(kinds[206:]), {ACTIVITY_KIND})
 
-    def test_row_count_of_the_real_file(self):
-        self.assertEqual(len(self.catalog_rows), 206)
-        self.assertEqual(len(self.activity_rows), 1500)
-        self.assertEqual(len(self.rows), 1706)
-
-    def test_calculated_sheets_are_not_read(self):
+    def test_only_the_schedule_sheets_are_read_with_the_five_weekdays(self):
         for title in IGNORED_SHEETS:
             self.assertIn(title, self.book.sheetnames)
-        used = {sheet_of(row) for row in self.rows}
-        self.assertEqual(used, {UNDERGRADUATE_SHEET, SECONDARY_SHEET, CATALOG_SHEET})
-
-    def test_the_five_weekdays_of_each_sheet(self):
+        self.assertEqual({sheet_of(row) for row in self.rows}, {UNDERGRADUATE_SHEET, SECONDARY_SHEET, CATALOG_SHEET})
         for title in (UNDERGRADUATE_SHEET, SECONDARY_SHEET):
-            days = {
-                parse_weekday(row[DAY_COLUMN]) for row in self.activity_rows if sheet_of(row) == title
-            }
+            days = {parse_weekday(row[DAY_COLUMN]) for row in self.activity_rows if sheet_of(row) == title}
             self.assertEqual(days, {'SEGUNDA', 'TERCA', 'QUARTA', 'QUINTA', 'SEXTA'}, title)
+        names = [self.definition.catalog_name(row) for row in self.catalog_rows if row[KIND_COLUMN] == SPACE_KIND]
+        for name in ('1/10', 'Lab. de Madeira', 'Lab. Reprodução Animal'):
+            self.assertIn(name, names)
+        self.assertNotIn('(1/10)', names)
 
-    def test_column_without_header_in_one_block_keeps_its_group(self):
+    def test_group_and_course_of_each_column(self):
         physics = [
             row for row in self.activity_rows
             if sheet_of(row) == UNDERGRADUATE_SHEET and row[GROUP_COLUMN].startswith('4º PERÍODO\nLic. Física')
@@ -139,8 +125,6 @@ class StructureTests(SpreadsheetTestCase):
         friday = [row for row in physics if parse_weekday(row[DAY_COLUMN]) == 'SEXTA']
         self.assertTrue(friday)
         self.assertEqual({row[GROUP_COLUMN] for row in friday}, {row[GROUP_COLUMN] for row in physics})
-
-    def test_course_title_is_read_except_for_food_engineering(self):
         food = [
             row for row in self.activity_rows
             if row[GROUP_COLUMN].endswith('Eng. Alimentos') or row[GROUP_COLUMN].endswith('Eng. Alimento')
@@ -159,115 +143,57 @@ class ActivityReadingTests(SpreadsheetTestCase):
         row = next(row for row in self.activity_rows if row[CELL_COLUMN] == origin)
         return resolve(row[ACTIVITY_COLUMN], self.file_catalog)
 
-    def test_complete_activity(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!D6')
-        self.assertEqual(activity.subject_name, 'CÁLCULO III')
-        self.assertEqual(activity.teacher_names, ['Viviane'])
-        self.assertEqual(activity.space_name, '2/6')
-        self.assertEqual(activity.problems, [])
-
-    def test_subject_with_its_own_parentheses(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!M3')
-        self.assertEqual(activity.subject_name, 'Gestão Ambiental (optativa)')
-        self.assertEqual(activity.teacher_names, ['Élcio José'])
-        self.assertEqual(activity.space_name, '3/10')
-        self.assertEqual(activity.problems, [])
-
-    def test_activity_without_space(self):
-        activity = self.activity(f'{SECONDARY_SHEET}!F3')
-        self.assertEqual(activity.subject_name, 'Ed. Física')
-        self.assertEqual(activity.teacher_names, ['Gera Jr.'])
-        self.assertIsNone(activity.space_name)
-        self.assertEqual(activity.problems, [])
-
-    def test_several_teachers_separated_by_slash(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!V10')
-        self.assertEqual(activity.subject_name, 'UCE 2')
-        self.assertEqual(
-            activity.teacher_names, ['Eduardo Garrido', 'Antônio', 'Lídia'],
-        )
-        self.assertEqual(activity.space_name, 'HV 3')
-        self.assertEqual([code for code, _ in activity.problems], ['docente_desconhecido'])
-
-    def test_several_teachers_separated_by_e(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!AM21')
-        self.assertEqual(activity.subject_name, 'Estatística Básica')
-        self.assertEqual(activity.teacher_names, ['Arilson'])
-        self.assertEqual(activity.space_name, '1/16')
-        self.assertIn('Agnaldo', activity.problems[0][1])
-
-    def test_line_break_inside_the_cell(self):
-        activity = self.activity(f'{SECONDARY_SHEET}!C3')
-        self.assertEqual(activity.subject_name, 'Química')
-        self.assertEqual(activity.teacher_names, ['Juliana Diniz'])
-        self.assertEqual(activity.space_name, 'Mini 1')
-
-    def test_space_with_an_inner_space_in_the_name(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!U10')
-        self.assertEqual(activity.space_name, 'HV 2')
-        self.assertEqual(activity.problems, [])
-
-    def test_two_activities_in_one_cell(self):
-        first = self.activity(f'{UNDERGRADUATE_SHEET}!F69#1')
-        second = self.activity(f'{UNDERGRADUATE_SHEET}!F69#2')
-        self.assertEqual(first.subject_name, 'Óleos e Gorduras (OPTATIVA I)')
-        self.assertEqual((first.teacher_names, first.space_name), (['Bruna Porto'], 'Sl. Fenômenos'))
-        self.assertEqual(second.subject_name, 'Massas e Panificação (OPTATIVA II)')
-        self.assertEqual((second.teacher_names, second.space_name), (['Márcia Antunes'], 'Sl. Oficina'))
-        self.assertEqual(first.problems + second.problems, [])
-
-    def test_slash_inside_parentheses_does_not_split(self):
+    def test_cells_of_the_real_file_are_read(self):
+        cases = [
+            ('completa', f'{UNDERGRADUATE_SHEET}!D6', 'CÁLCULO III', ['Viviane'], '2/6', []),
+            ('parênteses na disciplina', f'{UNDERGRADUATE_SHEET}!M3', 'Gestão Ambiental (optativa)', ['Élcio José'], '3/10', []),
+            ('sem sala', f'{SECONDARY_SHEET}!F3', 'Ed. Física', ['Gera Jr.'], None, []),
+            ('docentes separados por barra', f'{UNDERGRADUATE_SHEET}!V10', 'UCE 2', ['Eduardo Garrido', 'Antônio', 'Lídia'], 'HV 3', ['docente_desconhecido']),
+            ('quebra de linha', f'{SECONDARY_SHEET}!C3', 'Química', ['Juliana Diniz'], 'Mini 1', []),
+            ('sala com espaço no nome', f'{UNDERGRADUATE_SHEET}!U10', None, None, 'HV 2', []),
+            ('primeira de duas na célula', f'{UNDERGRADUATE_SHEET}!F69#1', 'Óleos e Gorduras (OPTATIVA I)', ['Bruna Porto'], 'Sl. Fenômenos', []),
+            ('segunda de duas na célula', f'{UNDERGRADUATE_SHEET}!F69#2', 'Massas e Panificação (OPTATIVA II)', ['Márcia Antunes'], 'Sl. Oficina', []),
+            ('válida numa célula com problema', f'{UNDERGRADUATE_SHEET}!AQ64#1', 'Educação e Diversidade', None, ..., []),
+            ('outra válida na mesma célula', f'{UNDERGRADUATE_SHEET}!AQ64#2', 'TCC I - Química', None, ..., []),
+            ('sala fora do catálogo', f'{SECONDARY_SHEET}!J33', None, None, None, []),
+            ('sala com outra grafia', f'{UNDERGRADUATE_SHEET}!T25', None, ['Valéria'], None, []),
+        ]
+        for label, origin, subject, teachers, space, problems in cases:
+            with self.subTest(label, origin=origin):
+                activity = self.activity(origin)
+                if subject is not None:
+                    self.assertEqual(activity.subject_name, subject)
+                if teachers is not None:
+                    self.assertEqual(activity.teacher_names, teachers)
+                if space is not ...:
+                    self.assertEqual(activity.space_name, space)
+                self.assertEqual([code for code, _ in activity.problems], problems)
+        self.assertEqual(self.activity(f'{SECONDARY_SHEET}!J33').cell_space_name, 'Zoo I')
+        self.assertEqual(self.activity(f'{UNDERGRADUATE_SHEET}!T25').cell_space_name, 'HV1')
+        statistics = self.activity(f'{UNDERGRADUATE_SHEET}!AM21')
+        self.assertEqual((statistics.subject_name, statistics.teacher_names, statistics.space_name), ('Estatística Básica', ['Arilson'], '1/16'))
+        self.assertIn('Agnaldo', statistics.problems[0][1])
         rows = [row for row in self.activity_rows if row[CELL_COLUMN] == f'{UNDERGRADUATE_SHEET}!V3']
         self.assertEqual(len(rows), 1)
         self.assertIn('Eduardo Garrido/ Thaís/ Antônio', rows[0][ACTIVITY_COLUMN])
 
-    def test_space_outside_the_catalog_is_read_as_cited_only_in_the_cells(self):
-        activity = self.activity(f'{SECONDARY_SHEET}!J33')
-        self.assertEqual(activity.problems, [])
-        self.assertEqual((activity.space_name, activity.cell_space_name), (None, 'Zoo I'))
+    def test_malformed_cells_are_problems(self):
+        catalog = Catalog.build(['Elza'], ['1/1'])
+        for label, activity, code in (
+            ('parênteses vazios no lugar da sala', resolve('Física (Elza) ()', catalog), 'sala_vazia'),
+            ('sem parênteses', resolve('Somente um texto', catalog), 'sem_parenteses'),
+            ('sem disciplina', self.activity(f'{UNDERGRADUATE_SHEET}!AQ64#3'), 'sem_disciplina'),
+        ):
+            with self.subTest(label):
+                self.assertEqual([found for found, _ in activity.problems], [code])
 
-    def test_space_with_a_different_spelling_is_not_matched(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!T25')
-        self.assertEqual(activity.problems, [])
-        self.assertEqual((activity.space_name, activity.cell_space_name), (None, 'HV1'))
-        self.assertEqual(activity.teacher_names, ['Valéria'])
-
-    def test_empty_parentheses_in_place_of_the_space_is_a_problem(self):
-        activity = resolve('Física (Elza) ()', Catalog.build(['Elza'], ['1/1']))
-        self.assertEqual([code for code, _ in activity.problems], ['sala_vazia'])
-
-    def test_activity_without_subject_is_a_problem(self):
-        activity = self.activity(f'{UNDERGRADUATE_SHEET}!AQ64#3')
-        self.assertEqual([code for code, _ in activity.problems], ['sem_disciplina'])
-
-    def test_valid_activities_of_a_cell_with_a_problem_are_read(self):
-        first = self.activity(f'{UNDERGRADUATE_SHEET}!AQ64#1')
-        second = self.activity(f'{UNDERGRADUATE_SHEET}!AQ64#2')
-        self.assertEqual(first.subject_name, 'Educação e Diversidade')
-        self.assertEqual(first.problems, [])
-        self.assertEqual(second.subject_name, 'TCC I - Química')
-        self.assertEqual(second.problems, [])
-
-    def test_prefix_is_never_matched(self):
-        catalog = Catalog.build(['Gera Jr.', 'Gera Magela'], ['1/1'])
-        activity = resolve('Física (Gera) (1/1)', catalog)
+    def test_names_match_ignoring_case_but_never_by_prefix_or_without_accents(self):
+        activity = resolve('Física (Gera) (1/1)', Catalog.build(['Gera Jr.', 'Gera Magela'], ['1/1']))
+        self.assertEqual(([code for code, _ in activity.problems], activity.teacher_names), (['docente_desconhecido'], []))
+        activity = resolve('Biologia (Erica) (1/1)', Catalog.build(['Érica'], ['1/1']))
         self.assertEqual([code for code, _ in activity.problems], ['docente_desconhecido'])
-        self.assertEqual(activity.teacher_names, [])
-
-    def test_accents_are_not_removed_in_the_match(self):
-        catalog = Catalog.build(['Érica'], ['1/1'])
-        activity = resolve('Biologia (Erica) (1/1)', catalog)
-        self.assertEqual([code for code, _ in activity.problems], ['docente_desconhecido'])
-
-    def test_case_is_ignored_in_the_match(self):
-        catalog = Catalog.build(['Érica'], ['Mini 1'])
-        activity = resolve('Biologia (ÉRICA) (MINI 1)', catalog)
-        self.assertEqual(activity.problems, [])
-        self.assertEqual((activity.teacher_names, activity.space_name), (['Érica'], 'Mini 1'))
-
-    def test_cell_without_parentheses_is_a_problem(self):
-        activity = resolve('Somente um texto', Catalog.build(['Elza'], ['1/1']))
-        self.assertEqual([code for code, _ in activity.problems], ['sem_parenteses'])
+        activity = resolve('Biologia (ÉRICA) (MINI 1)', Catalog.build(['Érica'], ['Mini 1']))
+        self.assertEqual((activity.problems, activity.teacher_names, activity.space_name), ([], ['Érica'], 'Mini 1'))
 
 
 class RealFileProblemTests(SpreadsheetTestCase):
@@ -299,10 +225,10 @@ class UserSheetReadingTests(SimpleTestCase):
                 sheet.append(list(row))
         return book
 
-    def test_missing_sheet_gives_no_users(self):
+    def test_entries_keep_the_raw_values_of_each_data_row(self):
         self.assertEqual(user_entries(self.book()), [])
-
-    def test_one_entry_per_data_row_with_raw_values(self):
+        self.assertEqual(user_entries(self.book([])), [])
+        self.assertEqual(user_entries(self.book([USER_COLUMNS])), [])
         entries = user_entries(self.book([
             USER_COLUMNS,
             (' elza@ifnmg.edu.br ', 'Elza', 'DOCENTE', 'Elza'),
@@ -312,12 +238,8 @@ class UserSheetReadingTests(SimpleTestCase):
         self.assertEqual([entry['reference'] for entry in entries], ['usuários - sistema!A2', 'usuários - sistema!A4'])
         self.assertEqual(entries[0]['values']['E-mail'], ' elza@ifnmg.edu.br ')
         self.assertEqual(entries[1]['values']['Nome de usuário'], '')
-
-    def test_sheet_title_without_case_and_accents(self):
         book = self.book([USER_COLUMNS, ('elza@ifnmg.edu.br', 'Elza', 'DOCENTE', 'Elza')], title='Usuarios - Sistema')
         self.assertEqual(user_entries(book)[0]['reference'], 'Usuarios - Sistema!A2')
-
-    def test_header_without_case_and_accents_and_extra_column(self):
         entries = user_entries(self.book([
             ('e-mail', 'NOME', 'Observação', 'perfil', 'nome de usuario'),
             ('elza@ifnmg.edu.br', 'Elza', 'qualquer', 'DOCENTE', 'Elza'),
@@ -326,24 +248,16 @@ class UserSheetReadingTests(SimpleTestCase):
             entries[0]['values'],
             {'E-mail': 'elza@ifnmg.edu.br', 'Nome': 'Elza', 'Perfil': 'DOCENTE', 'Nome de usuário': 'Elza'},
         )
-
-    def test_missing_column_rejects_the_file(self):
-        with self.assertRaises(FileRejected) as raised:
-            user_entries(self.book([('E-mail', 'Nome', 'Nome de usuário'), ('a@ifnmg.edu.br', 'A', 'A')]))
-        self.assertIn('"Perfil"', raised.exception.message)
-        self.assertIn('"usuários - sistema"', raised.exception.message)
-
-    def test_repeated_column_rejects_the_file(self):
-        with self.assertRaises(FileRejected) as raised:
-            user_entries(self.book([(*USER_COLUMNS, 'Perfil')]))
-        self.assertIn('"Perfil" aparece mais de uma vez', raised.exception.message)
-
-    def test_empty_sheet_and_header_only_give_no_users(self):
-        self.assertEqual(user_entries(self.book([])), [])
-        self.assertEqual(user_entries(self.book([USER_COLUMNS])), [])
-
-    def test_user_rows_come_before_catalog_rows(self):
         book = self.book([USER_COLUMNS, ('elza@ifnmg.edu.br', 'Elza', 'DOCENTE', 'Elza')])
         with patch('schedule.imports.SHEET_LAYOUTS', ()):
             rows = list(SpaceAllocationImport().read_cells(book))
         self.assertEqual([row[KIND_COLUMN] for row in rows], [USER_KIND, SPACE_KIND, TEACHER_KIND])
+
+    def test_missing_or_repeated_column_rejects_the_file(self):
+        with self.assertRaises(FileRejected) as raised:
+            user_entries(self.book([('E-mail', 'Nome', 'Nome de usuário'), ('a@ifnmg.edu.br', 'A', 'A')]))
+        self.assertIn('"Perfil"', raised.exception.message)
+        self.assertIn('"usuários - sistema"', raised.exception.message)
+        with self.assertRaises(FileRejected) as raised:
+            user_entries(self.book([(*USER_COLUMNS, 'Perfil')]))
+        self.assertIn('"Perfil" aparece mais de uma vez', raised.exception.message)

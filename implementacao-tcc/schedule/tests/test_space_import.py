@@ -81,70 +81,69 @@ class ClassificationTests(SpaceImportTestCase):
         self.assertEqual([candidate.name for candidate in resolution.found['hv1'].candidates], ['HV 1'])
         self.assertEqual(resolution.found['2/41'].reason, CELLS_ONLY)
 
-    def test_other_name_is_recognized(self):
-        space = Space.objects.register('HV 5', other_names=['HV5'])
-        importation = self.conclude(secondary('Biologia (Érica) (HV5)'))
-        self.assertEqual(Allocation.objects.get(subject__name='Biologia').space, space)
-        self.assertEqual(space.other_names, ['HV5'])
-        self.assertIsNone(Space.objects.get(pk=space.pk).source_import)
-        self.assertEqual(self.entry(importation, 'HV5').outcome, 'reconhecido')
+    def test_registered_active_space_is_recognized(self):
+        with self.case('pelo outro nome'):
+            space = Space.objects.register('HV 5', other_names=['HV5'])
+            importation = self.conclude(secondary('Biologia (Érica) (HV5)'))
+            self.assertEqual(Allocation.objects.get(subject__name='Biologia').space, space)
+            self.assertEqual(space.other_names, ['HV5'])
+            self.assertIsNone(Space.objects.get(pk=space.pk).source_import)
+            self.assertEqual(self.entry(importation, 'HV5').outcome, 'reconhecido')
+        with self.case('ativo e sem aulas'):
+            space = Space.objects.register('Lab. de Madeira')
+            importation = self.preview()
+            self.assertEqual(self.entry(importation, 'Lab. de Madeira').outcome, 'reconhecido')
+            row = importation.rows.get(values__Nome='Lab. de Madeira')
+            self.assertEqual((row.action, row.target), ('unchanged', str(space.pk)))
 
-    def test_inactive_space_needs_decision_and_is_not_reactivated(self):
-        space = Space.objects.register('HV 3')
-        space.deactivate()
-        importation = self.preview()
-        self.assertEqual(importation.status, Import.Status.PENDING)
-        entry = self.entry(importation, 'HV 3')
-        self.assertEqual((entry.outcome, entry.reason), (PENDING, INACTIVE))
-        self.assertFalse(Space.objects.get(pk=space.pk).is_active)
+    def test_inactive_space_is_never_reactivated_without_a_decision(self):
+        with self.case('com aulas, pede decisão'):
+            space = Space.objects.register('HV 3')
+            space.deactivate()
+            importation = self.preview()
+            self.assertEqual(importation.status, Import.Status.PENDING)
+            entry = self.entry(importation, 'HV 3')
+            self.assertEqual((entry.outcome, entry.reason), (PENDING, INACTIVE))
+            self.assertFalse(Space.objects.get(pk=space.pk).is_active)
+        with self.case('sem aulas, continua inativo'):
+            space = Space.objects.register('Lab. de Madeira')
+            space.deactivate()
+            importation = self.preview()
+            self.assertEqual(importation.status, Import.Status.VALIDATED)
+            self.assertNotIn('lab. de madeira', classify_import(importation).found)
+            row = importation.rows.get(values__Nome='Lab. de Madeira')
+            self.assertEqual((row.action, row.warnings, row.pending), (None, [], []))
+            self.assertTrue(confirm(importation, self.definition, self.executor))
+            self.assertFalse(Space.objects.get(pk=space.pk).is_active)
 
-    def test_several_similar_names_are_not_associated(self):
-        Space.objects.register('Lab. Química I')
-        Space.objects.register('Lab. Química II')
-        uploaded = workbook_file(
-            spaces=['(1/13)', '(2/6)', '(HV 3)', '(Lab. Química)'],
-            secondary={SECONDARY_CELL: 'Biologia (Érica) (Lab. Química)'},
-        )
-        entry = self.entry(self.preview(uploaded), 'Lab. Química')
-        self.assertEqual((entry.outcome, entry.reason), (PENDING, SIMILAR))
-        self.assertEqual({candidate.name for candidate in entry.candidates}, {'Lab. Química I', 'Lab. Química II'})
-
-    def test_name_only_in_the_cells_needs_decision_even_without_similar(self):
-        importation = self.preview(secondary('Biologia (Érica) (Zoo I)'))
-        entry = self.entry(importation, 'Zoo I')
-        self.assertEqual((entry.outcome, entry.reason, entry.from_list), (PENDING, CELLS_ONLY, False))
-        self.assertEqual(entry.usage.lessons, 1)
-
-    def test_listed_space_without_lessons_does_not_make_used_names_ambiguous(self):
-        uploaded = workbook_file(
-            spaces=['(1/13)', '(2/6)', '(HV 3)', '(Lab. Química I)', '(Lab. Química)'],
-            secondary={SECONDARY_CELL: 'Biologia (Érica) (Lab. Química I)'},
-        )
-        importation = self.preview(uploaded)
-        self.assertEqual(self.entry(importation, 'Lab. Química I').outcome, CREATE)
-        entry = self.entry(importation, 'Lab. Química')
-        self.assertEqual((entry.outcome, entry.reason), (PENDING, SIMILAR))
-        self.assertEqual([candidate.name for candidate in entry.candidates], ['Lab. Química I'])
-        row = importation.rows.get(values__Nome='(Lab. Química)')
-        self.assertEqual(row.pending, [{'code': 'espaco_a_decidir', 'key': 'Lab. Química'}])
-
-    def test_inactive_space_without_lessons_stays_inactive(self):
-        space = Space.objects.register('Lab. de Madeira')
-        space.deactivate()
-        importation = self.preview()
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertNotIn('lab. de madeira', classify_import(importation).found)
-        row = importation.rows.get(values__Nome='Lab. de Madeira')
-        self.assertEqual((row.action, row.warnings, row.pending), (None, [], []))
-        self.assertTrue(confirm(importation, self.definition, self.executor))
-        self.assertFalse(Space.objects.get(pk=space.pk).is_active)
-
-    def test_active_space_without_lessons_is_recognized(self):
-        space = Space.objects.register('Lab. de Madeira')
-        importation = self.preview()
-        self.assertEqual(self.entry(importation, 'Lab. de Madeira').outcome, 'reconhecido')
-        row = importation.rows.get(values__Nome='Lab. de Madeira')
-        self.assertEqual((row.action, row.target), ('unchanged', str(space.pk)))
+    def test_ambiguous_or_unlisted_names_need_a_decision(self):
+        with self.case('vários nomes parecidos'):
+            Space.objects.register('Lab. Química I')
+            Space.objects.register('Lab. Química II')
+            uploaded = workbook_file(
+                spaces=['(1/13)', '(2/6)', '(HV 3)', '(Lab. Química)'],
+                secondary={SECONDARY_CELL: 'Biologia (Érica) (Lab. Química)'},
+            )
+            entry = self.entry(self.preview(uploaded), 'Lab. Química')
+            self.assertEqual((entry.outcome, entry.reason), (PENDING, SIMILAR))
+            self.assertEqual({candidate.name for candidate in entry.candidates}, {'Lab. Química I', 'Lab. Química II'})
+        with self.case('espaço listado sem aulas'):
+            uploaded = workbook_file(
+                spaces=['(1/13)', '(2/6)', '(HV 3)', '(Lab. Química I)', '(Lab. Química)'],
+                secondary={SECONDARY_CELL: 'Biologia (Érica) (Lab. Química I)'},
+            )
+            importation = self.preview(uploaded)
+            self.assertEqual(self.entry(importation, 'Lab. Química I').outcome, CREATE)
+            entry = self.entry(importation, 'Lab. Química')
+            self.assertEqual((entry.outcome, entry.reason), (PENDING, SIMILAR))
+            self.assertEqual([candidate.name for candidate in entry.candidates], ['Lab. Química I'])
+            row = importation.rows.get(values__Nome='(Lab. Química)')
+            self.assertEqual(row.pending, [{'code': 'espaco_a_decidir', 'key': 'Lab. Química'}])
+        with self.case('nome só nas células'):
+            importation = self.preview(secondary('Biologia (Érica) (Zoo I)'))
+            entry = self.entry(importation, 'Zoo I')
+            self.assertEqual((entry.outcome, entry.reason, entry.from_list), (PENDING, CELLS_ONLY, False))
+            self.assertEqual(entry.usage.lessons, 1)
 
 
 class DecisionTests(SpaceImportTestCase):
@@ -168,56 +167,68 @@ class DecisionTests(SpaceImportTestCase):
         self.assertEqual(summary['outros_nomes_associados'], 1)
         self.assertEqual(self.entry(self.preview(secondary('Biologia (Érica) (HV5)')), 'HV5').outcome, 'reconhecido')
 
-    def test_new_space_for_a_name_only_in_the_cells(self):
-        importation = self.preview(secondary('Biologia (Érica) (Zoo I)'))
-        self.decide(importation, 'Zoo I', SpaceDecision.Kind.NEW, user=self.creator)
-        self.assertFalse(Space.objects.filter(name='Zoo I').exists())
-        self.assertTrue(confirm(importation, self.definition, self.creator))
-        space = Space.objects.get(name='Zoo I')
-        self.assertEqual((space.origin, space.source_import), ('PLANILHA', importation))
-        record = AuditLog.objects.get(resource=catalog.SPACE, action=catalog.CREATE, resource_id=str(space.pk))
-        self.assertEqual(record.metadata['decidido_por'], self.creator.email)
+    def test_new_space_or_a_name_of_the_same_import(self):
+        with self.case('espaço novo para um nome só nas células'):
+            importation = self.preview(secondary('Biologia (Érica) (Zoo I)'))
+            self.decide(importation, 'Zoo I', SpaceDecision.Kind.NEW, user=self.creator)
+            self.assertFalse(Space.objects.filter(name='Zoo I').exists())
+            self.assertTrue(confirm(importation, self.definition, self.creator))
+            space = Space.objects.get(name='Zoo I')
+            self.assertEqual((space.origin, space.source_import), ('PLANILHA', importation))
+            record = AuditLog.objects.get(resource=catalog.SPACE, action=catalog.CREATE, resource_id=str(space.pk))
+            self.assertEqual(record.metadata['decidido_por'], self.creator.email)
+        with self.case('outro nome da mesma importação'):
+            uploaded = workbook_file(
+                undergraduate={('SEGUNDA ', '07:20 - 08:10', 0): 'QUÍMICA ORGÂNICA (Elza) (HV3)'},
+                secondary={SECONDARY_CELL: 'Biologia (Érica) (HV 3)'},
+            )
+            importation = self.preview(uploaded)
+            entry = self.entry(importation, 'HV3')
+            self.assertEqual([candidate.found_key for candidate in entry.candidates], ['hv 3'])
+            self.assertEqual(self.entry(importation, 'HV 3').outcome, CREATE)
+            self.decide(importation, 'HV3', SpaceDecision.Kind.SAME, user=self.creator, target_name='HV 3')
+            self.assertTrue(confirm(importation, self.definition, self.creator))
+            space = Space.objects.get(name='HV 3')
+            self.assertEqual(space.other_names, ['HV3'])
+            self.assertEqual(set(Allocation.objects.values_list('space', flat=True)), {space.pk})
 
-    def test_associate_to_a_name_of_the_same_import(self):
-        uploaded = workbook_file(
-            undergraduate={('SEGUNDA ', '07:20 - 08:10', 0): 'QUÍMICA ORGÂNICA (Elza) (HV3)'},
-            secondary={SECONDARY_CELL: 'Biologia (Érica) (HV 3)'},
-        )
-        importation = self.preview(uploaded)
-        entry = self.entry(importation, 'HV3')
-        self.assertEqual([candidate.found_key for candidate in entry.candidates], ['hv 3'])
-        self.assertEqual(self.entry(importation, 'HV 3').outcome, CREATE)
-        self.decide(importation, 'HV3', SpaceDecision.Kind.SAME, user=self.creator, target_name='HV 3')
-        self.assertTrue(confirm(importation, self.definition, self.creator))
-        space = Space.objects.get(name='HV 3')
-        self.assertEqual(space.other_names, ['HV3'])
-        self.assertEqual(set(Allocation.objects.values_list('space', flat=True)), {space.pk})
+    def test_inactive_space_is_reactivated_only_by_its_decision(self):
+        with self.case('o nome atual só aceita reativar'):
+            space = Space.objects.register('HV 3')
+            space.deactivate()
+            importation = self.preview()
+            with self.assertRaises(ValidationError):
+                SpaceDecision.objects.decide(importation, 'HV 3', SpaceDecision.Kind.NEW, self.executor)
+            self.assertFalse(SpaceDecision.objects.exists())
+        with self.case('reativação'):
+            space = Space.objects.register('HV 3')
+            space.deactivate()
+            importation = self.decide(self.preview(), 'HV 3', SpaceDecision.Kind.REACTIVATE)
+            self.assertEqual(importation.status, Import.Status.VALIDATED)
+            self.assertFalse(Space.objects.get(pk=space.pk).is_active)
+            self.assertTrue(confirm(importation, self.definition, self.executor))
+            self.assertTrue(Space.objects.get(pk=space.pk).is_active)
+            summary = AuditLog.objects.filter(action=catalog.IMPORT).latest('pk').metadata
+            self.assertEqual(summary['espacos_reativados'], 1)
 
-    def test_reactivation(self):
-        space = Space.objects.register('HV 3')
-        space.deactivate()
-        importation = self.decide(self.preview(), 'HV 3', SpaceDecision.Kind.REACTIVATE)
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
-        self.assertFalse(Space.objects.get(pk=space.pk).is_active)
-        self.assertTrue(confirm(importation, self.definition, self.executor))
-        self.assertTrue(Space.objects.get(pk=space.pk).is_active)
-        summary = AuditLog.objects.filter(action=catalog.IMPORT).latest('pk').metadata
-        self.assertEqual(summary['espacos_reativados'], 1)
-
-    def test_current_name_of_an_inactive_space_only_accepts_reactivation(self):
-        space = Space.objects.register('HV 3')
-        space.deactivate()
-        importation = self.preview()
-        with self.assertRaises(ValidationError):
-            SpaceDecision.objects.decide(importation, 'HV 3', SpaceDecision.Kind.NEW, self.executor)
-        self.assertFalse(SpaceDecision.objects.exists())
-
-    def test_withdrawn_decision_brings_back_the_pending(self):
-        importation = self.decide(self.preview(secondary('Biologia (Érica) (Zoo I)')), 'Zoo I', SpaceDecision.Kind.NEW)
-        self.assertEqual(importation.status, Import.Status.VALIDATED)
-        SpaceDecision.objects.withdraw(importation, 'zoo i', self.executor)
-        self.assertEqual(refresh(importation, self.definition, self.executor), Import.Status.PENDING)
-        self.assertEqual(self.entry(importation, 'Zoo I').outcome, PENDING)
+    def test_decisions_are_withdrawn_with_the_pending_and_refused_on_final_imports(self):
+        with self.case('decisão retirada'):
+            importation = self.decide(self.preview(secondary('Biologia (Érica) (Zoo I)')), 'Zoo I', SpaceDecision.Kind.NEW)
+            self.assertEqual(importation.status, Import.Status.VALIDATED)
+            SpaceDecision.objects.withdraw(importation, 'zoo i', self.executor)
+            self.assertEqual(refresh(importation, self.definition, self.executor), Import.Status.PENDING)
+            self.assertEqual(self.entry(importation, 'Zoo I').outcome, PENDING)
+        with self.case('descarte e exclusão'):
+            importation = self.decide(self.preview(secondary('Biologia (Érica) (Zoo I)')), 'Zoo I', SpaceDecision.Kind.NEW)
+            importation.discard(self.definition, self.executor)
+            self.assertFalse(Space.objects.exists())
+            importation.remove(self.definition, self.executor)
+            self.assertFalse(SpaceDecision.objects.exists())
+            self.assertFalse(Space.objects.exists())
+        with self.case('importação concluída'):
+            importation = self.conclude()
+            with self.assertRaises(ValidationError):
+                SpaceDecision.objects.decide(importation, 'HV 3', SpaceDecision.Kind.NEW, self.executor)
 
     def test_recognition_prevails_over_an_old_decision(self):
         importation = self.decide(self.preview(secondary('Biologia (Érica) (Sala 101)')), 'Sala 101', SpaceDecision.Kind.NEW)
@@ -227,19 +238,6 @@ class DecisionTests(SpaceImportTestCase):
         self.assertTrue(confirm(importation, self.definition, self.executor))
         self.assertEqual(Space.objects.filter(name__iexact='Sala 101').count(), 1)
         self.assertEqual(Allocation.objects.get(subject__name='Biologia').space, manual)
-
-    def test_decision_on_a_final_import_is_refused(self):
-        importation = self.conclude()
-        with self.assertRaises(ValidationError):
-            SpaceDecision.objects.decide(importation, 'HV 3', SpaceDecision.Kind.NEW, self.executor)
-
-    def test_discard_and_delete_leave_the_registry_untouched(self):
-        importation = self.decide(self.preview(secondary('Biologia (Érica) (Zoo I)')), 'Zoo I', SpaceDecision.Kind.NEW)
-        importation.discard(self.definition, self.executor)
-        self.assertFalse(Space.objects.exists())
-        importation.remove(self.definition, self.executor)
-        self.assertFalse(SpaceDecision.objects.exists())
-        self.assertFalse(Space.objects.exists())
 
     def test_two_imports_proposing_the_same_space_create_it_once(self):
         first = self.preview()
@@ -251,19 +249,26 @@ class DecisionTests(SpaceImportTestCase):
 
 
 class PermissionTests(SpaceImportTestCase):
-    def test_importer_only_cannot_confirm_what_changes_the_registry(self):
-        importation = self.preview()
-        with self.assertRaisesMessage(ValidationError, 'O seu perfil não tem permissão para essa configuração.'):
-            confirm(importation, self.definition, self.importer_only)
-        importation.refresh_from_db()
-        self.assertEqual((importation.status, importation.revalidation_count), (Import.Status.VALIDATED, 0))
-        self.assertFalse(Space.objects.exists())
-        self.assertTrue(confirm(importation, self.definition, self.creator))
-        self.assertEqual(Space.objects.count(), 4)
-
-    def test_importer_only_concludes_when_the_registry_does_not_change(self):
-        self.conclude()
-        self.assertTrue(confirm(self.preview(), self.definition, self.importer_only))
+    def test_confirmation_needs_the_permissions_of_what_changes_the_registry(self):
+        with self.case('só importar não cadastra espaços'):
+            importation = self.preview()
+            with self.assertRaisesMessage(ValidationError, 'O seu perfil não tem permissão para essa configuração.'):
+                confirm(importation, self.definition, self.importer_only)
+            importation.refresh_from_db()
+            self.assertEqual((importation.status, importation.revalidation_count), (Import.Status.VALIDATED, 0))
+            self.assertFalse(Space.objects.exists())
+            self.assertTrue(confirm(importation, self.definition, self.creator))
+            self.assertEqual(Space.objects.count(), 4)
+        with self.case('só importar basta sem mudança no cadastro'):
+            self.conclude()
+            self.assertTrue(confirm(self.preview(), self.definition, self.importer_only))
+        with self.case('reativar exige a permissão da situação'):
+            space = Space.objects.register('HV 3')
+            space.deactivate()
+            importation = self.decide(self.preview(), 'HV 3', SpaceDecision.Kind.REACTIVATE)
+            with self.assertRaises(ValidationError):
+                confirm(importation, self.definition, self.creator)
+            self.assertFalse(Space.objects.get(pk=space.pk).is_active)
 
     def test_decision_without_the_permission_is_refused(self):
         space = Space.objects.register('HV 5')
@@ -275,11 +280,3 @@ class PermissionTests(SpaceImportTestCase):
         self.assertFalse(SpaceDecision.objects.exists())
         SpaceDecision.objects.decide(importation, 'HV5', SpaceDecision.Kind.NEW, self.creator)
         self.assertEqual(SpaceDecision.objects.get().kind, 'NOVO')
-
-    def test_reactivation_requires_the_status_permission_to_confirm(self):
-        space = Space.objects.register('HV 3')
-        space.deactivate()
-        importation = self.decide(self.preview(), 'HV 3', SpaceDecision.Kind.REACTIVATE)
-        with self.assertRaises(ValidationError):
-            confirm(importation, self.definition, self.creator)
-        self.assertFalse(Space.objects.get(pk=space.pk).is_active)

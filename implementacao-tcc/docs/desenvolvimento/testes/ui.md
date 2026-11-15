@@ -41,7 +41,7 @@ Layout, navegação, componentes e as varreduras de texto e de classes que valem
 
 | Classe | O que garante |
 |---|---|
-| `AppLayoutTests` | O primeiro focável é o link para o conteúdo; item atual e trilha marcados; sino no cabeçalho e no celular, com o painel do usuário; barra lateral recolhida pelo cookie; confirmação de saída em modal e em página sem JavaScript; navegação sem perfis; htmx e CSRF só nas páginas autenticadas |
+| `AppLayoutTests` | O primeiro focável é o link para o conteúdo; sino no cabeçalho e no celular, com o painel do usuário; barra lateral recolhida pelo cookie; confirmação de saída em modal e em página sem JavaScript; htmx e CSRF só nas páginas autenticadas |
 | `ExternalResourcesTests` | As páginas só usam endereços do próprio sistema, inclusive as fontes |
 | `BrandTests` | Título e ícone do sistema em toda página, com os arquivos presentes |
 
@@ -49,10 +49,10 @@ Layout, navegação, componentes e as varreduras de texto e de classes que valem
 
 | Classe | O que garante |
 |---|---|
-| `GroupVisibilityTests` | Cada item do menu segue a própria permissão; um item não libera os demais; visualizar não libera as ações e ação sem visualizar não mostra o item |
-| `UserImportEntryTests` | "Usuários" leva à tela permitida, inclusive às importações para quem só importa |
-| `CurrentItemTests` | O grupo da página atual abre com o item marcado, na barra lateral e no celular |
-| `RoutesTests` | Os links do menu abrem para quem tem acesso; o início abre o primeiro item liberado |
+| `GroupVisibilityTests` | Cada item do menu segue a própria permissão, no seu grupo; ação sem visualizar não mostra o item |
+| `UserImportEntryTests` | "Usuários" leva à tela permitida e fica marcado nas importações; sem as permissões, não aparece |
+| `CurrentItemTests` | O grupo da página atual abre com o item marcado, na barra lateral e no celular; item independente não abre grupo |
+| `RoutesTests` | Os links do menu abrem para quem tem acesso. O início fica em `accounts/tests/test_home.py` |
 
 ### `test_select.py`
 

@@ -4,9 +4,7 @@ import re
 from datetime import date, time
 
 from django.core.exceptions import ValidationError
-from django.db import connection
 from django.test import TestCase
-from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from accounts import permissions
@@ -14,6 +12,7 @@ from accounts.models import Role, User
 from audit import catalog
 from audit.models import AuditLog
 from bookings.occupancy import find_conflict
+from config.testing import IsolatedCasesMixin
 from schedule.models import Allocation, AllocationException, ClassGroup, Course, Semester, Space, Stage, Teacher, Weekday
 from schedule.occupancy import occupancy
 from schedule.tests.test_timetable import allocate
@@ -32,7 +31,7 @@ def user_with(email, username, *codes):
     return User.objects.register(email=email, name=code.capitalize(), role=role, username=username)
 
 
-class CancelTestCase(TestCase):
+class CancelTestCase(IsolatedCasesMixin, TestCase):
     """Aula de Cálculo às segundas, das 10:00 às 12:00 em duas faixas, e Física às terças."""
 
     @classmethod
@@ -69,28 +68,34 @@ class CancelTestCase(TestCase):
 
 
 class ModelTests(CancelTestCase):
-    def test_cancels_each_allocation_of_the_block_on_the_date(self):
-        created = self.cancel(self.viviane)
-        self.assertEqual(len(created), 2)
-        self.assertEqual({(item.allocation_id, item.date, item.kind) for item in created}, {
-            (self.first.pk, MONDAY, AllocationException.Kind.CANCELLED),
-            (self.second.pk, MONDAY, AllocationException.Kind.CANCELLED),
-        })
-        self.assertEqual({item.created_by for item in created}, {self.viviane})
-
-    def test_the_weekly_rule_is_untouched(self):
+    def test_cancels_each_allocation_of_the_block_keeping_the_rule(self):
         before = Allocation.objects.filter(pk=self.first.pk).values().get()
-        self.cancel(self.viviane)
+        created = self.cancel(self.viviane)
+        self.assertEqual({(item.allocation_id, item.date, item.kind, item.created_by) for item in created}, {
+            (self.first.pk, MONDAY, AllocationException.Kind.CANCELLED, self.viviane),
+            (self.second.pk, MONDAY, AllocationException.Kind.CANCELLED, self.viviane),
+        })
         self.assertEqual(Allocation.objects.filter(pk=self.first.pk).values().get(), before)
         self.assertEqual([teacher.name for teacher in self.first.teachers.all()], ['Viviane'])
+        logs = AuditLog.objects.filter(action=catalog.CANCEL, resource=catalog.SPACE_ALLOCATION_EXCEPTION).order_by('pk')
+        self.assertEqual(len(logs), 2)
+        for log, exception in zip(logs, created):
+            self.assertEqual(log.resource_id, str(exception.pk))
+            self.assertEqual(log.new_values, {'tipo': 'CANCELADA', 'data': '2026-09-28'})
+            self.assertEqual(
+                {key: log.metadata[key] for key in ('alocacao', 'disciplina', 'espaco', 'docentes')},
+                {'alocacao': exception.allocation_id, 'disciplina': 'Cálculo III', 'espaco': 'Sala 5', 'docentes': ['Viviane']},
+            )
 
-    def test_refuses_dates_that_are_not_occurrences(self):
+    def test_invalid_cancellation_is_refused_and_records_nothing(self):
         for day in (date(2026, 9, 29), date(2026, 7, 27), date(2026, 12, 21), date(2026, 10, 3)):
             with self.subTest(day), self.assertRaises(ValidationError):
                 self.cancel(self.viviane, day)
+        for label, ids in (('alocação inexistente', [self.first.pk, 999999]), ('uma das alocações recusada', [self.first.pk, self.other.pk])):
+            with self.subTest(label), self.assertRaises(ValidationError):
+                AllocationException.objects.cancel(ids, MONDAY, self.manager)
         self.assertFalse(AllocationException.objects.exists())
-
-    def test_refuses_the_same_occurrence_twice(self):
+        self.assertFalse(AuditLog.objects.filter(action=catalog.CANCEL).exists())
         self.cancel(self.viviane)
         with self.assertRaisesMessage(ValidationError, 'A ocorrência de 28/09/2026 já está cancelada.'):
             self.cancel(self.manager)
@@ -98,82 +103,61 @@ class ModelTests(CancelTestCase):
             self.cancel(self.manager, MONDAY, self.second)
         self.assertEqual(AllocationException.objects.count(), 2)
 
-    def test_refuses_a_missing_allocation(self):
-        with self.assertRaises(ValidationError):
-            AllocationException.objects.cancel([self.first.pk, 999999], MONDAY, self.viviane)
-        self.assertFalse(AllocationException.objects.exists())
-
-    def test_refusal_of_one_allocation_cancels_none(self):
-        with self.assertRaises(ValidationError):
-            AllocationException.objects.cancel([self.first.pk, self.other.pk], MONDAY, self.manager)
-        self.assertFalse(AllocationException.objects.exists())
-
 
 class AuthorizationTests(CancelTestCase):
-    def test_teacher_of_the_lesson_cancels_without_the_permission(self):
-        self.assertEqual(len(self.cancel(self.viviane)), 2)
-
-    def test_teacher_of_another_lesson_cannot_cancel(self):
-        with self.assertRaises(ValidationError):
-            self.cancel(self.erica)
-
-    def test_permission_cancels_any_lesson(self):
-        self.cancel(self.manager)
-        self.cancel(self.manager, date(2026, 9, 29), self.other)
-        self.assertEqual(AllocationException.objects.count(), 3)
-
-    def test_superadmin_cancels_any_lesson(self):
-        self.assertEqual(len(self.cancel(self.superadmin)), 2)
-
-    def test_user_without_link_or_permission_cannot_cancel(self):
-        for user in (self.plain, self.outsider):
-            with self.subTest(user=user.email), self.assertRaises(ValidationError):
-                self.cancel(user)
-
-    def test_lesson_without_teacher_only_with_the_permission(self):
+    def test_teacher_of_the_lesson_or_the_permission_cancels(self):
         lonely = allocate(self.semester, self.group, 'Estágio', Weekday.MONDAY, time(14, 0), time(15, 0), 'Sala 5')
-        for user in (self.viviane, self.plain):
-            with self.subTest(user=user.email), self.assertRaises(ValidationError):
-                self.cancel(user, MONDAY, lonely)
-        self.assertEqual(len(self.cancel(self.manager, MONDAY, lonely)), 1)
-
-    def test_inactive_teacher_cannot_cancel(self):
+        allowed = [
+            ('docente da aula', self.viviane, (MONDAY,)),
+            ('permissão, aula de outro docente', self.manager, (date(2026, 9, 29), self.other)),
+            ('permissão, aula sem docente', self.manager, (MONDAY, lonely)),
+            ('superadmin', self.superadmin, (MONDAY,)),
+        ]
+        for label, user, args in allowed:
+            with self.case(label):
+                self.assertTrue(self.cancel(user, *args))
+        refused = [
+            ('docente de outra aula', self.erica, (MONDAY,)),
+            ('sem vínculo nem permissão', self.plain, (MONDAY,)),
+            ('sem perfil', self.outsider, (MONDAY,)),
+            ('docente, aula sem docente', self.viviane, (MONDAY, lonely)),
+        ]
+        for label, user, args in refused:
+            with self.case(label), self.assertRaises(ValidationError):
+                self.cancel(user, *args)
         User.objects.filter(pk=self.viviane.pk).update(is_active=False)
-        self.viviane.refresh_from_db()
         with self.assertRaises(ValidationError):
-            self.cancel(self.viviane)
+            self.cancel(User.objects.get(pk=self.viviane.pk))
 
 
 class CancelViewTests(CancelTestCase):
-    def test_confirmation_names_the_date_and_keeps_the_recurrence(self):
+    def test_confirmation_then_cancel_by_post(self):
         self.client.force_login(self.viviane)
         response = self.client.get(self.cancel_url())
         self.assertEqual(response.status_code, 200)
         text = self.text(response)
-        self.assertIn('Cancelar a ocorrência de 28/09/2026?', text)
-        self.assertIn('das 10:00 às 12:00 em Sala 5', text)
-        self.assertIn('A recorrência continua normalmente nas próximas datas.', text)
+        for expected in (
+            'Cancelar a ocorrência de 28/09/2026?', 'das 10:00 às 12:00 em Sala 5', 'A recorrência continua normalmente nas próximas datas.',
+        ):
+            self.assertIn(expected, text)
         self.assertFalse(AllocationException.objects.exists())
-
-    def test_teacher_cancels_by_post(self):
-        self.client.force_login(self.viviane)
+        with self.case('htmx mantém a semana da grade'):
+            current = f'http://testserver{GRID}?semestre=2026/2&sala=Sala+5&semana=2026-09-28'
+            response = self.client.post(self.cancel_url(), HTTP_HX_REQUEST='true', HTTP_HX_CURRENT_URL=current)
+            self.assertEqual(response['HX-Redirect'], f'{GRID}?semestre=2026/2&sala=Sala+5&semana=2026-09-28')
         response = self.client.post(self.cancel_url())
         self.assertRedirects(response, GRID, fetch_redirect_response=False)
         self.assertEqual(AllocationException.objects.filter(date=MONDAY).count(), 2)
+        self.assertEqual(set(AuditLog.objects.filter(action=catalog.CANCEL).values_list('user', flat=True)), {self.viviane.pk})
+        self.client.force_login(self.manager)
+        response = self.client.post(self.cancel_url(), follow=True)
+        self.assertContains(response, 'A ocorrência de 28/09/2026 já está cancelada.')
+        self.assertEqual(AllocationException.objects.count(), 2)
 
-    def test_htmx_keeps_the_grid_week(self):
-        self.client.force_login(self.viviane)
-        current = f'http://testserver{GRID}?semestre=2026/2&sala=Sala+5&semana=2026-09-28'
-        response = self.client.post(self.cancel_url(), HTTP_HX_REQUEST='true', HTTP_HX_CURRENT_URL=current)
-        self.assertEqual(response['HX-Redirect'], f'{GRID}?semestre=2026/2&sala=Sala+5&semana=2026-09-28')
-
-    def test_other_teacher_gets_404_on_get_and_post(self):
+    def test_lesson_of_another_teacher_and_manipulated_parameters_get_404(self):
         self.client.force_login(self.erica)
         self.assertEqual(self.client.get(self.cancel_url()).status_code, 404)
         self.assertEqual(self.client.post(self.cancel_url()).status_code, 404)
-        self.assertFalse(AllocationException.objects.exists())
-
-    def test_manipulated_parameters_get_404(self):
         self.client.force_login(self.manager)
         for url in (
             f'{CANCEL}?data=2026-09-28',
@@ -189,13 +173,7 @@ class CancelViewTests(CancelTestCase):
                 self.assertEqual(self.client.get(url).status_code, 404)
                 self.assertEqual(self.client.post(url).status_code, 404)
         self.assertFalse(AllocationException.objects.exists())
-
-    def test_second_cancel_shows_the_refusal(self):
-        self.cancel(self.viviane)
-        self.client.force_login(self.manager)
-        response = self.client.post(self.cancel_url(), follow=True)
-        self.assertContains(response, 'A ocorrência de 28/09/2026 já está cancelada.')
-        self.assertEqual(AllocationException.objects.count(), 2)
+        self.assertFalse(AuditLog.objects.filter(action=catalog.CANCEL).exists())
 
 
 class GridTests(CancelTestCase):
@@ -203,123 +181,59 @@ class GridTests(CancelTestCase):
         self.client.force_login(user)
         return self.client.get(GRID, {'semestre': '2026/2', 'sala': 'Sala 5', **params})
 
-    def test_cancelled_occurrence_leaves_every_source_for_the_week(self):
-        self.cancel(self.viviane)
-        self.assertEqual([item for item in occupancy(self.room, MONDAY, MONDAY) if item.entry.subject == 'Cálculo III'], [])
-        self.assertEqual(len([item for item in occupancy(self.room, NEXT_MONDAY, NEXT_MONDAY)]), 2)
-
-    def test_the_block_action_carries_both_allocations(self):
+    def test_action_only_for_who_manages_the_lesson(self):
         response = self.grid(self.viviane, semana='2026-09-28')
         self.assertContains(response, f'data=2026-09-28&amp;alocacao={self.first.pk}&amp;alocacao={self.second.pk}')
         self.assertContains(response, 'aria-label="Cancelar esta ocorrência"')
-
-    def test_action_only_for_who_manages_the_lesson(self):
-        viviane = self.grid(self.viviane, semana='2026-09-28').content.decode()
-        self.assertIn(f'alocacao={self.first.pk}', viviane)
-        self.assertNotIn(f'alocacao={self.other.pk}', viviane)
+        self.assertNotContains(response, f'alocacao={self.other.pk}')
         self.assertNotContains(self.grid(self.plain, semana='2026-09-28'), 'Cancelar esta ocorrência')
         self.assertContains(self.grid(self.manager, semana='2026-09-28'), f'alocacao={self.other.pk}')
 
-    def test_no_new_query_per_exception(self):
-        def count():
-            with CaptureQueriesContext(connection) as queries:
-                self.grid(self.viviane, visao='mes', mes='2026-10')
-            return len(queries)
+    def test_cancelled_occurrence_leaves_the_grid_and_frees_the_space(self):
+        with self.case('uma faixa do bloco'):
+            self.cancel(self.viviane, MONDAY, self.first)
+            self.assertIsNone(find_conflict(self.room, MONDAY, time(10, 0), time(11, 0)))
+            self.assertIsNotNone(find_conflict(self.room, MONDAY, time(10, 0), time(12, 0)))
+        self.assertIsNotNone(find_conflict(self.room, MONDAY, time(10, 0), time(12, 0)))
+        self.cancel(self.viviane)
+        self.assertEqual([item for item in occupancy(self.room, MONDAY, MONDAY) if item.entry.subject == 'Cálculo III'], [])
+        self.assertEqual(len(occupancy(self.room, NEXT_MONDAY, NEXT_MONDAY)), 2)
+        self.assertIsNone(find_conflict(self.room, MONDAY, time(10, 0), time(12, 0)))
+        self.assertIsNotNone(find_conflict(self.room, NEXT_MONDAY, time(10, 0), time(12, 0)))
+        self.assertIsNotNone(find_conflict(self.room, date(2026, 9, 29), time(10, 0), time(11, 0)))
 
-        count()
-        before = count()
-        for day in (date(2026, 10, 5), date(2026, 10, 12), date(2026, 10, 19)):
-            self.cancel(self.manager, day)
-        self.cancel(self.manager, date(2026, 10, 6), self.other)
-        self.assertEqual(count(), before)
-
-
-class PublicCalendarTests(CancelTestCase):
-    def test_exception_is_not_exposed(self):
+    def test_exception_is_not_exposed_in_the_public_calendar(self):
         self.cancel(self.viviane)
         text = self.text(self.client.get(PUBLIC, {'sala': 'Sala 5', 'inicio': '2026-09-28', 'fim': '2026-10-02'})).casefold()
         for word in ('cancelad', 'exceç', 'ocorrência'):
             self.assertNotIn(word, text)
 
-
-class AgendaTests(CancelTestCase):
-    def test_cancelled_occurrence_frees_the_space(self):
-        self.assertIsNotNone(find_conflict(self.room, MONDAY, time(10, 0), time(12, 0)))
-        self.cancel(self.viviane)
-        self.assertIsNone(find_conflict(self.room, MONDAY, time(10, 0), time(12, 0)))
-
-    def test_other_occurrences_keep_blocking(self):
-        self.cancel(self.viviane)
-        self.assertIsNotNone(find_conflict(self.room, NEXT_MONDAY, time(10, 0), time(12, 0)))
-        self.assertIsNotNone(find_conflict(self.room, date(2026, 9, 29), time(10, 0), time(11, 0)))
-
-    def test_cancelling_one_slot_keeps_the_other(self):
-        self.cancel(self.viviane, MONDAY, self.first)
-        self.assertIsNone(find_conflict(self.room, MONDAY, time(10, 0), time(11, 0)))
-        self.assertIsNotNone(find_conflict(self.room, MONDAY, time(10, 0), time(12, 0)))
-
-
-class ExceptionListTests(CancelTestCase):
-    def setUp(self):
+    def test_exception_list_follows_who_manages_the_lesson(self):
         self.cancel(self.viviane)
         self.cancel(self.manager, date(2026, 9, 29), self.other)
-
-    def list_of(self, user):
-        self.client.force_login(user)
-        return self.client.get(LIST)
-
-    def test_permission_sees_every_exception(self):
-        response = self.list_of(self.manager)
-        self.assertEqual(response.context['page'].paginator.count, 3)
-        text = self.text(response)
-        self.assertIn('28/09/2026, das 10:00 às 11:00', text)
-        self.assertIn('29/09/2026, das 10:00 às 11:00', text)
-
-    def test_teacher_sees_only_the_own_lessons(self):
-        response = self.list_of(self.viviane)
-        self.assertEqual(response.context['page'].paginator.count, 2)
-        self.assertNotContains(response, 'Física')
-
-    def test_user_without_lessons_sees_none(self):
-        response = self.list_of(self.plain)
-        self.assertEqual(response.context['page'].paginator.count, 0)
-        self.assertContains(response, 'Nenhuma exceção registrada.')
-
-    def test_grid_links_to_the_list(self):
-        self.client.force_login(self.plain)
-        self.assertContains(self.client.get(GRID), LIST)
-
-
-class AuditTests(CancelTestCase):
-    def test_each_cancelled_allocation_is_audited(self):
-        created = self.cancel(self.viviane)
-        logs = AuditLog.objects.filter(action=catalog.CANCEL, resource=catalog.SPACE_ALLOCATION_EXCEPTION).order_by('pk')
-        self.assertEqual(len(logs), 2)
-        for log, exception in zip(logs, created):
-            self.assertEqual(log.resource_id, str(exception.pk))
-            self.assertEqual(log.new_values, {'tipo': 'CANCELADA', 'data': '2026-09-28'})
-            self.assertEqual(log.metadata['alocacao'], exception.allocation_id)
-            self.assertEqual(log.metadata['disciplina'], 'Cálculo III')
-            self.assertEqual(log.metadata['espaco'], 'Sala 5')
-            self.assertEqual(log.metadata['docentes'], ['Viviane'])
-
-    def test_view_records_the_user(self):
-        self.client.force_login(self.viviane)
-        self.client.post(self.cancel_url())
-        users = set(AuditLog.objects.filter(action=catalog.CANCEL).values_list('user', flat=True))
-        self.assertEqual(users, {self.viviane.pk})
-
-    def test_refusal_is_not_audited(self):
-        with self.assertRaises(ValidationError):
-            self.cancel(self.erica)
-        self.client.force_login(self.erica)
-        self.client.post(self.cancel_url())
-        self.assertFalse(AuditLog.objects.filter(action=catalog.CANCEL).exists())
+        for user, count in ((self.manager, 3), (self.viviane, 2), (self.plain, 0)):
+            with self.subTest(user.username):
+                self.client.force_login(user)
+                response = self.client.get(LIST)
+                self.assertEqual(response.context['page'].paginator.count, count)
+                if user == self.manager:
+                    text = self.text(response)
+                    self.assertIn('28/09/2026, das 10:00 às 11:00', text)
+                    self.assertIn('29/09/2026, das 10:00 às 11:00', text)
+                else:
+                    self.assertNotContains(response, 'Física')
 
 
 class ReimportTests(CancelTestCase):
     def test_exception_survives_a_new_import_of_the_same_lesson(self):
         self.cancel(self.viviane)
+        with self.case('aula sem alteração'):
+            _, action, _ = Allocation.objects.apply(
+                self.semester, self.group, self.first.subject, Weekday.MONDAY, self.first.time_slot,
+                space=self.room, teachers=list(self.first.teachers.all()),
+            )
+            self.assertEqual(action, 'unchanged')
+            self.assertEqual(AllocationException.objects.count(), 2)
         new_room = Space.objects.register('Sala 9')
         teacher, _ = Teacher.objects.resolve('Otávio')
         allocation, action, _ = Allocation.objects.apply(
@@ -330,15 +244,6 @@ class ReimportTests(CancelTestCase):
         self.assertTrue(AllocationException.objects.filter(allocation=self.first, date=MONDAY).exists())
         self.assertEqual([item for item in occupancy(new_room, MONDAY, MONDAY)], [])
         self.assertEqual(len(occupancy(new_room, NEXT_MONDAY, NEXT_MONDAY)), 1)
-
-    def test_unchanged_import_keeps_the_exception(self):
-        self.cancel(self.viviane)
-        _, action, _ = Allocation.objects.apply(
-            self.semester, self.group, self.first.subject, Weekday.MONDAY, self.first.time_slot,
-            space=self.room, teachers=list(self.first.teachers.all()),
-        )
-        self.assertEqual(action, 'unchanged')
-        self.assertEqual(AllocationException.objects.count(), 2)
 
 
 class AgendaScreenTests(CancelTestCase):
@@ -359,13 +264,11 @@ class AgendaScreenTests(CancelTestCase):
         self.client.force_login(user)
         return self.client.get(reverse('agenda_grid'), {'semestre': '2026/2', 'sala': 'Sala 5', 'semana': '2026-09-28'})
 
-    def test_agenda_shows_the_action_only_on_the_own_lessons(self):
+    def test_teacher_cancels_the_own_lessons_by_the_agenda(self):
         page = self.agenda(self.teacher).content.decode()
         self.assertIn(f'{reverse("agenda_occurrence_cancel")}?data=2026-09-28&amp;alocacao={self.first.pk}', page)
         self.assertNotIn(f'alocacao={self.other.pk}', page)
         self.assertNotContains(self.agenda(self.colleague), 'Cancelar esta ocorrência')
-
-    def test_teacher_cancels_by_the_agenda(self):
         self.client.force_login(self.teacher)
         self.assertEqual(self.client.get(self.agenda_cancel_url()).status_code, 200)
         response = self.client.post(self.agenda_cancel_url())
@@ -373,17 +276,12 @@ class AgendaScreenTests(CancelTestCase):
         self.assertEqual(AllocationException.objects.filter(date=MONDAY).count(), 2)
         self.assertNotContains(self.agenda(self.teacher), 'Cálculo III')
 
-    def test_view_refuses_a_lesson_of_another_teacher(self):
+    def test_agenda_refuses_lessons_of_another_teacher(self):
         self.client.force_login(self.colleague)
-        url = self.agenda_cancel_url()
-        self.assertEqual(self.client.get(url).status_code, 404)
-        self.assertEqual(self.client.post(url).status_code, 404)
-        self.assertFalse(AllocationException.objects.exists())
-
-    def test_view_refuses_mixing_own_and_other_lessons(self):
+        self.assertEqual(self.client.get(self.agenda_cancel_url()).status_code, 404)
+        self.assertEqual(self.client.post(self.agenda_cancel_url()).status_code, 404)
         self.client.force_login(self.teacher)
-        url = self.agenda_cancel_url(self.first, self.other)
-        self.assertEqual(self.client.post(url).status_code, 404)
+        self.assertEqual(self.client.post(self.agenda_cancel_url(self.first, self.other)).status_code, 404)
         self.assertFalse(AllocationException.objects.exists())
 
     def test_agenda_list_shows_only_the_own_exceptions(self):

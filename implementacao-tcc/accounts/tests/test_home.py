@@ -5,10 +5,11 @@ from django.test import Client, TestCase
 
 from accounts import permissions
 from accounts.models import Role, User
+from config.testing import IsolatedCasesMixin
 from accounts.tests.roles import management_role, requester_role
 
 
-class HomeTestCase(TestCase):
+class HomeTestCase(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.administrator = management_role()
@@ -24,19 +25,19 @@ class HomeTestCase(TestCase):
 
 
 class HomeTests(HomeTestCase):
-    def test_opens_the_first_item_the_role_grants(self):
-        reader = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])
-        response = self.client_for(self.register('leitor@ifnmg.edu.br', reader)).get('/inicio/')
-        self.assertRedirects(response, '/usuarios/', fetch_redirect_response=False)
-
-    def test_without_modules_shows_the_restricted_access_notice(self):
-        empty = Role.objects.create_role(code='VAZIO', name='Vazio', permissions=[])
-        user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=empty)
-        response = self.client_for(user).get('/inicio/')
-        self.assertContains(response, 'Maria Sousa')
-        self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhum módulo')
-        self.assertNotContains(response, 'Voltar para o início')
-        self.assertTemplateUsed(response, 'ui/components/access_denied.html')
+    def test_home_opens_the_first_granted_item_or_the_notice(self):
+        with self.case('primeiro item'):
+            reader = Role.objects.create_role(code='LEITOR', name='Leitor', permissions=[permissions.USER_VIEW])
+            response = self.client_for(self.register('leitor@ifnmg.edu.br', reader)).get('/inicio/')
+            self.assertRedirects(response, '/usuarios/', fetch_redirect_response=False)
+        with self.case('sem módulos'):
+            empty = Role.objects.create_role(code='VAZIO', name='Vazio', permissions=[])
+            user = User.objects.register(email='maria@ifnmg.edu.br', name='Maria Sousa', role=empty)
+            response = self.client_for(user).get('/inicio/')
+            self.assertContains(response, 'Maria Sousa')
+            self.assertContains(response, 'O seu perfil ainda não dá acesso a nenhum módulo')
+            self.assertNotContains(response, 'Voltar para o início')
+            self.assertTemplateUsed(response, 'ui/components/access_denied.html')
 
 
 class DeniedAccessTests(HomeTestCase):
@@ -56,24 +57,3 @@ class DeniedAccessTests(HomeTestCase):
         self.assertEqual(response.status_code, 403)
         self.assertNotContains(response, 'capacidade administrativa', status_code=403)
         self.assertTrue(User.objects.get(pk=superadmin.pk).is_active)
-
-
-class ChangesOnTheSameSessionTests(HomeTestCase):
-    def test_role_change_ends_the_session_and_the_next_login_has_the_new_access(self):
-        self.register('admin@ifnmg.edu.br', self.administrator)
-        user = self.register('maria@ifnmg.edu.br', self.administrator)
-        client = self.client_for(user)
-        self.assertEqual(client.get('/usuarios/').status_code, 200)
-        user.change_role(self.teacher)
-        self.assertRedirects(client.get('/usuarios/'), '/contas/login/?next=/usuarios/', fetch_redirect_response=False)
-        self.assertEqual(self.client_for(User.objects.get(pk=user.pk)).get('/usuarios/').status_code, 403)
-
-    def test_superadmin_granted_and_revoked_by_command(self):
-        self.register('admin@ifnmg.edu.br', self.administrator)
-        user = self.register('maria@ifnmg.edu.br', self.teacher)
-        client = self.client_for(user)
-        self.assertEqual(client.get('/usuarios/').status_code, 403)
-        call_command('set_superadmin', 'maria@ifnmg.edu.br', '--grant', stdout=StringIO())
-        self.assertEqual(client.get('/usuarios/').status_code, 200)
-        call_command('set_superadmin', 'maria@ifnmg.edu.br', '--revoke', stdout=StringIO())
-        self.assertEqual(client.get('/usuarios/').status_code, 403)

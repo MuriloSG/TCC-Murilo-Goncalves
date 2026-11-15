@@ -8,10 +8,9 @@ Notificações no sistema: sino, tempo real e publicação manual. Comportamento
 
 | Classe | O que garante |
 |---|---|
-| `CatalogTests` | Tipos com rótulo, ícone e tom; os tipos manuais são os três da publicação |
 | `MechanismIndependenceTests` | O mecanismo não importa apps de domínio |
-| `DeliveryTests` | Uma notificação por destinatário, com leitura individual; tipo fora do catálogo e publicação sem destinatários recusados; mais recentes primeiro |
-| `RecipientResolutionTests` | "Todos" são os ativos; perfil alcança só seus ativos; usuários escolhidos, sem os inativos; destino fora do catálogo recusado |
+| `DeliveryTests` | Uma notificação por destinatário, com leitura individual; tipo fora do catálogo e publicação sem destinatários recusados |
+| `RecipientResolutionTests` | "Todos" são os ativos; perfil alcança só seus ativos, e sem ativos fica vazio; usuários escolhidos, sem os inativos; destino fora do catálogo recusado |
 | `ReadingTests` | Contagem de não lidas; marcar como lida uma vez; marcar todas |
 
 ### `test_events.py`
@@ -31,8 +30,8 @@ Notificações no sistema: sino, tempo real e publicação manual. Comportamento
 
 | Classe | O que garante |
 |---|---|
-| `ChannelTests` | O usuário autenticado recebe só os próprios eventos; visitante e inativo recusados; desativar fecha a conexão aberta |
-| `OriginTests` | Pela pilha real do `config.asgi`, só origem permitida e com sessão conecta |
+| `ChannelTests` | O usuário autenticado recebe o próprio evento; visitante e inativo recusados; desativar fecha a conexão aberta |
+| `OriginTests` | Pela pilha real do `config.asgi`, só origem permitida e com sessão conecta; origem estranha, ausente ou sem sessão é recusada |
 | `EmptyAllowedHostsTests` | Lista vazia fora do `DEBUG` recusa toda origem |
 | `AnnounceTests` | O aviso sai só depois do commit, para cada destinatário e não para outros; transação desfeita não avisa; falha do canal não desfaz a notificação |
 
@@ -50,19 +49,18 @@ Notificações no sistema: sino, tempo real e publicação manual. Comportamento
 
 | Classe | O que garante |
 |---|---|
-| `OpenTests` | Abrir marca como lida e vai ao destino ou volta à origem, ignorando origem fora do sistema; notificação de outro recusada; já lida não muda |
+| `OpenTests` | Abrir marca como lida e vai ao destino ou volta à origem, nunca para fora do sistema; notificação de outro recusada |
 | `ReadAllTests` | Marca só as notificações do usuário |
-| `PanelTests` | Fragmento do sino com as notificações do usuário, voltando à tela aberta e nunca a si mesmo ou para fora; estado vazio; não conta como acesso |
+| `PanelTests` | Fragmento do sino com as notificações do usuário, voltando à tela aberta e nunca a si mesmo ou para fora. Não contar como acesso fica em `audit/tests/test_access.py` |
 
 ### `test_publish_views.py`
 
 | Classe | O que garante |
 |---|---|
-| `AccessTests` | Abre com a permissão |
-| `CreateStepTests` | Mostra a quantidade de ativos; perfil e usuários obrigatórios conforme o destino |
-| `ReviewStepTests` | A revisão mostra a prévia e a estimativa só de ativos, sem criar nada, carrega os valores adiante e mantém o preenchido ao voltar |
-| `PublishStepTests` | Publica para todos os ativos; sem destinatários mostra a recusa; tipo gerado por evento recusado |
-| `ListTests` | Lista só avisos globais publicados; estado vazio; acesso registrado |
+| `CreateStepTests` | Perfil e usuários obrigatórios conforme o destino |
+| `ReviewStepTests` | A revisão mostra a prévia e a estimativa sem criar nada e carrega os valores adiante, sem separador de milhar nas chaves |
+| `PublishStepTests` | Publica para todos os ativos; sem destinatários mostra a recusa. O tipo gerado por evento é recusado no model (`test_publication.py`) |
+| `ListTests` | Lista só avisos globais publicados |
 
 ### `test_options.py`
 

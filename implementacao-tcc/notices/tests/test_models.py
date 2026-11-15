@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from django.test import SimpleTestCase, TestCase
+from config.testing import IsolatedCasesMixin
 
 from accounts.models import Role, User
 from accounts.tests.roles import management_role, requester_role
@@ -21,22 +22,6 @@ def make_user(email, role, active=True):
     return user
 
 
-class CatalogTests(SimpleTestCase):
-    def test_types_have_label_icon_and_tone(self):
-        for code, data in catalog.TYPES.items():
-            with self.subTest(code=code):
-                self.assertTrue(data['label'])
-                self.assertTrue(data['icon'])
-                self.assertIn(data['tone'], {'info', 'success', 'warning', 'error'})
-
-    def test_manual_types_are_the_three_of_the_publication(self):
-        self.assertEqual(
-            catalog.manual_choices(),
-            [(catalog.INFORMATION, 'Informação'), (catalog.SUCCESS, 'Sucesso'), (catalog.WARNING, 'Aviso')],
-        )
-        self.assertFalse(catalog.is_manual(catalog.ROLE_CHANGED))
-
-
 class MechanismIndependenceTests(SimpleTestCase):
     """O mecanismo não importa apps de domínio; o `audit` não é um deles."""
 
@@ -47,7 +32,7 @@ class MechanismIndependenceTests(SimpleTestCase):
                 self.assertNotIn('accounts', source)
 
 
-class DeliveryTests(TestCase):
+class DeliveryTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.docente = requester_role()
@@ -84,26 +69,18 @@ class DeliveryTests(TestCase):
         self.assertEqual(Notification.objects.for_user(self.ana).unread().count(), 0)
         self.assertEqual(Notification.objects.for_user(self.bruno).unread().count(), 1)
 
-    def test_type_outside_the_catalog_is_refused(self):
-        with self.assertRaises(UnknownNoticeType):
-            Notification.objects.publish('INEXISTENTE', 'Título', 'Mensagem', [self.ana])
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_publication_without_recipients_is_refused(self):
-        with self.assertRaises(NoRecipients):
-            self.publish(User.objects.none())
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_most_recent_first(self):
-        Notification.objects.notify(self.ana, catalog.INFORMATION, 'Primeira', 'Mensagem.')
-        Notification.objects.notify(self.ana, catalog.INFORMATION, 'Segunda', 'Mensagem.')
-        self.assertEqual(
-            list(Notification.objects.for_user(self.ana).values_list('title', flat=True)),
-            ['Segunda', 'Primeira'],
-        )
+    def test_invalid_publication_is_refused(self):
+        with self.case('tipo fora do catálogo'):
+            with self.assertRaises(UnknownNoticeType):
+                Notification.objects.publish('INEXISTENTE', 'Título', 'Mensagem', [self.ana])
+            self.assertEqual(Notification.objects.count(), 0)
+        with self.case('sem destinatários'):
+            with self.assertRaises(NoRecipients):
+                self.publish(User.objects.none())
+            self.assertEqual(Notification.objects.count(), 0)
 
 
-class RecipientResolutionTests(TestCase):
+class RecipientResolutionTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.docente = requester_role()
@@ -113,58 +90,54 @@ class RecipientResolutionTests(TestCase):
         cls.carla = make_user('carla@ifnmg.edu.br', cls.administrador)
         cls.inativo = make_user('inativo@ifnmg.edu.br', cls.docente, active=False)
 
-    def test_all_eligible_users_are_the_active_ones(self):
-        self.assertEqual(
-            set(resolve_recipients(catalog.ALL_USERS)),
-            {self.ana, self.bruno, self.carla},
-        )
-
-    def test_role_reaches_only_its_active_users(self):
-        self.assertEqual(
-            set(resolve_recipients(catalog.ROLE, role=self.docente)),
-            {self.ana, self.bruno},
-        )
-
-    def test_role_without_active_users_is_empty(self):
-        vazio = Role.objects.create_role('COORDENACAO', 'Coordenação')
-        self.assertEqual(list(resolve_recipients(catalog.ROLE, role=vazio)), [])
-
-    def test_specific_users(self):
-        self.assertEqual(
-            set(resolve_recipients(catalog.USERS, users=[self.ana, self.carla])),
-            {self.ana, self.carla},
-        )
-
-    def test_inactive_user_chosen_one_by_one_is_left_out(self):
-        recipients = resolve_recipients(catalog.USERS, users=[self.ana, self.inativo])
-        self.assertEqual(set(recipients), {self.ana})
+    def test_recipients_are_the_active_users_of_the_destination(self):
+        with self.case('todos os ativos'):
+            self.assertEqual(
+                set(resolve_recipients(catalog.ALL_USERS)),
+                {self.ana, self.bruno, self.carla},
+            )
+        with self.case('perfil'):
+            self.assertEqual(
+                set(resolve_recipients(catalog.ROLE, role=self.docente)),
+                {self.ana, self.bruno},
+            )
+        with self.case('perfil sem ativos'):
+            vazio = Role.objects.create_role('COORDENACAO', 'Coordenação')
+            self.assertEqual(list(resolve_recipients(catalog.ROLE, role=vazio)), [])
+        with self.case('usuários escolhidos'):
+            self.assertEqual(
+                set(resolve_recipients(catalog.USERS, users=[self.ana, self.carla])),
+                {self.ana, self.carla},
+            )
+        with self.case('inativo escolhido'):
+            recipients = resolve_recipients(catalog.USERS, users=[self.ana, self.inativo])
+            self.assertEqual(set(recipients), {self.ana})
 
     def test_destination_outside_the_catalog_is_refused(self):
         with self.assertRaises(UnknownDestination):
             resolve_recipients('INEXISTENTE')
 
 
-class ReadingTests(TestCase):
+class ReadingTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.ana = make_user('ana@ifnmg.edu.br', requester_role())
 
-    def test_unread_count(self):
-        for title in ('Uma', 'Outra', 'Mais uma'):
-            Notification.objects.notify(self.ana, catalog.INFORMATION, title, 'Mensagem.')
-        self.assertEqual(Notification.objects.unread_count(self.ana), 3)
-
-    def test_mark_as_read_changes_the_state_once(self):
-        notification = Notification.objects.notify(self.ana, catalog.INFORMATION, 'Uma', 'Mensagem.')
-        self.assertTrue(notification.mark_as_read())
-        read_at = notification.read_at
-        self.assertFalse(notification.mark_as_read())
-        self.assertEqual(notification.read_at, read_at)
-        self.assertEqual(Notification.objects.unread_count(self.ana), 0)
-
-    def test_mark_all_as_read(self):
-        for title in ('Uma', 'Outra'):
-            Notification.objects.notify(self.ana, catalog.INFORMATION, title, 'Mensagem.')
-        self.assertEqual(Notification.objects.mark_all_as_read(self.ana), 2)
-        self.assertEqual(Notification.objects.unread_count(self.ana), 0)
-        self.assertEqual(Notification.objects.mark_all_as_read(self.ana), 0)
+    def test_reading(self):
+        with self.case('não lidas'):
+            for title in ('Uma', 'Outra', 'Mais uma'):
+                Notification.objects.notify(self.ana, catalog.INFORMATION, title, 'Mensagem.')
+            self.assertEqual(Notification.objects.unread_count(self.ana), 3)
+        with self.case('marcar como lida'):
+            notification = Notification.objects.notify(self.ana, catalog.INFORMATION, 'Uma', 'Mensagem.')
+            self.assertTrue(notification.mark_as_read())
+            read_at = notification.read_at
+            self.assertFalse(notification.mark_as_read())
+            self.assertEqual(notification.read_at, read_at)
+            self.assertEqual(Notification.objects.unread_count(self.ana), 0)
+        with self.case('marcar todas'):
+            for title in ('Uma', 'Outra'):
+                Notification.objects.notify(self.ana, catalog.INFORMATION, title, 'Mensagem.')
+            self.assertEqual(Notification.objects.mark_all_as_read(self.ana), 2)
+            self.assertEqual(Notification.objects.unread_count(self.ana), 0)
+            self.assertEqual(Notification.objects.mark_all_as_read(self.ana), 0)

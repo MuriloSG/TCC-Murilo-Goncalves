@@ -22,11 +22,11 @@ class EditFormsShowCurrentValuesTests(TestCase):
     def form(self, url):
         return self.client.get(url).context['form']
 
-    def test_edicao_e_troca_de_perfil_do_usuario(self):
-        form = self.form(f'/usuarios/{self.target.pk}/editar/')
-        self.assertEqual((form['name'].value(), form['email'].value()), ('Maria Sousa', 'maria@ifnmg.edu.br'))
-        self.assertEqual(self.form(f'/usuarios/{self.target.pk}/perfil/')['role'].value(), self.role.pk)
-
-    def test_edicao_de_perfil(self):
-        form = self.form(f'/perfis/{self.role.pk}/editar/')
-        self.assertEqual((form['name'].value(), form['description'].value()), ('Coordenação', 'Coordenadores de curso'))
+    def test_edit_forms_show_the_current_values(self):
+        with self.subTest('usuário'):
+            form = self.form(f'/usuarios/{self.target.pk}/editar/')
+            self.assertEqual((form['name'].value(), form['email'].value()), ('Maria Sousa', 'maria@ifnmg.edu.br'))
+            self.assertEqual(self.form(f'/usuarios/{self.target.pk}/perfil/')['role'].value(), self.role.pk)
+        with self.subTest('perfil'):
+            form = self.form(f'/perfis/{self.role.pk}/editar/')
+            self.assertEqual((form['name'].value(), form['description'].value()), ('Coordenação', 'Coordenadores de curso'))

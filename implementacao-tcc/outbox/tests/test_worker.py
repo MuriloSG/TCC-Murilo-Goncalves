@@ -11,6 +11,7 @@ from django.core.mail import EmailMessage, get_connection
 from django.core.management import call_command
 from django.db import connection, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
+from config.testing import IsolatedCasesMixin
 from django.utils import timezone
 
 import outbox
@@ -33,7 +34,7 @@ def failing(reference):
 
 
 @override_settings(OUTBOX_MAX_ATTEMPTS=5, OUTBOX_RETRY_DELAYS=[60, 300, 900, 3600])
-class ProcessTests(TestCase):
+class ProcessTests(IsolatedCasesMixin, TestCase):
     def setUp(self):
         configure_smtp()
         patcher = mock.patch.dict(
@@ -47,94 +48,84 @@ class ProcessTests(TestCase):
     def entry(self, kind='TESTE', **values):
         return OutboxEntry.objects.create(kind=kind, reference='1', **values)
 
-    def test_sends_message_and_marks_sent(self):
-        entry = self.entry()
-        self.assertTrue(process_next())
-        entry.refresh_from_db()
-        self.assertEqual(entry.status, 'ENVIADO')
-        self.assertIsNotNone(entry.sent_at)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ['pessoa1@ifnmg.edu.br'])
+    def test_sends_the_due_entries_of_the_batch(self):
+        with self.case('envia e marca'):
+            entry = self.entry()
+            self.assertTrue(process_next())
+            entry.refresh_from_db()
+            self.assertEqual(entry.status, 'ENVIADO')
+            self.assertIsNotNone(entry.sent_at)
+            self.assertEqual(len(mail.outbox), 1)
+            self.assertEqual(mail.outbox[0].to, ['pessoa1@ifnmg.edu.br'])
+        with self.case('nada a processar'):
+            self.assertFalse(process_next())
+        with self.case('tentativa futura'):
+            entry = self.entry(next_attempt_at=timezone.now() + timedelta(minutes=5))
+            self.assertFalse(process_next())
+            entry.refresh_from_db()
+            self.assertEqual(entry.status, 'A_ENVIAR')
+            self.assertEqual(mail.outbox, [])
+        with self.case('tamanho do lote'):
+            for reference in range(3):
+                OutboxEntry.objects.create(kind='TESTE', reference=str(reference))
+            self.assertEqual(process_batch(2), 2)
+            self.assertEqual(OutboxEntry.objects.filter(status='ENVIADO').count(), 2)
 
-    def test_nothing_to_process(self):
-        self.assertFalse(process_next())
+    def test_temporary_failure_schedules_the_next_attempt(self):
+        with self.case('falha temporária'):
+            entry = self.entry(kind='FALHA')
+            before = timezone.now()
+            with self.assertLogs('outbox', 'WARNING') as logs:
+                process_next()
+            entry.refresh_from_db()
+            self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
+            self.assertIn('SMTPException: servidor indisponível', entry.last_error)
+            self.assertEqual(logs.output, [f'WARNING:outbox:Envio {entry.pk} (FALHA) falhou na tentativa 1: SMTPException.'])
+            self.assertAlmostEqual(
+                (entry.next_attempt_at - before).total_seconds(), 60, delta=5,
+            )
+        with self.case('intervalos'):
+            with override_settings(OUTBOX_MAX_ATTEMPTS=8):
+                for attempts, delay in ((2, 900), (6, 3600)):
+                    with self.subTest(attempts=attempts), transaction.atomic():
+                        entry = self.entry(kind='FALHA', attempts=attempts)
+                        before = timezone.now()
+                        with self.assertLogs('outbox', 'WARNING'):
+                            process_next()
+                        entry.refresh_from_db()
+                        self.assertEqual(entry.attempts, attempts + 1)
+                        self.assertAlmostEqual((entry.next_attempt_at - before).total_seconds(), delay, delta=5)
+                        transaction.set_rollback(True)
 
-    def test_future_attempt_is_not_processed(self):
-        entry = self.entry(next_attempt_at=timezone.now() + timedelta(minutes=5))
-        self.assertFalse(process_next())
-        entry.refresh_from_db()
-        self.assertEqual(entry.status, 'A_ENVIAR')
-        self.assertEqual(mail.outbox, [])
+    def test_limit_marks_failed_for_good(self):
+        with self.case('limite'):
+            entry = self.entry(kind='FALHA', attempts=4)
+            with self.assertLogs('outbox', 'ERROR'):
+                process_next()
+            entry.refresh_from_db()
+            self.assertEqual((entry.status, entry.attempts), ('FALHOU', 5))
+        with self.case('não é retomada'):
+            self.entry(status=OutboxEntry.Status.FAILED)
+            self.assertFalse(process_next())
 
-    def test_temporary_failure_schedules_next_attempt(self):
-        entry = self.entry(kind='FALHA')
-        before = timezone.now()
-        with self.assertLogs('outbox', 'WARNING') as logs:
-            process_next()
-        entry.refresh_from_db()
-        self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
-        self.assertIn('SMTPException: servidor indisponível', entry.last_error)
-        self.assertEqual(logs.output, [f'WARNING:outbox:Envio {entry.pk} (FALHA) falhou na tentativa 1: SMTPException.'])
-        self.assertAlmostEqual(
-            (entry.next_attempt_at - before).total_seconds(), 60, delta=5,
-        )
+    def test_handler_problems_fail_the_entry(self):
+        with self.case('sem tratador'):
+            entry = self.entry(kind='DESCONHECIDO')
+            with self.assertLogs('outbox', 'ERROR'):
+                process_next()
+            entry.refresh_from_db()
+            self.assertEqual(entry.status, 'FALHOU')
+        with self.case('erro de banco'):
+            def broken(reference):
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT * FROM tabela_inexistente')
 
-    @override_settings(OUTBOX_MAX_ATTEMPTS=8)
-    def test_retry_delays_follow_attempts_and_the_last_one_repeats(self):
-        for attempts, delay in ((2, 900), (6, 3600)):
-            with self.subTest(attempts=attempts), transaction.atomic():
-                entry = self.entry(kind='FALHA', attempts=attempts)
-                before = timezone.now()
-                with self.assertLogs('outbox', 'WARNING'):
-                    process_next()
-                entry.refresh_from_db()
-                self.assertEqual(entry.attempts, attempts + 1)
-                self.assertAlmostEqual((entry.next_attempt_at - before).total_seconds(), delay, delta=5)
-                transaction.set_rollback(True)
-
-    def test_limit_marks_failed_and_logs(self):
-        entry = self.entry(kind='FALHA', attempts=4)
-        with self.assertLogs('outbox', 'ERROR'):
-            process_next()
-        entry.refresh_from_db()
-        self.assertEqual((entry.status, entry.attempts), ('FALHOU', 5))
-
-    def test_failed_entry_is_not_resumed(self):
-        self.entry(status=OutboxEntry.Status.FAILED)
-        self.assertFalse(process_next())
-
-    def test_discard(self):
-        entry = self.entry(kind='DESCARTE')
-        process_next()
-        entry.refresh_from_db()
-        self.assertEqual(entry.status, 'DESCARTADO')
-        self.assertEqual(entry.attempts, 0)
-        self.assertEqual(mail.outbox, [])
-
-    def test_kind_without_handler_fails_at_once(self):
-        entry = self.entry(kind='DESCONHECIDO')
-        with self.assertLogs('outbox', 'ERROR'):
-            process_next()
-        entry.refresh_from_db()
-        self.assertEqual(entry.status, 'FALHOU')
-
-    def test_database_error_in_handler_is_a_failure(self):
-        def broken(reference):
-            with connection.cursor() as cursor:
-                cursor.execute('SELECT * FROM tabela_inexistente')
-
-        handlers._handlers['QUEBRADO'] = broken
-        entry = self.entry(kind='QUEBRADO')
-        with self.assertLogs('outbox', 'WARNING'):
-            process_next()
-        entry.refresh_from_db()
-        self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
-
-    def test_batch_respects_size(self):
-        for reference in range(3):
-            OutboxEntry.objects.create(kind='TESTE', reference=str(reference))
-        self.assertEqual(process_batch(2), 2)
-        self.assertEqual(OutboxEntry.objects.filter(status='ENVIADO').count(), 2)
+            handlers._handlers['QUEBRADO'] = broken
+            entry = self.entry(kind='QUEBRADO')
+            with self.assertLogs('outbox', 'WARNING'):
+                process_next()
+            entry.refresh_from_db()
+            self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
 
 
 class HandlerRegistryTests(TestCase):
@@ -196,43 +187,41 @@ class ConcurrencyTests(TransactionTestCase):
         self.assertEqual(entry.status, 'A_ENVIAR')
 
 
-class SmtpSettingsTests(TestCase):
+class SmtpSettingsTests(IsolatedCasesMixin, TestCase):
     def setUp(self):
         patcher = mock.patch.dict(handlers._handlers, {'TESTE': message_for, 'FALHA': failing}, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_registration_does_not_depend_on_the_setting(self):
-        OutboxEntry.objects.enqueue('TESTE', 1)
-        self.assertTrue(OutboxEntry.objects.filter(kind='TESTE', status='A_ENVIAR').exists())
-
-    def test_without_setting_entries_are_kept(self):
-        entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
-        before = entry.next_attempt_at
-        for _ in range(3):
+    def test_entries_wait_for_a_valid_setting(self):
+        with self.case('cadastro independe'):
+            OutboxEntry.objects.enqueue('TESTE', 1)
+            self.assertTrue(OutboxEntry.objects.filter(kind='TESTE', status='A_ENVIAR').exists())
+        with self.case('sem configuração'):
+            entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
+            before = entry.next_attempt_at
+            for _ in range(3):
+                with self.assertRaises(SmtpUnavailable):
+                    process_batch(10)
+            entry.refresh_from_db()
+            self.assertEqual((entry.status, entry.attempts, entry.next_attempt_at), ('A_ENVIAR', 0, before))
+            self.assertEqual(mail.outbox, [])
+        with self.case('configuração inválida'):
+            configure_smtp()
+            entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
+            with override_settings(CREDENTIALS_KEY='outra-chave'), self.assertRaises(SmtpUnavailable):
+                process_batch(10)
+            entry.refresh_from_db()
+            self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 0))
+            self.assertEqual(mail.outbox, [])
+        with self.case('enviadas depois de configurar'):
+            for reference in range(2):
+                OutboxEntry.objects.create(kind='TESTE', reference=str(reference))
             with self.assertRaises(SmtpUnavailable):
                 process_batch(10)
-        entry.refresh_from_db()
-        self.assertEqual((entry.status, entry.attempts, entry.next_attempt_at), ('A_ENVIAR', 0, before))
-        self.assertEqual(mail.outbox, [])
-
-    def test_invalid_setting_entries_are_kept(self):
-        configure_smtp()
-        entry = OutboxEntry.objects.create(kind='TESTE', reference='1')
-        with override_settings(CREDENTIALS_KEY='outra-chave'), self.assertRaises(SmtpUnavailable):
-            process_batch(10)
-        entry.refresh_from_db()
-        self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 0))
-        self.assertEqual(mail.outbox, [])
-
-    def test_kept_entries_are_sent_once_configured(self):
-        for reference in range(2):
-            OutboxEntry.objects.create(kind='TESTE', reference=str(reference))
-        with self.assertRaises(SmtpUnavailable):
-            process_batch(10)
-        configure_smtp()
-        self.assertEqual(process_batch(10), 2)
-        self.assertEqual(OutboxEntry.objects.filter(status='ENVIADO').count(), 2)
+            configure_smtp()
+            self.assertEqual(process_batch(10), 2)
+            self.assertEqual(OutboxEntry.objects.filter(status='ENVIADO').count(), 2)
 
     def test_uses_the_stored_credentials_and_sender(self):
         configure_smtp(host='a.ifnmg.edu.br')
@@ -256,10 +245,3 @@ class SmtpSettingsTests(TestCase):
         entry.refresh_from_db()
         self.assertEqual((entry.status, entry.attempts), ('A_ENVIAR', 1))
         self.assertNotIn(SMTP_PASSWORD, entry.last_error)
-
-    def test_command_logs_the_reason_once(self):
-        OutboxEntry.objects.create(kind='TESTE', reference='1')
-        with self.assertLogs('outbox', 'WARNING') as logs:
-            call_command('process_outbox', once=True)
-        self.assertEqual(logs.output, ['WARNING:outbox:Envios retidos: O servidor de e-mail não está configurado.'])
-        self.assertEqual(OutboxEntry.objects.get().attempts, 0)

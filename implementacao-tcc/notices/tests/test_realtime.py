@@ -9,6 +9,7 @@ from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import AnonymousUser
 from django.db import transaction
 from django.conf import settings
+from config.testing import IsolatedCasesMixin
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 
 from accounts.models import User
@@ -53,17 +54,12 @@ class ChannelTests(TransactionTestCase):
         self.assertEqual(await communicator.receive_json_from(), {'evento': 'notificacoes'})
         await communicator.disconnect()
 
-    async def test_event_of_another_user_does_not_arrive(self):
-        communicator = self.connect_as(self.ana)
-        await communicator.connect()
-        await get_channel_layer().group_send(group_name(self.ana.pk + 1), {'type': CHANGED})
-        self.assertTrue(await communicator.receive_nothing(timeout=0.3))
-        await communicator.disconnect()
-
-    async def test_visitor_is_refused(self):
-        communicator = self.connect_as(AnonymousUser())
-        connected, _ = await communicator.connect()
-        self.assertFalse(connected)
+    async def test_visitor_and_inactive_user_are_refused(self):
+        self.ana.is_active = False
+        for label, user in (('visitante', AnonymousUser()), ('inativo', self.ana)):
+            with self.subTest(label):
+                connected, _ = await self.connect_as(user).connect()
+                self.assertFalse(connected)
 
     async def test_deactivation_closes_the_open_connection(self):
         await database_sync_to_async(User.objects.create_superadmin)('super@ifnmg.edu.br', 'Super', 'Senha-forte-123')
@@ -72,13 +68,6 @@ class ChannelTests(TransactionTestCase):
         self.assertTrue(connected)
         await database_sync_to_async(self.ana.deactivate)()
         self.assertEqual((await communicator.receive_output(timeout=2))['type'], 'websocket.close')
-
-    async def test_inactive_user_is_refused(self):
-        self.ana.is_active = False
-        communicator = self.connect_as(self.ana)
-        connected, _ = await communicator.connect()
-        self.assertFalse(connected)
-
 
 @override_settings(ALLOWED_HOSTS=['ifagenda.example'], DEBUG=False)
 class OriginTests(TransactionTestCase):
@@ -113,22 +102,16 @@ class OriginTests(TransactionTestCase):
         self.assertEqual(await communicator.receive_json_from(), {'evento': 'notificacoes'})
         await communicator.disconnect()
 
-    async def test_foreign_origin_is_refused_even_with_session(self):
-        for origin in ('https://outro-site.example', 'https://ifagenda.example.outro.com', 'null'):
-            with self.subTest(origin=origin):
-                communicator = await self.prepared(origin, self.ana)
+    async def test_foreign_missing_or_sessionless_origin_is_refused(self):
+        cases = [
+            ('https://outro-site.example', self.ana), ('https://ifagenda.example.outro.com', self.ana), ('null', self.ana),
+            (None, self.ana), ('https://ifagenda.example', None),
+        ]
+        for origin, user in cases:
+            with self.subTest(origin=origin, session=user is not None):
+                communicator = await self.prepared(origin, user)
                 connected, _ = await communicator.connect()
                 self.assertFalse(connected)
-
-    async def test_missing_origin_is_refused_even_with_session(self):
-        communicator = await self.prepared(None, self.ana)
-        connected, _ = await communicator.connect()
-        self.assertFalse(connected)
-
-    async def test_allowed_origin_without_session_is_refused(self):
-        communicator = await self.prepared('https://ifagenda.example', None)
-        connected, _ = await communicator.connect()
-        self.assertFalse(connected)
 
     async def prepared(self, origin, user):
         return await database_sync_to_async(self.communicator)(origin, user)
@@ -146,7 +129,7 @@ class EmptyAllowedHostsTests(TransactionTestCase):
         self.assertFalse(connected)
 
 
-class AnnounceTests(TestCase):
+class AnnounceTests(IsolatedCasesMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         docente = requester_role()
@@ -161,36 +144,35 @@ class AnnounceTests(TestCase):
             recipient or self.ana, catalog.INFORMATION, 'Nova versão do sistema', 'Mensagem.',
         )
 
-    def test_event_is_sent_only_after_the_commit(self):
-        with self.captureOnCommitCallbacks(execute=True):
-            self.notify()
+    def test_event_is_announced_only_after_the_commit(self):
+        with self.case('depois do commit'):
+            with self.captureOnCommitCallbacks(execute=True):
+                self.notify()
+                self.assertIsNone(receive(TEST_CHANNEL, timeout=0.2))
+            self.assertEqual(receive(TEST_CHANNEL), {'type': CHANGED})
+        with self.case('transação desfeita'):
+            with self.captureOnCommitCallbacks(execute=True):
+                with self.assertRaises(RuntimeError):
+                    with transaction.atomic():
+                        self.notify()
+                        raise RuntimeError('operação desfeita')
             self.assertIsNone(receive(TEST_CHANNEL, timeout=0.2))
-        self.assertEqual(receive(TEST_CHANNEL), {'type': CHANGED})
+        with self.case('falha do canal'):
+            with patch('notices.realtime.get_channel_layer', side_effect=RuntimeError('canal fora do ar')):
+                with self.assertLogs('notices.realtime', level='ERROR'):
+                    with self.captureOnCommitCallbacks(execute=True):
+                        self.notify()
+            self.assertEqual(Notification.objects.for_user(self.ana).count(), 1)
+            self.assertEqual(Notification.objects.unread_count(self.ana), 1)
 
-    def test_undone_transaction_announces_nothing(self):
-        with self.captureOnCommitCallbacks(execute=True):
-            with self.assertRaises(RuntimeError):
-                with transaction.atomic():
-                    self.notify()
-                    raise RuntimeError('operação desfeita')
-        self.assertIsNone(receive(TEST_CHANNEL, timeout=0.2))
-
-    def test_publication_announces_each_recipient(self):
-        with self.captureOnCommitCallbacks(execute=True):
-            Notification.objects.publish(
-                catalog.INFORMATION, 'Nova versão do sistema', 'Mensagem.', [self.ana, self.bruno],
-            )
-        self.assertEqual(receive(TEST_CHANNEL), {'type': CHANGED})
-
-    def test_notification_of_another_user_does_not_announce_this_one(self):
-        with self.captureOnCommitCallbacks(execute=True):
-            self.notify(recipient=self.bruno)
-        self.assertIsNone(receive(TEST_CHANNEL, timeout=0.2))
-
-    def test_channel_failure_does_not_undo_the_notification(self):
-        with patch('notices.realtime.get_channel_layer', side_effect=RuntimeError('canal fora do ar')):
-            with self.assertLogs('notices.realtime', level='ERROR'):
-                with self.captureOnCommitCallbacks(execute=True):
-                    self.notify()
-        self.assertEqual(Notification.objects.for_user(self.ana).count(), 1)
-        self.assertEqual(Notification.objects.unread_count(self.ana), 1)
+    def test_each_recipient_gets_only_its_own_event(self):
+        with self.case('cada destinatário'):
+            with self.captureOnCommitCallbacks(execute=True):
+                Notification.objects.publish(
+                    catalog.INFORMATION, 'Nova versão do sistema', 'Mensagem.', [self.ana, self.bruno],
+                )
+            self.assertEqual(receive(TEST_CHANNEL), {'type': CHANGED})
+        with self.case('outro usuário'):
+            with self.captureOnCommitCallbacks(execute=True):
+                self.notify(recipient=self.bruno)
+            self.assertIsNone(receive(TEST_CHANNEL, timeout=0.2))

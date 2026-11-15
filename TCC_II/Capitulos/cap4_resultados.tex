@@ -20,7 +20,7 @@ Na reunião de 28 de setembro de 2026, com a Direção de Ensino e a SifSoft Jú
 O levantamento resultou em 29 requisitos funcionais e 13 não funcionais. Os funcionais estão na Tabela~\ref{tab:rf} e foram agrupados por módulo: ensalamento (RF01, RF02, RF13--RF16); espaços, cursos, disciplinas e turmas (RF03, RF17); usuários e perfis (RF04, RF18--RF20); agenda de reservas (RF05--RF08, RF21--RF23); notificações e comunicados (RF09, RF10, RF24); consulta pública (RF11, RF28); painel, relatórios e auditoria (RF12, RF25, RF26); configurações (RF27); e central de ajuda (RF29). A coluna Situação mostra se cada requisito foi atendido na versão desenvolvida.
 
 \begin{SingleSpace}
-\begin{longtable}{@{}p{1.4cm}p{11.6cm}p{1.8cm}@{}}
+\begin{longtable}{@{}p{1.5cm}p{11.5cm}p{1.8cm}@{}}
 	\caption{Requisitos funcionais do sistema}\label{tab:rf} \\
 	\hline
 	\textbf{Código} & \textbf{Descrição} & \textbf{Situação} \\ \hline
@@ -69,7 +69,7 @@ A Tabela~\ref{tab:rnf} traz os requisitos não funcionais, com a situação de c
 
 \begin{SingleSpace}
 \small
-\begin{longtable}{@{}p{1.3cm}p{5.7cm}p{1.5cm}p{6.2cm}@{}}
+\begin{longtable}{@{}p{1.5cm}>{\raggedright\arraybackslash}p{5.5cm}p{1.7cm}>{\raggedright\arraybackslash}p{6.0cm}@{}}
 	\caption{Requisitos não funcionais do sistema}\label{tab:rnf} \\
 	\hline
 	\textbf{Código} & \textbf{Descrição} & \textbf{Situação} & \textbf{Como foi atendido} \\ \hline
@@ -120,8 +120,6 @@ O diagrama de casos de uso (Figura~\ref{fig:casos_uso}) organiza as funcionalida
 
 O diagrama de classes (Figura~\ref{fig:classes}) apresenta as 18 classes do domínio, com seus atributos principais e as multiplicidades das associações. Classes de apoio, como importação, auditoria e fila de e-mails, foram omitidas para preservar a legibilidade.
 
-O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e a aprovação de uma reserva. Os fragmentos \textit{alt} mostram as duas verificações de conflito de horário: a primeira na solicitação e a segunda na aprovação, quando a restrição do banco de dados impede agendamentos sobrepostos (RNF08).
-
 \begin{figure}[p]
     \centering
     \caption{Diagrama de classes do sistema}
@@ -129,6 +127,8 @@ O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e 
     \caption*{Fonte: Elaborado pelo autor (2026).}
     \label{fig:classes}
 \end{figure}
+
+O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e a aprovação de uma reserva. Os fragmentos \textit{alt} mostram as duas verificações de conflito de horário: a primeira na solicitação e a segunda na aprovação, quando a restrição do banco de dados impede agendamentos sobrepostos (RNF08).
 
 \begin{figure}[p]
     \centering
@@ -138,6 +138,8 @@ O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e 
     \label{fig:sequencia}
 \end{figure}
 
+% Todas as figuras UML saem antes do banco de dados.
+\clearpage
 \subsection{Banco de Dados}
 \label{sec:resultado-banco}
 
@@ -148,19 +150,19 @@ O banco de dados foi projetado nos três níveis descritos por \citeonline{heuse
 
 O modelo conceitual, apresentado na Figura~\ref{fig:der-conceitual}, segue a notação de Peter Chen. As entidades aparecem em retângulos, os relacionamentos em losangos e os atributos ao lado de cada entidade, com o identificador destacado. A cardinalidade mínima e máxima de cada entidade aparece junto à linha do relacionamento.
 
+O núcleo do modelo está nas entidades Espaço, Ensalamento, Solicitação e Agendamento. Um Ensalamento representa uma aula recorrente da grade importada: ocupa um espaço em um dia da semana e em uma faixa de horário, dentro de um semestre, e se liga à turma, à disciplina e aos docentes. Uma Solicitação é feita por um usuário para um espaço e analisada por um usuário com permissão para isso; quando aprovada, gera no máximo um Agendamento, que passa a ocupar o espaço. Cada Usuário tem no máximo um Perfil, e cada Perfil concede um conjunto de Permissões, o que corresponde à restrição de cardinalidade do modelo RBAC adotado (Seção~\ref{sec:rbac}). As demais entidades apoiam a importação da planilha (Importação, Linha da importação, Decisão de espaço e Outro nome), a comunicação com os usuários (Aviso e Notificação) e a rastreabilidade das ações (Registro de auditoria).
+
+Para manter o diagrama legível, o modelo conceitual representa apenas as entidades e os relacionamentos de negócio. Ficaram de fora as tabelas de infraestrutura, que guardam a fila de envio de e-mails e as configurações do sistema, e as referências secundárias que registram a autoria das operações, como quem aprovou ou cancelou uma reserva, quem registrou uma solicitação em nome de outro usuário, quem resolveu uma importação ou decidiu a correspondência de um espaço, além do espaço sugerido como alternativa e da importação que originou um espaço. Esses elementos aparecem nos modelos lógico e físico, que representam o esquema completo.
+
 \begin{landscape}
 \begin{figure}[p]
     \centering
     \caption{Modelo conceitual do banco de dados}
-    \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{Figuras/banco/der-conceitual.png}
+    \includegraphics[width=\linewidth,height=0.87\textheight,keepaspectratio]{Figuras/banco/der-conceitual.png}
     \caption*{Fonte: Elaborado pelo autor (2026).}
     \label{fig:der-conceitual}
 \end{figure}
 \end{landscape}
-
-O núcleo do modelo está nas entidades Espaço, Ensalamento, Solicitação e Agendamento. Um Ensalamento representa uma aula recorrente da grade importada: ocupa um espaço em um dia da semana e em uma faixa de horário, dentro de um semestre, e se liga à turma, à disciplina e aos docentes. Uma Solicitação é feita por um usuário para um espaço e analisada por um usuário com permissão para isso; quando aprovada, gera no máximo um Agendamento, que passa a ocupar o espaço. Cada Usuário tem no máximo um Perfil, e cada Perfil concede um conjunto de Permissões, o que corresponde à restrição de cardinalidade do modelo RBAC adotado (Seção~\ref{sec:rbac}). As demais entidades apoiam a importação da planilha (Importação, Linha da importação, Decisão de espaço e Outro nome), a comunicação com os usuários (Aviso e Notificação) e a rastreabilidade das ações (Registro de auditoria).
-
-Para manter o diagrama legível, o modelo conceitual representa apenas as entidades e os relacionamentos de negócio. Ficaram de fora as tabelas de infraestrutura, que guardam a fila de envio de e-mails e as configurações do sistema, e as referências secundárias que registram a autoria das operações, como quem aprovou ou cancelou uma reserva, quem registrou uma solicitação em nome de outro usuário, quem resolveu uma importação ou decidiu a correspondência de um espaço, além do espaço sugerido como alternativa e da importação que originou um espaço. Esses elementos aparecem nos modelos lógico e físico, que representam o esquema completo.
 
 \subsubsection{Modelo Lógico}
 \label{sec:modelo-logico}
@@ -178,7 +180,7 @@ O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esqu
 	\textbf{Tabela(colunas)} \\ \hline
 	\endhead
 	\hline
-	\multicolumn{1}{@{}l}{\footnotesize Legenda: chave primária sublinhada; chave estrangeira em itálico, com a tabela referenciada indicada após ``FK''.} \\
+	\multicolumn{1}{@{}p{15.5cm}@{}}{\footnotesize Legenda: chave primária sublinhada; chave estrangeira em itálico, com a tabela referenciada indicada após ``FK''.} \\
 	\multicolumn{1}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
 	\endlastfoot
 	\hline
@@ -223,31 +225,107 @@ O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esqu
 \subsubsection{Modelo Físico}
 \label{sec:modelo-fisico}
 
-O modelo físico, apresentado na Figura~\ref{fig:der-fisico}, detalha a implementação do esquema no PostgreSQL. Para cada uma das 28 tabelas, o diagrama mostra as colunas com o tipo de dado do SGBD, a obrigatoriedade (\texttt{NULL} ou \texttt{NOT NULL}) e as marcações de chave primária (PK), chave estrangeira (FK) e unicidade (UK). Cada chave estrangeira aparece como uma linha entre as tabelas, com a cardinalidade nos dois lados.
+O modelo físico (Figura~\ref{fig:der-fisico}) mostra as 28 tabelas no PostgreSQL, com o tipo de cada coluna, a obrigatoriedade e as chaves primárias, estrangeiras e únicas. Algumas regras ficam fora do diagrama por serem restrições declaradas no esquema. A principal é a \texttt{booking\_no\_overlap}, que impede agendamentos sobrepostos no mesmo espaço, mesmo quando duas solicitações são aprovadas ao mesmo tempo (RNF08). Essas regras são criadas pelas \textit{migrations} do Django e versionadas junto com o código.
 
 \begin{landscape}
 \begin{figure}[p]
     \centering
     \caption{Modelo físico do banco de dados}
-    \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio]{Figuras/banco/der-fisico.png}
+    \includegraphics[width=\linewidth,height=0.87\textheight,keepaspectratio]{Figuras/banco/der-fisico.png}
     \caption*{Fonte: Elaborado pelo autor (2026).}
     \label{fig:der-fisico}
 \end{figure}
 \end{landscape}
 
-Algumas regras do modelo físico não aparecem no diagrama porque são restrições e índices declarados no esquema. A mais importante é a restrição de exclusão \texttt{booking\_no\_overlap}, definida na tabela \texttt{bookings\_booking} com um índice GiST: ela impede que dois agendamentos do mesmo espaço tenham intervalos de horário sobrepostos, inclusive quando duas solicitações são aprovadas ao mesmo tempo, o que atende ao RNF08. Restrições de verificação (\textit{CHECK}) garantem que o início de cada agendamento e de cada solicitação seja anterior ao fim, e índices únicos sobre \texttt{LOWER(email)} e \texttt{LOWER(username)} impedem usuários duplicados que difiram apenas por letras maiúsculas e minúsculas. Cada usuário tem no máximo um perfil por força de uma restrição de unicidade sobre \texttt{user\_id} na tabela \texttt{accounts\_userrole}. Essas regras são criadas pelas \textit{migrations} do Django, de modo que o esquema do banco é versionado junto com o código.
-
 %-----------------------------------
 \section{Sistema Desenvolvido}
 \label{sec:resultado-sistema}
 
-O IFAgenda constituiu uma aplicação web funcional, executada em ambiente local e acessível por navegador. A solução foi implementada em Python com o \textit{framework} Django, utilizando PostgreSQL como sistema gerenciador de banco de dados e Docker Compose para a distribuição dos componentes em contêineres. A interface foi construída com \textit{templates} do Django e Tailwind CSS.
+O IFAgenda é uma aplicação web funcional, executada em ambiente local e acessada pelo navegador. Ele foi escrito em Python com o \textit{framework} Django, usa o PostgreSQL como banco de dados e roda em contêineres orquestrados pelo Docker Compose. A interface usa os \textit{templates} do Django com o Tailwind CSS. As subseções a seguir tratam da arquitetura, da organização do código, dos modelos de dados, das funcionalidades, da importação da planilha e das principais telas.
+
+\subsection{Arquitetura}
+\label{sec:resultado-arquitetura}
+
+O sistema é uma única aplicação Django (monolítica), no padrão MTV, dividida em um módulo para cada parte do domínio. Todos os dados ficam no PostgreSQL, e as tarefas mais demoradas rodam em processos à parte, que usam o próprio banco como fila. A Figura~\ref{fig:arquitetura} mostra os contêineres e a comunicação entre eles.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Contêineres e comunicação do IFAgenda}
+    \begin{tikzpicture}[
+        font=\small,
+        caixa/.style={draw, rounded corners=2pt, align=center, text width=3.0cm, minimum height=1.3cm, fill=black!4},
+        rotulo/.style={font=\footnotesize, align=center, fill=white, inner sep=1.5pt},
+        seta/.style={-{Stealth[length=2mm]}, thick},
+        dupla/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}, thick}]
+        \node[caixa, fill=white] (nav) at (0,0) {Navegador};
+        \node[caixa] (web) at (5.4,0) {\textbf{web}\\Django};
+        \node[caixa] (redis) at (10.8,0) {\textbf{redis}\\cache e canal das notificações};
+        \node[caixa] (worker) at (0,-3.6) {\textbf{worker}\\envio de e-mails};
+        \node[caixa] (db) at (5.4,-3.6) {\textbf{db}\\PostgreSQL};
+        \node[caixa] (imp) at (10.8,-3.6) {\textbf{import\_worker}\\importação de planilhas};
+        \node[caixa, fill=white] (smtp) at (0,-6.6) {Servidor de e-mail (SMTP)};
+        \draw[dupla] (nav) -- node[rotulo, above=3pt]{HTTP e\\WebSocket} (web);
+        \draw[dupla] (web) -- (redis);
+        \draw[dupla] (web) -- node[rotulo, right=3pt]{leitura e\\gravação} (db);
+        \draw[dupla] (worker) -- node[rotulo, above=3pt]{fila de\\e-mails} (db);
+        \draw[dupla] (imp) -- node[rotulo, above=3pt]{fila de\\importações} (db);
+        \draw[seta] (imp) -- node[rotulo, right=3pt]{aviso de\\conclusão} (redis);
+        \draw[seta] (worker) -- (smtp);
+    \end{tikzpicture}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:arquitetura}
+\end{figure}
+
+Em execução, são cinco serviços, definidos no arquivo do Docker Compose; um sexto, usado só no desenvolvimento, compila os estilos. O \texttt{web} recebe as requisições HTTP e mantém as conexões WebSocket das notificações. O \texttt{worker} envia os e-mails que estão na fila do banco e tenta de novo quando o envio falha. O \texttt{import\_worker} faz a prévia e a confirmação das importações de planilhas. O \texttt{db} é o PostgreSQL, e o \texttt{redis} guarda o cache das telas públicas e serve de canal para as notificações em tempo real. Os três primeiros usam a mesma imagem e o mesmo código; muda só o comando que cada um executa.
+
+Toda requisição segue o mesmo caminho. Antes de chegar à \textit{view}, ela passa pelos \textit{middlewares} de sessão, CSRF e autenticação e por dois \textit{middlewares} criados para o sistema: um confere se o usuário tem a permissão que a tela exige, e o outro registra quem fez a requisição, para a auditoria. A \textit{view} chama uma operação do \textit{model}, que abre uma transação, confere as regras de negócio e grava, junto, o registro de auditoria, as notificações e os e-mails a enviar. Se alguma regra não for atendida, nada é gravado, e o usuário vê o erro no próprio formulário.
+
+Alguns padrões aparecem em todo o código. As regras de negócio ficam nos \textit{models}, sem uma camada de serviços à parte. Os e-mails entram na fila na mesma transação da operação que os gerou e só depois são enviados pelo \texttt{worker}. A prévia de uma importação faz todas as gravações e desfaz tudo no final, por isso mostra exatamente o que a confirmação vai fazer. As ocorrências das aulas recorrentes não são gravadas uma a uma: o sistema as calcula a partir da regra semanal. Os registros de auditoria só aceitam inserção, e o cache das telas públicas é descartado sempre que muda algum dado exibido nelas.
+
+\subsection{Estrutura de Arquivos}
+\label{sec:resultado-estrutura}
+
+O código é dividido em aplicações Django, uma para cada parte do sistema, como mostra a Tabela~\ref{tab:estrutura}.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Estrutura de pastas do projeto}
+	\small
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{11.2cm}@{}}
+	\hline
+		\textbf{Pasta} & \textbf{Conteúdo} \\ \hline
+		\texttt{config/} & Configurações do Django, rotas principais e pontos de entrada HTTP e WebSocket \\
+		\texttt{accounts/} & Usuários, perfis e permissões, autenticação, importação de usuários e comandos de administração \\
+		\texttt{schedule/} & Ensalamento: semestres, faixas de horário, espaços, docentes, cursos, turmas, disciplinas, aulas, importação da planilha e calendário público \\
+		\texttt{bookings/} & Agenda: solicitações de agendamento e agendamentos \\
+		\texttt{imports/} & Mecanismo genérico de importação de planilhas e o processo que o executa \\
+		\texttt{notices/} & Notificações, comunicados e o canal WebSocket \\
+		\texttt{outbox/} & Fila de e-mails e o processo de envio \\
+		\texttt{audit/} & Registro de auditoria e a tela de consulta \\
+		\texttt{panel/} & Painel administrativo \\
+		\texttt{reports/} & Mapa de calor e relatório de solicitações \\
+		\texttt{system\_settings/} & Configuração do servidor de e-mail, com a senha cifrada \\
+		\texttt{tutorials/} & Central de ajuda, com os tutoriais e as imagens \\
+		\texttt{ui/} & Layouts, componentes visuais, ícones, menu e estilos do Tailwind CSS \\
+		\texttt{docs/} & Documentação técnica do sistema \\ \hline
+	\end{tabular}
+	\caption*{Fonte: Elaborado pelo autor (2026).}
+	\label{tab:estrutura}
+\end{table}
+
+Em geral, cada aplicação segue a mesma organização: \texttt{models.py} guarda as entidades e as regras de negócio, \texttt{views.py} as telas, \texttt{urls.py} as rotas e \texttt{forms.py} os formulários; a pasta \texttt{templates/} tem o HTML, a \texttt{tests/} os testes automatizados e a \texttt{migrations/} as alterações do esquema do banco. Na raiz do projeto ficam o \texttt{Dockerfile}, o arquivo do Docker Compose e o \texttt{Makefile}, que reúne os comandos do dia a dia, como subir o ambiente, aplicar as \textit{migrations} e rodar os testes.
+
+\subsection{Modelos do Banco de Dados}
+\label{sec:resultado-modelos}
+
+São 27 classes de modelo, que geram as 28 tabelas do modelo físico (Seção~\ref{sec:resultado-banco}); a tabela a mais liga as aulas aos seus docentes. A parte de contas e acesso tem os usuários, os perfis, as permissões e as ligações entre eles. O ensalamento é a parte maior: semestres, faixas de horário, espaços e seus outros nomes, docentes, cursos, turmas, disciplinas, ofertas de disciplina, vínculos dos docentes, aulas recorrentes, ocorrências canceladas e as decisões sobre espaços tomadas nas importações. A agenda guarda as solicitações e os agendamentos, e a importação guarda cada arquivo enviado e cada linha lida dele. Completam o modelo a auditoria, a fila de e-mails, os comunicados, as notificações e as configurações do sistema.
+
+\subsection{Funcionalidades}
+\label{sec:resultado-funcionalidades}
 
 A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
 
-O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda.
-
-A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupadas pelos mesmos módulos dos requisitos funcionais.
+O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda. A Tabela~\ref{tab:funcionalidades} resume as funcionalidades, agrupadas pelos mesmos módulos dos requisitos funcionais.
 
 \begin{table}[!htb]
 	\centering
@@ -270,17 +348,145 @@ A Tabela~\ref{tab:funcionalidades} resume as funcionalidades do sistema, agrupad
 	\label{tab:funcionalidades}
 \end{table}
 
-O controle de acesso foi implementado com perfis configuráveis. Cada permissão corresponde a uma ação em um recurso do sistema, como solicitar uma reserva ou editar um espaço, e ao todo são 47 permissões divididas em 13 módulos. Um perfil é um conjunto de permissões montado pelo superadministrador. Os perfis Administrador e Docente vêm cadastrados apenas como exemplo e podem ser alterados, e categorias como a dos técnicos administrativos recebem um perfil com as permissões de que precisam. A consulta pública não exige login.
+O acesso é controlado por perfis configuráveis. Cada permissão corresponde a uma ação sobre um recurso do sistema, como solicitar uma reserva ou editar um espaço, e o sistema tem 47 delas, divididas em 13 módulos. O superadministrador monta os perfis escolhendo as permissões, e cada perfil pode receber até 41; as outras 6, que tratam dos perfis e das configurações, ficam só com o superadministrador. Os perfis Administrador e Docente já vêm cadastrados, mas servem apenas de exemplo e podem ser alterados. Outras categorias, como a dos técnicos administrativos, recebem um perfil com as permissões de que precisam. A consulta pública não exige login.
 
 As notificações aparecem no próprio sistema, em um ícone no cabeçalho que é atualizado em tempo real, sem recarregar a página. Quando chega uma solicitação de reserva, os responsáveis pela análise são notificados, e, depois da decisão, o solicitante recebe o resultado. O e-mail é usado só para definir e recuperar a senha. O servidor de envio é configurado pela interface, e as mensagens saem em segundo plano. O mesmo vale para a importação da planilha: as tarefas mais demoradas rodam em processos separados, que leem filas gravadas no banco e tentam de novo quando algo falha.
 
-A interface aplicou as três heurísticas de \citeonline{nielsen1994} adotadas como diretrizes de projeto (Seção~\ref{sec:usab}). A situação de cada solicitação (pendente, aprovada, rejeitada, alternativa sugerida ou cancelada) fica visível ao solicitante, o que atende à visibilidade do estado do sistema. As telas usam os termos do processo do campus, como espaço, reserva, ensalamento e semestre, o que atende à correspondência com o mundo real. A verificação de conflito de horário antes do envio da solicitação, com a indicação do intervalo já ocupado, atende à prevenção de erros.
+Na interface, foram aplicadas as três heurísticas de \citeonline{nielsen1994} adotadas como diretrizes de projeto (Seção~\ref{sec:usab}). O solicitante sempre vê a situação de cada pedido (pendente, aprovado, rejeitado, com alternativa sugerida ou cancelado), o que atende à visibilidade do estado do sistema. As telas usam os termos do próprio campus, como espaço, reserva, ensalamento e semestre, o que atende à correspondência com o mundo real. E o conflito de horário é verificado antes do envio da solicitação, com a indicação do intervalo já ocupado, o que atende à prevenção de erros.
+
+\subsection{Importação da Planilha de Horários}
+\label{sec:resultado-importacao}
+
+Para medir a importação, foi usada a planilha sugerida, uma versão mais enxuta da que o campus enviou. A versão enviada tinha abas calculadas a partir das outras; essas abas foram retiradas, e entrou uma aba com os usuários do sistema. A planilha sugerida foi apresentada à Direção de Ensino na reunião de 7 de outubro de 2026, com a explicação do que tinha sido retirado e incluído. A versão enviada também é aceita pelo sistema, desde que os docentes já estejam cadastrados como usuários; nesse caso, as linhas com algum problema, como uma aula sem disciplina, aparecem na prévia para correção.
+
+A importação foi feita em uma instalação nova do sistema, com o banco vazio, como dados do semestre 2026/2. O arquivo tem 1.842 linhas, distribuídas nas abas de horários da graduação e do ensino médio e na aba de usuários. A prévia não encontrou erros nem pendências, e a importação foi confirmada logo em seguida. O que foi cadastrado está na Tabela~\ref{tab:importacao}.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Resultado da importação da planilha de horários}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{9.0cm}r@{}}
+	\hline
+		\textbf{Item} & \textbf{Quantidade} \\ \hline
+		Linhas lidas do arquivo & 1.842 \\
+		Linhas cadastradas & 1.841 \\
+		Linhas sem alteração & 1 \\
+		Linhas com erro & 0 \\ \hline
+		Espaços & 85 \\
+		Usuários (docentes) & 129 \\
+		Cursos & 15 \\
+		Turmas & 56 \\
+		Disciplinas & 276 \\
+		Ofertas de disciplina & 563 \\
+		Vínculos de docentes com ofertas & 619 \\
+		Faixas de horário & 15 \\
+		Aulas recorrentes & 1.498 \\ \hline
+	\end{tabular}
+	\caption*{Fonte: Elaborado pelo autor (2026).}
+	\label{tab:importacao}
+\end{table}
+
+Os tempos vêm dos registros do processo de importação, que anota quando cada operação começa e termina. A prévia levou cerca de 2,5 segundos, e a confirmação, cerca de 2,2 segundos. Foi uma medição única, feita no computador do autor com o sistema em contêineres Docker, e serve só para dar a ordem de grandeza, não como medida de desempenho. As 1.498 aulas recorrentes cadastradas formam a ocupação semanal dos espaços em todo o semestre, que passa a aparecer na agenda, no calendário público e nos relatórios.
+
+\subsection{Telas do Sistema}
+\label{sec:resultado-telas}
+
+As imagens desta seção foram capturadas na mesma instalação usada para medir a importação, com os dados da planilha do campus. Nomes e e-mails de pessoas foram trocados por pseudônimos, como ``Docente 001''. As solicitações que aparecem nas telas foram feitas pela própria interface, no \mbox{Lab.~1 - Info}, para a semana de 16 a 20 de novembro de 2026: uma foi aprovada, uma rejeitada, uma recebeu sugestão de alternativa e uma ficou pendente. Houve ainda uma tentativa recusada por conflito com uma aula. As 45 telas do sistema, com a rota, quem tem acesso e uma descrição de cada uma, estão no arquivo \texttt{TCC\_II/telas/README.md}, no repositório do trabalho no GitHub \cite{goncalves2026ifagenda}.
+
+O calendário público (Figura~\ref{fig:tela-calendario}) pode ser consultado por qualquer pessoa, sem login. Os filtros são semestre, sala, docente, curso, nível e período, e a grade mostra juntas as aulas do ensalamento e os agendamentos aprovados, como o de quarta-feira, sem e-mails nem descrições.
+
+\begin{figure}[!htb]
+    \centering
+    \caption{Calendário público}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/calendario-publico.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-calendario}
+\end{figure}
+
+Depois do login, quem analisa as solicitações começa pelo painel (Figura~\ref{fig:tela-painel}), que resume as pendências do semestre: solicitações para decidir, solicitações à espera de resposta do solicitante, aulas sem espaço e importações em aberto.
+
+\begin{figure}[H]
+    \centering
+    \caption{Painel administrativo}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/painel.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-painel}
+\end{figure}
+
+A agenda (Figura~\ref{fig:tela-agenda}) mostra a semana de uma sala, com as aulas e os agendamentos. Para pedir um horário, o docente clica em um espaço livre da grade.
+
+\begin{figure}[H]
+    \centering
+    \caption{Agenda semanal de uma sala, vista por um docente}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/agenda-docente.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-agenda}
+\end{figure}
+
+O formulário abre sobre a própria agenda, já com o espaço, a data e o horário clicados. O docente pode estender o horário de término, informa a descrição e a quantidade de alunos e, antes de enviar, confere os dados em um resumo (Figura~\ref{fig:tela-revisao}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Revisão da solicitação de agendamento}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/solicitar-agendamento-revisao.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-revisao}
+\end{figure}
+
+Se o horário pedido avançar sobre uma aula, a solicitação não é enviada, e o sistema mostra qual aula ocupa o espaço (Figura~\ref{fig:tela-conflito}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Solicitação recusada por conflito de horário}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/solicitar-agendamento-conflito.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-conflito}
+\end{figure}
+
+Na análise (Figura~\ref{fig:tela-analise}), o responsável vê os dados da solicitação e decide se aprova, rejeita ou sugere outro espaço, data ou horário.
+
+\begin{figure}[H]
+    \centering
+    \caption{Análise de uma solicitação}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/analisar-solicitacao.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-analise}
+\end{figure}
+
+Quando recebe uma sugestão, o solicitante vê a proposta e a mensagem de quem analisou, e escolhe se aceita ou recusa (Figura~\ref{fig:tela-alternativa}).
+
+\begin{figure}[H]
+    \centering
+    \caption{Alternativa sugerida ao solicitante}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/minha-solicitacao-alternativa.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-alternativa}
+\end{figure}
+
+A Figura~\ref{fig:tela-importacao} mostra o resultado da importação descrita na Seção~\ref{sec:resultado-importacao}, com o resumo, os espaços cadastrados e o que foi feito com cada linha do arquivo.
+
+\begin{figure}[H]
+    \centering
+    \caption{Resultado da importação da planilha}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/importacao-ensalamento-detalhe.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-importacao}
+\end{figure}
+
+Por fim, o mapa de calor (Figura~\ref{fig:tela-mapa}) mostra a ocupação média dos espaços por dia e faixa de horário ao longo do semestre, calculada a partir das aulas importadas.
+
+\begin{figure}[H]
+    \centering
+    \caption{Mapa de calor da ocupação dos espaços}
+    \fbox{\includegraphics[width=0.78\textwidth]{telas/imgs/mapa-de-calor.png}}
+    \caption*{Fonte: Elaborado pelo autor (2026).}
+    \label{fig:tela-mapa}
+\end{figure}
 
 %-----------------------------------
 \section{Validação}
 \label{sec:resultado-validacao}
 
-Na validação institucional, o sistema foi apresentado funcionando localmente à Direção de Ensino, na reunião de 7 de outubro de 2026, e foi aprovado.
+Na validação institucional, o sistema foi apresentado funcionando localmente à Direção de Ensino, na reunião de 7 de outubro de 2026, e foi aprovado. Segundo a Direção, o sistema atende ao fluxo atual de agendamento da instituição\footnote{Informação verbal fornecida pela Direção de Ensino do IFNMG -- Campus Salinas, em reunião remota realizada em 7 de outubro de 2026.}.
 
 Na validação técnica, a versão desenvolvida tinha 1.780 testes automatizados em 20 de outubro de 2026, e todos passaram, o que cumpre o critério definido na Seção~\ref{sec:validacao}. Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando duas solicitações são analisadas ao mesmo tempo; as permissões de cada perfil; a importação e a reimportação da planilha; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem expor dados pessoais; e a impossibilidade de alterar os registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos.
 
@@ -307,7 +513,7 @@ Os testes automatizados mostram que o sistema funciona do ponto de vista técnic
 \section{Atendimento às Necessidades Identificadas}
 \label{sec:resultado-necessidades}
 
-O IFAgenda atendeu às principais limitações observadas no diagnóstico. A importação da planilha reduziu o cadastro manual dos horários ocupados e permitiu que a ocupação das aulas fosse refletida no calendário do sistema. A consulta pública permitiu visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação manteve o controle administrativo sobre as reservas extraordinárias.
+O IFAgenda resolveu as principais limitações encontradas no diagnóstico. Com a importação, as 1.498 aulas recorrentes do semestre, em 85 espaços, passam a ser cadastradas a partir do arquivo que o campus já produz, sem precisar digitá-las uma a uma, e a ocupação das aulas aparece no calendário do sistema (Seção~\ref{sec:resultado-importacao}). A consulta pública permitiu visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação manteve o controle administrativo sobre as reservas extraordinárias.
 
 O controle de acesso baseado em papéis restringiu as funcionalidades conforme as permissões de cada perfil. A restrição de integridade no banco de dados impediu reservas sobrepostas do mesmo espaço, inclusive quando solicitações foram analisadas simultaneamente.
 

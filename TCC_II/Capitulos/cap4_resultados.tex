@@ -171,7 +171,7 @@ O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esqu
 
 \begin{SingleSpace}
 \small
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{15.5cm}@{}}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\linewidth}@{}}
 	\caption{Modelo lógico do banco de dados}\label{tab:modelo-logico} \\
 	\hline
 	\textbf{Tabela(colunas)} \\ \hline
@@ -180,43 +180,43 @@ O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esqu
 	\textbf{Tabela(colunas)} \\ \hline
 	\endhead
 	\hline
-	\multicolumn{1}{@{}p{15.5cm}@{}}{\footnotesize Legenda: chave primária sublinhada; chave estrangeira em itálico, com a tabela referenciada indicada após ``FK''.} \\
+	\multicolumn{1}{@{}p{\linewidth}@{}}{\footnotesize Legenda: chave primária sublinhada; chave estrangeira em itálico, com a tabela referenciada indicada após ``FK''.} \\
 	\multicolumn{1}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
 	\endlastfoot
 	\hline
 	\endfoot
-	\multicolumn{1}{@{}l}{\textbf{Contas e controle de acesso}} \\
+	\multicolumn{1}{@{}l}{\textbf{Contas e controle de acesso}} \\*
 	accounts\_user(\underline{id}, password, last\_login, email, name, username, is\_active, is\_superadmin, session\_epoch, created\_at) \\
 	accounts\_role(\underline{id}, code, name, description) \\
 	accounts\_permission(\underline{id}, code, description) \\
-	accounts\_rolepermission(\underline{id}, \textit{role\_id}, \textit{permission\_id}) \newline {\footnotesize FK: role\_id $\rightarrow$ accounts\_role; permission\_id $\rightarrow$ accounts\_permission} \\
-	accounts\_userrole(\underline{id}, \textit{user\_id}, \textit{role\_id}) \newline {\footnotesize FK: user\_id $\rightarrow$ accounts\_user; role\_id $\rightarrow$ accounts\_role} \\
-	\multicolumn{1}{@{}l}{\textbf{Ensalamento}} \\
+	accounts\_rolepermission(\underline{id}, \textit{role\_id}, \textit{permission\_id}) \newline {\footnotesize FK: role\_id~$\rightarrow$~accounts\_role; permission\_id~$\rightarrow$~accounts\_permission} \\
+	accounts\_userrole(\underline{id}, \textit{user\_id}, \textit{role\_id}) \newline {\footnotesize FK: user\_id~$\rightarrow$~accounts\_user; role\_id~$\rightarrow$~accounts\_role} \\
+	\multicolumn{1}{@{}l}{\textbf{Ensalamento}} \\*
 	schedule\_semester(\underline{id}, code, start\_date, end\_date) \\
-	schedule\_timeslot(\underline{id}, \textit{semester\_id}, start\_time, end\_time) \newline {\footnotesize FK: semester\_id $\rightarrow$ schedule\_semester} \\
+	schedule\_timeslot(\underline{id}, \textit{semester\_id}, start\_time, end\_time) \newline {\footnotesize FK: semester\_id~$\rightarrow$~schedule\_semester} \\
 	schedule\_course(\underline{id}, name, stage) \\
-	schedule\_classgroup(\underline{id}, \textit{course\_id}, label) \newline {\footnotesize FK: course\_id $\rightarrow$ schedule\_course} \\
+	schedule\_classgroup(\underline{id}, \textit{course\_id}, label) \newline {\footnotesize FK: course\_id~$\rightarrow$~schedule\_course} \\
 	schedule\_subject(\underline{id}, name) \\
-	schedule\_classoffering(\underline{id}, \textit{semester\_id}, \textit{subject\_id}, \textit{class\_group\_id}) \newline {\footnotesize FK: semester\_id $\rightarrow$ schedule\_semester; subject\_id $\rightarrow$ schedule\_subject; class\_group\_id $\rightarrow$ schedule\_classgroup} \\
+	schedule\_classoffering(\underline{id}, \textit{semester\_id}, \textit{subject\_id}, \textit{class\_group\_id}) \newline {\footnotesize FK: semester\_id~$\rightarrow$~schedule\_semester; subject\_id~$\rightarrow$~schedule\_subject; class\_group\_id~$\rightarrow$~schedule\_classgroup} \\
 	schedule\_teacher(\underline{id}, name) \\
-	schedule\_teachingassignment(\underline{id}, \textit{offering\_id}, \textit{teacher\_id}, is\_current) \newline {\footnotesize FK: offering\_id $\rightarrow$ schedule\_classoffering; teacher\_id $\rightarrow$ schedule\_teacher} \\
-	schedule\_space(\underline{id}, name, origin, \textit{source\_import\_id}, is\_active) \newline {\footnotesize FK: source\_import\_id $\rightarrow$ imports\_import} \\
-	schedule\_spacename(\underline{id}, \textit{space\_id}, name) \newline {\footnotesize FK: space\_id $\rightarrow$ schedule\_space} \\
-	schedule\_allocation(\underline{id}, \textit{semester\_id}, \textit{class\_group\_id}, \textit{subject\_id}, \textit{space\_id}, weekday, \textit{time\_slot\_id}, origin, valid\_from, valid\_until) \newline {\footnotesize FK: semester\_id $\rightarrow$ schedule\_semester; class\_group\_id $\rightarrow$ schedule\_classgroup; subject\_id $\rightarrow$ schedule\_subject; space\_id $\rightarrow$ schedule\_space; time\_slot\_id $\rightarrow$ schedule\_timeslot} \\
-	schedule\_allocation\_teachers(\underline{id}, \textit{allocation\_id}, \textit{teacher\_id}) \newline {\footnotesize FK: allocation\_id $\rightarrow$ schedule\_allocation; teacher\_id $\rightarrow$ schedule\_teacher} \\
-	schedule\_allocationexception(\underline{id}, \textit{allocation\_id}, date, kind, \textit{created\_by\_id}, created\_at) \newline {\footnotesize FK: allocation\_id $\rightarrow$ schedule\_allocation; created\_by\_id $\rightarrow$ accounts\_user} \\
-	schedule\_spacedecision(\underline{id}, \textit{importation\_id}, found\_name, kind, \textit{space\_id}, target\_name, \textit{decided\_by\_id}, decided\_at) \newline {\footnotesize FK: importation\_id $\rightarrow$ imports\_import; space\_id $\rightarrow$ schedule\_space; decided\_by\_id $\rightarrow$ accounts\_user} \\
-	\multicolumn{1}{@{}l}{\textbf{Reservas}} \\
-	bookings\_bookingrequest(\underline{id}, \textit{requested\_by\_id}, \textit{teaching\_assignment\_id}, \textit{created\_by\_id}, \textit{space\_id}, date, start\_time, end\_time, description, student\_count, status, rejection\_reason, \textit{suggested\_space\_id}, suggested\_date, suggested\_start\_time, suggested\_end\_time, suggestion\_message, \textit{decided\_by\_id}, decided\_at, responded\_at, \textit{cancelled\_by\_id}, cancelled\_at, cancellation\_reason, created\_at) \newline {\footnotesize FK: requested\_by\_id $\rightarrow$ accounts\_user; teaching\_assignment\_id $\rightarrow$ schedule\_teachingassignment; created\_by\_id $\rightarrow$ accounts\_user; space\_id $\rightarrow$ schedule\_space; suggested\_space\_id $\rightarrow$ schedule\_space; decided\_by\_id $\rightarrow$ accounts\_user; cancelled\_by\_id $\rightarrow$ accounts\_user} \\
-	bookings\_booking(\underline{id}, \textit{request\_id}, \textit{space\_id}, starts\_at, ends\_at, description, student\_count, \textit{requested\_by\_id}, \textit{approved\_by\_id}, created\_at) \newline {\footnotesize FK: request\_id $\rightarrow$ bookings\_bookingrequest; space\_id $\rightarrow$ schedule\_space; requested\_by\_id $\rightarrow$ accounts\_user; approved\_by\_id $\rightarrow$ accounts\_user} \\
-	\multicolumn{1}{@{}l}{\textbf{Importação da planilha}} \\
-	imports\_import(\underline{id}, kind, status, file\_name, \textit{created\_by\_id}, created\_at, \textit{resolved\_by\_id}, resolved\_at, revalidation\_count, file\_errors, operation, \textit{requested\_by\_id}, requested\_at, attempts, next\_attempt\_at, last\_error, outcome, outcome\_message) \newline {\footnotesize FK: created\_by\_id $\rightarrow$ accounts\_user; resolved\_by\_id $\rightarrow$ accounts\_user; requested\_by\_id $\rightarrow$ accounts\_user} \\
-	imports\_importrow(\underline{id}, \textit{parent\_id}, line\_number, values, action, target, changes, warnings, errors, pending, created\_object) \newline {\footnotesize FK: parent\_id $\rightarrow$ imports\_import} \\
-	\multicolumn{1}{@{}l}{\textbf{Comunicados e notificações}} \\
-	notices\_notice(\underline{id}, type, title, message, destination, recipients\_count, \textit{published\_by\_id}, created\_at) \newline {\footnotesize FK: published\_by\_id $\rightarrow$ accounts\_user} \\
-	notices\_notification(\underline{id}, \textit{recipient\_id}, \textit{notice\_id}, type, title, message, target\_url, read\_at, created\_at) \newline {\footnotesize FK: recipient\_id $\rightarrow$ accounts\_user; notice\_id $\rightarrow$ notices\_notice} \\
-	\multicolumn{1}{@{}l}{\textbf{Auditoria, fila de e-mails e configurações}} \\
-	audit\_auditlog(\underline{id}, \textit{user\_id}, action, resource, resource\_id, old\_values, new\_values, metadata, origin, ip\_address, user\_agent, created\_at) \newline {\footnotesize FK: user\_id $\rightarrow$ accounts\_user} \\
+	schedule\_teachingassignment(\underline{id}, \textit{offering\_id}, \textit{teacher\_id}, is\_current) \newline {\footnotesize FK: offering\_id~$\rightarrow$~schedule\_classoffering; teacher\_id~$\rightarrow$~schedule\_teacher} \\
+	schedule\_space(\underline{id}, name, origin, \textit{source\_import\_id}, is\_active) \newline {\footnotesize FK: source\_import\_id~$\rightarrow$~imports\_import} \\
+	schedule\_spacename(\underline{id}, \textit{space\_id}, name) \newline {\footnotesize FK: space\_id~$\rightarrow$~schedule\_space} \\
+	schedule\_allocation(\underline{id}, \textit{semester\_id}, \textit{class\_group\_id}, \textit{subject\_id}, \textit{space\_id}, weekday, \textit{time\_slot\_id}, origin, valid\_from, valid\_until) \newline {\footnotesize FK: semester\_id~$\rightarrow$~schedule\_semester; class\_group\_id~$\rightarrow$~schedule\_classgroup; subject\_id~$\rightarrow$~schedule\_subject; space\_id~$\rightarrow$~schedule\_space; time\_slot\_id~$\rightarrow$~schedule\_timeslot} \\
+	schedule\_allocation\_teachers(\underline{id}, \textit{allocation\_id}, \textit{teacher\_id}) \newline {\footnotesize FK: allocation\_id~$\rightarrow$~schedule\_allocation; teacher\_id~$\rightarrow$~schedule\_teacher} \\
+	schedule\_allocationexception(\underline{id}, \textit{allocation\_id}, date, kind, \textit{created\_by\_id}, created\_at) \newline {\footnotesize FK: allocation\_id~$\rightarrow$~schedule\_allocation; created\_by\_id~$\rightarrow$~accounts\_user} \\
+	schedule\_spacedecision(\underline{id}, \textit{importation\_id}, found\_name, kind, \textit{space\_id}, target\_name, \textit{decided\_by\_id}, decided\_at) \newline {\footnotesize FK: importation\_id~$\rightarrow$~imports\_import; space\_id~$\rightarrow$~schedule\_space; decided\_by\_id~$\rightarrow$~accounts\_user} \\
+	\multicolumn{1}{@{}l}{\textbf{Reservas}} \\*
+	bookings\_bookingrequest(\underline{id}, \textit{requested\_by\_id}, \textit{teaching\_assignment\_id}, \textit{created\_by\_id}, \textit{space\_id}, date, start\_time, end\_time, description, student\_count, status, rejection\_reason, \textit{suggested\_space\_id}, suggested\_date, suggested\_start\_time, suggested\_end\_time, suggestion\_message, \textit{decided\_by\_id}, decided\_at, responded\_at, \textit{cancelled\_by\_id}, cancelled\_at, cancellation\_reason, created\_at) \newline {\footnotesize FK: requested\_by\_id~$\rightarrow$~accounts\_user; teaching\_assignment\_id~$\rightarrow$~schedule\_teachingassignment; created\_by\_id~$\rightarrow$~accounts\_user; space\_id~$\rightarrow$~schedule\_space; suggested\_space\_id~$\rightarrow$~schedule\_space; decided\_by\_id~$\rightarrow$~accounts\_user; cancelled\_by\_id~$\rightarrow$~accounts\_user} \\
+	bookings\_booking(\underline{id}, \textit{request\_id}, \textit{space\_id}, starts\_at, ends\_at, description, student\_count, \textit{requested\_by\_id}, \textit{approved\_by\_id}, created\_at) \newline {\footnotesize FK: request\_id~$\rightarrow$~bookings\_bookingrequest; space\_id~$\rightarrow$~schedule\_space; requested\_by\_id~$\rightarrow$~accounts\_user; approved\_by\_id~$\rightarrow$~accounts\_user} \\
+	\multicolumn{1}{@{}l}{\textbf{Importação da planilha}} \\*
+	imports\_import(\underline{id}, kind, status, file\_name, \textit{created\_by\_id}, created\_at, \textit{resolved\_by\_id}, resolved\_at, revalidation\_count, file\_errors, operation, \textit{requested\_by\_id}, requested\_at, attempts, next\_attempt\_at, last\_error, outcome, outcome\_message) \newline {\footnotesize FK: created\_by\_id~$\rightarrow$~accounts\_user; resolved\_by\_id~$\rightarrow$~accounts\_user; requested\_by\_id~$\rightarrow$~accounts\_user} \\
+	imports\_importrow(\underline{id}, \textit{parent\_id}, line\_number, values, action, target, changes, warnings, errors, pending, created\_object) \newline {\footnotesize FK: parent\_id~$\rightarrow$~imports\_import} \\
+	\multicolumn{1}{@{}l}{\textbf{Comunicados e notificações}} \\*
+	notices\_notice(\underline{id}, type, title, message, destination, recipients\_count, \textit{published\_by\_id}, created\_at) \newline {\footnotesize FK: published\_by\_id~$\rightarrow$~accounts\_user} \\
+	notices\_notification(\underline{id}, \textit{recipient\_id}, \textit{notice\_id}, type, title, message, target\_url, read\_at, created\_at) \newline {\footnotesize FK: recipient\_id~$\rightarrow$~accounts\_user; notice\_id~$\rightarrow$~notices\_notice} \\
+	\multicolumn{1}{@{}l}{\textbf{Auditoria, fila de e-mails e configurações}} \\*
+	audit\_auditlog(\underline{id}, \textit{user\_id}, action, resource, resource\_id, old\_values, new\_values, metadata, origin, ip\_address, user\_agent, created\_at) \newline {\footnotesize FK: user\_id~$\rightarrow$~accounts\_user} \\
 	outbox\_outboxentry(\underline{id}, kind, reference, status, attempts, next\_attempt\_at, last\_error, created\_at, sent\_at) \\
 	system\_settings\_systemsetting(\underline{id}, kind, value, created\_at, updated\_at) \\
 \end{longtable}

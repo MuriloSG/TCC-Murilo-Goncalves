@@ -83,7 +83,7 @@ A Tabela~\ref{tab:comparativo} resume essa comparação.
 \section{Fundamentação Tecnológica}
 \label{sec:fundtec}
 
-Esta seção apresenta os conceitos técnicos que embasam o sistema proposto: engenharia de software, UML, banco de dados, controle de acesso, arquitetura web, o \textit{framework} Django, usabilidade e testes.
+Esta seção apresenta os conceitos técnicos que embasam o sistema proposto: engenharia de software, UML, banco de dados, controle de acesso, arquitetura web, o \textit{framework} Django, as tecnologias complementares, usabilidade e testes.
 
 %-----------------------------------
 \subsection{Engenharia de Software}
@@ -201,6 +201,22 @@ As mudanças nos \textit{models} são controladas pelo sistema de \textit{migrat
 O sistema de \textit{templates} do Django utiliza a \textit{Django Template Language} (DTL), que insere dados dinâmicos nas páginas HTML por meio de variáveis e \textit{tags} de controle. Com a herança de \textit{templates}, obtida pelas \textit{tags} \texttt{\{\% extends \%\}} e \texttt{\{\% block \%\}}, um arquivo base define elementos comuns, como cabeçalho, menu e rodapé. Os demais arquivos sobrescrevem apenas os blocos específicos de cada página \cite{djangodocs}.
 
 O Django inclui mecanismos de segurança que precisam ser habilitados e utilizados conforme a documentação. A proteção contra \textit{Cross-Site Request Forgery} (CSRF) usa um \textit{middleware} e o \textit{token} inserido pela \textit{tag} \texttt{\{\% csrf\_token \%\}} nos formulários. O sistema de \textit{templates} realiza escape automático do conteúdo dinâmico, reduzindo o risco de \textit{Cross-Site Scripting} (XSS) quando os mecanismos padrão não são desativados. Nas consultas feitas pelo ORM, os parâmetros são separados do comando SQL, o que reduz o risco de injeção; consultas SQL escritas manualmente ainda precisam seguir as práticas de segurança recomendadas \cite{djangodocs}.
+
+%-----------------------------------
+\subsection{Tecnologias Complementares}
+\label{sec:tecnologias}
+
+Além do Django e do PostgreSQL, o sistema usa outras tecnologias que tratam de necessidades que o \textit{framework} não resolve sozinho ou resolve de forma mais limitada: autenticação completa, comunicação em tempo real, armazenamento em memória, estilização da interface e execução em ambientes isolados.
+
+O \textit{django-allauth} é uma biblioteca de autenticação para o Django. Ela acrescenta ao sistema de usuários do \textit{framework} fluxos prontos de login, saída, definição e recuperação de senha por e-mail e gerenciamento de sessões, com mecanismos de proteção como a limitação de tentativas \cite{pennersr2024}.
+
+Como o HTTP é sem estado e cada resposta depende de uma requisição do cliente (Seção~\ref{sec:web}), o servidor não consegue, apenas com ele, avisar o navegador de que algo mudou. O protocolo WebSocket resolve esse problema: depois de uma negociação inicial feita sobre o HTTP, cliente e servidor mantêm uma conexão aberta, pela qual os dois lados podem enviar mensagens a qualquer momento \cite{rfc6455}. O Django Channels estende o Django para tratar conexões WebSocket ao lado das requisições HTTP comuns e usa uma camada de canais (\textit{channel layer}) para que diferentes processos da aplicação troquem mensagens entre si \cite{channelsdocs}.
+
+O Redis é um sistema de armazenamento de dados em memória, organizado em pares de chave e valor, que oferece estruturas como textos, listas, conjuntos e mapas e um mecanismo de publicação e assinatura de mensagens \cite{redisdocs}. Por manter os dados na memória, ele responde mais rápido que um banco em disco e é muito usado como \textit{cache}, isto é, para guardar resultados já calculados e evitar refazê-los a cada acesso \cite{redisdocs}. O Django Channels pode usar o Redis como camada de canais, o que permite que uma mensagem gerada em um processo chegue às conexões abertas em outro \cite{channelsdocs}.
+
+O Tailwind CSS é um \textit{framework} de estilos baseado em classes utilitárias, cada uma responsável por uma propriedade visual, como cor, espaçamento ou tamanho da fonte. Em vez de escrever folhas de estilo separadas para cada tela, o desenvolvedor combina essas classes no próprio HTML, a partir de uma escala única de cores e medidas, o que favorece a consistência visual entre as páginas \cite{tailwinddocs}.
+
+O Docker empacota uma aplicação e suas dependências em contêineres, ambientes isolados que compartilham o núcleo do sistema operacional e, por isso, iniciam mais rápido e consomem menos recursos que máquinas virtuais. Como o contêiner leva consigo tudo o que a aplicação precisa, ela se comporta da mesma forma no computador do desenvolvedor e no servidor \cite{dockerdocs}. O Docker Compose complementa o Docker ao descrever, em um único arquivo, os vários serviços de uma aplicação, como o servidor web, o banco de dados e os processos em segundo plano, e permite iniciá-los e pará-los em conjunto \cite{dockerdocs}.
 
 %-----------------------------------
 \subsection{Usabilidade e Interface do Usuário}

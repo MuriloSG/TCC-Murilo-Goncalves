@@ -143,7 +143,7 @@ O diagrama de sequência (Figura~\ref{fig:sequencia}) detalha a solicitação e 
 \subsection{Banco de Dados}
 \label{sec:resultado-banco}
 
-O banco de dados foi projetado nos três níveis descritos por \citeonline{heuser2009}: conceitual, lógico e físico (Seção~\ref{sec:bd}). Os modelos apresentados a seguir correspondem à versão implementada do sistema. Os diagramas foram gerados a partir do próprio código: o físico, das classes de modelo do Django, e o conceitual, de uma descrição das entidades e dos relacionamentos mantida junto a essas classes. Os modelos lógico e físico representam o esquema completo do banco, enquanto o conceitual se concentra no domínio do problema, como detalhado na Seção~\ref{sec:modelo-conceitual}.
+O banco de dados foi projetado nos três níveis descritos por \citeonline{heuser2009}: conceitual, lógico e físico (Seção~\ref{sec:bd}). Os modelos apresentados a seguir correspondem à versão implementada do sistema. Os modelos lógico e físico representam o esquema completo do banco, enquanto o conceitual se concentra no domínio do problema, como detalhado na Seção~\ref{sec:modelo-conceitual}.
 
 \subsubsection{Modelo Conceitual}
 \label{sec:modelo-conceitual}
@@ -486,9 +486,38 @@ Por fim, o mapa de calor (Figura~\ref{fig:tela-mapa}) mostra a ocupação média
 \section{Validação}
 \label{sec:resultado-validacao}
 
-Na validação institucional, o sistema foi apresentado funcionando localmente à Direção de Ensino, na reunião de 7 de outubro de 2026, e foi aprovado. Segundo a Direção, o sistema atende ao fluxo atual de agendamento da instituição\footnote{Informação verbal fornecida pela Direção de Ensino do IFNMG -- Campus Salinas, em reunião remota realizada em 7 de outubro de 2026.}.
+Na validação institucional, o sistema foi apresentado funcionando localmente à Direção de Ensino, representada por Frederico Ventura Batista, na reunião de 7 de outubro de 2026. Foram demonstrados todos os fluxos descritos na Seção~\ref{sec:resultado-funcionalidades}, da importação da planilha de horários à consulta pública, passando pela solicitação e pela análise de reservas, pelas notificações, pelos perfis e permissões, pelo painel, pelos relatórios e pela auditoria. Ao final da demonstração, a Direção concluiu que o sistema faz sentido para o campus e atende ao fluxo atual de agendamento da instituição\footnote{Informação verbal fornecida por Frederico Ventura Batista, da Direção de Ensino do IFNMG -- Campus Salinas, em reunião remota realizada em 7 de outubro de 2026.}. Com isso, foi cumprido o critério da validação institucional definido na Seção~\ref{sec:validacao}.
 
-Na validação técnica, a versão desenvolvida tinha 681 testes automatizados em 20 de outubro de 2026, e todos passaram, o que cumpre o critério definido na Seção~\ref{sec:validacao}. Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando duas solicitações são analisadas ao mesmo tempo; as permissões de cada perfil; a importação e a reimportação da planilha; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem expor dados pessoais; e a impossibilidade de alterar os registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos.
+Na validação técnica, a versão desenvolvida tinha 681 testes automatizados, e todos passaram. A medição de cobertura, feita em 17 de novembro de 2026, mostrou que os testes executam 97,1\% dos comandos e 90,8\% dos desvios do código da aplicação, o que corresponde a 96,0\% de cobertura combinada. A Tabela~\ref{tab:cobertura} apresenta esses números por módulo.
+
+\begin{table}[!htb]
+	\centering
+	\caption{Cobertura de código dos testes por módulo}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.6cm}rrrr@{}}
+	\hline
+		\textbf{Módulo} & \textbf{Comandos} & \textbf{\begin{tabular}[c]{@{}r@{}}Cobertura\\ de comandos\end{tabular}} & \textbf{Desvios} & \textbf{\begin{tabular}[c]{@{}r@{}}Cobertura\\ de desvios\end{tabular}} \\ \hline
+		Ensalamento, espaços e consulta pública & 4.146 & 96,3\% & 1.074 & 89,1\% \\
+		Usuários, perfis e autenticação & 1.684 & 96,6\% & 352 & 90,3\% \\
+		Importação & 1.032 & 98,4\% & 210 & 92,9\% \\
+		Agenda de reservas & 990 & 98,5\% & 132 & 93,2\% \\
+		Relatórios & 536 & 99,4\% & 98 & 94,9\% \\
+		Interface & 519 & 98,7\% & 210 & 98,1\% \\
+		Notificações e comunicados & 431 & 97,4\% & 54 & 85,2\% \\
+		Painel administrativo & 346 & 98,0\% & 98 & 90,8\% \\
+		Auditoria & 318 & 96,5\% & 36 & 86,1\% \\
+		Configurações do sistema & 228 & 98,2\% & 34 & 97,1\% \\
+		Fila de e-mails & 164 & 92,7\% & 34 & 73,5\% \\
+		Central de ajuda & 106 & 100,0\% & 14 & 100,0\% \\
+		Configuração do projeto & 80 & 93,8\% & 6 & 83,3\% \\ \hline
+		\textbf{Total} & \textbf{10.580} & \textbf{97,1\%} & \textbf{2.352} & \textbf{90,8\%} \\ \hline
+	\end{tabular}
+	\caption*{\footnotesize Fonte: Elaborado pelo autor (2026).}
+	\label{tab:cobertura}
+\end{table}
+
+Os menores índices estão na fila de e-mails e na configuração do projeto. Nos dois casos, as partes não executadas são, em sua maioria, o laço contínuo do processo que envia os e-mails em segundo plano e os pontos de entrada usados só para iniciar o servidor, cujas regras são testadas separadamente. A cobertura não garante a ausência de defeitos, mas indica que quase todo o código da aplicação é executado pelos testes, e não apenas as partes principais.
+
+Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando duas solicitações são analisadas ao mesmo tempo; as permissões de cada perfil; a importação e a reimportação da planilha; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem expor dados pessoais; e a impossibilidade de alterar os registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos, e o Apêndice~\ref{ap:rastreabilidade} faz essa relação para todos os requisitos. Dos 42 requisitos, 38 são verificados por testes automatizados. Os outros quatro (RNF04, RNF06, RNF07 e RNF12) tratam da forma de acesso, da organização do código e da execução do sistema e foram verificados pela própria execução e pela revisão do código. Com isso, foram cumpridas as três partes do critério definido na Seção~\ref{sec:validacao}.
 
 \begin{table}[!htb]
 	\centering

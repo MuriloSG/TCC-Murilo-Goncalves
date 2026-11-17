@@ -1,1 +1,70 @@
-% Não há apêndices neste trabalho.
+\begin{apendicesenv}
+
+\partapendices
+
+\chapter{Rastreabilidade entre Requisitos e Testes}
+\label{ap:rastreabilidade}
+
+A Tabela~\ref{tab:rastreabilidade} relaciona cada requisito funcional e não funcional (Seção~\ref{sec:resultado-requisitos}) às verificações feitas pelos testes automatizados. Os requisitos que não dependem de comportamento testável por código, como a execução no navegador ou a distribuição em contêineres, aparecem com a forma como foram verificados.
+
+\begin{SingleSpace}
+\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{12.6cm}@{}}
+	\caption{Rastreabilidade entre requisitos e testes}\label{tab:rastreabilidade} \\
+	\hline
+	\textbf{Requisito} & \textbf{O que os testes verificam} \\ \hline
+	\endfirsthead
+	\multicolumn{2}{@{}l}{\small\textit{Continuação da Tabela~\thetable}} \\ \hline
+	\textbf{Requisito} & \textbf{O que os testes verificam} \\ \hline
+	\endhead
+	\hline
+	\multicolumn{2}{@{}l}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
+	\endlastfoot
+	\hline
+	\endfoot
+	RF01 & Leitura da planilha de horários, prévia com os avisos e erros de cada linha, confirmação da gravação, associação dos espaços da planilha aos já cadastrados e número de consultas ao banco limitado durante a importação \\
+	RF02 & Reimportação da planilha preservando as alterações feitas no sistema e manutenção das aulas pelos fluxos de RF13 a RF16 \\
+	RF03 & Cadastro, edição e desativação de espaços, outros nomes pelos quais aparecem na planilha e indicação de nomes parecidos \\
+	RF04 & Cadastro e edição de usuários, atribuição de um único perfil por usuário e restrição para que só sejam atribuídos perfis cujas permissões o responsável já tem \\
+	RF05 & Cálculo da ocupação de cada espaço a partir das aulas e reservas, grade semanal da agenda e disponibilidade conforme as regras do semestre \\
+	RF06 & Submissão de solicitações, com recusa de horários ocupados, fins de semana, datas passadas e datas fora do semestre \\
+	RF07 & Aprovação e rejeição com motivo, transições de estado permitidas e bloqueio de reservas sobrepostas, inclusive em análises simultâneas \\
+	RF08 & Cancelamento de reservas aprovadas, com a liberação do horário e o registro em auditoria \\
+	RF09 & Notificação dos responsáveis pela análise quando uma solicitação é criada \\
+	RF10 & Notificação do solicitante sobre a aprovação, a rejeição ou a sugestão de alternativa \\
+	RF11 & Calendário público sem autenticação, filtros por sala, docente, curso e turma e ausência de e-mails e de descrições de reservas nas respostas \\
+	RF12 & Mapa de ocupação por dia e horário e relatório de solicitações, com os filtros e os totais \\
+	RF13 & Cadastro de aula recorrente com turma, disciplina, docentes, espaço, vigência e horário, e recusa de choques com outras aulas \\
+	RF14 & Alteração da recorrência a partir de uma data, mantendo as ocorrências anteriores \\
+	RF15 & Encerramento da recorrência a partir de uma data, preservando o histórico \\
+	RF16 & Cancelamento de uma ocorrência pelo administrador ou pelo docente da aula, liberando o espaço só naquela data e faixa \\
+	RF17 & Cadastro e manutenção de cursos, disciplinas e turmas, com as permissões de cada tela \\
+	RF18 & Criação de perfis, definição das permissões e impedimento de atribuir permissões reservadas \\
+	RF19 & Importação de usuários em lote, com prévia, validação de cada linha e confirmação \\
+	RF20 & Envio do link para definir a senha, recuperação de senha e mesma resposta para e-mails cadastrados e não cadastrados \\
+	RF21 & Sugestão de alternativa, recusa de alternativa igual à original ou ocupada e aceite ou recusa pelo solicitante \\
+	RF22 & Solicitação registrada em nome de outro usuário, com a identificação de quem a criou \\
+	RF23 & Lista das próprias solicitações, com o estado de cada uma, e agenda do docente com as próprias aulas e reservas \\
+	RF24 & Publicação de comunicados para todos, para um perfil ou para usuários escolhidos, com a definição dos destinatários no momento da publicação \\
+	RF25 & Painel com solicitações pendentes, ocupação dos espaços e pendências da grade \\
+	RF26 & Registro em auditoria dos acessos, das autenticações e das alterações, e consulta com filtros \\
+	RF27 & Configuração do servidor de e-mail pela interface, com a senha mantida cifrada \\
+	RF28 & Exportação do calendário público em iCalendar apenas com a seleção escolhida e sem as ocorrências canceladas \\
+	RF29 & Catálogo da central de ajuda e exibição apenas das funcionalidades liberadas para o perfil do usuário \\
+	RNF01 & Verificação de todas as rotas do sistema: usuário anônimo é levado ao login, usuário sem a permissão é recusado e perfil com a permissão da rota tem acesso \\
+	RNF02 & Recusa de envio de formulário sem proteção contra CSRF, senha do servidor de e-mail cifrada, recuperação de senha que não revela e-mails cadastrados e encerramento das sessões de quem teve o e-mail ou o perfil alterado \\
+	RNF03 & \textit{Cache} das telas públicas e sua invalidação quando os dados mudam, e número fixo de consultas na montagem da grade semanal; sem teste de desempenho \\
+	RNF04 & Sem teste automatizado; atendido por ser uma aplicação web acessada pelo navegador \\
+	RNF05 & Textos da interface com os termos do campus, classes visuais padronizadas e contraste mínimo das cores nos dois temas; sem avaliação com usuários \\
+	RNF06 & Sem teste automatizado; verificado pela organização do código por módulo, com as regras nas classes de modelo \\
+	RNF07 & Sem teste automatizado; o ensalamento vem apenas da importação da planilha, sem consulta a sistemas externos \\
+	RNF08 & Recusa de agendamentos sobrepostos pela restrição do banco, inclusive quando duas solicitações são aprovadas ao mesmo tempo \\
+	RNF09 & Recusa de alteração e de exclusão dos registros de auditoria \\
+	RNF10 & Fila de e-mails processada em segundo plano, com novas tentativas em caso de falha \\
+	RNF11 & Entrega das notificações em tempo real pela conexão WebSocket e atualização do contador sem recarregar a página \\
+	RNF12 & Sem teste automatizado; verificado pela execução de todos os serviços em contêineres \\
+	RNF13 & Navegação própria no celular, cabeçalho com notificações e menu adaptados à tela pequena \\
+\end{longtable}
+\end{SingleSpace}
+
+\end{apendicesenv}

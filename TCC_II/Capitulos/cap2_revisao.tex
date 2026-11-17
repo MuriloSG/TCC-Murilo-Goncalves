@@ -156,17 +156,9 @@ Para o sistema proposto, a arquitetura em três camadas é adequada porque isola
 
 O padrão \textit{Model-View-Controller} (MVC) é uma abordagem arquitetural consolidada para organizar o código de aplicações interativas em três componentes com responsabilidades bem delimitadas. O \textit{Model} gerencia os dados e as regras de negócio da aplicação. A \textit{View} é responsável pela apresentação das informações ao usuário. O \textit{Controller} recebe as ações do usuário, processa as entradas e coordena a interação entre \textit{Model} e \textit{View} \cite{sommerville2018}. Essa separação permite que cada componente seja desenvolvido e testado de forma independente.
 
-O \textit{framework} Django adota uma variação desse padrão denominada MTV (\textit{Model-Template-View}). Nela, o \textit{Model} representa as entidades de dados e concentra as operações relacionadas ao banco. O \textit{Template} cuida da apresentação e gera o código \textit{HyperText Markup Language} (HTML) entregue ao navegador. A \textit{View} recebe a requisição HTTP, aciona os \textit{Models} necessários e seleciona o \textit{Template} que compõe a resposta \cite{treinaweb2023mtv}. A Figura~\ref{fig:mtv} ilustra essa organização.
+O \textit{framework} Django adota uma variação desse padrão denominada MTV (\textit{Model-Template-View}). Nela, o \textit{Model} representa as entidades de dados e concentra as operações relacionadas ao banco. O \textit{Template} cuida da apresentação e gera o código \textit{HyperText Markup Language} (HTML) entregue ao navegador. A \textit{View} recebe a requisição HTTP e define quais dados serão apresentados, obtendo-os dos \textit{Models}, e delega ao \textit{Template} a forma de apresentá-los. Segundo a documentação do \textit{framework}, é por isso que o Django chama de \textit{View} o que no MVC seria o \textit{Controller}, e de \textit{Template} o que no MVC seria a \textit{View} \cite{djangofaq}.
 
-\begin{figure}[!htb]
-    \centering
-    \caption{Arquitetura MTV do Django}
-    \includegraphics[width=0.85\textwidth]{Figuras/mvt-django.png}
-    \caption*{Fonte: \cite{treinaweb2023mtv}}
-    \label{fig:mtv}
-\end{figure}
-
-A diferença mais relevante entre os dois padrões está na forma como o roteamento de requisições é gerenciado. No MVC clássico, o \textit{Controller} é o ponto de entrada das requisições do cliente. No MTV do Django, esse papel é desempenhado pelo próprio mecanismo de roteamento de endereços (\textit{Uniform Resource Locators} -- URLs) do \textit{framework}, que mapeia cada endereço recebido para a \textit{View} correspondente por meio do arquivo \texttt{urls.py}, antes mesmo de qualquer lógica da aplicação ser acionada \cite{djangodocs}. A Figura~\ref{fig:mvc-vs-mtv} compara os dois padrões.
+A diferença mais relevante entre os dois padrões está na forma como o roteamento de requisições é gerenciado. No MVC clássico, o \textit{Controller} é o ponto de entrada das requisições do cliente. No MTV do Django, esse papel é desempenhado pelo próprio mecanismo de roteamento de endereços (\textit{Uniform Resource Locators} -- URLs) do \textit{framework}, que mapeia cada endereço recebido para a \textit{View} correspondente por meio do arquivo \texttt{urls.py}, antes mesmo de qualquer lógica da aplicação ser acionada \cite{djangofaq,djangodocs}. A Figura~\ref{fig:mvc-vs-mtv} compara os dois padrões.
 
 \begin{figure}[!htb]
     \centering
@@ -176,15 +168,7 @@ A diferença mais relevante entre os dois padrões está na forma como o roteame
     \label{fig:mvc-vs-mtv}
 \end{figure}
 
-O fluxo de uma requisição no Django, representado na Figura~\ref{fig:fluxo-mtv}, percorre essas camadas de forma sequencial: o cliente envia uma requisição HTTP, o roteador de URLs identifica a \textit{View} responsável, a \textit{View} acessa os \textit{Models} para obter ou persistir dados e, em seguida, seleciona o \textit{Template} adequado para gerar a resposta enviada de volta ao cliente \cite{silva2023mtv}.
-
-\begin{figure}[!htb]
-    \centering
-    \caption{Fluxo de requisição na arquitetura MTV do Django}
-    \includegraphics[width=0.85\textwidth]{Figuras/arquitetura.png}
-    \caption*{Fonte: \cite{silva2023mtv}}
-    \label{fig:fluxo-mtv}
-\end{figure}
+O fluxo de uma requisição no Django percorre essas camadas de forma sequencial: o cliente envia uma requisição HTTP, o roteador de URLs identifica a \textit{View} responsável, a \textit{View} acessa os \textit{Models} para obter ou persistir dados e, em seguida, seleciona o \textit{Template} adequado para gerar a resposta enviada de volta ao cliente \cite{djangodocs}.
 
 %-----------------------------------
 \subsection{O Framework Django}

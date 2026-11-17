@@ -63,8 +63,6 @@ O levantamento resultou em 29 requisitos funcionais e 13 não funcionais. Os fun
 \end{longtable}
 \end{SingleSpace}
 
-Os 29 requisitos funcionais foram atendidos. A Tabela~\ref{tab:funcionalidades} (Seção~\ref{sec:resultado-sistema}) mostra em quais módulos do sistema eles foram implementados, e a Tabela~\ref{tab:testes} (Seção~\ref{sec:resultado-validacao}) resume os testes que verificam as principais regras.
-
 A Tabela~\ref{tab:rnf} traz os requisitos não funcionais, com a situação de cada um e o que foi feito para atendê-lo. Eles foram agrupados pelos atributos de qualidade de \citeonline{sommerville2018}: confiabilidade e segurança (RNF01, RNF02, RNF07, RNF08, RNF09); eficiência (RNF03, RNF10, RNF11); aceitabilidade (RNF04, RNF05, RNF13); e manutenibilidade (RNF06, RNF12).
 
 \begin{SingleSpace}
@@ -98,6 +96,30 @@ A Tabela~\ref{tab:rnf} traz os requisitos não funcionais, com a situação de c
 \end{SingleSpace}
 
 Dos 13 requisitos não funcionais, 11 foram atendidos e 2 foram atendidos em parte, o RNF03 e o RNF05. Para o RNF03, que trata do tempo de resposta nas consultas de disponibilidade, foram tomadas algumas medidas. As telas públicas, onde essas consultas se concentram, são servidas por um cache no Redis, atualizado sempre que os dados mudam, e as tabelas mais consultadas têm índices. Além disso, a grade semanal de um espaço é montada com um número fixo de consultas ao banco, verificado por testes, que não aumenta conforme cresce a quantidade de aulas. Mesmo assim, não houve medição do tempo de resposta nem teste de carga, então não é possível afirmar como o sistema se comporta nos horários de pico. No RNF05, a interface seguiu as heurísticas adotadas e usa os termos do campus, e a consistência visual das telas é verificada por testes da interface. A usabilidade, porém, não foi avaliada com os usuários finais.
+
+Os 29 requisitos funcionais foram atendidos. A Tabela~\ref{tab:funcionalidades} mostra as funcionalidades implementadas em cada módulo e os requisitos que cada uma atende, e a Tabela~\ref{tab:testes} (Seção~\ref{sec:resultado-validacao}) resume os testes que verificam as principais regras.
+
+\begin{table}[H]
+	\centering
+	\caption{Funcionalidades do sistema por módulo e requisitos atendidos}
+	\renewcommand{\arraystretch}{1.25}
+	\newcommand{\fitem}[1]{\par\hangindent=1em\hangafter=1\noindent\makebox[1em][l]{\textbullet}#1}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{9.8cm}@{}}
+	\hline
+		\textbf{Módulo} & \textbf{Funcionalidades principais e requisitos} \\ \hline
+		Ensalamento & \fitem{Importação da planilha de horários, com prévia e confirmação (RF01)}\fitem{Associação dos espaços da planilha aos já cadastrados (RF01)}\fitem{Atualização por reimportação ou pela manutenção das aulas (RF02)}\fitem{Aulas recorrentes: cadastro, alteração, encerramento e cancelamento de ocorrências (RF13--RF16)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Espaços, cursos, disciplinas e turmas & \fitem{Cadastro e manutenção de espaços, com outros nomes e desativação (RF03)}\fitem{Cadastro e manutenção de cursos, disciplinas e turmas (RF17)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Usuários e perfis & \fitem{Cadastro individual (RF04) ou em lote, por CSV (RF19)}\fitem{Definição e recuperação de senha (RF20)}\fitem{Perfis com permissões definidas pelo superadministrador (RF18)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Agenda de reservas & \fitem{Consulta da disponibilidade dos espaços (RF05)}\fitem{Solicitação (RF06), inclusive em nome de outro usuário (RF22)}\fitem{Análise: aprovação ou rejeição (RF07) ou sugestão de alternativa (RF21)}\fitem{Cancelamento de reservas aprovadas (RF08)}\fitem{Acompanhamento das próprias solicitações e da própria agenda (RF23)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Notificações e comunicados & \fitem{Avisos em tempo real aos responsáveis e ao solicitante (RF09, RF10)}\fitem{Comunicados para todos, para um perfil ou para usuários escolhidos (RF24)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Consulta pública & \fitem{Calendário por data, com filtros por sala, docente, curso e turma, e horário original da planilha (RF11)}\fitem{Exportação do calendário em iCalendar (RF28)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Painel, relatórios e auditoria & \fitem{Painel de pendências e solicitações (RF25)}\fitem{Mapa de ocupação por dia e horário e relatório de solicitações (RF12)}\fitem{Registro das ações, sem alteração ou exclusão (RF26)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Configurações & \fitem{Servidor de envio de e-mails configurado pela interface (RF27)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
+		Central de ajuda & \fitem{Tutoriais por tela, filtrados pelas permissões do usuário (RF29)} \\ \hline
+	\end{tabular}
+	\caption*{\footnotesize Fonte: Elaborado pelo autor (2026).}
+	\label{tab:funcionalidades}
+\end{table}
 
 %-----------------------------------
 \section{Modelagem do Sistema}
@@ -325,28 +347,7 @@ São 27 classes de modelo, que geram as 28 tabelas do modelo físico (Seção~\r
 
 A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
 
-O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda. A Tabela~\ref{tab:funcionalidades} resume as funcionalidades, agrupadas pelos mesmos módulos dos requisitos funcionais.
-
-\begin{table}[!htb]
-	\centering
-	\caption{Funcionalidades do sistema por módulo}
-	\renewcommand{\arraystretch}{1.25}
-	\newcommand{\fitem}[1]{\par\hangindent=1em\hangafter=1\noindent\makebox[1em][l]{\textbullet}#1}
-	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{9.8cm}@{}}
-	\hline
-		\textbf{Módulo} & \textbf{Funcionalidades principais} \\ \hline
-		Ensalamento & \fitem{Importação da planilha de horários, com prévia e confirmação}\fitem{Associação dos espaços da planilha aos já cadastrados}\fitem{Aulas recorrentes: alteração, encerramento e cancelamento de ocorrências} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Espaços, cursos, disciplinas e turmas & \fitem{Cadastro e manutenção} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Usuários e perfis & \fitem{Cadastro individual ou em lote (CSV)}\fitem{Definição e recuperação de senha}\fitem{Perfis com permissões definidas pelo superadministrador} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Agenda de reservas & \fitem{Solicitação, inclusive em nome de outro usuário}\fitem{Análise: aprovação, rejeição ou sugestão de alternativa}\fitem{Acompanhamento das próprias solicitações} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Notificações e comunicados & \fitem{Avisos em tempo real}\fitem{Comunicados para todos, para um perfil ou para usuários escolhidos} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Consulta pública & \fitem{Calendário por data, com filtros por sala, docente, curso e turma}\fitem{Horário original da planilha}\fitem{Exportação do calendário (.ics)} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Painel, relatórios e auditoria & \fitem{Painel de pendências e solicitações}\fitem{Mapa de ocupação por dia e horário}\fitem{Relatório de solicitações}\fitem{Registro das ações, sem alteração ou exclusão} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Configurações & \fitem{Servidor de envio de e-mails configurado pela interface} \\ \arrayrulecolor{black!25}\hline\arrayrulecolor{black}
-		Central de ajuda & \fitem{Tutoriais por tela, filtrados pelas permissões do usuário} \\ \hline
-	\end{tabular}
-	\label{tab:funcionalidades}
-\end{table}
+O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda. As funcionalidades de cada módulo, com os requisitos que atendem, estão resumidas na Tabela~\ref{tab:funcionalidades} (Seção~\ref{sec:resultado-requisitos}).
 
 O acesso é controlado por perfis configuráveis. Cada permissão corresponde a uma ação sobre um recurso do sistema, como solicitar uma reserva ou editar um espaço, e o sistema tem 47 delas, divididas em 13 módulos. O superadministrador monta os perfis escolhendo as permissões, e cada perfil pode receber até 41; as outras 6, que tratam dos perfis e das configurações, ficam só com o superadministrador. Os perfis Administrador e Docente já vêm cadastrados, mas servem apenas de exemplo e podem ser alterados. Outras categorias, como a dos técnicos administrativos, recebem um perfil com as permissões de que precisam. A consulta pública não exige login.
 

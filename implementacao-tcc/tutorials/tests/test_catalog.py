@@ -49,7 +49,11 @@ class CatalogTests(SimpleTestCase):
             prefixes = [item.prefix for item in menu_items()]
             for screen in SCREENS:
                 with self.subTest(screen=screen.prefix):
-                    self.assertEqual(prefixes.count(screen.prefix), 1)
+                    if screen.url_name:
+                        self.assertNotIn(screen.prefix, prefixes)
+                        self.assertTrue(screen.label and reverse(screen.url_name))
+                    else:
+                        self.assertEqual(prefixes.count(screen.prefix), 1)
                     self.assertTrue(screen.features)
         with self.subTest('uma tela por funcionalidade'):
             placed = [feature.slug for screen in SCREENS for feature in screen.features]

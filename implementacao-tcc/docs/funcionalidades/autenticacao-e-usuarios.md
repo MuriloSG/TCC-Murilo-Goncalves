@@ -19,6 +19,14 @@ Implementação: app `accounts`. Regras consolidadas em [regras de negócio](../
 - Senha: validadores do Django (similaridade com e-mail e nome, tamanho mínimo, senha comum, só números).
 - Sessões encerradas: desativar a conta, redefinir a senha ou outra pessoa trocar o e-mail ou o perfil da conta (pela tela, pela importação ou por comando) encerra todas as sessões dela, e o próximo acesso pede login. A troca feita pela própria conta mantém a sessão, e uma alteração que não muda o e-mail nem o perfil não encerra nada. O mecanismo é o hash de autenticação que o Django guarda na sessão e confere a cada requisição, inclusive no WebSocket: `User.session_epoch` entra nesse hash e é incrementado pela troca (`end_sessions_if_changed_by_another`), o que funciona com qualquer backend de sessão e não toca nas sessões de outras contas.
 
+## Informações pessoais
+
+Rotas `/perfil/` (`profile`), `/perfil/nome/` (`profile_name`) e `/perfil/senha/` (`profile_password`), só com login, para qualquer usuário. A tela abre pelas iniciais do nome: no topo, o menu do usuário tem a opção Informações pessoais; no rodapé do menu lateral e no menu do celular, as iniciais levam direto à tela.
+
+- Mostra o nome, o e-mail, o nome de usuário e o perfil. Só o nome e a senha mudam aqui, cada um num modal (`ProfileNameView` e `ProfilePasswordView`).
+- O e-mail (login e domínio institucional), o nome de usuário (liga o usuário ao docente do ensalamento) e o perfil ficam só para leitura: quem muda é quem administra os usuários. A troca do nome passa por `User.update_details` sem o nome de usuário, e um POST forjado com `email` ou `username` é ignorado.
+- A troca de senha pede a senha atual, aplica os validadores do Django e a confirmação. A sessão atual continua (`update_session_auth_hash`); as outras caem porque o hash da sessão inclui a senha. É auditada como `SENHA_ALTERADA` no módulo de autenticação.
+
 ## Usuários
 
 | Ação | Rota | Permissão | Operação |

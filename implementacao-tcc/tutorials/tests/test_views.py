@@ -6,7 +6,7 @@ from accounts import permissions
 from accounts.models import User
 from accounts.tests.roles import requester_role, role_with
 from tutorials.catalog import (
-    AGENDA_REQUEST, AGENDA_REVIEW, NOTIFICATIONS, PANEL, SPACES, TIMETABLE_IMPORT, USERS, USERS_IMPORT, features,
+    AGENDA_REQUEST, AGENDA_REVIEW, NOTIFICATIONS, PANEL, PERSONAL_INFO, SPACES, TIMETABLE_IMPORT, USERS, USERS_IMPORT, features,
 )
 
 PASSWORD = 'Senha-forte-123'
@@ -49,7 +49,7 @@ class HelpCenterTests(IsolatedCasesMixin, TestCase):
             self.assertNotContains(response, reverse('user_list'))
         with self.case('sem permissões'):
             response = self.get(self.user_with())
-            self.assertEqual(slugs(response), [NOTIFICATIONS.slug])
+            self.assertEqual(slugs(response), [NOTIFICATIONS.slug, PERSONAL_INFO.slug])
         with self.case('superadmin'):
             response = self.get(self.superadmin)
             self.assertEqual(slugs(response), [feature.slug for feature in features()])
@@ -104,6 +104,13 @@ class HelpCenterTests(IsolatedCasesMixin, TestCase):
             response = self.contextual(self.user_with(permissions.USER_IMPORT), 'user_import_list')
             self.assertEqual([entry['feature'] for entry in response.context['entries']], [USERS_IMPORT])
             self.assertEqual(response.context['screen_url'], reverse('user_import_list'))
+        with self.case('tela fora do menu'):
+            for screen in ('profile', 'profile_password'):
+                with self.subTest(screen=screen):
+                    response = self.contextual(self.requester, screen)
+                    self.assertEqual([entry['feature'] for entry in response.context['entries']], [PERSONAL_INFO])
+                    self.assertEqual(response.context['screen_label'], 'Informações pessoais')
+                    self.assertEqual(response.context['screen_url'], reverse('profile'))
         with self.case('sem ajuda liberada'):
             response = self.contextual(self.requester, 'audit_log_list')
             self.assertEqual(response.context['entries'], [])

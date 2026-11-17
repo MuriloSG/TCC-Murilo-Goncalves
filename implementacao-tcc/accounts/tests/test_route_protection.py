@@ -9,6 +9,9 @@ from accounts.tests.roles import management_role
 
 PROTECTED_ROUTES = {
     'home': None,
+    'profile': None,
+    'profile_name': None,
+    'profile_password': None,
     'notification_open': None,
     'notifications_panel': None,
     'notifications_read_all': None,

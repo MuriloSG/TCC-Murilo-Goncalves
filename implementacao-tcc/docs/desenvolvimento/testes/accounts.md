@@ -19,6 +19,14 @@ Login pelo allauth e encerramento de sessões. O que é do allauth (mesmo erro p
 | `SessionsAfterChangeByAnotherTests` | Trocar o e-mail ou o perfil de outra conta encerra todas as sessões dela, e só dela; a própria alteração mantém as próprias sessões |
 | `EmailChangeTests` | Depois da troca, só o e-mail novo autentica |
 
+### `test_profile.py`
+
+Informações pessoais do usuário logado.
+
+| Classe | O que garante |
+|---|---|
+| `ProfileTests` | Qualquer usuário logado abre a tela, até sem perfil, e o anônimo vai ao login; a troca do nome ignora `email` e `username` forjados e é auditada; senha atual errada, senhas diferentes e senha fraca são recusadas; a troca certa mantém a sessão atual, encerra as outras e grava `SENHA_ALTERADA` |
+
 ### `test_password.py`
 
 Definição e recuperação de senha pelo link.

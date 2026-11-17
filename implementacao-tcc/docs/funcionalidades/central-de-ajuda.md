@@ -6,9 +6,11 @@ Rota `/ajuda/` (`tutorials.views.HelpCenterView`), aberta pelo ícone de ajuda n
 
 O ícone leva a rota de origem em `?tela=` (por exemplo `/ajuda/?tela=agenda_grid`). A página mostra só as funcionalidades da parte do sistema de onde a ajuda foi aberta, com o título da `Screen` (por exemplo "Ajuda da agenda") e a trilha Início, opção do menu e Ajuda.
 
+A tela de informações pessoais não está no menu: a `Screen` dela informa o próprio rótulo e a rota da trilha (`label` e `url_name`), e `trail_of` usa esses dados no lugar da opção do menu.
+
 A parte do sistema é a opção do menu: `Screen.prefix` é o mesmo prefixo de rota do `MenuItem` em `ui/navigation.py`, então toda rota da Agenda, inclusive Minhas solicitações e a análise, abre a ajuda da Agenda. O rótulo e o link da trilha vêm do menu (`MenuItem.url_for`), que já leva à primeira tela liberada ao usuário.
 
-Sem `tela`, com uma rota sem ajuda própria ou a partir da própria ajuda, a página mostra a central completa: todas as funcionalidades liberadas, por módulo, com a navegação por módulo. A funcionalidade de uso geral (notificações do sino) só aparece nela.
+Sem `tela`, com uma rota sem ajuda própria ou a partir da própria ajuda, a página mostra a central completa: todas as funcionalidades liberadas, por módulo, com a navegação por módulo. As notificações do sino só aparecem nela; a ajuda das informações pessoais aparece nela e na ajuda da própria tela.
 
 ## Conteúdo
 
@@ -25,7 +27,7 @@ As imagens ficam em `tutorials/static/tutorials/<funcionalidade>/<número>-compu
 
 | Módulo | Funcionalidades |
 |---|---|
-| Uso geral | Acompanhar as notificações |
+| Uso geral | Acompanhar as notificações, Alterar a senha e o nome |
 | Painel | Consultar o painel |
 | Agenda | Consultar a agenda, Solicitar agendamento, Acompanhar as solicitações, Cancelar um agendamento, Cancelar a ocorrência de uma aula, Analisar as solicitações de agendamento, Criar solicitação para outro usuário |
 | Gestão acadêmica | Consultar a grade do ensalamento, Ajustar as aulas do ensalamento, Importar a planilha de horários, Gerenciar os espaços, os cursos, as disciplinas e as turmas |
@@ -67,6 +69,8 @@ Padrão das imagens, a seguir ao substituir uma delas:
 - Só dados fictícios, sem nomes, e-mails ou outros dados de pessoas reais, inclusive no rodapé do menu e nas iniciais do avatar.
 - Marcações: retângulo de 3 px na cor `--color-guide-mark` em volta do elemento, número no canto, e balão escuro (`--color-tooltip`) com o mesmo número e o texto de `marks` do passo, sem cobrir a informação da tela.
 - O nome do arquivo segue `Feature.image`: `<funcionalidade>/<número do passo no catálogo>-computador.webp` e `-celular.webp`.
+
+As 10 imagens de Alterar a senha e o nome (5 passos) foram geradas em 17/11/2026 do mesmo jeito, num banco temporário só com a usuária fictícia "Ana Exemplo", apagado depois da geração.
 
 ## Manutenção
 

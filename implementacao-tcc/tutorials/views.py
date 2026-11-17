@@ -1,6 +1,6 @@
 from django.views.generic import TemplateView
 
-from tutorials.catalog import entries_for, guide_for, menu_item_of, screen_for
+from tutorials.catalog import entries_for, guide_for, screen_for, trail_of
 
 
 class HelpCenterView(TemplateView):
@@ -13,12 +13,12 @@ class HelpCenterView(TemplateView):
         screen = screen_for(self.request.GET.get('tela', ''))
         if screen is None:
             return super().get_context_data(modules=guide_for(user), **kwargs)
-        item = menu_item_of(screen)
+        label, url = trail_of(screen, user)
         entries = entries_for(user, screen.features)
         return super().get_context_data(
             screen=screen,
-            screen_label=item.label,
-            screen_url=item.url_for(user),
+            screen_label=label,
+            screen_url=url,
             entries=entries,
             nav_groups=[{'label': '', 'features': entries}],
             **kwargs,

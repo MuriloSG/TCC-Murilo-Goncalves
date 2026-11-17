@@ -1,5 +1,6 @@
 from allauth.account import forms as allauth_forms
 from django import forms
+from django.contrib.auth import password_validation
 
 from accounts.emails import PASSWORD_RESET
 from accounts.models import Permission, Role, validate_institutional_email
@@ -227,3 +228,42 @@ class RolePermissionsForm(forms.Form):
         kwargs['initial'] = current | (kwargs.get('initial') or {})
         super().__init__(*args, **kwargs)
         self.fields['permissions'].widget.choices = grantable_permission_choices()
+
+
+class ProfileForm(forms.Form):
+    """Só o nome; e-mail, nome de usuário e perfil ficam com quem administra as contas."""
+
+    name = forms.CharField(label='Nome', max_length=150)
+
+
+class ProfilePasswordForm(forms.Form):
+    current_password = forms.CharField(label='Senha atual', strip=False, widget=forms.PasswordInput)
+    password1 = forms.CharField(label='Nova senha', strip=False, widget=forms.PasswordInput)
+    password2 = forms.CharField(label='Confirme a nova senha', strip=False, widget=forms.PasswordInput)
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        for name in self.fields:
+            self.fields[name].widget.attrs['autocomplete'] = (
+                'current-password' if name == 'current_password' else 'new-password'
+            )
+
+    def clean_current_password(self):
+        password = self.cleaned_data['current_password']
+        if not self.user.check_password(password):
+            raise forms.ValidationError('A senha atual está incorreta.', code='wrong_password')
+        return password
+
+    def clean_password1(self):
+        password = self.cleaned_data['password1']
+        password_validation.validate_password(password, self.user)
+        return password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            self.add_error('password2', PASSWORD_MISMATCH_MESSAGE)
+        return cleaned_data

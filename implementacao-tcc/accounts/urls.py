@@ -5,6 +5,9 @@ from accounts import views
 
 urlpatterns = [
     path('inicio/', login_required(views.HomeView.as_view()), name='home'),
+    path('perfil/', login_required(views.ProfileView.as_view()), name='profile'),
+    path('perfil/nome/', login_required(views.ProfileNameView.as_view()), name='profile_name'),
+    path('perfil/senha/', login_required(views.ProfilePasswordView.as_view()), name='profile_password'),
     path('usuarios/', login_required(views.UserListView.as_view()), name='user_list'),
     path('usuarios/novo/', login_required(views.UserCreateView.as_view()), name='user_create'),
     path('usuarios/<int:pk>/editar/', login_required(views.UserUpdateView.as_view()), name='user_update'),

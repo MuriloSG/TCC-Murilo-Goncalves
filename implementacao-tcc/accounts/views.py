@@ -1,6 +1,7 @@
 
 from allauth.account import views as allauth_views
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
@@ -8,6 +9,7 @@ from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from audit import catalog
+from audit.models import AuditLog
 from imports.views import (
     ImportConfirmView,
     ImportDetailView,
@@ -25,6 +27,8 @@ from ui.views import ModalView
 
 from accounts import permissions
 from accounts.forms import (
+    ProfileForm,
+    ProfilePasswordForm,
     RoleCreateForm,
     RolePermissionsForm,
     RoleUpdateForm,
@@ -122,6 +126,54 @@ class ConfirmedActionView(ModalView, TemplateView):
                 messages.error(request, message)
             return self.redirect_to(self.get_failure_url())
         return self.redirect_to(self.get_success_url())
+
+
+class ProfileView(TemplateView):
+    """Informações pessoais do usuário logado; o nome e a senha mudam em modal, o resto é só leitura."""
+
+    template_name = 'accounts/profile.html'
+
+
+class ProfileNameView(OperationFormView):
+    """Só o nome: e-mail e nome de usuário seguem como estão, porque o login e o ensalamento dependem deles."""
+
+    template_name = 'accounts/profile_form.html'
+    modal_template_name = 'accounts/profile_form_modal.html'
+    form_class = ProfileForm
+    success_url = reverse_lazy('profile')
+    title = 'Editar nome'
+    submit_label = 'Salvar nome'
+
+    def get_initial(self):
+        return {'name': self.request.user.name}
+
+    def perform(self, data):
+        user = self.request.user
+        user.update_details(user, name=data['name'], email=user.email)
+        messages.success(self.request, 'Nome atualizado.')
+
+
+class ProfilePasswordView(OperationFormView):
+    """Troca a senha em modal mantendo a sessão atual; as outras caem porque o hash delas usa a senha."""
+
+    template_name = 'accounts/profile_form.html'
+    modal_template_name = 'accounts/profile_form_modal.html'
+    notice = 'Ao salvar, as outras sessões abertas com a sua conta são encerradas. Esta continua aberta.'
+    form_class = ProfilePasswordForm
+    success_url = reverse_lazy('profile')
+    title = 'Alterar senha'
+    submit_label = 'Salvar senha'
+
+    def get_form_kwargs(self):
+        return super().get_form_kwargs() | {'user': self.request.user}
+
+    def perform(self, data):
+        user = self.request.user
+        user.set_password(data['password1'])
+        user.save(update_fields=['password'])
+        update_session_auth_hash(self.request, user)
+        AuditLog.objects.record(catalog.PASSWORD_CHANGED, catalog.AUTHENTICATION, resource_id=user.pk)
+        messages.success(self.request, 'Senha alterada. As outras sessões abertas com a sua conta foram encerradas.')
 
 
 class UserListView(ListView):

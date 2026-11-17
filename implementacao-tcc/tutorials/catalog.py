@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from django.urls import reverse
+
 from accounts import permissions
 from ui.navigation import MENU, MenuGroup
 
@@ -47,11 +49,16 @@ class Module:
 
 @dataclass(frozen=True)
 class Screen:
-    """Parte do sistema de onde a ajuda é aberta, ligada à opção do menu pelo mesmo prefixo de rota."""
+    """Parte do sistema de onde a ajuda é aberta, ligada à opção do menu pelo mesmo prefixo de rota.
+
+    Tela fora do menu, como as informações pessoais, informa o próprio rótulo e a rota da trilha.
+    """
 
     prefix: str
     title: str
     features: tuple
+    label: str = ''
+    url_name: str = ''
 
 
 NOTIFICATIONS = Feature(
@@ -74,6 +81,52 @@ NOTIFICATIONS = Feature(
             text='Use Marcar todas como lidas para zerar o contador do sino.',
             alt='Painel do sino com o botão Marcar todas como lidas destacado.',
             marks=('Marque como lidas',),
+        ),
+    ),
+)
+
+PERSONAL_INFO = Feature(
+    slug='informacoes-pessoais',
+    title='Alterar a senha e o nome',
+    goal='Trocar a sua senha e corrigir o seu nome sem depender de quem administra os usuários.',
+    permissions=(),
+    screen='profile',
+    screen_label='Abrir as informações pessoais',
+    note=(
+        'O e-mail, o nome de usuário e o perfil não podem ser alterados nesta tela, porque são usados no login e '
+        'no ensalamento. Para alterá-los, procure quem administra os usuários.'
+    ),
+    steps=(
+        Step(
+            text=(
+                'Escolha as iniciais do seu nome, no canto superior direito, e depois Informações pessoais. '
+                'No celular, toque em Menu, no topo da tela, e depois nas iniciais do seu nome.'
+            ),
+            alt='Menu do usuário aberto, com a opção Informações pessoais destacada.',
+            marks=('Informações pessoais',),
+        ),
+        Step(
+            text='A tela mostra os seus dados. Para trocar a senha, escolha Alterar senha.',
+            alt='Tela Informações pessoais com o botão Alterar senha destacado.',
+            marks=('Alterar senha',),
+        ),
+        Step(
+            text=(
+                'Informe a senha atual, a nova senha e a confirmação, e escolha Salvar senha. As outras sessões abertas '
+                'com a sua conta são encerradas, e esta continua aberta.'
+            ),
+            alt='Formulário Alterar senha com a senha atual, a nova senha e o botão Salvar senha destacados.',
+            marks=('Senha atual', 'Nova senha e confirmação', 'Salve'),
+        ),
+        Step(
+            text='Para corrigir o seu nome, escolha Editar nome.',
+            alt='Tela Informações pessoais com o botão Editar nome destacado.',
+            marks=('Editar nome',),
+        ),
+        Step(
+            text='Informe o nome e escolha Salvar nome. O novo nome aparece no menu e nas telas do sistema.',
+            alt='Formulário Editar nome com o campo Nome e o botão Salvar nome destacados.',
+            marks=('Nome', 'Salve'),
         ),
     ),
 )
@@ -824,7 +877,7 @@ EMAIL_SERVER = Feature(
 )
 
 MODULES = (
-    Module('geral', 'Uso geral', (NOTIFICATIONS,)),
+    Module('geral', 'Uso geral', (NOTIFICATIONS, PERSONAL_INFO)),
     Module('painel', 'Painel', (PANEL,)),
     Module('agenda', 'Agenda', (
         AGENDA_VIEW, AGENDA_REQUEST, AGENDA_FOLLOW, AGENDA_CANCEL, AGENDA_OCCURRENCE, AGENDA_REVIEW, AGENDA_ON_BEHALF,
@@ -840,6 +893,7 @@ MODULES = (
 
 
 SCREENS = (
+    Screen('profile', 'Ajuda das informações pessoais', (PERSONAL_INFO,), 'Informações pessoais', 'profile'),
     Screen('panel', 'Ajuda do painel', (PANEL,)),
     Screen('agenda_', 'Ajuda da agenda', (
         AGENDA_VIEW, AGENDA_REQUEST, AGENDA_FOLLOW, AGENDA_CANCEL, AGENDA_OCCURRENCE, AGENDA_REVIEW, AGENDA_ON_BEHALF,
@@ -875,6 +929,14 @@ def screen_for(url_name):
 
 def menu_item_of(screen):
     return next(item for item in menu_items() if item.prefix == screen.prefix)
+
+
+def trail_of(screen, user):
+    """Rótulo e endereço da tela na trilha: os da opção do menu ou, fora do menu, os da própria tela."""
+    if screen.url_name:
+        return screen.label, reverse(screen.url_name)
+    item = menu_item_of(screen)
+    return item.label, item.url_for(user)
 
 
 def entries_for(user, chosen):

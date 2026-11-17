@@ -1,0 +1,11 @@
+{% extends "ui/components/modal.html" %}
+{% load ui %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+  {% if view.notice %}<div class="alert tone-info" role="note">{% icon "info" %}<p>{{ view.notice }}</p></div>{% endif %}
+  {{ form }}
+{% endblock %}
+
+{% block submit %}<button class="btn-primary" type="submit">{{ submit_label }}</button>{% endblock %}

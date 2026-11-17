@@ -1,0 +1,37 @@
+{% extends "ui/layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Informações pessoais{% endblock %}
+
+{% block crumbs %}
+  <li><a href="{% url 'home' %}">Início</a></li>
+  <li>{% icon "chevron-right" "size-4" %}<span aria-current="page">Informações pessoais</span></li>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Informações pessoais</h1>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card" aria-labelledby="dados-pessoais">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title" id="dados-pessoais">Dados pessoais</h2>
+      </div>
+      <div class="card-actions">
+        <a class="btn-secondary" href="{% url 'profile_name' %}" hx-get="{% url 'profile_name' %}" hx-target="#modal">{% icon "pencil" %}Editar nome</a>
+        <a class="btn-primary" href="{% url 'profile_password' %}" hx-get="{% url 'profile_password' %}" hx-target="#modal">{% icon "lock" %}Alterar senha</a>
+      </div>
+    </div>
+    <dl class="detail-grid">
+      <div><dt>Nome</dt><dd>{{ user.name }}</dd></div>
+      <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+      <div><dt>Nome de usuário</dt><dd>{{ user.username|default:"Não informado" }}</dd></div>
+      <div><dt>Perfil</dt><dd>{{ user.role.name|default:"Sem perfil" }}</dd></div>
+    </dl>
+  </section>
+{% endblock %}

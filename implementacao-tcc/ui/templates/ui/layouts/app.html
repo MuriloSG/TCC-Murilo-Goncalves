@@ -14,7 +14,7 @@
       {% include "ui/components/navigation.html" %}
       {% if user.is_authenticated %}
         <div class="sidebar-footer">
-          <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+          <a class="avatar" href="{% url 'profile' %}" aria-label="Informações pessoais">{{ user.name|initials }}</a>
           <span class="who"><span class="who-name" title="{{ user.name }}">{{ user.name|first_name }}</span><span class="who-role">{{ user_role.name|default:"Sem perfil" }}</span></span>
           <a class="icon-btn" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal" aria-label="Sair">{% icon "log-out" %}<span class="tip" role="tooltip">Sair</span></a>
         </div>
@@ -35,7 +35,7 @@
           {% include "ui/components/navigation.html" %}
           {% if user.is_authenticated %}
             <div class="topbar-user">
-              <span class="avatar" aria-hidden="true">{{ user.name|initials }}</span>
+              <a class="avatar" href="{% url 'profile' %}" aria-label="Informações pessoais">{{ user.name|initials }}</a>
               <span class="who"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user_role.name|default:"Sem perfil" }}</span></span>
               <a class="icon-btn" href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal" aria-label="Sair">{% icon "log-out" %}</a>
             </div>
@@ -68,6 +68,7 @@
             <summary aria-label="Menu do usuário"><span class="avatar" aria-hidden="true">{{ user.name|initials }}</span></summary>
             <div class="menu-list">
               <span class="who menu-head"><span class="who-name">{{ user.name }}</span><span class="who-role">{{ user_role.name|default:"Sem perfil" }}</span></span>
+              <a href="{% url 'profile' %}">{% icon "user-round" %}Informações pessoais</a>
               <a href="{% url 'account_logout' %}" hx-get="{% url 'account_logout' %}" hx-target="#modal">{% icon "log-out" %}Sair</a>
             </div>
           </details>

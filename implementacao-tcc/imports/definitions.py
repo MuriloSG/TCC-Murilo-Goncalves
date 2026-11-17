@@ -70,6 +70,11 @@ class ImportDefinition:
 
         return CsvSource()
 
+    def template_content(self):
+        """Modelo do arquivo como (bytes, tipo): CSV em UTF-8 com BOM, separado por ";", só com o cabeçalho."""
+        header = ';'.join(column.label for column in self.file_columns())
+        return ('\ufeff' + header + '\r\n').encode('utf-8'), 'text/csv; charset=utf-8'
+
     def file_columns(self):
         """Colunas que vêm do arquivo, sem as colunas lógicas preenchidas pelo envio."""
         return tuple(column for column in self.columns if column.label not in self.upload_fields)

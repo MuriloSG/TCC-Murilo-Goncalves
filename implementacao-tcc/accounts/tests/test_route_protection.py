@@ -71,6 +71,7 @@ PROTECTED_ROUTES = {
     'space_allocation_exception_list': permissions.SPACE_ALLOCATION_VIEW,
     'space_allocation_import_list': permissions.SPACE_ALLOCATION_IMPORT,
     'space_allocation_import_upload': permissions.SPACE_ALLOCATION_IMPORT,
+    'space_allocation_import_template': permissions.SPACE_ALLOCATION_IMPORT,
     'space_allocation_import_detail': permissions.SPACE_ALLOCATION_IMPORT,
     'space_allocation_import_status': permissions.SPACE_ALLOCATION_IMPORT,
     'space_allocation_import_confirm': permissions.SPACE_ALLOCATION_IMPORT,

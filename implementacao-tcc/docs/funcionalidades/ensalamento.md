@@ -65,6 +65,12 @@ Rotas em `/ensalamento/importacoes/`. Permissões: `ENSALAMENTO.IMPORTAR` para o
 
 As demais abas (por exemplo `Ensalamento - Geral` e as abas por docente e por curso) não são lidas.
 
+### Modelo em branco
+
+A lista de importações oferece "Baixar modelo" (`/ensalamento/importacoes/modelo/`, permissão `ENSALAMENTO.IMPORTAR`, auditado como exportação). O arquivo `schedule/files/modelo-importacao-ensalamento.xlsx` é a planilha sugerida sem aulas, sem as listas de docentes e salas e sem usuários. Ele mantém dias, faixas, pausas, cursos, turmas, formatação, as fórmulas de conferência e o destaque em vermelho, e traz na frente uma aba `Instruções` com as regras de preenchimento, que a importação não lê.
+
+O modelo é versionado porque `sources/` não entra na imagem. Para gerá-lo de novo depois de mudar a planilha sugerida ou as instruções, rode `make space-template` (comando `build_space_allocation_template [--source arquivo]`, com as instruções no próprio comando).
+
 Recusas do arquivo inteiro: aba obrigatória ausente, blocos de dia não encontrados, dia da semana desconhecido, faixa fora do formato, coluna de turma com atividade sem rótulo ou sem curso.
 
 ### Leitura da célula de atividade

@@ -23,7 +23,7 @@ from imports.definitions import (
 from audit.models import AuditLog
 from imports.models import Import, ImportRow
 from imports.reader import listing
-from imports.workbook import WorkbookSource
+from imports.workbook import XLSX_CONTENT_TYPE, WorkbookSource
 from schedule.activities import ACTIVITY_COLUMN, Catalog, resolve, split_activities
 from schedule.models import (
     SEMESTER_CODE_MESSAGE,
@@ -47,6 +47,7 @@ from schedule.sheets import (
     SHEET_LAYOUTS,
     SPACE_KIND,
     TEACHER_KIND,
+    TEMPLATE_FILE,
     UNDERGRADUATE_SHEET,
     USER_COLUMNS,
     USER_EMAIL_COLUMN,
@@ -350,7 +351,6 @@ class SpaceAllocationImport(ImportDefinition):
     )
     sheets = (UNDERGRADUATE_SHEET, SECONDARY_SHEET, CATALOG_SHEET)
     optional_sheets = (USERS_SHEET,)
-    has_template = False
     max_file_size = MAX_FILE_SIZE
     max_rows = MAX_ROWS
     action_labels = {'create': 'Cadastro', 'update': 'Atualização', 'unchanged': 'Sem alteração'}
@@ -399,6 +399,10 @@ class SpaceAllocationImport(ImportDefinition):
 
     def source(self):
         return WorkbookSource()
+
+    def template_content(self):
+        """Planilha sugerida sem aulas, listas e usuários, gerada por `make space-template`."""
+        return TEMPLATE_FILE.read_bytes(), XLSX_CONTENT_TYPE
 
     def clean_upload(self, values):
         """Datas do período conferidas pelo model, com a recusa no rótulo da coluna lógica."""

@@ -5,7 +5,7 @@ MANAGE = $(COMPOSE) run --rm web python manage.py
 
 LOCAL_IP = $(shell ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}')
 
-.PHONY: help up dev-network down logs migrate makemigrations test shell manage css npm psql reset-db mark-local-db clear-data delete-users set-passwords er-diagram er-images
+.PHONY: help up dev-network down logs migrate makemigrations test shell manage css npm psql reset-db mark-local-db clear-data delete-users set-passwords er-diagram er-images space-template
 
 help: ## Lista os comandos disponíveis
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -52,6 +52,9 @@ er-diagram: ## Gera os DERs conceitual e físico (.dot) e as restrições em doc
 
 er-images: ## Exporta os DERs (.dot) de docs/diagramas para SVG, PNG e PDF
 	$(COMPOSE) run --rm --build diagrams sh -c 'for f in docs/diagramas/*.dot; do dot -Tsvg "$$f" -o "$${f%.dot}.svg" && dot -Tpng -Gdpi=150 "$$f" -o "$${f%.dot}.png" && dot -Tpdf "$$f" -o "$${f%.dot}.pdf" || exit 1; done'
+
+space-template: ## Gera o modelo em branco da planilha de ensalamento em schedule/files a partir da planilha sugerida
+	$(MANAGE) build_space_allocation_template
 
 npm: ## Executa um comando do npm no container tailwind (ex.: make npm cmd="install --save-exact pacote@1.0.0")
 	$(COMPOSE) run --rm tailwind npm $(cmd)

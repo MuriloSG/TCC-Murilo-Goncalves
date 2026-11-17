@@ -24,10 +24,12 @@ from schedule.imports import (
 from schedule.sheets import (
     ACTIVITY_KIND,
     CATALOG_SHEET,
+    INSTRUCTIONS_SHEET,
     SECONDARY_SHEET,
     SHEET_LAYOUTS,
     SPACE_KIND,
     TEACHER_KIND,
+    TEMPLATE_FILE,
     UNDERGRADUATE_SHEET,
     USER_COLUMNS,
     USER_KIND,
@@ -36,6 +38,7 @@ from schedule.sheets import (
     group_columns,
     header_rows,
     parse_weekday,
+    sheet_cells,
     user_entries,
 )
 
@@ -261,3 +264,32 @@ class UserSheetReadingTests(SimpleTestCase):
         with self.assertRaises(FileRejected) as raised:
             user_entries(self.book([(*USER_COLUMNS, 'Perfil')]))
         self.assertIn('"Perfil" aparece mais de uma vez', raised.exception.message)
+
+
+class TemplateTests(SimpleTestCase):
+    """Modelo em branco de `make space-template`: estrutura da sugerida, sem aulas, listas nem usuários."""
+
+    def test_template_keeps_the_structure_and_reads_once_filled(self):
+        book = load_workbook(TEMPLATE_FILE)
+        self.assertEqual(book.sheetnames, [INSTRUCTIONS_SHEET, *(layout.title for layout in SHEET_LAYOUTS), CATALOG_SHEET, USERS_SHEET])
+        for layout, turmas in zip(SHEET_LAYOUTS, (39, 20)):
+            with self.subTest(layout.title):
+                sheet = book[layout.title]
+                self.assertEqual(len(group_columns(sheet, layout, header_rows(sheet)[0])), turmas)
+                self.assertEqual(list(sheet_cells(sheet, layout)), [])
+        self.assertEqual(book[UNDERGRADUATE_SHEET]['C1'].value, 'BACHARELADO EM ENGENHARIA DE ALIMENTOS')
+        catalog_sheet, users = book[CATALOG_SHEET], book[USERS_SHEET]
+        self.assertEqual((catalog_sheet['A2'].value, catalog_sheet['B2'].value, users['A2'].value), (None, None, None))
+        self.assertTrue(catalog_sheet['C2'].value.startswith('=IF(A2=""'))
+        self.assertTrue(users['E2'].value.startswith('=IF(D2=""'))
+        with self.assertRaisesMessage(FileRejected, 'está vazia'):
+            catalog_entries(book)
+
+        catalog_sheet['A2'], catalog_sheet['B2'] = 'Ana Souza', '(2/6)'
+        book[UNDERGRADUATE_SHEET]['C3'] = 'Cálculo III (Ana Souza) (2/6)'
+        rows = list(SpaceAllocationImport().read_cells(book))
+        activity = next(row for row in rows if row[KIND_COLUMN] == ACTIVITY_KIND)
+        self.assertEqual(
+            (activity[CELL_COLUMN], activity[DAY_COLUMN], activity[SLOT_COLUMN], activity[COURSE_COLUMN]),
+            (f'{UNDERGRADUATE_SHEET}!C3', 'SEGUNDA ', '07:20 - 08:10', 'BACHARELADO EM ENGENHARIA DE ALIMENTOS'),
+        )

@@ -491,7 +491,10 @@ TIMETABLE_IMPORT = Feature(
     screen_label='Abrir as importações',
     steps=(
         Step(
-            text='Em Ensalamento, escolha Ver importações e depois Importar ensalamento.',
+            text=(
+                'Em Ensalamento, escolha Ver importações e depois Importar ensalamento. Para montar a planilha do zero, '
+                'escolha Baixar modelo: ele vem com os cursos, as turmas, as faixas e uma aba de instruções.'
+            ),
             alt='Lista de importações com o botão Importar ensalamento destacado.',
             marks=('Importar ensalamento',),
         ),

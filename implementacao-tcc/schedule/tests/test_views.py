@@ -19,7 +19,9 @@ from audit.models import AuditLog
 from config.testing import IsolatedCasesMixin
 from imports.models import Import
 from imports.tests.worker import poll, run_worker
+from imports.workbook import XLSX_CONTENT_TYPE
 from schedule.models import Allocation, Semester, Space
+from schedule.sheets import TEMPLATE_FILE
 from schedule.tests.test_import import PERIOD, TEACHERS, SPACES, workbook_file
 from schedule.views import SPACE_ALLOCATION_IMPORT_SCREENS
 
@@ -85,6 +87,18 @@ class UploadTests(ScreenTestCase):
         response = self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('list'))
         self.assertContains(response, 'Importações de ensalamento')
         self.assertContains(response, 'ensalamento.xlsx')
+
+
+class TemplateTests(ScreenTestCase):
+    def test_template_downloads_the_blank_workbook_and_audits(self):
+        self.client.force_login(self.importer)
+        self.assertContains(self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('list')), 'Baixar modelo')
+        response = self.client.get(SPACE_ALLOCATION_IMPORT_SCREENS.url('template'))
+        self.assertEqual(response['Content-Type'], XLSX_CONTENT_TYPE)
+        self.assertIn('modelo-importacao-ensalamento.xlsx', response['Content-Disposition'])
+        self.assertEqual(response.content, TEMPLATE_FILE.read_bytes())
+        record = AuditLog.objects.get(action=catalog.EXPORT)
+        self.assertEqual((record.user, record.resource), (self.importer, catalog.SPACE_ALLOCATION_IMPORT))
 
 
 class ConfirmationScreenTests(ScreenTestCase):

@@ -53,6 +53,7 @@
 | `notices/catalog.py`, `notices/events.py`, `notices/realtime.py`, `notices/consumers.py` | Tipos de notificação, registro de eventos, aviso pós-commit e consumer WebSocket |
 | `imports/definitions.py`, `imports/execution.py`, `imports/reader.py`, `imports/workbook.py`, `imports/worker.py`, `imports/registry.py` | Contrato da importação, execução da prévia e da confirmação, leitura CSV, leitura XLSX, worker e registro |
 | `schedule/imports.py`, `schedule/sheets.py`, `schedule/activities.py` | Importação do ensalamento, leitura das abas e da célula de atividade |
+| `schedule/files/modelo-importacao-ensalamento.xlsx` | Modelo em branco da planilha, servido em "Baixar modelo" e gerado por `make space-template` |
 | `schedule/spaces.py`, `schedule/similarity.py` | Classificação dos nomes de espaço da importação e sugestão de parecidos |
 | `schedule/timetable.py`, `schedule/occupancy.py` | Montagem da Grade e cálculo das ocorrências |
 | `schedule/public.py`, `schedule/public_views.py`, `schedule/public_cache.py` | Calendário público, horário original e cache |
@@ -82,6 +83,7 @@
 | `set_passwords [--password X] [--yes]` | `accounts` | Define a mesma senha (padrão `DEFAULT_PASSWORD` do comando) para todos os usuários |
 | `flush` | `accounts` | Substitui o `flush` do Django, com a mesma trava dos comandos acima |
 | `export_er_diagram [--output dir]` | `accounts` | Gera os DERs conceitual e físico (Graphviz) e as restrições (`make er-diagram`) |
+| `build_space_allocation_template [--source arquivo]` | `schedule` | Gera o modelo em branco da planilha de ensalamento em `schedule/files/` a partir da planilha sugerida (`make space-template`) |
 | `process_outbox` | `outbox` | Laço do worker de e-mails |
 | `process_imports` | `imports` | Laço do worker de importações |
 
@@ -93,6 +95,6 @@
 |---|---|
 | `TCC_REVISADO (1).pdf` | Fonte de escopo e requisitos; princípios em [visão geral](../sistema/visao-geral.md#princípios-do-tcc) |
 | `planilha_example.xlsx` | Planilha real do campus, lida por `schedule/tests/test_spreadsheet.py` |
-| `planilha_example_sugerida.xlsx`, `planilha_example_sugerida_corrigida.xlsx` | Versões da planilha no formato sugerido ao campus, lidas por `schedule/tests/test_import.py` e `test_space_import.py`. As duas têm só as abas lidas pela importação, inclusive a opcional `usuários - sistema` |
+| `planilha_example_sugerida.xlsx`, `planilha_example_sugerida_corrigida.xlsx` | Versões da planilha no formato sugerido ao campus, lidas por `schedule/tests/test_import.py` e `test_space_import.py`. As duas têm só as abas lidas pela importação, inclusive a opcional `usuários - sistema`. A corrigida é a base do modelo em branco (`make space-template`) |
 | `importacao-usuarios-ensalamento.csv` | Arquivo de exemplo para a importação de usuários, sem uso nos testes |
 | `Salinas/` | Logotipos do campus em JPG, TIF e CDR |

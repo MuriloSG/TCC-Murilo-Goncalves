@@ -23,6 +23,7 @@ def cell_reference(sheet_title, row, column):
     return f'{sheet_title}!{get_column_letter(column)}{row}'
 
 
+XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 NOT_XLSX_MESSAGE = 'O arquivo não pôde ser lido como planilha. Envie a planilha no formato XLSX.'
 REQUIRED_ENTRIES = ('[Content_Types].xml', 'xl/workbook.xml')
 CHUNK_SIZE = 64 * 1024
@@ -90,7 +91,7 @@ class WorkbookSource:
     """Fonte de planilha em grade, para uma importação que declara abas e percorre células."""
 
     file_label = 'Arquivo da planilha'
-    accept = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    accept = f'.xlsx,{XLSX_CONTENT_TYPE}'
     missing_message = 'Escolha o arquivo da planilha.'
 
     def help_text(self, definition):

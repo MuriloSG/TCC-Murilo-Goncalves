@@ -3,6 +3,7 @@
 import re
 from dataclasses import dataclass
 from datetime import time
+from pathlib import Path
 
 from openpyxl.utils import get_column_letter
 
@@ -44,6 +45,8 @@ USER_ROLE_COLUMN = 'Perfil'
 USER_USERNAME_COLUMN = 'Nome de usuário'
 USER_COLUMNS = (USER_EMAIL_COLUMN, USER_NAME_COLUMN, USER_ROLE_COLUMN, USER_USERNAME_COLUMN)
 USER_HEADER_ROW = 1
+TEMPLATE_FILE = Path(__file__).resolve().parent / 'files' / 'modelo-importacao-ensalamento.xlsx'
+INSTRUCTIONS_SHEET = 'Instruções'
 
 
 @dataclass(frozen=True)

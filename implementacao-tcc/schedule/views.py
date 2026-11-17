@@ -28,6 +28,7 @@ from imports.views import (
     ImportListView,
     ImportScreens,
     ImportStatusView,
+    ImportTemplateView,
     ImportUploadView,
     load_importation,
 )
@@ -96,6 +97,7 @@ SPACE_ALLOCATION_IMPORT_SCREENS = ImportScreens(
     section_permission=permissions.SPACE_ALLOCATION_VIEW,
     list_title='Importações de ensalamento',
     upload_title='Importar ensalamento',
+    template_file_name='modelo-importacao-ensalamento.xlsx',
     empty_message='Nenhuma importação de ensalamento.',
     concluded_message=concluded_message,
     delete_permission=permissions.SPACE_ALLOCATION_IMPORT_DELETE,
@@ -112,6 +114,11 @@ class SpaceAllocationImportListView(ImportListView):
 class SpaceAllocationImportUploadView(ImportUploadView):
     permission_required = permissions.SPACE_ALLOCATION_IMPORT
     audit_resource = catalog.SPACE_ALLOCATION_IMPORT
+    screens = SPACE_ALLOCATION_IMPORT_SCREENS
+
+
+class SpaceAllocationImportTemplateView(ImportTemplateView):
+    permission_required = permissions.SPACE_ALLOCATION_IMPORT
     screens = SPACE_ALLOCATION_IMPORT_SCREENS
 
 

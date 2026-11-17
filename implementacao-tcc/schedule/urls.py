@@ -74,6 +74,11 @@ urlpatterns = [
         name='space_allocation_import_upload',
     ),
     path(
+        'ensalamento/importacoes/modelo/',
+        login_required(views.SpaceAllocationImportTemplateView.as_view()),
+        name='space_allocation_import_template',
+    ),
+    path(
         'ensalamento/importacoes/<int:pk>/',
         login_required(views.SpaceAllocationImportDetailView.as_view()),
         name='space_allocation_import_detail',

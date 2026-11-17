@@ -219,13 +219,13 @@ class ImportUploadView(ModalView, FormView):
 
 
 class ImportTemplateView(View):
-    """Modelo em UTF-8 com BOM, separado por ";", só com o cabeçalho."""
+    """Modelo do arquivo no formato que a importação declara."""
 
     screens = None
 
     def get(self, request, *args, **kwargs):
-        header = ';'.join(column.label for column in self.screens.definition.file_columns())
-        response = HttpResponse('﻿' + header + '\r\n', content_type='text/csv; charset=utf-8')
+        content, content_type = self.screens.definition.template_content()
+        response = HttpResponse(content, content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{self.screens.template_file_name}"'
         AuditLog.objects.record(
             catalog.EXPORT,

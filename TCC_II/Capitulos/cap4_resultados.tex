@@ -48,7 +48,7 @@ O levantamento resultou em 29 requisitos funcionais e 13 não funcionais. Os fun
 	RF16 & Cancelar a ocorrência de uma aula em uma data, sem alterar a recorrência, pelo administrador ou pelo docente da aula & Atendido \\
 	RF17 & Cadastrar e manter cursos, disciplinas e turmas & Atendido \\
 	RF18 & Criar perfis de acesso e definir as permissões de cada um & Atendido \\
-	RF19 & Importar usuários em lote por meio de arquivo .CSV & Atendido \\
+	RF19 & Importar usuários em lote por meio de arquivo CSV (\textit{Comma-Separated Values}) & Atendido \\
 	RF20 & Enviar ao novo usuário, por e-mail, o link para definir a senha, e permitir a recuperação de senha & Atendido \\
 	RF21 & Sugerir ao solicitante uma alternativa à reserva solicitada (outro espaço, data ou horário), que ele pode aceitar ou recusar & Atendido \\
 	RF22 & Registrar solicitação de reserva em nome de outro usuário & Atendido \\
@@ -167,7 +167,7 @@ Para manter o diagrama legível, o modelo conceitual representa apenas as entida
 \subsubsection{Modelo Lógico}
 \label{sec:modelo-logico}
 
-O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esquema relacional: cada entidade e cada relacionamento muitos-para-muitos do modelo conceitual tornaram-se uma tabela, com sua chave primária (sublinhada) e as chaves estrangeiras (em itálico) que materializam os relacionamentos. Os nomes das tabelas seguem a convenção do Django, formada pelo nome do módulo da aplicação e pelo nome da classe de modelo. As tabelas foram agrupadas pelos módulos do sistema.
+O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esquema relacional: cada entidade e cada relacionamento muitos-para-muitos do modelo conceitual tornaram-se uma tabela, com sua chave primária (sublinhada) e as chaves estrangeiras (em itálico, indicadas por FK, do inglês \textit{Foreign Key}) que materializam os relacionamentos. Os nomes das tabelas seguem a convenção do Django, formada pelo nome do módulo da aplicação e pelo nome da classe de modelo. As tabelas foram agrupadas pelos módulos do sistema.
 
 \begin{SingleSpace}
 \small
@@ -225,7 +225,7 @@ O modelo lógico, apresentado na Tabela~\ref{tab:modelo-logico}, descreve o esqu
 \subsubsection{Modelo Físico}
 \label{sec:modelo-fisico}
 
-O modelo físico (Figura~\ref{fig:der-fisico}) mostra as 28 tabelas no PostgreSQL, com o tipo de cada coluna, a obrigatoriedade e as chaves primárias, estrangeiras e únicas. Algumas regras ficam fora do diagrama por serem restrições declaradas no esquema. A principal é a \texttt{booking\_no\_overlap}, que impede agendamentos sobrepostos no mesmo espaço, mesmo quando duas solicitações são aprovadas ao mesmo tempo (RNF08). Essas regras são criadas pelas \textit{migrations} do Django e versionadas junto com o código.
+O modelo físico (Figura~\ref{fig:der-fisico}) mostra as 28 tabelas no PostgreSQL, com o tipo de cada coluna, a obrigatoriedade e as chaves primárias (PK, do inglês \textit{Primary Key}), estrangeiras (FK) e únicas (UK, do inglês \textit{Unique Key}). Algumas regras ficam fora do diagrama por serem restrições declaradas no esquema. A principal é a \texttt{booking\_no\_overlap}, que impede agendamentos sobrepostos no mesmo espaço, mesmo quando duas solicitações são aprovadas ao mesmo tempo (RNF08). Essas regras são criadas pelas \textit{migrations} do Django e versionadas junto com o código.
 
 \begin{landscape}
 \begin{figure}[p]
@@ -246,7 +246,7 @@ O IFAgenda é uma aplicação web funcional, executada em ambiente local e acess
 \subsection{Arquitetura}
 \label{sec:resultado-arquitetura}
 
-O sistema é uma única aplicação Django (monolítica), no padrão MTV, dividida em um módulo para cada parte do domínio. Todos os dados ficam no PostgreSQL, e as tarefas mais demoradas rodam em processos à parte, que usam o próprio banco como fila. A Figura~\ref{fig:arquitetura} mostra os contêineres e a comunicação entre eles.
+O sistema é uma única aplicação Django (monolítica), no padrão MTV, dividida em um módulo para cada parte do domínio. Todos os dados ficam no PostgreSQL, e as tarefas mais demoradas rodam em processos à parte, que usam o próprio banco como fila. A Figura~\ref{fig:arquitetura} mostra os contêineres e a comunicação entre eles, incluindo o envio de e-mails por um servidor \textit{Simple Mail Transfer Protocol} (SMTP).
 
 \begin{figure}[!htb]
     \centering
@@ -276,7 +276,7 @@ O sistema é uma única aplicação Django (monolítica), no padrão MTV, dividi
     \label{fig:arquitetura}
 \end{figure}
 
-Em execução, são cinco serviços, definidos no arquivo do Docker Compose; um sexto, usado só no desenvolvimento, compila os estilos. O \texttt{web} recebe as requisições HTTP e mantém as conexões WebSocket das notificações. O \texttt{worker} envia os e-mails que estão na fila do banco e tenta de novo quando o envio falha. O \texttt{import\_worker} faz a prévia e a confirmação das importações de planilhas. O \texttt{db} é o PostgreSQL, e o \texttt{redis} guarda o cache das telas públicas e serve de canal para as notificações em tempo real. Os três primeiros usam a mesma imagem e o mesmo código; muda só o comando que cada um executa.
+Em execução, são cinco serviços, definidos no arquivo do Docker Compose; um sexto, usado só no desenvolvimento, compila os estilos. O \texttt{web} recebe as requisições HTTP e mantém as conexões WebSocket das notificações. O \texttt{worker} envia os e-mails que estão na fila do banco por meio do servidor SMTP e tenta de novo quando o envio falha. O \texttt{import\_worker} faz a prévia e a confirmação das importações de planilhas. O \texttt{db} é o PostgreSQL, e o \texttt{redis} guarda o cache das telas públicas e serve de canal para as notificações em tempo real. Os três primeiros usam a mesma imagem e o mesmo código; muda só o comando que cada um executa.
 
 Toda requisição segue o mesmo caminho. Antes de chegar à \textit{view}, ela passa pelos \textit{middlewares} de sessão, CSRF e autenticação e por dois \textit{middlewares} criados para o sistema: um confere se o usuário tem a permissão que a tela exige, e o outro registra quem fez a requisição, para a auditoria. A \textit{view} chama uma operação do \textit{model}, que abre uma transação, confere as regras de negócio e grava, junto, o registro de auditoria, as notificações e os e-mails a enviar. Se alguma regra não for atendida, nada é gravado, e o usuário vê o erro no próprio formulário.
 

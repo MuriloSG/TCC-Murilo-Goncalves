@@ -87,7 +87,7 @@ class AccessTests(PublicCalendarTestCase):
         self.assertIn('<meta name="robots" content="noindex">', html)
         for text in (
             'csrfmiddlewaretoken', 'X-CSRFToken', 'menu-lateral', 'data-notifications', 'Aldo Gomes da Silva', 'Gestor',
-            reverse('account_logout'), reverse('account_login'),
+            reverse('account_logout'),
         ):
             self.assertNotIn(text, html)
 

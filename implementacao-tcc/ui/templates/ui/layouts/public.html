@@ -15,6 +15,7 @@
         <div class="public-actions">
           {% block header_actions %}{% endblock %}
           <button class="icon-btn public-theme" type="button" data-theme-toggle aria-label="Trocar o modo de exibição" hidden>{% icon "sun" "theme-sun" %}{% icon "moon" "theme-moon" %}<span class="tip is-below" role="tooltip">Trocar o modo de exibição</span></button>
+          <a class="icon-btn public-login" href="{% url 'account_login' %}" aria-label="Entrar no sistema">{% icon "log-in" %}<span class="tip is-below" role="tooltip">Entrar no sistema</span></a>
         </div>
       </div>
     </header>

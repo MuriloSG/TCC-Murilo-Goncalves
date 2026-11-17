@@ -13,7 +13,9 @@
 {% else %}
   <div class="field">
     <label id="{{ field.auto_id }}_rotulo" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required and not field.field.conditional %} <span class="optional">(opcional)</span>{% endif %}</label>
-    {% if icon %}
+    {% if field.widget_type == "password" %}
+      <div class="control control-password">{% if icon %}{% icon icon %}{% endif %}{{ field }}<button type="button" class="password-toggle" data-password-toggle aria-controls="{{ field.id_for_label }}" aria-pressed="false" aria-label="Mostrar senha" hidden>{% icon "eye" "size-5 icon-show" %}{% icon "eye-off" "size-5 icon-hide" %}</button></div>
+    {% elif icon %}
       <div class="control">{% icon icon %}{{ field }}</div>
     {% elif field.widget_type == "select" or field.widget_type == "selectmultiple" %}
       {% include "ui/components/select.html" %}

@@ -1119,6 +1119,42 @@
     padding-left: var(--spacing-12);
   }
 
+  .field .control-password > input {
+    padding-right: var(--spacing-12);
+  }
+
+  .field .control-password > input:first-child {
+    padding-left: var(--spacing-4);
+  }
+
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: var(--spacing-1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-10);
+    height: var(--spacing-10);
+    translate: 0 -50%;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-text);
+    }
+
+    &[hidden] {
+      display: none;
+    }
+
+    &[aria-pressed="false"] .icon-hide,
+    &[aria-pressed="true"] .icon-show {
+      display: none;
+    }
+  }
+
   .check {
     display: flex;
     align-items: center;
@@ -2090,7 +2126,8 @@
     }
   }
 
-  .public-theme {
+  .public-theme,
+  .public-login {
     border: 1px solid var(--color-divider);
 
     & .tip {

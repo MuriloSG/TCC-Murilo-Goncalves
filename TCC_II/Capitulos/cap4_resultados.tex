@@ -345,9 +345,9 @@ São 27 classes de modelo, que geram as 28 tabelas do modelo físico (Seção~\r
 \subsection{Funcionalidades}
 \label{sec:resultado-funcionalidades}
 
-A aplicação reuniu os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permitiu importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantiveram espaços, cursos, disciplinas, turmas, usuários e perfis.
+A aplicação reúne os módulos necessários à gestão dos espaços e das reservas. O módulo de ensalamento permite importar a planilha de horários do campus, revisar os dados antes da confirmação, associar os espaços da planilha aos espaços cadastrados e administrar aulas recorrentes. Os módulos de cadastro mantêm espaços, cursos, disciplinas, turmas, usuários e perfis.
 
-O fluxo de reservas permitiu que o usuário consultasse a disponibilidade, solicitasse uma reserva e acompanhasse suas solicitações. Os responsáveis puderam aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também ofereceu consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda. As funcionalidades de cada módulo, com os requisitos que atendem, estão resumidas na Tabela~\ref{tab:funcionalidades} (Seção~\ref{sec:resultado-requisitos}).
+O fluxo de reservas permite que o usuário consulte a disponibilidade, solicite uma reserva e acompanhe suas solicitações. Os responsáveis podem aprovar ou rejeitar pedidos e sugerir alternativas de espaço, data ou horário. A solução também oferece consulta pública do calendário, notificações internas em tempo real, comunicados, painel administrativo, mapa de ocupação, relatórios, exportação em formato iCalendar, auditoria das ações e central de ajuda. As funcionalidades de cada módulo, com os requisitos que atendem, estão resumidas na Tabela~\ref{tab:funcionalidades} (Seção~\ref{sec:resultado-requisitos}).
 
 O acesso é controlado por perfis configuráveis. Cada permissão corresponde a uma ação sobre um recurso do sistema, como solicitar uma reserva ou editar um espaço, e o sistema tem 47 delas, divididas em 13 módulos. O superadministrador monta os perfis escolhendo as permissões, e cada perfil pode receber até 41; as outras 6, que tratam dos perfis e das configurações, ficam só com o superadministrador. Os perfis Administrador e Docente já vêm cadastrados, mas servem apenas de exemplo e podem ser alterados. Outras categorias, como a dos técnicos administrativos, recebem um perfil com as permissões de que precisam. A consulta pública não exige login.
 
@@ -358,7 +358,9 @@ Na interface, foram aplicadas as três heurísticas de \citeonline{nielsen1994} 
 \subsection{Importação da Planilha de Horários}
 \label{sec:resultado-importacao}
 
-Para medir a importação, foi usada a planilha sugerida, uma versão mais enxuta da que o campus enviou. A versão enviada tinha abas calculadas a partir das outras; essas abas foram retiradas, e entrou uma aba com os usuários do sistema. A planilha sugerida foi apresentada à Direção de Ensino na reunião de 7 de outubro de 2026, com a explicação do que tinha sido retirado e incluído. A versão enviada também é aceita pelo sistema, desde que os docentes já estejam cadastrados como usuários; nesse caso, as linhas com algum problema, como uma aula sem disciplina, aparecem na prévia para correção.
+Para medir a importação, foi usada a planilha sugerida, montada a partir da planilha de horários de 2026/2 enviada pela Direção de Ensino em 24 de setembro de 2026: as abas calculadas foram retiradas, e entrou uma aba de usuários. O formato foi apresentado à Direção em 7 de outubro de 2026 e aceito pelo campus, e a tela de importação oferece um modelo em branco nele, com instruções.
+
+A planilha original também é aceita. No banco vazio, a prévia leu 1.706 linhas e apontou 121 aulas com problema, 120 com docente ausente da lista de docentes da própria planilha e uma sem disciplina, além de oito nomes de espaço que exigem decisão, como HV1, parecido com HV 1. Esses casos precisam ser resolvidos antes da confirmação.
 
 A importação foi feita em uma instalação nova do sistema, com o banco vazio, como dados do semestre 2026/2. O arquivo tem 1.842 linhas, distribuídas nas abas de horários da graduação e do ensino médio e na aba de usuários. A prévia não encontrou erros nem pendências, e a importação foi confirmada logo em seguida. O que foi cadastrado está na Tabela~\ref{tab:importacao}.
 
@@ -518,7 +520,7 @@ Na validação técnica, a versão desenvolvida tinha 681 testes automatizados, 
 
 Os menores índices estão na fila de e-mails e na configuração do projeto. Nos dois casos, as partes não executadas são, em sua maioria, o laço contínuo do processo que envia os e-mails em segundo plano e os pontos de entrada usados só para iniciar o servidor, cujas regras são testadas separadamente. A cobertura não garante a ausência de defeitos, mas indica que quase todo o código da aplicação é executado pelos testes, e não apenas as partes principais.
 
-Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando duas solicitações são analisadas ao mesmo tempo; as permissões de cada perfil; a importação e a reimportação da planilha; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem expor dados pessoais; e a impossibilidade de alterar os registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos, e o Apêndice~\ref{ap:rastreabilidade} faz essa relação para todos os requisitos. Dos 42 requisitos, 38 são verificados por testes automatizados. Os outros quatro (RNF04, RNF06, RNF07 e RNF12) tratam da forma de acesso, da organização do código e da execução do sistema e foram verificados pela própria execução e pela revisão do código. Com isso, foram cumpridas as três partes do critério definido na Seção~\ref{sec:validacao}.
+Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situações verificadas estão o bloqueio de reservas sobrepostas, inclusive quando duas solicitações são analisadas ao mesmo tempo; as permissões de cada perfil; a importação e a reimportação da planilha; as alterações em aulas recorrentes; o envio de notificações; a consulta pública sem expor dados pessoais; e a impossibilidade de alterar os registros de auditoria. A Tabela~\ref{tab:testes} relaciona essas verificações aos requisitos, e o Apêndice~\ref{ap:rastreabilidade} faz essa relação para todos os requisitos. Dos 42 requisitos, 36 são verificados por testes. O RNF03 e o RNF05 foram atendidos em parte, sem medição de desempenho nem avaliação com usuários, e o RNF04, o RNF06, o RNF07 e o RNF12 foram verificados pela execução e pela revisão do código. As três partes do critério da Seção~\ref{sec:validacao} foram executadas: os testes passaram, a cobertura foi medida e cada requisito foi relacionado aos testes.
 
 \begin{table}[!htb]
 	\centering
@@ -534,6 +536,7 @@ Os testes cobrem os módulos e as regras de negócio do sistema. Entre as situa�
 		Consulta pública sem exposição de dados pessoais & RF11 \\
 		Imutabilidade dos registros de auditoria & RF26, RNF09 \\ \hline
 	\end{tabular}
+	\caption*{\footnotesize Fonte: Elaborado pelo autor (2026).}
 	\label{tab:testes}
 \end{table}
 
@@ -543,8 +546,8 @@ Os testes automatizados mostram que o sistema funciona do ponto de vista técnic
 \section{Atendimento às Necessidades Identificadas}
 \label{sec:resultado-necessidades}
 
-O IFAgenda resolveu as principais limitações encontradas no diagnóstico. Com a importação, as 1.498 aulas recorrentes do semestre, em 85 espaços, passam a ser cadastradas a partir do arquivo que o campus já produz, sem precisar digitá-las uma a uma, e a ocupação das aulas aparece no calendário do sistema (Seção~\ref{sec:resultado-importacao}). A consulta pública permitiu visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação manteve o controle administrativo sobre as reservas extraordinárias.
+O IFAgenda trata as principais limitações encontradas no diagnóstico. Com a importação, as 1.498 aulas recorrentes da planilha sugerida, em 85 espaços, passam a ser cadastradas a partir do arquivo que o campus já produz, sem precisar digitá-las uma a uma, e a ocupação das aulas aparece no calendário do sistema (Seção~\ref{sec:resultado-importacao}). A consulta pública permite visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação mantém o controle administrativo sobre as reservas extraordinárias.
 
-O controle de acesso baseado em papéis restringiu as funcionalidades conforme as permissões de cada perfil. A restrição de integridade no banco de dados impediu reservas sobrepostas do mesmo espaço, inclusive quando solicitações foram analisadas simultaneamente.
+O controle de acesso baseado em papéis restringe as funcionalidades conforme as permissões de cada perfil. A restrição de integridade no banco de dados impede reservas sobrepostas do mesmo espaço, inclusive quando solicitações são analisadas simultaneamente.
 
-O IFAgenda também registrou as ações realizadas em auditoria, manteve o histórico das solicitações e forneceu informações para o acompanhamento da utilização dos espaços. Dessa forma, além de organizar o processo de reserva, a aplicação ofereceu dados que puderam apoiar o planejamento da ocupação dos laboratórios e das salas especiais.
+O IFAgenda também registra as ações realizadas em auditoria, mantém o histórico das solicitações e fornece informações para o acompanhamento da utilização dos espaços. Dessa forma, além de organizar o processo de reserva, a aplicação oferece dados que podem apoiar o planejamento da ocupação dos laboratórios e das salas especiais. Esses efeitos, porém, ainda não foram medidos, porque o sistema não foi usado em produção.

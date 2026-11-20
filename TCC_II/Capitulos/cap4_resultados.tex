@@ -11,7 +11,7 @@ O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os 
 
 Dessas limitações derivam as necessidades que orientaram os requisitos: importar a planilha de horários já produzida pelo campus, marcando automaticamente como ocupados os horários das aulas; manter essa ocupação atualizada por reimportação ou ajuste pontual, sem integração em tempo real com sistemas externos; notificar automaticamente os envolvidos no fluxo de reserva; permitir a consulta pública da ocupação; e gerar um mapa da utilização dos espaços ao longo do semestre.
 
-Na reunião de 28 de setembro de 2026, com a Direção de Ensino e a SifSoft Júnior, a avaliação do Merly mostrou que ele não atendia ao processo do campus. Por isso, o desenvolvimento do IFAgenda foi mantido.
+Na reunião de 28 de setembro de 2026, a avaliação do Merly mostrou que ele não atendia ao processo do campus. Por isso, o desenvolvimento do IFAgenda foi mantido.
 
 %-----------------------------------
 \section{Requisitos}
@@ -487,7 +487,7 @@ Por fim, o mapa de calor (Figura~\ref{fig:tela-mapa}) mostra a ocupação média
 \section{Validação}
 \label{sec:resultado-validacao}
 
-Na validação institucional, o sistema foi apresentado funcionando localmente à Direção de Ensino, representada por Frederico Ventura Batista, na reunião de 7 de outubro de 2026. Foram demonstrados todos os fluxos descritos na Seção~\ref{sec:resultado-funcionalidades}, da importação da planilha de horários à consulta pública, passando pela solicitação e pela análise de reservas, pelas notificações, pelos perfis e permissões, pelo painel, pelos relatórios e pela auditoria. Ao final da demonstração, a Direção concluiu que o sistema faz sentido para o campus e atende ao fluxo atual de agendamento da instituição\footnote{Informação verbal fornecida por Frederico Ventura Batista, da Direção de Ensino do IFNMG -- Campus Salinas, em reunião remota realizada em 7 de outubro de 2026.}. Com isso, foi cumprido o critério da validação institucional definido na Seção~\ref{sec:validacao}.
+Na validação institucional, o sistema foi apresentado funcionando localmente a Frederico Ventura Batista, representando a Direção de Ensino, na reunião de 7 de outubro de 2026. Foram demonstrados todos os fluxos descritos na Seção~\ref{sec:resultado-funcionalidades}, da importação da planilha de horários à consulta pública, passando pela solicitação e pela análise de reservas, pelas notificações, pelos perfis e permissões, pelo painel, pelos relatórios e pela auditoria. Ao final, a Direção confirmou que os fluxos correspondem ao processo do campus e pediu dois ajustes\footnote{Informação verbal fornecida por Frederico Ventura Batista, Coordenador de Ensino Superior, representando a Direção de Ensino do IFNMG -- Campus Salinas, em reunião remota realizada em 7 de outubro de 2026.}. O primeiro foi exibir em tela pública também os horários fixos das aulas, o que deu origem à tela do horário original, com a semana típica importada da planilha (RF11). O segundo foi gravar um tutorial em vídeo de como solicitar um agendamento. Com os dois ajustes feitos, o critério da Seção~\ref{sec:validacao} foi cumprido.
 
 Na validação técnica, a versão desenvolvida tinha 681 testes automatizados, e todos passaram. A medição de cobertura, feita em 17 de novembro de 2026, mostrou que os testes executam 97,1\% dos comandos e 90,8\% dos desvios do código da aplicação, o que corresponde a 96,0\% de cobertura combinada. A Tabela~\ref{tab:cobertura} apresenta esses números por módulo.
 

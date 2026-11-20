@@ -15,21 +15,38 @@ Quanto ao procedimento técnico, a pesquisa adota o estudo de caso em combinaç�
 \section{Procedimentos Metodológicos}
 \label{sec:procedimentos}
 
-O trabalho foi dividido em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. Na prática, essas etapas se sobrepuseram, porque os requisitos e a modelagem eram ajustados a cada reunião com a Direção de Ensino e incorporados ao sistema durante o desenvolvimento. As subseções a seguir explicam como cada etapa foi realizada, e o Capítulo~\ref{cap4_resultados} apresenta os resultados na mesma ordem.
+O trabalho foi dividido em cinco etapas: diagnóstico do problema, levantamento e análise de requisitos, modelagem do sistema, implementação e validação. Na prática, essas etapas se sobrepuseram, porque os requisitos e a modelagem eram ajustados a cada conversa com a Diretora de Ensino Técnico e a cada reunião com a Direção de Ensino e incorporados ao sistema durante o desenvolvimento. As subseções a seguir explicam como cada etapa foi realizada, e o Capítulo~\ref{cap4_resultados} apresenta os resultados na mesma ordem.
 
 %-----------------------------------
 \subsection{Diagnóstico do Problema}
 \label{sec:coleta}
 
-O diagnóstico buscou entender como funcionava o agendamento dos espaços físicos do campus: como as reservas eram pedidas e controladas, onde surgiam os conflitos e o que os usuários precisavam consultar. Os dados são primários e foram obtidos com a Diretora de Ensino Técnico do IFNMG -- Campus Salinas e, nas reuniões realizadas durante o desenvolvimento, com a Direção de Ensino.
+O diagnóstico buscou entender como funcionava o agendamento dos espaços físicos do campus: como as reservas eram pedidas e controladas, onde surgiam os conflitos e o que os usuários precisavam consultar.
 
-A Diretora é a responsável pela gestão dos agendamentos e foi ela quem trouxe a demanda que deu origem ao sistema. Por esse motivo, o levantamento e a validação dos requisitos foram feitos com ela. Docentes e outros usuários não foram consultados formalmente, o que é uma limitação deste trabalho.
+Os dados são primários e vieram de dois servidores do campus. Jéssica Glória, Diretora de Ensino Técnico e coorientadora deste trabalho, é responsável pela gestão dos agendamentos, trouxe a demanda que originou o sistema e participou do levantamento e da revisão dos requisitos. Frederico Ventura Batista, Coordenador de Ensino Superior, representou a Direção de Ensino nas reuniões do desenvolvimento e na validação. Docentes e outros usuários não foram consultados formalmente, o que é uma limitação deste trabalho. A Tabela~\ref{tab:encontros} lista os encontros.
 
-As informações foram coletadas em reuniões remotas, pelo Google Meet, sem um roteiro fixo de perguntas. Esse formato se aproxima do que \citeonline{gil2008} chama de entrevista informal, a menos estruturada das modalidades de entrevista, semelhante a uma conversa e indicada quando o pesquisador ainda conhece pouco da realidade estudada. Cada reunião retomava o que tinha sido levantado na anterior, e as dúvidas que apareciam entre um encontro e outro eram levadas para o seguinte.
+\begin{table}[!htb]
+	\centering
+	\caption{Encontros realizados durante a pesquisa}
+	\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{5.6cm}@{}}
+	\hline
+		\textbf{Data} & \textbf{Participantes} & \textbf{Assunto} \\ \hline
+		jul. 2025 & Diretora de Ensino Técnico & Mapeamento do processo de agendamento em uso \\
+		nov. 2025 & Diretora de Ensino Técnico & Revisão dos requisitos preliminares \\
+		abr. 2026 & Diretora de Ensino Técnico & Fechamento dos requisitos e dúvidas da modelagem \\
+		24 set. 2026 & Frederico Ventura Batista (Direção de Ensino) & Planilha de horários e fluxos de agendamento em uso \\
+		28 set. 2026 & Luis Gustavo Barbosa Santiago e Micael Pereira (SifSoft Júnior) & Avaliação do Merly \\
+		7 out. 2026 & Frederico Ventura Batista (Direção de Ensino) & Validação institucional \\ \hline
+	\end{tabular}
+	\caption*{\footnotesize Fonte: Elaborado pelo autor (2026).}
+	\label{tab:encontros}
+\end{table}
 
-As três primeiras reuniões aconteceram em julho de 2025, novembro de 2025 e abril de 2026. Na primeira, foi mapeado o processo de agendamento em uso: como as reservas eram solicitadas, quem fazia o controle, quais conflitos eram mais comuns e que informações os usuários consultavam. Na segunda, o pesquisador apresentou os requisitos preliminares para que a Diretora confirmasse, corrigisse ou completasse o que havia sido entendido. A terceira fechou os requisitos e resolveu dúvidas que surgiram na modelagem. Entre as reuniões, questões pontuais foram resolvidas por mensagens.
+As três primeiras foram conversas remotas, pelo Google Meet, sem um roteiro fixo de perguntas. Esse formato se aproxima do que \citeonline{gil2008} chama de entrevista informal, a menos estruturada das modalidades de entrevista, semelhante a uma conversa e indicada quando o pesquisador ainda conhece pouco da realidade estudada. Cada conversa retomava o que tinha sido levantado na anterior, e as dúvidas que apareciam entre um encontro e outro eram levadas para o seguinte.
 
-Já durante o desenvolvimento, houve mais duas reuniões, desta vez com a Direção de Ensino. Em 24 de setembro de 2026, a Direção apresentou a planilha de horários do campus e explicou como ela é organizada e como o sistema deveria usá-la. Em 28 de setembro de 2026, foi avaliado o Merly, sistema do próprio IF, para saber se ele poderia ser aproveitado em vez de se desenvolver um sistema novo. Essa reunião contou também com a participação da SifSoft Júnior, que ficará responsável pela infraestrutura e pela manutenção do sistema. A reunião de apresentação do sistema faz parte da validação e está descrita na Seção~\ref{sec:validacao}. O resultado do diagnóstico está na Seção~\ref{sec:resultado-diagnostico}.
+As conversas aconteceram em julho de 2025, novembro de 2025 e abril de 2026. Na primeira, foi mapeado o processo de agendamento em uso: como as reservas eram solicitadas, quem fazia o controle, quais conflitos eram mais comuns e que informações os usuários consultavam. Na segunda, o pesquisador apresentou os requisitos preliminares para que a Diretora confirmasse, corrigisse ou completasse o que havia sido entendido. A terceira fechou os requisitos e resolveu dúvidas que surgiram na modelagem. Entre as conversas, questões pontuais foram resolvidas por mensagens.
+
+Durante o desenvolvimento, houve mais duas reuniões. Na primeira, a Direção de Ensino apresentou a planilha de horários do campus e os fluxos de agendamento em uso. Na segunda, Luis Gustavo Barbosa Santiago apresentou o Merly, sistema do próprio IF, para avaliar se ele dispensaria um sistema novo. Participou também Micael Pereira, presidente da SifSoft Júnior, que ficará responsável pela infraestrutura e pela manutenção. A validação está descrita na Seção~\ref{sec:validacao}, e o resultado do diagnóstico, na Seção~\ref{sec:resultado-diagnostico}.
 
 %-----------------------------------
 \subsection{Levantamento e Análise de Requisitos}
@@ -39,7 +56,7 @@ Já durante o desenvolvimento, houve mais duas reuniões, desta vez com a Direç
 
 Cada necessidade deu origem a um ou mais requisitos, classificados conforme \citeonline{sommerville2018} em funcionais, que dizem o que o sistema deve fazer, e não funcionais, que impõem restrições de qualidade. Os requisitos não funcionais foram definidos com base nos atributos de qualidade descritos pelo autor (Seção~\ref{sec:engsw}). \citeonline{pressman2016} lembram que esse tipo de requisito afeta a arquitetura e, por isso, deve ser considerado desde o começo do projeto.
 
-Os requisitos foram numerados com a sigla RF, de requisito funcional (RF01, RF02 e assim por diante), e RNF, de requisito não funcional (RNF01, RNF02 e assim por diante), e agrupados pelos módulos do sistema, o que facilita relacionar cada um às funcionalidades e aos testes. A lista foi revisada com a Diretora nas reuniões de novembro de 2025 e abril de 2026, e os requisitos que surgiram depois, durante o desenvolvimento, passaram pela mesma revisão. Como o acesso é controlado por perfis configuráveis (Seção~\ref{sec:rbac}), os requisitos descrevem funcionalidades sem associá-las a um perfil específico. A Seção~\ref{sec:resultado-requisitos} traz os requisitos e a situação de cada um na versão desenvolvida.
+Os requisitos foram numerados com a sigla RF, de requisito funcional (RF01, RF02 e assim por diante), e RNF, de requisito não funcional (RNF01, RNF02 e assim por diante), e agrupados pelos módulos do sistema, o que facilita relacionar cada um às funcionalidades e aos testes. A lista foi revisada com a Diretora de Ensino Técnico nas conversas de novembro de 2025 e abril de 2026, e os requisitos que surgiram depois, durante o desenvolvimento, passaram pela mesma revisão. Como o acesso é controlado por perfis configuráveis (Seção~\ref{sec:rbac}), os requisitos descrevem funcionalidades sem associá-las a um perfil específico. A Seção~\ref{sec:resultado-requisitos} traz os requisitos e a situação de cada um na versão desenvolvida.
 
 %-----------------------------------
 \subsection{Modelagem do Sistema}
@@ -49,7 +66,7 @@ Para a modelagem foi usada a UML. Segundo \citeonline{bezerra2007}, ela é uma n
 
 Os diagramas foram esboçados a partir dos requisitos antes da implementação, para servir de guia ao código. Como o desenvolvimento foi incremental, o modelo foi mudando ao longo do trabalho. No final, os diagramas foram revisados para corresponder à versão implementada.
 
-Para o banco de dados, foram seguidos os três níveis de projeto descritos por \citeonline{heuser2009}, nessa ordem. Primeiro, o modelo conceitual foi feito na notação entidade-relacionamento, a partir dos requisitos e das entidades do diagrama de classes. Em seguida, o modelo lógico transformou as entidades e os relacionamentos em tabelas, com chaves primárias e estrangeiras, e os relacionamentos muitos-para-muitos passaram a ter tabelas próprias. Por fim, o modelo físico definiu, no PostgreSQL, os tipos de dados, os índices e as restrições de integridade. Como o desenvolvimento foi incremental, os três modelos foram atualizados ao longo do trabalho e correspondem à versão implementada. Eles estão na Seção~\ref{sec:resultado-modelagem}.
+Para o banco de dados, foram seguidos os três níveis de projeto de \citeonline{heuser2009}. Antes da implementação, as tabelas principais (espaços, ensalamento, solicitações, agendamentos, usuários, perfis e permissões) foram modeladas. O modelo conceitual, na notação entidade-relacionamento, partiu dos requisitos e do diagrama de classes. O lógico transformou entidades e relacionamentos em tabelas com chaves primárias e estrangeiras. O físico definiu, no PostgreSQL, os tipos de dados, os índices e as restrições de integridade. Com a evolução do código, essas tabelas foram alteradas, surgiram outras para a importação, as notificações e a auditoria, e os diagramas acompanharam as mudanças. A versão final está na Seção~\ref{sec:resultado-banco}.
 
 %-----------------------------------
 \subsection{Implementação}
@@ -69,9 +86,9 @@ Este trabalho se limita a uma versão funcional do sistema, executada em ambient
 
 A validação teve duas partes. A institucional verificou se o sistema atende ao processo do campus, e a técnica verificou se ele funciona de acordo com os requisitos. Nas duas, o sistema foi executado em ambiente local, sem implantação e sem uso em produção.
 
-A validação institucional aconteceu em uma reunião remota com a Direção de Ensino, representada por Frederico Ventura Batista, em 7 de outubro de 2026. Nela, o sistema foi apresentado funcionando localmente, e foram demonstrados todos os seus fluxos: a importação da planilha de horários, a consulta pública da ocupação, a solicitação e a análise de reservas, as notificações, os perfis e as permissões, o painel, os relatórios e a auditoria. Como os requisitos já tinham sido discutidos nas reuniões anteriores, essa reunião serviu para avaliar o sistema completo diante do processo levantado no diagnóstico. O retorno da Direção foi dado oralmente ao final da demonstração e é registrado neste trabalho como informação verbal.
+A validação institucional aconteceu em uma reunião remota com Frederico Ventura Batista, representando a Direção de Ensino, em 7 de outubro de 2026. Nela, o sistema foi apresentado funcionando localmente, e foram demonstrados todos os seus fluxos: a importação da planilha de horários, a consulta pública da ocupação, a solicitação e a análise de reservas, as notificações, os perfis e as permissões, o painel, os relatórios e a auditoria. Como os requisitos já tinham sido discutidos nos encontros anteriores, essa reunião serviu para avaliar o sistema completo diante do processo levantado no diagnóstico. O retorno da Direção foi dado oralmente ao final da demonstração e é registrado neste trabalho como informação verbal.
 
-O critério da validação institucional foi a decisão da Direção de Ensino: considerou-se que o sistema atende ao processo do campus se, depois de ver todos os fluxos, a Direção confirmasse que eles correspondem ao processo de agendamento levantado no diagnóstico e que o sistema faz sentido para a instituição.
+O critério foi a Direção de Ensino reconhecer, nos fluxos demonstrados, o processo de agendamento levantado no diagnóstico. Os ajustes pedidos na reunião foram incorporados ao sistema e fazem parte do resultado.
 
 A validação técnica foi feita com testes automatizados unitários e de integração, seguindo os conceitos da Seção~\ref{sec:testes}. Os testes foram escritos junto com o código, e cada funcionalidade foi entregue com testes das suas regras, tanto para as operações que devem funcionar quanto para as que o sistema deve recusar. Antes de registrar qualquer alteração no repositório, toda a suíte de testes era executada, para conferir que nada do que já funcionava tinha sido afetado.
 

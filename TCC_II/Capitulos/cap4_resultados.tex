@@ -11,7 +11,7 @@ O diagnóstico mostrou que o sistema em uso exige o cadastro manual de todos os 
 
 Dessas limitações derivam as necessidades que orientaram os requisitos: importar a planilha de horários já produzida pelo campus, marcando automaticamente como ocupados os horários das aulas; manter essa ocupação atualizada por reimportação ou ajuste pontual, sem integração em tempo real com sistemas externos; notificar automaticamente os envolvidos no fluxo de reserva; permitir a consulta pública da ocupação; e gerar um mapa da utilização dos espaços ao longo do semestre.
 
-Na reunião de 28 de setembro de 2026, a avaliação do Merly mostrou que ele não atendia ao processo do campus. Por isso, o desenvolvimento do IFAgenda foi mantido.
+Na reunião de 28 de setembro de 2026, o Merly foi avaliado como alternativa (Seção~\ref{sec:relmerly}), e o desenvolvimento do IFAgenda foi mantido.
 
 %-----------------------------------
 \section{Requisitos}
@@ -546,7 +546,9 @@ Os testes automatizados mostram que o sistema funciona do ponto de vista técnic
 \section{Atendimento às Necessidades Identificadas}
 \label{sec:resultado-necessidades}
 
-O IFAgenda trata as principais limitações encontradas no diagnóstico. Com a importação, as 1.498 aulas recorrentes da planilha sugerida, em 85 espaços, passam a ser cadastradas a partir do arquivo que o campus já produz, sem precisar digitá-las uma a uma, e a ocupação das aulas aparece no calendário do sistema (Seção~\ref{sec:resultado-importacao}). A consulta pública permite visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação mantém o controle administrativo sobre as reservas extraordinárias.
+O IFAgenda trata as principais limitações encontradas no diagnóstico. Com a importação, as 1.498 aulas recorrentes da planilha sugerida, em 85 espaços, passam a ser cadastradas a partir da planilha de horários, no formato sugerido, sem precisar digitá-las uma a uma, e a ocupação das aulas aparece no calendário do sistema (Seção~\ref{sec:resultado-importacao}). A consulta pública permite visualizar a ocupação sem intermediação, enquanto o fluxo de aprovação mantém o controle administrativo sobre as reservas extraordinárias.
+
+Diante dos trabalhos relacionados (Seção~\ref{sec:trabrel}), o IFAgenda oferece recursos para a lacuna apontada por \citeonline{cruz2023gestao}, a falta de meios para medir o uso dos laboratórios, ao registrar a ocupação e gerar relatórios de uso. Como o sistema de \citeonline{nascimento2020reservas}, automatiza a solicitação e a análise de reservas e acrescenta a importação da grade e a consulta pública sem login, mas, ao contrário dele, não teve avaliação de satisfação dos usuários. Em relação ao Skedda, ao Microsoft Bookings e ao Merly, a diferença principal é a importação da grade, que nenhum oferece (Tabela~\ref{tab:comparativo}).
 
 O controle de acesso baseado em papéis restringe as funcionalidades conforme as permissões de cada perfil. A restrição de integridade no banco de dados impede reservas sobrepostas do mesmo espaço, inclusive quando solicitações são analisadas simultaneamente.
 

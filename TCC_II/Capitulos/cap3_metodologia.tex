@@ -46,7 +46,7 @@ As três primeiras foram conversas remotas, pelo Google Meet, sem um roteiro fix
 
 As conversas aconteceram em julho de 2025, novembro de 2025 e abril de 2026. Na primeira, foi mapeado o processo de agendamento em uso: como as reservas eram solicitadas, quem fazia o controle, quais conflitos eram mais comuns e que informações os usuários consultavam. Na segunda, o pesquisador apresentou os requisitos preliminares para que a Diretora confirmasse, corrigisse ou completasse o que havia sido entendido. A terceira fechou os requisitos e resolveu dúvidas que surgiram na modelagem. Entre as conversas, questões pontuais foram resolvidas por mensagens.
 
-Durante o desenvolvimento, houve mais duas reuniões. Na primeira, a Direção de Ensino apresentou a planilha de horários do campus e os fluxos de agendamento em uso. Na segunda, Luis Gustavo Barbosa Santiago apresentou o Merly, sistema do próprio IF, para avaliar se ele dispensaria um sistema novo. Participou também Micael Pereira, presidente da SifSoft Júnior, que ficará responsável pela infraestrutura e pela manutenção. A validação está descrita na Seção~\ref{sec:validacao}, e o resultado do diagnóstico, na Seção~\ref{sec:resultado-diagnostico}.
+Durante o desenvolvimento, houve mais duas reuniões. Na primeira, a Direção de Ensino apresentou a planilha de horários do campus e os fluxos de agendamento em uso. Na segunda, Luis Gustavo Barbosa Santiago apresentou o Merly, sistema do próprio IF, para avaliar se ele poderia substituir o sistema em desenvolvimento. Participou também Micael Pereira, presidente da SifSoft Júnior, que ficará responsável pela infraestrutura e pela manutenção. A validação está descrita na Seção~\ref{sec:validacao}, e o resultado do diagnóstico, na Seção~\ref{sec:resultado-diagnostico}.
 
 %-----------------------------------
 \subsection{Levantamento e Análise de Requisitos}
@@ -78,7 +78,7 @@ As tecnologias foram escolhidas com base no Capítulo~\ref{sec:revbib}. O Django
 
 As regras de negócio ficaram nas classes de modelo, como prevê o padrão MTV. A regra que impede conflitos de horário também foi declarada no esquema do banco, para continuar valendo quando duas operações acontecem ao mesmo tempo. O controle de acesso segue o modelo RBAC (Seção~\ref{sec:rbac}), e as permissões são sempre verificadas no servidor.
 
-Este trabalho se limita a uma versão funcional do sistema, executada em ambiente local e acessada pelo navegador. A implantação na infraestrutura do campus não faz parte do escopo e depende da Direção e dos setores responsáveis. O sistema desenvolvido é apresentado na Seção~\ref{sec:resultado-sistema}.
+Este trabalho se limita a uma versão funcional do sistema, executada em ambiente local e acessada pelo navegador. A implantação na infraestrutura do campus não faz parte do escopo e depende da Direção de Ensino e da SifSoft Júnior, que ficará responsável pela hospedagem e pela manutenção. O sistema desenvolvido é apresentado na Seção~\ref{sec:resultado-sistema}.
 
 %-----------------------------------
 \subsection{Validação}
@@ -86,7 +86,7 @@ Este trabalho se limita a uma versão funcional do sistema, executada em ambient
 
 A validação teve duas partes. A institucional verificou se o sistema atende ao processo do campus, e a técnica verificou se ele funciona de acordo com os requisitos. Nas duas, o sistema foi executado em ambiente local, sem implantação e sem uso em produção.
 
-A validação institucional aconteceu em uma reunião remota com Frederico Ventura Batista, representando a Direção de Ensino, em 7 de outubro de 2026. Nela, o sistema foi apresentado funcionando localmente, e foram demonstrados todos os seus fluxos: a importação da planilha de horários, a consulta pública da ocupação, a solicitação e a análise de reservas, as notificações, os perfis e as permissões, o painel, os relatórios e a auditoria. Como os requisitos já tinham sido discutidos nos encontros anteriores, essa reunião serviu para avaliar o sistema completo diante do processo levantado no diagnóstico. O retorno da Direção foi dado oralmente ao final da demonstração e é registrado neste trabalho como informação verbal.
+A validação institucional aconteceu em uma reunião remota com Frederico Ventura Batista, representando a Direção de Ensino, em 7 de outubro de 2026. Nela, o sistema foi apresentado funcionando localmente, e foram demonstrados todos os seus fluxos: a importação da planilha de horários, a consulta pública da ocupação, a solicitação e a análise de reservas, as notificações, os perfis e as permissões, o painel, os relatórios e a auditoria. Como os requisitos já tinham sido discutidos nos encontros anteriores, essa reunião serviu para avaliar o sistema completo diante do processo levantado no diagnóstico. O retorno da Direção foi dado oralmente ao final da demonstração, sem ata, e é registrado neste trabalho como informação verbal.
 
 O critério foi a Direção de Ensino reconhecer, nos fluxos demonstrados, o processo de agendamento levantado no diagnóstico. Os ajustes pedidos na reunião foram incorporados ao sistema e fazem parte do resultado.
 

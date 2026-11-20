@@ -31,7 +31,7 @@ Dificuldades na gestão desses espaços aparecem também em outras instituiçõe
 \section{Trabalhos Relacionados}
 \label{sec:trabrel}
 
-Esta seção apresenta trabalhos e soluções que trataram de problemas semelhantes ao abordado nesta pesquisa, seja pelo diagnóstico da gestão de espaços em instituições federais de ensino, seja pelo desenvolvimento de sistemas de reserva em ambientes acadêmicos, seja pela oferta de ferramentas de mercado para a reserva de espaços. A análise desses trabalhos e soluções permite situar a presente proposta em relação ao que já foi produzido e identificar os aspectos que a diferenciam.
+Esta seção apresenta trabalhos e soluções que trataram de problemas semelhantes ao abordado nesta pesquisa, seja pelo diagnóstico da gestão de espaços em instituições federais de ensino, seja pelo desenvolvimento de sistemas de reserva em ambientes acadêmicos, seja pela oferta de ferramentas de mercado para a reserva de espaços, seja pelo sistema já usado no próprio campus. A análise desses trabalhos e soluções permite situar a presente proposta em relação ao que já foi produzido e identificar os aspectos que a diferenciam.
 
 %-----------------------------------
 \subsection{Gestão de Laboratórios no IFNMG -- Campus Almenara}
@@ -53,29 +53,36 @@ O trabalho de \citeonline{nascimento2020reservas} apresenta uma aplicação de r
 \subsection{Soluções Existentes de Reserva de Espaços}
 \label{sec:relsoftwares}
 
-Além dos trabalhos de \citeonline{cruz2023gestao} e \citeonline{nascimento2020reservas}, foram analisadas soluções de software já disponíveis para a reserva de espaços, com o objetivo de verificar se alguma delas resolveria o problema do Campus Salinas sem a necessidade de desenvolvimento de um sistema específico. A análise concentrou-se em duas plataformas comerciais representativas, o Skedda e o Microsoft Bookings, cujas funcionalidades foram verificadas nos sites oficiais em junho de 2026.
+Além dos trabalhos de \citeonline{cruz2023gestao} e \citeonline{nascimento2020reservas}, foram analisadas soluções de software já disponíveis para a reserva de espaços, para verificar se alguma delas dispensaria o sistema em desenvolvimento. A análise concentrou-se em duas plataformas comerciais representativas, o Skedda e o Microsoft Bookings, cujas funcionalidades foram verificadas nos sites oficiais em junho de 2026.
 
 O Skedda é uma plataforma web dedicada à reserva de espaços físicos, como salas, escritórios e laboratórios, que oferece autoatendimento aos usuários, definição de regras de reserva e visualização de disponibilidade em formato de agenda \cite{skedda2025}. O Microsoft Bookings, integrante do pacote Microsoft 365, é voltado ao agendamento de compromissos e ao gerenciamento de calendários, com reserva de recursos por meio de caixas de correio associadas a salas \cite{microsoft2025bookings}. As duas plataformas possuem funções presentes também no sistema proposto: consulta de disponibilidade, solicitação de reserva pelo próprio usuário e notificação das partes envolvidas.
 
 Nenhuma das duas, contudo, resolve o problema central do campus: fazer a disponibilidade refletir a grade de horários institucional. Como não importam as planilhas de horários, a ocupação das aulas teria de ser cadastrada manualmente a cada semestre, exatamente o retrabalho que motiva esta proposta. Além disso, são soluções proprietárias, pagas por assinatura e hospedadas em servidores externos, o que gera custos recorrentes e reduz o controle da instituição sobre os próprios dados.
 
+%-----------------------------------
+\subsection{Merly}
+\label{sec:relmerly}
+
+O Merly, sistema já usado pelo campus, tem um módulo de agendamento e foi avaliado como alternativa em 28 de setembro de 2026\footnote{Informação verbal fornecida por Luis Gustavo Barbosa Santiago, em reunião remota realizada em 28 de setembro de 2026.}. Ele foi pensado para o almoxarifado, e não para todos os espaços físicos, tem apenas dois perfis fixos, enquanto o IFAgenda usa perfis configuráveis (Seção~\ref{sec:rbac}), e depende de cadastro manual, sem importar a grade de horários, o que manteria o retrabalho que motiva esta proposta. Na avaliação não foram observadas notificações nem consulta pública. Por isso, o desenvolvimento foi mantido.
+
 A Tabela~\ref{tab:comparativo} resume essa comparação.
 
 \begin{table}[!htb]
 	\centering
-	\caption{Comparação entre o sistema proposto e os trabalhos relacionados}
-	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.5cm}cccc@{}}
+	\setlength{\tabcolsep}{4pt}
+	\caption{Comparação entre o sistema proposto e os trabalhos e soluções relacionados}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.3cm}ccccc@{}}
 	\hline
-		\textbf{Funcionalidade} & \textbf{Skedda} & \textbf{\begin{tabular}[c]{@{}c@{}}Microsoft\\ Bookings\end{tabular}} & \textbf{\begin{tabular}[c]{@{}c@{}}Nascimento, Rios\\ e Baluz (2020)\end{tabular}} & \textbf{\begin{tabular}[c]{@{}c@{}}Este\\ trabalho\end{tabular}} \\ \hline
-		Solicitação de reserva pelo próprio usuário & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
-		Aprovação das solicitações & $\checkmark$ & P & $\checkmark$ & $\checkmark$ \\
-		Notificações automáticas & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
-		Consulta pública, sem login & $\checkmark$ & P & $\times$ & $\checkmark$ \\
-		Importação da grade de horários institucional & $\times$ & $\times$ & $\times$ & $\checkmark$ \\
-		Relatórios de uso dos espaços & $\checkmark$ & $\checkmark$ & -- & $\checkmark$ \\
-		Sem custo de assinatura & $\times$ & $\times$ & $\checkmark$ & $\checkmark$ \\ \hline
+		\textbf{Funcionalidade} & \textbf{Skedda} & \textbf{\begin{tabular}[c]{@{}c@{}}Microsoft\\ Bookings\end{tabular}} & \textbf{\begin{tabular}[c]{@{}c@{}}Nascimento, Rios\\ e Baluz (2020)\end{tabular}} & \textbf{Merly} & \textbf{\begin{tabular}[c]{@{}c@{}}Este\\ trabalho\end{tabular}} \\ \hline
+		Solicitação de reserva pelo próprio usuário & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+		Aprovação das solicitações & $\checkmark$ & P & $\checkmark$ & -- & $\checkmark$ \\
+		Notificações automáticas & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\times$ & $\checkmark$ \\
+		Consulta pública, sem login & $\checkmark$ & P & $\times$ & $\times$ & $\checkmark$ \\
+		Importação da grade de horários institucional & $\times$ & $\times$ & $\times$ & $\times$ & $\checkmark$ \\
+		Relatórios de uso dos espaços & $\checkmark$ & $\checkmark$ & -- & -- & $\checkmark$ \\
+		Sem custo de assinatura & $\times$ & $\times$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\ \hline
 	\end{tabular}
-	\caption*{\footnotesize Legenda: $\checkmark$ atende; P atende parcialmente; $\times$ não atende; -- não informado. \citeonline{cruz2023gestao} não consta na comparação por se tratar de estudo diagnóstico, sem sistema desenvolvido. Funcionalidades das soluções comerciais verificadas em junho de 2026.\\ Fonte: Elaborado pelo autor (2026).}
+	\caption*{\footnotesize Legenda: $\checkmark$ atende; P atende parcialmente; $\times$ não atende; -- não informado. \citeonline{cruz2023gestao} não consta na comparação por se tratar de estudo diagnóstico, sem sistema desenvolvido. Funcionalidades das soluções comerciais verificadas em junho de 2026, e do Merly, observadas em 28 de setembro de 2026.\\ Fonte: Elaborado pelo autor (2026).}
 	\label{tab:comparativo}
 \end{table}
 

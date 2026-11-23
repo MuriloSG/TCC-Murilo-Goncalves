@@ -273,9 +273,12 @@
   --container-form: 40rem;
   --container-page: 80rem;
   --container-page-wide: 96rem;
+  --container-page-ultra: 112rem;
 
   --breakpoint-sm: 40rem;
   --breakpoint-lg: 64rem;
+  --breakpoint-xl: 90rem;
+  --breakpoint-ultra: 120rem;
 }
 
 :root[data-theme="dark"] {
@@ -4242,6 +4245,18 @@
     }
   }
 
+  .app-main {
+    --page-max: var(--container-page);
+
+    @variant xl {
+      --page-max: var(--container-page-wide);
+    }
+
+    @variant ultra {
+      --page-max: var(--container-page-ultra);
+    }
+  }
+
   .when-collapsed {
     display: none;
   }
@@ -4289,11 +4304,6 @@
   }
 
   @variant lg {
-    .is-collapsed .page {
-      max-width: var(--container-page-wide);
-      margin-inline: auto;
-    }
-
     .is-collapsed .sidebar {
       overflow-y: auto;
       padding-inline: var(--spacing-4);
@@ -4522,7 +4532,8 @@
       display: flex;
       align-items: center;
       gap: var(--spacing-3);
-      padding: var(--spacing-3) var(--spacing-10) var(--spacing-3) var(--spacing-6);
+      padding-block: var(--spacing-3);
+      padding-inline: calc(max(0rem, (100% - var(--page-max, var(--container-page))) / 2) + var(--spacing-10));
       border-bottom: 1px solid var(--color-divider);
       background: var(--color-surface);
     }
@@ -4886,9 +4897,9 @@
     align-content: start;
     gap: var(--spacing-6);
     width: 100%;
-    max-width: var(--container-page);
+    max-width: var(--page-max, var(--container-page));
+    margin-inline: auto;
     padding: var(--spacing-6) var(--spacing-4);
-    transition: max-width var(--motion-base) ease;
 
     @variant sm {
       padding-inline: var(--spacing-6);
@@ -6123,6 +6134,11 @@
 
     @variant lg {
       gap: var(--spacing-6);
+    }
+
+    @variant ultra {
+      grid-template-columns: repeat(auto-fit, minmax(14rem, 22rem));
+      justify-content: start;
     }
   }
 

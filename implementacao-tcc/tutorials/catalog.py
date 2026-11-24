@@ -759,7 +759,7 @@ USERS = Feature(
         Step(
             text=(
                 'Informe o nome, o e-mail institucional e o perfil. Para docentes, o nome de usuário é o nome como aparece '
-                'no ensalamento. O link para definir a senha vai por e-mail.'
+                'no ensalamento, e o docente passa a constar na lista das aulas. O link para definir a senha vai por e-mail.'
             ),
             alt='Formulário Cadastrar usuário com o e-mail, o perfil e o botão Cadastrar destacados.',
             marks=('E-mail institucional', 'Perfil', 'Cadastre'),

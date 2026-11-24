@@ -111,6 +111,15 @@ def teacher_link_change(previous, current):
     return {key: value for key, value in names.items() if value} or None
 
 
+def register_teacher(username):
+    """Cria o docente do nome de usuário, se ainda não existir; devolve o vínculo para a auditoria."""
+    if not username:
+        return None
+    Teacher = apps.get_model('schedule', 'Teacher')
+    teacher, created = Teacher.objects.resolve(username)
+    return {'docente_ligado': teacher.name, 'docente_criado': created}
+
+
 def check_account_manageable(executor, target, field=None):
     """Recusa alterar conta com permissão que o executor não tem; superadmin só por superadmin ativo."""
     if executor is None or is_active_superadmin(executor):
@@ -243,7 +252,10 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
         return (email or '').strip().lower()
 
     def register(self, email, name, role, username=None, executor=None):
-        """Cadastra sem senha e enfileira o link no outbox na mesma transação."""
+        """Cadastra sem senha e enfileira o link no outbox na mesma transação.
+
+        Com nome de usuário, garante o docente de mesmo nome, para que ele já possa ser escolhido nas aulas.
+        """
         if role is None:
             raise role_required_error()
         check_role_assignable(executor, role)
@@ -264,6 +276,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
             user.save(using=self.db)
             UserRole.objects.using(self.db).create(user=user, role=role)
             OutboxEntry.objects.using(self.db).enqueue(PASSWORD_LINK, user.pk)
+            teacher = register_teacher(user.username)
             AuditLog.objects.record(
                 catalog.CREATE,
                 catalog.USER,
@@ -274,6 +287,7 @@ class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
                     'username': user.username,
                     'role': role.code,
                 },
+                metadata=teacher,
             )
         return user
 

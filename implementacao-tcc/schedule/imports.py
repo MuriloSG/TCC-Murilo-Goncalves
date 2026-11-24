@@ -527,10 +527,20 @@ class SpaceAllocationImport(ImportDefinition):
         cleaned, errors = USERS.clean_values(values)
         user = RUN.get().users.get(cleaned['email']) or User.objects.filter(email__iexact=cleaned['email']).first()
         if user is None:
-            return USERS.create(cleaned, errors, executor)
+            return self.create_user(cleaned, errors, executor)
         if errors:
             return RowPlan(target=user.pk, errors=errors)
         return RowPlan(action='unchanged', target=user.pk, warnings=self.user_warnings(user, cleaned))
+
+    def create_user(self, cleaned, errors, executor):
+        """O docente que o cadastro cria conta como criado nesta execução, como o da lista de docentes."""
+        username = cleaned.get('username')
+        existed = bool(username) and Teacher.objects.filter(name__iexact=username).exists()
+        plan = USERS.create(cleaned, errors, executor)
+        if username and not existed and plan.created is not None:
+            teacher = Teacher.objects.get(name__iexact=username)
+            RUN.get().created.add((Teacher.__name__, teacher.pk))
+        return plan
 
     def user_warnings(self, user, cleaned):
         """Avisos do usuário existente: outros dados no cadastro e situação inativa."""

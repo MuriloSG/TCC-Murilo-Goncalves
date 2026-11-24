@@ -10,7 +10,10 @@ from accounts.models import (
     UserRole,
 )
 from accounts.tests.roles import management_role, requester_role
+from audit import catalog
+from audit.models import AuditLog
 from config.testing import IsolatedCasesMixin
+from schedule.models import Teacher
 
 
 class UserDatabaseTests(IsolatedCasesMixin, TestCase):
@@ -193,6 +196,22 @@ class RegisterTests(IsolatedCasesMixin, TestCase):
                     email='maria@ifnmg.edu.br', name='Maria', role=self.teacher, password='Senha-forte-123',
                 )
             self.assertFalse(User.objects.exists())
+
+    def test_register_with_username_ensures_the_teacher(self):
+        with self.case('cria o docente e registra o vínculo'):
+            user = User.objects.register(
+                email='ana@ifnmg.edu.br', name='Ana', role=self.teacher, username='Ana  Lima',
+            )
+            self.assertEqual(list(Teacher.objects.values_list('name', flat=True)), ['Ana Lima'])
+            log = AuditLog.objects.get(resource=catalog.USER, resource_id=str(user.pk))
+            self.assertEqual(log.metadata, {'docente_ligado': 'Ana Lima', 'docente_criado': True})
+        with self.case('reaproveita o docente de outra caixa'):
+            Teacher.objects.resolve('Ana Lima')
+            User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=self.teacher, username='ana lima')
+            self.assertEqual(list(Teacher.objects.values_list('name', flat=True)), ['Ana Lima'])
+        with self.case('sem nome de usuário não cria docente'):
+            User.objects.register(email='ana@ifnmg.edu.br', name='Ana', role=self.teacher)
+            self.assertFalse(Teacher.objects.exists())
 
     def test_register_refuses_invalid_data_without_creating_anything(self):
         with self.case('dados inválidos'):

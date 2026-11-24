@@ -754,8 +754,10 @@
     min-width: 0;
 
     & > input {
+      width: 100%;
       min-width: 0;
       max-width: 100%;
+      appearance: none;
       padding-right: var(--spacing-12);
     }
 

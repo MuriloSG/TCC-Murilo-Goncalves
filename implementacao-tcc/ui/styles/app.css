@@ -1484,11 +1484,11 @@
     }
   }
 
-  /* Agenda: um filtro por linha no celular, todos na largura da tela, mesmo os de
-     rótulo curto como o semestre e a visualização. Sem isso o invólucro do campo
-     encolhe para o conteúdo, cabem dois por linha e o painel do select fica tão
-     estreito que corta a opção escolhida. */
-  .is-agenda .filters {
+  /* Agenda e ensalamento: um filtro por linha no celular, todos na largura da
+     tela, mesmo os de rótulo curto como o semestre e a visualização. Sem isso o
+     invólucro do campo encolhe para o conteúdo, cabem dois por linha e o painel
+     do select fica tão estreito que corta a opção escolhida. */
+  .timetable .filters {
     @variant max-sm {
       & > * {
         width: 100%;

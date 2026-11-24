@@ -423,7 +423,10 @@ TIMETABLE_VIEW = Feature(
             marks=('Abra o ensalamento',),
         ),
         Step(
-            text='Escolha o semestre, a sala e a visualização. A Grade mostra as aulas da sala em cada faixa de horário.',
+            text=(
+                'Escolha o semestre, a sala e a visualização. A Grade mostra as aulas da sala em cada faixa de horário. '
+                'No celular, os filtros ficam um abaixo do outro, na largura da tela, e as aulas aparecem numa lista por dia.'
+            ),
             alt='Grade do ensalamento com o filtro de sala destacado.',
             marks=('Escolha a sala',),
         ),

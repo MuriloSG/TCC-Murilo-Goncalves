@@ -194,7 +194,7 @@ class BookingRequestCreateView(OperationFormView):
     def get_form_kwargs(self):
         trigger = (self.request.htmx.trigger_name or '') if self.request.htmx else ''
         return super().get_form_kwargs() | {
-            'refresh_url': reverse(self.refresh_route), 'trigger': trigger,
+            'user': self.request.user, 'refresh_url': reverse(self.refresh_route), 'trigger': trigger,
         }
 
     def get_close_url(self):

@@ -20,7 +20,7 @@ from bookings.models import (
 )
 from schedule.forms import GridFilterForm
 from accounts.models import User
-from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot
+from schedule.models import Course, Semester, Space, Subject, TeachingAssignment, TimeSlot, teacher_of
 from ui.forms import DateInput
 
 DATE_REQUIRED_MESSAGE = 'Informe a data.'
@@ -57,6 +57,11 @@ def semester_of(value, today):
     return semester_options(today).filter(start_date__lte=day, end_date__gte=day).first()
 
 
+def own_assignments_only(user):
+    """Só vê as próprias turmas quem não pode solicitar em nome de outro."""
+    return user is not None and not user.has_perm(permissions.BOOKING_CREATE)
+
+
 def chosen(form, name):
     """Valor escolhido no campo, do envio ou do preenchimento inicial, como texto."""
     value = form.data.get(name) if form.is_bound else form.initial.get(name)
@@ -72,7 +77,7 @@ class AssignmentChoiceField(forms.ModelChoiceField):
 
 
 class BookingRequestForm(forms.Form):
-    """Solicitação com turma opcional; as opções só orientam, e o model confere a turma de novo."""
+    """Solicitação com turma opcional; quem só solicita para si escolhe entre as próprias turmas, e o model confere a turma de novo."""
 
     DEPENDENTS = {
         'course': ('subject', 'teaching_assignment'),
@@ -130,7 +135,7 @@ class BookingRequestForm(forms.Form):
         },
     )
 
-    def __init__(self, *args, refresh_url='', today=None, trigger='', **kwargs):
+    def __init__(self, *args, user=None, refresh_url='', today=None, trigger='', **kwargs):
         super().__init__(*args, **kwargs)
         self.clear_after(trigger)
         self.refresh = {
@@ -143,7 +148,11 @@ class BookingRequestForm(forms.Form):
         } if refresh_url else {}
         self.semester = semester_of(chosen(self, 'date'), today or timezone.localdate())
         semester = self.semester
-        assignments = list(TeachingAssignment.objects.available(semester)) if semester is not None else []
+        self.own_only = own_assignments_only(user)
+        self.teacher = teacher_of(user) if self.own_only and user is not None else None
+        assignments = [] if semester is None or (self.own_only and self.teacher is None) else list(
+            TeachingAssignment.objects.available(semester, teacher=self.teacher)
+        )
         self.fields['date'].widget.attrs.update(self.refresh)
         self.fields['date'].help_text = f'Semestre {semester.code}.' if semester else 'A data define o semestre da Agenda.'
         self.build_chain(assignments)
@@ -155,6 +164,19 @@ class BookingRequestForm(forms.Form):
         self.fields['start_time'].widget.attrs['list'] = 'horarios-inicio'
         self.fields['end_time'].widget.attrs['list'] = 'horarios-fim'
         self.fields['start_time'].help_text = 'Os horários das aulas do semestre aparecem como sugestão.' if slots else ''
+        self.describe_scope(assignments)
+
+    def describe_scope(self, assignments):
+        """Explica o alcance das opções: as turmas do próprio docente, ou todas as do semestre."""
+        if not self.own_only:
+            return
+        self.fields['teaching_assignment'].help_text = (
+            'Opcional. Informe quando o uso for de uma turma sua no semestre.'
+        )
+        if not assignments and self.semester is not None:
+            self.fields['course'].help_text = (
+                f'Sem turmas suas em {self.semester.code}. Envie a solicitação sem curso.'
+            )
 
     def clear_after(self, trigger):
         """Limpa os campos dependentes do trocado (`HX-Trigger-Name`) para não manter valor não conferido."""
@@ -169,7 +191,7 @@ class BookingRequestForm(forms.Form):
             self.initial = {key: value for key, value in self.initial.items() if key not in names}
 
     def build_chain(self, assignments):
-        """Cursos das turmas do semestre, e disciplina e turma só do curso e da disciplina escolhidos."""
+        """Cursos das turmas do alcance, e disciplina e turma só do curso e da disciplina escolhidos."""
         courses = {item.offering.class_group.course.pk: item.offering.class_group.course for item in assignments}
         field = self.fields['course']
         field.queryset = Course.objects.filter(pk__in=courses)

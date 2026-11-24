@@ -179,7 +179,10 @@ AGENDA_VIEW = Feature(
     screen_label='Abrir a agenda',
     steps=(
         Step(
-            text='Escolha a sala e a visualização por semana ou por mês. O semestre já vem escolhido.',
+            text=(
+                'Escolha a sala e a visualização por semana ou por mês. O semestre já vem escolhido. '
+                'No celular, os filtros ficam um abaixo do outro, na largura da tela.'
+            ),
             alt='Agenda com os filtros de sala e de visualização destacados.',
             marks=('Escolha a sala', 'Semana ou mês'),
         ),
@@ -230,8 +233,8 @@ AGENDA_REQUEST = Feature(
         ),
         Step(
             text=(
-                'Informe a descrição do uso e a quantidade de alunos. Curso, disciplina e turma são opcionais. '
-                'Depois, escolha Revisar solicitação.'
+                'Informe a descrição do uso e a quantidade de alunos. Curso, disciplina e turma são opcionais '
+                'e trazem só as turmas do próprio docente no semestre. Depois, escolha Revisar solicitação.'
             ),
             alt='Formulário Solicitar agendamento com a descrição e o botão Revisar solicitação destacados.',
             marks=('Descreva o uso', 'Revise antes de enviar'),
@@ -391,7 +394,10 @@ AGENDA_ON_BEHALF = Feature(
             marks=('Criar para outro usuário',),
         ),
         Step(
-            text='Escolha o usuário e preencha a descrição e a quantidade de alunos. Depois, escolha Revisar solicitação.',
+            text=(
+                'Escolha o usuário e preencha a descrição e a quantidade de alunos. Aqui curso, disciplina e turma '
+                'trazem todas as turmas do semestre. Depois, escolha Revisar solicitação.'
+            ),
             alt='Formulário Criar solicitação para outro usuário com o campo Usuário e o botão Revisar solicitação destacados.',
             marks=('Escolha o usuário', 'Revise antes de enviar'),
         ),

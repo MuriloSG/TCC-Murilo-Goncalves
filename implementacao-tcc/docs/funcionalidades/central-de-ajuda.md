@@ -72,6 +72,8 @@ Padrão das imagens, a seguir ao substituir uma delas:
 
 As 10 imagens de Alterar a senha e o nome (5 passos) foram geradas em 17/11/2026 do mesmo jeito, num banco temporário só com a usuária fictícia "Ana Exemplo", apagado depois da geração.
 
+As 3 imagens de celular da Agenda (Consultar a agenda, passos 1 e 4, e Solicitar agendamento, passo 2) foram geradas em 23/11/2026 do mesmo jeito, depois de os filtros da Agenda passarem a ocupar uma linha cada no celular. O banco temporário, com "Bruno Exemplo" e a semana de 26/10/2026 das capturas do computador, foi apagado depois da geração, e o roteiro não ficou no repositório.
+
 ## Manutenção
 
 - Ao mudar uma tela explicada pela central, substitua as imagens dos passos afetados seguindo o padrão acima. `test_catalog` falha se faltar a imagem de algum passo.

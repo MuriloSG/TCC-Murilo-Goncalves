@@ -1484,6 +1484,18 @@
     }
   }
 
+  /* Agenda: um filtro por linha no celular, todos na largura da tela, mesmo os de
+     rótulo curto como o semestre e a visualização. Sem isso o invólucro do campo
+     encolhe para o conteúdo, cabem dois por linha e o painel do select fica tão
+     estreito que corta a opção escolhida. */
+  .is-agenda .filters {
+    @variant max-sm {
+      & > * {
+        width: 100%;
+      }
+    }
+  }
+
   .tabs {
     display: flex;
     gap: var(--spacing-1);
@@ -1525,6 +1537,12 @@
   }
 
   .timetable-expand {
+    /* A grade só aparece a partir de `sm`; no celular a lista por dia é a visão,
+       e não há o que expandir. */
+    @variant max-sm {
+      display: none;
+    }
+
     &[hidden] {
       display: none;
     }

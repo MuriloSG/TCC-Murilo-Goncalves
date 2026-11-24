@@ -8,6 +8,7 @@ from django.test import TestCase
 from config.testing import IsolatedCasesMixin
 from django.urls import reverse
 
+from accounts import permissions
 from audit.models import AuditLog
 from bookings.models import Booking, BookingRequest
 from bookings.tests.base import REQUESTER, REVIEWER, THURSDAY, academic, frozen_clock, semester_with_lesson, submit, user_with
@@ -109,6 +110,34 @@ class ScreenTests(AcademicTestCase):
     def refresh(self, **query):
         return self.client.get(CREATE, query, headers={'HX-Request': 'true'}).content.decode()
 
+    def options(self, content, field):
+        return content.split(f'name="{field}"')[1].split('</select>')[0]
+
+    def test_options_follow_the_permission_to_request_for_others(self):
+        """Quem só solicita para si escolhe entre as próprias turmas; quem solicita para outro vê todas."""
+        informatics = self.networks.offering.class_group.course_id
+        physics = self.physics.offering.subject_id
+        with self.case('curso, disciplina e turma só do próprio docente'):
+            content = self.refresh(data='2026-10-15', course=informatics, subject=self.networks.offering.subject_id)
+            self.assertIn('>Redes</option>', self.options(content, 'subject'))
+            self.assertIn('>Banco de Dados</option>', self.options(content, 'subject'))
+            self.assertNotIn('Física', self.options(content, 'subject'))
+            self.assertIn(f'value="{self.networks.pk}"', self.options(content, 'teaching_assignment'))
+            self.assertIn('turma sua no semestre', content)
+            groups = self.options(self.refresh(data='2026-10-15', course=informatics, subject=physics), 'teaching_assignment')
+            self.assertNotIn(f'value="{self.physics.pk}"', groups)
+        with self.case('quem pode solicitar para outro vê todas'):
+            self.client.force_login(user_with('direcao@ifnmg.edu.br', *REQUESTER, permissions.BOOKING_CREATE))
+            content = self.refresh(data='2026-10-15', course=informatics, subject=physics)
+            self.assertIn('>Física</option>', self.options(content, 'subject'))
+            self.assertIn(f'value="{self.physics.pk}"', self.options(content, 'teaching_assignment'))
+            self.assertNotIn('turma sua no semestre', content)
+        with self.case('usuário que não é docente de nenhuma turma'):
+            self.client.force_login(self.outsider)
+            content = self.refresh(data='2026-10-15')
+            self.assertEqual(self.options(content, 'course').count('<option'), 1)
+            self.assertIn('Sem turmas suas em 2026/2. Envie a solicitação sem curso.', content)
+
     def test_subjects_and_class_groups_follow_the_choices(self):
         with self.case('disciplinas do curso'):
             course = self.networks.offering.class_group.course
@@ -116,7 +145,7 @@ class ScreenTests(AcademicTestCase):
             self.assertIn('>INFORMÁTICA</option>', content)
             self.assertIn('>Redes</option>', content)
             self.assertIn('>Banco de Dados</option>', content)
-            self.assertIn('>Física</option>', content)
+            self.assertNotIn('>Física</option>', content)
             self.assertNotIn(f'value="{self.networks.pk}"', content)
         with self.case('turmas da disciplina'):
             offering = self.networks.offering
@@ -154,8 +183,8 @@ class ScreenTests(AcademicTestCase):
         with self.case('turma de outro docente'):
             physics = self.physics.offering
             response = self.client.post(CREATE, self.data(subject=physics.subject_id, teaching_assignment=self.physics.pk, confirmar='1'))
-            self.assertEqual(response.status_code, 302)
-            self.assertEqual(BookingRequest.objects.get().teaching_assignment, self.physics)
+            self.assertContains(response, 'Escolha uma das disciplinas do curso escolhido.')
+            self.assertFalse(BookingRequest.objects.exists())
         with self.case('turma de outro semestre'):
             response = self.client.post(CREATE, self.data(teaching_assignment=self.old_physics.pk, confirmar='1'))
             self.assertContains(response, 'Escolha uma turma da disciplina escolhida.')

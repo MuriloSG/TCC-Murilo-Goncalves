@@ -115,8 +115,20 @@ class OtherCalendarsTests(AgendaTestCase):
             self.assertContains(response, self.ana.username)
             self.assertNotContains(response, 'Das 16:00 às 18:00')
             self.assertNotContains(response, self.ana.email)
+            self.assertContains(response, '16:00 às 18:00')
             self.assertNotContains(response, 'Reunião do projeto de extensão')
             self.assertNotContains(response, self.reviewer.name)
+        with self.case('sem vínculo mostra só o que existe'):
+            request = self.book()
+            BookingRequest.objects.filter(pk=request.pk).update(teaching_assignment=None)
+            self.client.logout()
+            response = self.client.get(reverse('public_calendar'), self.PUBLIC)
+            card = response.content.decode().split('timetable-card is-booking')[1].partition('</div>')[0]
+            self.assertIn('16:00 às 18:00', card)
+            self.assertIn('Laboratório de Informática 2', card)
+            self.assertIn(self.ana.name, card)
+            self.assertNotIn('aria-label="Curso"', card)
+            self.assertNotIn('aria-label="Turma"', card)
         with self.case('pelo docente'):
             User.objects.filter(pk=self.ana.pk).update(username='Viviane')
             self.book()

@@ -1,7 +1,8 @@
 {% load ui %}<div class="timetable-card is-booking">
   <p class="timetable-kind">{% icon "calendar-clock" "size-4" %}Agendamento</p>
   {% if entry.subject %}<p class="timetable-subject">{{ entry.subject }}</p>{% endif %}
+  {% if entry.start and entry.end %}{% if not hide_time or entry.start != cell.start or entry.end != cell.end %}<p class="timetable-line is-time">{% icon "clock" "size-4" %}<span><span class="sr-only">Horário </span>{{ entry.start|time:"H:i" }} às {{ entry.end|time:"H:i" }}</span></p>{% endif %}{% endif %}
   {% if entry.course %}{% include "schedule/partials/timetable_line.html" with name="school" label="Curso" value=entry.course %}{% endif %}
   {% if entry.group %}{% include "schedule/partials/timetable_line.html" with name="users" label="Turma" value=entry.group %}{% endif %}
-  {% if entry.teacher %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=entry.teacher %}{% endif %}
+  {% if entry.teacher %}{% include "schedule/partials/timetable_line.html" with name="user-round" label="Docente" value=entry.teacher muted=True %}{% endif %}
 </div>

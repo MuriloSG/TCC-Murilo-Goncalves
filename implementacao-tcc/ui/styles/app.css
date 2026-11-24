@@ -1473,9 +1473,12 @@
       padding-right: var(--spacing-10);
     }
 
+    /* No celular, cada campo ocupa a linha inteira: sem isso o invólucro do
+       select encolhe para o rótulo e os filtros ficam com larguras diferentes. */
     @variant max-sm {
       width: 100%;
 
+      & > div,
       & .control,
       & .select-wrap,
       & .select {
@@ -2519,9 +2522,11 @@
   }
 
   .row-filter {
-    & .select-wrap,
-    & .select {
-      width: calc(var(--spacing-16) * 4);
+    @variant sm {
+      & .select-wrap,
+      & .select {
+        width: calc(var(--spacing-16) * 4);
+      }
     }
   }
 
@@ -3613,12 +3618,19 @@
   .data-table.compact-rows {
     @variant max-sm {
       & tr {
-        display: grid;
-        grid-template-columns: var(--spacing-8) auto 1fr auto;
-        column-gap: var(--spacing-3);
+        display: flex;
+        flex-wrap: wrap;
+        column-gap: var(--spacing-2);
         row-gap: var(--spacing-1);
         align-items: center;
         padding: var(--spacing-3) var(--spacing-1) var(--spacing-3) var(--spacing-4);
+
+        &::before {
+          content: "";
+          order: 2;
+          flex-basis: 100%;
+          height: 0;
+        }
       }
 
       & td,
@@ -3633,7 +3645,9 @@
       }
 
       & .cell-primary {
-        grid-column: 1 / 4;
+        order: 0;
+        flex: 1 1 0;
+        min-width: 0;
       }
 
       & .avatar {
@@ -3644,19 +3658,43 @@
       }
 
       & .cell-meta {
-        grid-row: 2;
-        grid-column: 2;
+        order: 3;
+        min-width: 0;
+        max-width: 100%;
+        color: var(--color-text-muted);
         font-size: var(--text-sm);
         line-height: var(--text-sm--line-height);
+        overflow-wrap: anywhere;
+
+        & .person-detail {
+          display: inline;
+          margin-inline-start: var(--spacing-1);
+        }
       }
 
-      & .cell-meta + .cell-meta {
-        grid-column: 3;
+      /* O ponto fica no fim do item anterior: quando o resumo quebra, a linha
+         nova não começa com o separador. Antes do selo não há ponto, porque o
+         selo já se separa do texto. */
+      & .cell-meta:has(+ .cell-meta)::after {
+        content: "·";
+        margin-inline-start: var(--spacing-2);
+      }
+
+      & .cell-meta:has(+ .cell-meta > .badge)::after {
+        content: none;
+      }
+
+      & .cell-meta.is-empty {
+        display: none;
+      }
+
+      & tr:has(.avatar) .cell-primary + .cell-meta {
+        margin-inline-start: calc(var(--spacing-8) + var(--spacing-3));
       }
 
       & .cell-actions {
-        grid-row: 1 / 3;
-        grid-column: 4;
+        order: 1;
+        flex: none;
       }
 
       & .row-actions > :not(.row-menu) {

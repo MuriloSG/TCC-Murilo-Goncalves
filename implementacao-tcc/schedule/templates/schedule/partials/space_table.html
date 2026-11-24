@@ -12,7 +12,7 @@
     {% for item in spaces %}
       <tr>
         <td class="cell-primary" data-label="Espaço"><span class="person-name">{{ item.name }}</span></td>
-        <td class="cell-meta" data-label="Outros nomes">{{ item.other_names|join:", "|default:"Sem outros nomes" }}</td>
+        <td class="cell-meta{% if not item.other_names %} is-empty{% endif %}" data-label="Outros nomes">{{ item.other_names|join:", "|default:"Sem outros nomes" }}</td>
         <td class="cell-meta" data-label="Origem">{{ item.get_origin_display }}{% if item.source_import %}<span class="person-detail">{{ item.source_import.file_name }}, {{ item.source_import.created_at|date:"SHORT_DATE_FORMAT" }}</span>{% endif %}</td>
         <td class="cell-meta" data-label="Situação">
           {% if item.is_active %}
